@@ -9,6 +9,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
+import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -330,7 +331,7 @@ export function SupplierForm({ supplierId, personId, defaultValues, hideStatus }
           <Label htmlFor="contact_name">شخص تماس</Label>
           <Input id="contact_name" disabled={disabled} {...form.register("contact_name")} />
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 sm:col-span-2">
           <Label htmlFor="phone">تلفن</Label>
           <Input
             id="phone"
@@ -341,6 +342,18 @@ export function SupplierForm({ supplierId, personId, defaultValues, hideStatus }
             {...form.register("phone")}
           />
           {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+          {/* P1.2 — a number already on file means the same person, not a
+              second one. Only while creating: editing must never prompt. */}
+          <ExistingPersonPrompt
+            phone={form.watch("phone")}
+            targetRole="supplier"
+            enabled={!supplierId && !disabled}
+            onUseExisting={(id) => {
+              queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+              queryClient.invalidateQueries({ queryKey: ["purchase-form-suppliers"] });
+              navigate({ to: "/suppliers/$supplierId", params: { supplierId: id } });
+            }}
+          />
         </div>
         <div className="space-y-2">
           <Label htmlFor="city">شهر</Label>

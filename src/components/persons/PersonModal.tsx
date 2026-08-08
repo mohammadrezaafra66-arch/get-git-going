@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -279,6 +280,29 @@ export function PersonModal({ open, onOpenChange, context, onSuccess, initialNam
               )}
             </div>
           </div>
+
+          {/* P1.2 — only the two context kinds that own a mirror table can have
+              a role added this way; the rest still fall through to the RPC. */}
+          {(context === "customer" || context === "supplier") && (
+            <ExistingPersonPrompt
+              phone={form.watch("phone")}
+              targetRole={context}
+              onUseExisting={(mirrorId, person) => {
+                queryClient.invalidateQueries({ queryKey: ["purchase-form-suppliers"] });
+                queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+                queryClient.invalidateQueries({ queryKey: ["customers"] });
+                queryClient.invalidateQueries({ queryKey: ["sales-quote-customer-search"] });
+                queryClient.invalidateQueries({ queryKey: ["persons"] });
+                onSuccess({
+                  person_id: person.person_id,
+                  legacy_table: context === "supplier" ? "suppliers" : "customers",
+                  legacy_id: mirrorId,
+                  display_name: person.display_name,
+                });
+                onOpenChange(false);
+              }}
+            />
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

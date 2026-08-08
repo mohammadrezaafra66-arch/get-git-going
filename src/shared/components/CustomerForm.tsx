@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
+import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -300,6 +301,17 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
           {...form.register("phone")}
         />
         {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+        {/* P1.2 — the number is the identity key, so a match means the same
+            person needs a customer role, not a second person record. */}
+        <ExistingPersonPrompt
+          phone={form.watch("phone")}
+          targetRole="customer"
+          enabled={!customerId}
+          onUseExisting={(id) => {
+            queryClient.invalidateQueries({ queryKey: ["customers"] });
+            navigate({ to: "/sales/customers/$customerId/edit", params: { customerId: id } });
+          }}
+        />
       </div>
 
       <div className="space-y-2">

@@ -7,6 +7,7 @@ import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -239,6 +240,32 @@ export function QuickAddCustomerDialog({
               {...form.register("phone")}
             />
             {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+            {/* P1.2 — this dialog exists to pick someone to bill. If the number
+                is already on file, hand back that customer instead of failing
+                on the identifier uniqueness rule. */}
+            <ExistingPersonPrompt
+              phone={form.watch("phone")}
+              targetRole="customer"
+              onUseExisting={async (customerId) => {
+                const { data } = await supabase
+                  .from("customers")
+                  .select("id, name, phone, accounting_code")
+                  .eq("id", customerId)
+                  .maybeSingle();
+                const row = data as unknown as QuickAddCustomerResult | null;
+                if (!row) {
+                  toast.error("رکورد این شخص قابل خواندن نیست.");
+                  return;
+                }
+                queryClient.invalidateQueries({ queryKey: ["customers"] });
+                queryClient.invalidateQueries({ queryKey: ["customers", "search"] });
+                queryClient.invalidateQueries({ queryKey: ["invoice-form-customers"] });
+                queryClient.invalidateQueries({ queryKey: ["sales-quote-customer-search"] });
+                onCreated?.(row);
+                form.reset();
+                setOpen(false);
+              }}
+            />
           </div>
 
           <div className="space-y-1.5">

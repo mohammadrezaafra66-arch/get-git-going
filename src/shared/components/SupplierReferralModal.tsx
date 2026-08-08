@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -171,6 +172,20 @@ export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Prop
               {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
             </div>
           </div>
+
+          {/* P1.2 — a referral for someone already on file should add the
+              supplier role, not collide with the identifier uniqueness rule. */}
+          <ExistingPersonPrompt
+            phone={form.watch("phone")}
+            targetRole="supplier"
+            onUseExisting={() => {
+              queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+              queryClient.invalidateQueries({ queryKey: ["purchase-form-suppliers"] });
+              queryClient.invalidateQueries({ queryKey: ["persons"] });
+              form.reset();
+              onOpenChange(false);
+            }}
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="sr-notes" className="flex items-center gap-1.5 text-sm">
