@@ -29,7 +29,7 @@
 - [ ] ledger-mutual-settlement / فاز ۴ — غنی‌سازی شرح — در انتظار
 - [x] messenger-rpc-fix — **انجام شد** (گزینهٔ ب؛ مهاجرت **۳۱۶**؛ dry-run ۶/۶؛ E2E JWT واقعی سبز؛ down تست شد؛ فرانت دست‌نخورده)
 - [x] db-hygiene / فاز ۱ — seed role_permissions — **انجام شد** (مهاجرت **۳۱۵**؛ فقط سه ماژول واقعی `accounting`/`hr`/`market-rates`؛ `bank`/`customers`/`cheques` عمداً seed نشدند چون اصلاً کلید ماژول نیستند. dry-run اثبات کرد ۳ کاربر واقعی `sales` روی `accounting.view` از fallback مجوز می‌گرفتند و حالا نمی‌گیرند؛ ۸۴ ادعای پس از اعمال، صفر اختلاف با seed)
-- [ ] db-hygiene / فاز ۲ — یکپارچگی ارجاع — در انتظار
+- [x] db-hygiene / فاز ۲ — یکپارچگی ارجاع — **انجام شد** (مهاجرت **۳۱۷**؛ دو تریگر BEFORE INSERT/UPDATE معادل عملکردی FK روی `stock_movements.ref_id` و `journal_lines.account_ref_id`. نگاشت‌ها از خودِ نویسنده‌های زنده استخراج شد نه حدس؛ `invoice_ar`/`clearing`/`other` و `manual` عمداً بدون اعتبارسنجی‌اند چون حساب کنترلی‌اند و مقصدی ندارند (مهاجرت ۲۹۴). یتیم موجود: **صفر**. تابع تشخیصی `polymorphic_ref_orphan_report()` فقط گزارش می‌دهد. dry-run ۱۲/۱۲ سبز)
 - [ ] db-hygiene / فاز ۳ — رفع تست export-sales — در انتظار
 - [ ] db-hygiene / فاز ۴ — حذف ۲۷۱d7c44 — در انتظار
 - [ ] db-hygiene / فاز ۵ — حذف xlsx + رفع ۲ spec — در انتظار
@@ -47,7 +47,7 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
-| 2026-08-08 | Cursor | **eg-checklist — چک‌لیست رسمی هشت‌بندی E/G.** فقط‌خواندنی. بخش رسمی به `full-accounting-audit.md` افزوده شد؛ خلاصه در `eg-formal-checklist-COMPLETE.md`. دلتای زنده: `role_permissions.accounting`=۷ (مهاجرت ۳۱۵)؛ `supplier_payable` در CHECK (۳۱۲). نقص‌های ساختاری E/G همچنان باز. | (پس از commit) |
+| 2026-08-08 | Cursor | **eg-checklist — چک‌لیست رسمی هشت‌بندی E/G.** فقط‌خواندنی. بخش رسمی به `full-accounting-audit.md` افزوده شد؛ خلاصه در `eg-formal-checklist-COMPLETE.md`. دلتای زنده: `role_permissions.accounting`=۷ (مهاجرت ۳۱۵)؛ `supplier_payable` در CHECK (۳۱۲). نقص‌های ساختاری E/G همچنان باز. | `6746d8bd` |
 | 2026-08-08 | Cursor | **messenger-rpc-fix — پایان مأموریت (گزینهٔ ب).** مهاجرت **۳۱۶** `set_messenger_group_member_role` (SECURITY DEFINER، الگوی زندهٔ `add_messenger_group_member`). مهاجرت ۲۲۵ گیت اعمال نشد تا `add_*` عوض نشود. dry-run ۶/۶، down در ROLLBACK، E2E با JWT واقعی: ساخت گروه ← افزودن ← تغییر نقش به purchaser/viewer (تأیید ردیف DB) ← حذف عضو ← cleanup. فرانت از قبل درست بود. PostgREST ری‌استارت شد. | — |
 | 2026-08-08 | Cursor | **new-clusters-frontend — فرانت سه خوشه.** صفحات `/sales/promotion-nominations`، `/messages/inquiries`، `/gamification/league` + تب موتور فصل در admin leagues؛ ناوبری در PRIMARY_MODULES. JWT `e2e/clusters` **۵/۵**. **توقف schema:** `start_league_season`/`settle` با تریگر `validate_league_season` (title_fa)؛ `tick_inquiries` با 42P10 داخل `expire_pending_documents`. بدون مهاجرت. جزئیات: `docs/execution/new-clusters-frontend-mission-COMPLETE.md`. ⚠️ محتوای این کار داخل `75f56867` نشست (پیام commit مربوط به مأموریت دیگری است — محتوای tree همان فرانت خوشه‌هاست). | `75f56867` |
 | 2026-08-08 | Cursor | **messenger-rpc-fix فاز ۱ — تشخیص.** فرانت در `GroupMembersDialog.tsx:166` با پارامترهای `p_group_id`/`p_user_id`/`p_role` صدا می‌زند. روی دیتابیس زنده فقط `add_messenger_group_member` و `is_messenger_group_member` هستند؛ `set_messenger_group_member_role` در `pg_proc` نیست. مهاجرت قدیمی ۲۲۵ در گیت هست ولی روی LAN اعمال نشده. جدول `messenger_group_members` سیاست UPDATE ندارد ⇒ مسیر مستقیم UPDATE هم بی‌فایده است. | — |
