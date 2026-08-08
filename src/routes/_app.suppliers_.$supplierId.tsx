@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,8 @@ function SupplierDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { roles } = useAuth();
-  const canManage = hasAnyRole(roles, ["admin", "accountant"]);
+  // P1.5b — see SupplierForm: role_permissions is the source of truth.
+  const canManage = hasPermissionEx(roles, "suppliers", "update");
 
   const { data, isLoading } = useQuery({
     queryKey: ["supplier", supplierId],

@@ -8,7 +8,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasAnyRole, hasPermissionEx } from "@/lib/rbac/roles";
 import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,8 +130,19 @@ export function SupplierForm({ supplierId, personId, defaultValues, hideStatus }
   // `user` is no longer needed: person_create_inline stamps created_by from
   // auth.uid() server-side (Phase 6.1).
   const { roles } = useAuth();
-  const canSetActive = hasAnyRole(roles, ["admin", "accountant"]);
-  const canEdit = hasAnyRole(roles, ["admin", "accountant"]);
+  // P1.5b — the owner approved sales and purchase_specialist editing suppliers.
+  // Rather than extending a literal list, these now read role_permissions via
+  // hasPermissionEx, which is where the answer already lived: that table has
+  // granted both roles can_create/can_update on `suppliers` for some time,
+  // while the UI and the RLS policies named admin/accountant literally.
+  // Migration 322 opens the database side to match, so the two layers agree.
+  //
+  // Known disagreement left alone on purpose: role_permissions says manager is
+  // view-only on suppliers, but the "manager admin write suppliers" RLS policy
+  // still grants managers full write. Reconciling that is an RBAC decision for
+  // the owner, not a form change, so nothing here removes an existing power.
+  const canEdit = hasPermissionEx(roles, "suppliers", "update");
+  const canSetActive = canEdit;
   // The Asan code lives on person_identifiers, whose RLS is asymmetric:
   //   INSERT  admin, manager, sales, accountant
   //   UPDATE  admin, manager only

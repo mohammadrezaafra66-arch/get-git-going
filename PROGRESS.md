@@ -47,7 +47,7 @@
 - [x] p1-dual-role / فاز ۲ — جستجوی شخص با شماره — **انجام شد** (هر ۵ مسیر ساخت؛ بدون RPC تازه؛ آزمون زنده: جستجو شخص را یافت، افزودن نقش mirror ساخت، تعداد اشخاص ۷۹ ثابت ماند)
 - [x] p1-dual-role / فاز ۳ — نمایش دو نقشی — **انجام شد** (کارت نقش‌ها در `/persons/$personId` از قبل بود؛ لینک متقابل تأمین‌کننده↔مشتری اضافه شد؛ خواندن mirror مشترک شد)
 - [x] p1-dual-role / فاز ۴ — یک کد آسان یکتا — **انجام شد** (مهاجرت ۳۲۱، ایندکس جزئی روی `person_id`؛ dry-run ۶/۶؛ هم‌خوانی mirror با `value_raw` صفر اختلاف)
-- [ ] p1-dual-role / فاز ۵ — رفع unlink + مجوز ویرایش — در انتظار
+- [x] p1-dual-role / فاز ۵ — رفع unlink + مجوز ویرایش — **انجام شد** (مهاجرت ۳۲۲؛ گزینهٔ الف: `customer_clear_person` حذف شد و جایگزینی از طریق `customer_set_person` ماند؛ ممیزی `person_id` اضافه شد؛ `sales`/`purchase_specialist` هم در UI هم در RLS باز شد — آزمون زنده: sales قبل ۰ ردیف، بعد ۱ ردیف)
 - [x] new-clusters-frontend / نامزدی ارتقا — **انجام شد** (`/sales/promotion-nominations` + cancel RPC؛ JWT سبز)
 - [x] new-clusters-frontend / استعلام‌ها — **انجام شد** (`/messages/inquiries` + update_inquiry_status؛ tick best-effort — توقف 42P10)
 - [x] new-clusters-frontend / لیگ گیمیفیکیشن — **انجام شد با توقف schema** (صفحهٔ لیگ + تب RPC؛ start/settle با title_fa بلاک)

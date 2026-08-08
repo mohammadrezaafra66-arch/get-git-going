@@ -9,9 +9,11 @@
  *  - Delegate row-level authorization to existing customers / persons /
  *    person_context_links RLS — uses the user-scoped Supabase client from
  *    `requireSupabaseAuth`. No service role, no SECURITY DEFINER.
- *  - For link / unlink, call the SECURITY INVOKER RPCs `customer_set_person`
- *    and `customer_clear_person` so the multi-statement work runs in a single
- *    Postgres transaction.
+ *  - For linking, call the SECURITY INVOKER RPC `customer_set_person` so the
+ *    multi-statement work runs in a single Postgres transaction. It also
+ *    performs an atomic REPLACE, which is why there is no unlink counterpart:
+ *    customers.person_id is NOT NULL, so there is no state to unlink into
+ *    (P1.5a, migration 322 dropped customer_clear_person).
  *  - Map Postgres / RLS errors to safe Persian messages.
  *
  * Audit:
@@ -36,11 +38,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   CreateCustomerInputSchema,
   LinkCustomerToPersonInputSchema,
-  UnlinkCustomerFromPersonInputSchema,
   UpdateCustomerInputSchema,
   type CustomerDTO,
   type LinkCustomerToPersonResult,
-  type UnlinkCustomerFromPersonResult,
 } from "./schemas";
 
 const SELECT_COLS =
@@ -175,8 +175,8 @@ export const createCustomer = createServerFn({ method: "POST" })
 /**
  * updateCustomer updates ONLY whitelisted, non-link columns.
  * `person_id` is intentionally not in the whitelist — it must be changed via
- * `linkCustomerToPerson` / `unlinkCustomerFromPerson` so the matching
- * `person_context_links` row stays consistent.
+ * `linkCustomerToPerson` so the matching `person_context_links` row stays
+ * consistent.
  */
 export const updateCustomer = createServerFn({ method: "POST" })
   .middleware([surfaceAuthError, requireSupabaseAuth])
@@ -235,25 +235,6 @@ export const linkCustomerToPerson = createServerFn({ method: "POST" })
         throw new Error("ایجاد ارتباط ناموفق بود");
       }
       return { link_id: linkId };
-    } catch (e) {
-      throw toServerError(e);
-    }
-  });
-
-/* ---------- unlinkCustomerFromPerson ---------- */
-
-export const unlinkCustomerFromPerson = createServerFn({ method: "POST" })
-  .middleware([surfaceAuthError, requireSupabaseAuth])
-  .inputValidator((input) => UnlinkCustomerFromPersonInputSchema.parse(input))
-  .handler(async ({ data, context }): Promise<UnlinkCustomerFromPersonResult> => {
-    try {
-      const { supabase } = context;
-      const { data: changed, error } = await supabase.rpc("customer_clear_person", {
-        p_customer_id: data.customer_id,
-        p_note: data.note ?? undefined,
-      });
-      if (error) throw mapPgError(error.code, error.message);
-      return { changed: Boolean(changed) };
     } catch (e) {
       throw toServerError(e);
     }

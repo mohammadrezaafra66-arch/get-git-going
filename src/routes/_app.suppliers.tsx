@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -90,7 +90,8 @@ function statusBadge(status: SupplierRow["status"]) {
 function SuppliersListPage() {
   const { roles } = useAuth();
   const queryClient = useQueryClient();
-  const canManage = hasAnyRole(roles, ["admin", "accountant"]);
+  // P1.5b — see SupplierForm: role_permissions is the source of truth.
+  const canManage = hasPermissionEx(roles, "suppliers", "update");
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");

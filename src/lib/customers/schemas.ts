@@ -147,7 +147,7 @@ export const UpdateCustomerInputSchema = z.object({
 });
 export type UpdateCustomerInput = z.infer<typeof UpdateCustomerInputSchema>;
 
-/* ---------- link / unlink ---------- */
+/* ---------- link ---------- */
 
 export const LinkCustomerToPersonInputSchema = z.object({
   customer_id: customerIdSchema,
@@ -155,12 +155,6 @@ export const LinkCustomerToPersonInputSchema = z.object({
   note: noteSchema,
 });
 export type LinkCustomerToPersonInput = z.infer<typeof LinkCustomerToPersonInputSchema>;
-
-export const UnlinkCustomerFromPersonInputSchema = z.object({
-  customer_id: customerIdSchema,
-  note: noteSchema,
-});
-export type UnlinkCustomerFromPersonInput = z.infer<typeof UnlinkCustomerFromPersonInputSchema>;
 
 /* ---------- DTO ---------- */
 
@@ -185,8 +179,4 @@ export interface CustomerDTO {
 
 export interface LinkCustomerToPersonResult {
   link_id: string;
-}
-
-export interface UnlinkCustomerFromPersonResult {
-  changed: boolean;
 }

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Link2, Link2Off, Loader2, Search, UserRound } from "lucide-react";
+import { Link2, Loader2, Search, UserRound } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useDebounce } from "@/hooks/use-debounce";
-import { linkCustomerToPerson, unlinkCustomerFromPerson } from "@/lib/customers/functions";
+import { linkCustomerToPerson } from "@/lib/customers/functions";
 import { getPerson, searchPersons } from "@/lib/persons/functions";
 
 const KIND_LABEL: Record<string, string> = {
@@ -20,8 +20,16 @@ const KIND_LABEL: Record<string, string> = {
 
 /**
  * Item 169 — UI for the customer↔person bridge.
- * The backend already existed (`customer_set_person` / `customer_clear_person`
- * behind linkCustomerToPerson / unlinkCustomerFromPerson); only the UI was missing.
+ *
+ * P1.5a: the "قطع اتصال" button is gone. `customers.person_id` is NOT NULL, so
+ * `customer_clear_person` could only ever raise 23502 — the button was a
+ * guaranteed error, and unlinking has no meaning once every customer must have
+ * a person. Migration 322 drops that function.
+ *
+ * What replaces it is REPLACEMENT, not unlinking: `customer_set_person` already
+ * re-points a customer atomically (closes the old links, sets the new person_id,
+ * opens a fresh link), so a mis-linked customer can still be corrected — which
+ * is the only reason the old button was worth having.
  */
 export function CustomerPersonLink({
   customerId,
@@ -34,9 +42,9 @@ export function CustomerPersonLink({
   const searchFn = useServerFn(searchPersons);
   const getPersonFn = useServerFn(getPerson);
   const linkFn = useServerFn(linkCustomerToPerson);
-  const unlinkFn = useServerFn(unlinkCustomerFromPerson);
 
   const [query, setQuery] = useState("");
+  const [replacing, setReplacing] = useState(false);
   const debouncedQuery = useDebounce(query, 350);
 
   const linkedQ = useQuery({
@@ -49,7 +57,7 @@ export function CustomerPersonLink({
   // searchPersons already returns [] for terms shorter than 2 chars.
   const resultsQ = useQuery({
     queryKey: ["persons-picker", debouncedQuery],
-    enabled: !personId && debouncedQuery.trim().length >= 2,
+    enabled: (!personId || replacing) && debouncedQuery.trim().length >= 2,
     queryFn: () => searchFn({ data: { query: debouncedQuery } }),
     staleTime: 30_000,
   });
@@ -65,21 +73,13 @@ export function CustomerPersonLink({
     onSuccess: () => {
       toast.success("مشتری به پروندهٔ شخص متصل شد");
       setQuery("");
+      setReplacing(false);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message || "اتصال ناموفق بود"),
   });
 
-  const unlink = useMutation({
-    mutationFn: () => unlinkFn({ data: { customer_id: customerId } }),
-    onSuccess: (r) => {
-      toast.success(r?.changed ? "اتصال قطع شد" : "این مشتری اتصالی نداشت");
-      invalidate();
-    },
-    onError: (e: Error) => toast.error(e.message || "قطع اتصال ناموفق بود"),
-  });
-
-  const busy = link.isPending || unlink.isPending;
+  const busy = link.isPending;
 
   return (
     <Card dir="rtl">
@@ -95,7 +95,7 @@ export function CustomerPersonLink({
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {personId ? (
+        {personId && !replacing ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-muted/30 p-3">
             <div className="space-y-1">
               {linkedQ.isLoading ? (
@@ -129,23 +129,31 @@ export function CustomerPersonLink({
                 </>
               )}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={busy}
-              onClick={() => unlink.mutate()}
-              className="text-destructive"
-            >
-              {unlink.isPending ? (
-                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Link2Off className="ml-2 h-4 w-4" />
-              )}
-              قطع اتصال
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => setReplacing(true)}>
+              <Link2 className="ml-2 h-4 w-4" />
+              تغییر شخص
             </Button>
           </div>
         ) : (
           <div className="space-y-3">
+            {replacing && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-500/40 bg-amber-50/60 p-2 dark:bg-amber-950/20">
+                <span className="text-xs">
+                  انتخاب شخص تازه، پروندهٔ فعلی را جایگزین می‌کند. این کار در سوابق ثبت می‌شود.
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  disabled={busy}
+                  onClick={() => {
+                    setReplacing(false);
+                    setQuery("");
+                  }}
+                >
+                  انصراف
+                </Button>
+              </div>
+            )}
             <div className="space-y-1">
               <Label>جستجوی شخص</Label>
               <div className="relative">
