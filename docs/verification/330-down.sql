@@ -1,0 +1,33 @@
+SET client_encoding='UTF8';
+
+-- Down-script for migration 330.
+--
+-- 330 rewrote four trigger functions and wrote no data, so reverting is one step:
+-- re-apply the pre-330 definitions captured verbatim from the live database.
+--
+--   docker cp docs/verification/pre-330/pre-330-receipt-triggers.sql \
+--     afrakala-lan-db:/tmp/down330.sql
+--   docker exec -e PGPASSWORD=... afrakala-lan-db psql -U supabase_admin -d afrakala \
+--     -v ON_ERROR_STOP=1 --single-transaction -f /tmp/down330.sql
+--   docker restart afrakala-lan-rest
+--
+-- That file contains all four functions exactly as they were, including their Persian
+-- strings. Apply it with docker cp + psql -f, never through a PowerShell pipe -- a pipe
+-- destroyed the Persian inside 44 functions on 2026-07-11.
+--
+-- ⚠️ Only meaningful while public.invoices still exists. The pre-330 bodies read that
+-- table; once it is dropped they compile fine and then fail at RUNTIME on the next
+-- receipt write, which is precisely the failure mode 330 was written to prevent.
+--
+-- WHAT REVERTING GIVES BACK, and what it does not:
+--   • enforce_payment_receipt_link_limits / enforce_receipt_approval_allocation_limits
+--     regain their invoice-branch CAP instead of 330's outright rejection. Note that with
+--     zero rows in invoices the old branch rejected anyway, with
+--     «فاکتور مورد نظر یافت نشد» — so reverting changes the message, not the outcome.
+--   • recompute_employee_scores_on_receipt regains a loop that resolves employees only
+--     through invoices, i.e. it goes back to never firing.
+--   • recompute_employee_scores_on_receipt_link regains its invoice branch; its quote
+--     branch is identical in both versions and was never touched.
+--
+-- Equivalence evidence for the forward direction is in
+-- docs/verification/330-equivalence-test.sql (old vs new, both rolled back).
