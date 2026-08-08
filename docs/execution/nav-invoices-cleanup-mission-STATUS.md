@@ -396,6 +396,49 @@ word-match می‌دهد، ولی تنها خط منطبقش یک **مسیر م�
 
 ---
 
+---
+
+# شرط ۳ — بخش ۱ اجرا شد (مهاجرت ۳۲۹): هر دو کلید خارجی حذف شد
+
+**کلیدهای خارجی:** `payment_receipt_links_invoice_id_fkey` و `delivery_receipts_invoice_id_fkey`
+حذف شدند. PostgreSQL اجازه نمی‌دهد جدولی که به آن ارجاع هست drop شود، پس این دو **سدِ سختِ**
+حذف جدول بودند. مهاجرت پیش از اقدام، فرضش را **زنده assert می‌کند** (اگر ردیفی با
+`invoice_id` غیرتهی پیدا شود متوقف می‌شود، نه اینکه بی‌صدا یتیمش کند) — در زمان اجرا هر دو صفر بودند.
+**ستون‌های `invoice_id` نگه داشته شدند**، چون توابعی مثل `enforce_payment_receipt_link_limits`
+هنوز می‌خوانندشان؛ حذف ستون کار مرحلهٔ بعد است.
+
+**سه تابع حذف شد** — هر سه با صفر فراخوان، هم در فرانت‌اند و هم **داخل خودِ دیتابیس**:
+`cancel_invoice` · `send_invoice_to_accountant` · `set_invoice_accounting_marker`.
+
+**یک یتیم که از مهاجرت ۳۲۳ جا مانده بود:** تنها مصرف‌کنندهٔ `set_invoice_accounting_marker`
+کامپوننت `src/components/invoices/InvoiceAccountingMarkers.tsx` بود که ۳۲۳ روت‌های واردکننده‌اش
+را حذف کرد ولی خودش را جا گذاشت — نه چیزی واردش می‌کرد نه چیزی وارد می‌کرد. در همین commit حذف شد.
+
+**سه تابع عمداً نگه داشته شدند، چون هنوز مصرف‌کنندهٔ زنده دارند:**
+
+| تابع | چرا ماند |
+|---|---|
+| `complete_invoice_task` | از `/operations/tasks` صدا زده می‌شود — صفحه‌ای که در سایدبار است |
+| `create_preinvoice_workflow_tasks` | پشتِ تریگر `trg_create_preinvoice_workflow_tasks` **روی خودِ `invoices`** |
+| `invoices_log_type_changes` | تریگر روی `invoices` |
+
+این سه با خودِ جدول می‌روند، نه پیش از آن.
+
+**وضعیت زنده پس از ۳۲۹:** کلید خارجی به `invoices` **صفر** · ارجاع کدی توابع **۱۷ → ۱۴** ·
+جدول `invoices` سرجایش · رجیستری اشخاص متوازن (گیت ۳۲۸ روی همین `ALTER TABLE`ها اجرا شد و پاس داد) ·
+typecheck **۷۰**.
+
+## مانده از شرط ۳ — بازنویسی ۱۴ تابع
+
+الگوی امن همان است که ۳۲۷ اثبات کرد: چون `invoices` **صفر ردیف** دارد، هر `JOIN`/`SELECT` روی آن
+امروز هیچ ردیفی برنمی‌گرداند، پس برداشتن آن شاخه **اثباتاً حافظِ رفتار** است — نه یک تخمین.
+خطرناک‌ترین‌ها آن‌هایی‌اند که تریگرِ جدول‌های **زنده**اند و با حذف `invoices` از بین نمی‌روند بلکه
+هنگام اجرا می‌شکنند: `enforce_payment_receipt_link_limits` و
+`enforce_receipt_approval_allocation_limits` (نگهبان‌های مالی) و
+`recompute_employee_scores_on_receipt(_link)`.
+
+---
+
 ## 🔴 پیگیری معوق — جدول `invoices` هنوز باید حذف شود
 
 > **invoices table itself still needs dropping, blocked on ledger-mutual-settlement agent
