@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { BASE_SALE_PRICE_TYPE_CODE } from "@/lib/pricing/constants";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -49,9 +50,15 @@ export const Route = createFileRoute("/api/public/products")({
           const ids = (rows ?? []).map((r) => r.id);
           const priceMap = new Map<string, number>();
           if (ids.length > 0) {
+            // فیلتر نوع‌قیمت الزامی است: این view برای هر محصول یک ردیف به‌ازای هر
+            // نوع‌قیمت فعال دارد (نقدی/چکی/همکاری). بدون این فیلتر، حلقهٔ زیر با هر
+            // ردیف مقدار قبلی را بازنویسی می‌کرد و عملاً «آخرین ردیفی که آمد» برنده
+            // می‌شد — یعنی این endpoint عمومی می‌توانست قیمت چکی یا همکاری را
+            // به‌جای نقدی به بیرون بدهد.
             const { data: prices, error: priceErr } = await supabase
               .from("product_computed_prices_public")
-              .select("product_id, rounded_sale_price")
+              .select("product_id, rounded_sale_price, sale_price_types!inner(code)")
+              .eq("sale_price_types.code", BASE_SALE_PRICE_TYPE_CODE)
               .in("product_id", ids);
             if (priceErr) {
               return new Response(

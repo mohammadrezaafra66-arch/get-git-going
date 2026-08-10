@@ -60,7 +60,14 @@ type RpcFn = (
   args: Record<string, unknown>,
 ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
-const rpc = supabase.rpc as unknown as RpcFn;
+// ⚠️ `.bind(supabase)` is not decoration. Detaching the method
+// (`const rpc = supabase.rpc`) loses `this`, and supabase-js's rpc() reads
+// `this.rest` — so every call through this helper threw
+// "Cannot read properties of undefined (reading 'rest')" before any network
+// request was made. Both callers below swallow that into an empty result, so
+// `check_quote_stock_availability` silently reported "no rows" everywhere it
+// was used, including the accept dialog's shortage guard.
+const rpc = supabase.rpc.bind(supabase) as unknown as RpcFn;
 
 export async function fetchWarehouses(includeInactive = true): Promise<Warehouse[]> {
   let q = supabase

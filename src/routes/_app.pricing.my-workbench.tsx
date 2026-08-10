@@ -467,7 +467,7 @@ function WorkbenchPage() {
                       <TableHead className="text-right">دسته</TableHead>
                       <TableHead className="text-right">قیمت خرید</TableHead>
                       <TableHead className="text-right">ارز</TableHead>
-                      <TableHead className="text-right">قیمت فروش</TableHead>
+                      <TableHead className="text-right">قیمت فروش (نقدی)</TableHead>
                       <TableHead className="text-right">موجودی</TableHead>
                       <TableHead className="text-right">وضعیت</TableHead>
                       <TableHead className="text-right">مسئول / برچسب</TableHead>
@@ -910,7 +910,7 @@ function MobileCard({
           )}
           {hasValidSalePrice(row.sale_price) ? (
             <Badge variant="secondary" className="text-[10px]">
-              فروش: {formatNumber(row.sale_price as number)}
+              فروش نقدی: {formatNumber(row.sale_price as number)}
             </Badge>
           ) : (
             <Badge variant="destructive" className="text-[10px]">

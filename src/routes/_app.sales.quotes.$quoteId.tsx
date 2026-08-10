@@ -45,7 +45,12 @@ import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
 import { useServerFn } from "@tanstack/react-start";
 import { updateQuoteStatus } from "@/lib/sales/quote-status.functions";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
-import { checkQuoteStockAvailability } from "@/lib/warehouses/queries";
+import {
+  useQuoteStockAvailability,
+  QuoteStockAdvisoryPanel,
+  QuoteStockShortageList,
+  QuoteStockBreakdown,
+} from "@/components/sales/quotes/QuoteStockAvailability";
 import {
   useQuoteLineServices,
   fetchQuoteLineServices,
@@ -174,6 +179,15 @@ function QuoteDetailPage() {
   });
 
   const lineServicesQuery = useQuoteLineServices(quoteId, !!user && !!quoteQuery.data);
+
+  // Stock advisory for the accountant/salesperson, shown on the page itself.
+  // Declared here — above the early returns below — so the hook order stays
+  // stable. Only enabled while the proforma is still open for a decision:
+  // after `accepted` the stock is already deducted and on canceled/rejected
+  // the numbers are noise.
+  const quoteStatus = quoteQuery.data?.status;
+  const showStockAdvisory = quoteStatus === "draft" || quoteStatus === "sent";
+  const pageStockCheck = useQuoteStockAvailability(quoteId, null, showStockAdvisory);
 
   if (quoteQuery.isLoading) {
     return (
@@ -343,6 +357,13 @@ function QuoteDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Stock reality, on the page itself rather than only inside the accept
+          dialog. The accountant decides here — `update_sales_quote_status`
+          lets them reject but never accept, so they can never open the dialog
+          that used to be the only place these numbers appeared. Advisory only:
+          it does not disable any action. */}
+      {showStockAdvisory && <QuoteStockAdvisoryPanel {...pageStockCheck} />}
 
       <div>
         <h2 className="mb-2 text-sm font-medium">آیتم‌های پیش‌فاکتور</h2>
@@ -515,14 +536,8 @@ function QuoteActionButtons({
 
   const isAccepting = confirm?.next === "accepted";
 
-  const stockCheckQ = useQuery({
-    queryKey: ["quote-stock-check", quote.id, confirmWarehouseId],
-    enabled: isAccepting,
-    queryFn: () => checkQuoteStockAvailability(quote.id, confirmWarehouseId),
-    staleTime: 0,
-  });
-
-  const shortages = (stockCheckQ.data ?? []).filter((r) => !r.is_sufficient);
+  const stockCheck = useQuoteStockAvailability(quote.id, confirmWarehouseId, isAccepting);
+  const shortages = stockCheck.shortages;
 
   const updateQuoteStatusFn = useServerFn(updateQuoteStatus);
   const mutation = useMutation({
@@ -753,11 +768,11 @@ function QuoteActionButtons({
                 hint="فقط روی ردیف‌هایی اثر دارد که انبار مخصوص خودشان را ندارند؛ ردیفی که انبارش مشخص شده جابه‌جا نمی‌شود."
               />
 
-              {stockCheckQ.isLoading ? (
+              {stockCheck.isLoading ? (
                 <p className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> بررسی موجودی…
                 </p>
-              ) : (stockCheckQ.data ?? []).length === 0 ? null : shortages.length === 0 ? (
+              ) : stockCheck.rows.length === 0 ? null : shortages.length === 0 ? (
                 <p className="rounded-md border border-emerald-500/40 bg-emerald-50 p-2 text-xs leading-6 dark:bg-emerald-950/20">
                   موجودی همهٔ کالاهای این پیش‌فاکتور در انبارهای مربوطه کافی است.
                 </p>
@@ -767,35 +782,17 @@ function QuoteActionButtons({
                     موجودی کافی نیست — قطعی‌کردن انجام نمی‌شود:
                   </div>
                   {/* D8-8: a generic "insufficient stock" is not acceptable here —
-                      the message must say WHICH product in WHICH warehouse. */}
-                  {shortages.map((s) => (
-                    <div key={`${s.product_id}:${s.warehouse_id ?? "none"}`}>
-                      {s.product_name} — انبار «{s.warehouse_name ?? "نامشخص"}»: نیاز{" "}
-                      {formatNumber(s.required)} / موجود {formatNumber(s.available)}
-                    </div>
-                  ))}
+                      the message must say WHICH product in WHICH warehouse.
+                      Rendered by the shared component so this dialog and the
+                      accountant's advisory panel can never drift apart. */}
+                  <QuoteStockShortageList shortages={shortages} />
                 </div>
               )}
 
               {/* Per-warehouse availability for every line, not just shortages, so
                   the accountant can see the split before confirming it. */}
-              {!stockCheckQ.isLoading && (stockCheckQ.data ?? []).length > 0 && (
-                <div className="space-y-1 rounded-md border p-2 text-xs leading-6">
-                  <div className="font-medium">تفکیک موجودی به‌ازای انبار</div>
-                  {(stockCheckQ.data ?? []).map((s) => (
-                    <div
-                      key={`avail:${s.product_id}:${s.warehouse_id ?? "none"}`}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <span className="flex-1">
-                        {s.product_name} — «{s.warehouse_name ?? "نامشخص"}»
-                      </span>
-                      <span className={s.is_sufficient ? "text-emerald-600" : "text-destructive"}>
-                        {formatNumber(s.required)} / {formatNumber(s.available)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+              {!stockCheck.isLoading && stockCheck.rows.length > 0 && (
+                <QuoteStockBreakdown rows={stockCheck.rows} />
               )}
             </div>
           )}
