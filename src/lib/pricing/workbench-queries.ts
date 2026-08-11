@@ -7,6 +7,7 @@
  * ممکن است به RPC/view اختصاصی نیاز داشته باشند. الان limit 10_000 برای pre-filter.
  */
 import { supabase } from "@/integrations/supabase/client";
+import { BASE_SALE_PRICE_TYPE_CODE } from "./constants";
 import type {
   WorkbenchFilters,
   StockStatusV,
@@ -67,11 +68,18 @@ async function resolveCategoryIds(filters: WorkbenchFilters): Promise<string[] |
 }
 
 async function fetchProductIdsBySalePrice(want: "has" | "missing"): Promise<Set<string>> {
-  const { data } = await (supabase as any)
+  // فقط نوع‌قیمت نقدی — همان چیزی که ستون «قیمت فروش (نقدی)» نشان می‌دهد.
+  // بدون این فیلتر، محصولی که فقط قیمت همکاری دارد در فیلتر «دارای قیمت» می‌آمد
+  // ولی در جدول «بدون قیمت فروش» نشان داده می‌شد.
+  const { data, error } = await (supabase as any)
     .from("product_computed_prices_public")
-    .select("product_id, rounded_sale_price")
+    .select("product_id, rounded_sale_price, sale_price_types!inner(code)")
+    .eq("sale_price_types.code", BASE_SALE_PRICE_TYPE_CODE)
     .gt("rounded_sale_price", 0)
     .limit(PRE_FILTER_LIMIT);
+  if (error) {
+    console.error("[workbench] sale price pre-filter query failed", error);
+  }
   const has = new Set<string>(
     ((data ?? []) as Array<{ product_id: string }>).map((r) => r.product_id),
   );
@@ -152,48 +160,82 @@ export async function fetchWorkbenchRowsV2(opts: {
 }): Promise<{ rows: WorkbenchRowV2[]; total: number }> {
   const { filters, page, pageSize, ownedOnly } = opts;
 
-  // 1) ساخت مجموعه‌های pre-filter productIds
+  // 1) ساخت مجموعه‌های pre-filter productIds — همه pre-filterها مستقل‌اند
+  // و به‌صورت موازی fetch می‌شوند تا latency اولیه کم شود.
+  const ownedOnlyP = ownedOnly
+    ? fetchProductIdsByOwner({ ownerId: ownedOnly.userId })
+    : Promise.resolve(null as Set<string> | null);
+
+  const ownerRestrictP: Promise<Set<string> | null> =
+    filters.ownerId !== "all" && filters.ownerId !== "none"
+      ? fetchProductIdsByOwner({ ownerId: filters.ownerId })
+      : Promise.resolve(null);
+
+  const ownerNegP: Promise<Set<string> | null> =
+    filters.ownerId === "none"
+      ? fetchAllOwnedProductIds()
+      : Promise.resolve(null);
+
+  const labelRestrictP: Promise<Set<string> | null> =
+    filters.labelId === "any"
+      ? fetchAllLabeledProductIds()
+      : filters.labelId !== "all" && filters.labelId !== "none"
+        ? fetchProductIdsByLabel(filters.labelId)
+        : Promise.resolve(null);
+
+  const labelNegP: Promise<Set<string> | null> =
+    filters.labelId === "none"
+      ? fetchAllLabeledProductIds()
+      : Promise.resolve(null);
+
+  const salePriceHasP: Promise<Set<string> | null> =
+    filters.salePrice === "has" || filters.salePrice === "missing"
+      ? fetchProductIdsBySalePrice("has")
+      : Promise.resolve(null);
+
+  const catIdsP = resolveCategoryIds(filters);
+
+  const [
+    ownedOnlySet,
+    ownerRestrict,
+    ownerNeg,
+    labelRestrict,
+    labelNeg,
+    saleHas,
+    catIds,
+  ] = await Promise.all([
+    ownedOnlyP,
+    ownerRestrictP,
+    ownerNegP,
+    labelRestrictP,
+    labelNegP,
+    salePriceHasP,
+    catIdsP,
+  ]);
+
   let restrict: Set<string> | null = null;
   const addRestrict = (s: Set<string>) => {
     restrict = restrict === null ? s : intersect(restrict, s);
   };
-
-  if (ownedOnly) {
-    addRestrict(await fetchProductIdsByOwner({ ownerId: ownedOnly.userId }));
+  if (ownedOnlySet) {
+    addRestrict(ownedOnlySet);
     if (restrict!.size === 0) return { rows: [], total: 0 };
   }
-
-  // owner filter
-  if (filters.ownerId === "none") {
-    const all = await fetchAllOwnedProductIds();
-    // negative set -> apply after main query
-    (opts as any).__notOwners = all;
-  } else if (filters.ownerId !== "all") {
-    addRestrict(await fetchProductIdsByOwner({ ownerId: filters.ownerId }));
+  if (ownerRestrict) {
+    addRestrict(ownerRestrict);
     if (restrict!.size === 0) return { rows: [], total: 0 };
   }
-
-  // label filter
-  if (filters.labelId === "none") {
-    (opts as any).__notLabels = await fetchAllLabeledProductIds();
-  } else if (filters.labelId === "any") {
-    addRestrict(await fetchAllLabeledProductIds());
-    if (restrict!.size === 0) return { rows: [], total: 0 };
-  } else if (filters.labelId !== "all") {
-    addRestrict(await fetchProductIdsByLabel(filters.labelId));
+  if (labelRestrict) {
+    addRestrict(labelRestrict);
     if (restrict!.size === 0) return { rows: [], total: 0 };
   }
-
-  // sale price filter
-  if (filters.salePrice === "has") {
-    addRestrict(await fetchProductIdsBySalePrice("has"));
+  if (filters.salePrice === "has" && saleHas) {
+    addRestrict(saleHas);
     if (restrict!.size === 0) return { rows: [], total: 0 };
-  } else if (filters.salePrice === "missing") {
-    (opts as any).__notPriced = await fetchProductIdsBySalePrice("has");
   }
-
-  // category
-  const catIds = await resolveCategoryIds(filters);
+  if (ownerNeg) (opts as any).__notOwners = ownerNeg;
+  if (labelNeg) (opts as any).__notLabels = labelNeg;
+  if (filters.salePrice === "missing" && saleHas) (opts as any).__notPriced = saleHas;
 
   // 2) base products query
   let qb: any = supabase
@@ -267,10 +309,15 @@ export async function fetchWorkbenchRowsV2(opts: {
       .eq("is_active", true)
       .lte("effective_at", nowIso)
       .order("effective_at", { ascending: false }),
+    // ⚠️ فیلتر نوع‌قیمت حذف نشود. `publishProductPrices` برای هر محصول یک ردیف
+    // به‌ازای هر نوع‌قیمت فعال می‌نویسد (نقدی، چکی، همکاری) و همه یک `computed_at`
+    // نزدیک به هم دارند. بدون این فیلتر، «آخرین ردیف» عملاً همکاری یا چکی می‌شد و
+    // ستون قیمت فروش برای ۷۷ محصول از ۳۱۶ محصول عدد اشتباه نشان می‌داد.
     (supabase as any)
       .from("product_computed_prices_public")
-      .select("product_id, rounded_sale_price, computed_at")
+      .select("product_id, rounded_sale_price, computed_at, sale_price_types!inner(code)")
       .in("product_id", productIds)
+      .eq("sale_price_types.code", BASE_SALE_PRICE_TYPE_CODE)
       .order("computed_at", { ascending: false }),
     supabase
       .from("product_owner_assignments")
@@ -298,6 +345,10 @@ export async function fetchWorkbenchRowsV2(opts: {
       return { data: (data ?? []) as CategoryRow[] };
     })(),
   ]);
+
+  if ((spRes as any).error) {
+    console.error("[workbench] sale price query failed", (spRes as any).error);
+  }
 
   const latestPP = new Map<string, any>();
   (ppRes.data ?? []).forEach((p: any) => {

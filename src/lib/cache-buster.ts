@@ -72,14 +72,36 @@ async function clearAllCaches() {
   } catch {
     /* noop */
   }
-  // Unregister service workers
+  // Unregister FOREIGN service workers only.
+  //
+  // Phase 8.2 (D8-7) added a deliberate service worker at /sw.js. It is safe to
+  // keep here because it never caches an HTML document or an API response — see
+  // the header of public/sw.js — so it structurally cannot be the cause of a
+  // stale chunk. Tearing it down on every chunk error would unregister and
+  // immediately re-register it on the next load, for no benefit.
+  //
+  // The original intent of this loop is preserved: any OTHER worker — a legacy
+  // registration from an earlier build, or one left behind by a different app
+  // previously served from this origin — is still removed, because such a
+  // worker really can serve stale content and we know nothing about it.
   try {
     if (typeof navigator !== "undefined" && navigator.serviceWorker) {
       const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map((r) => r.unregister()));
+      await Promise.all(regs.filter((r) => !isOwnServiceWorker(r)).map((r) => r.unregister()));
     }
   } catch {
     /* noop */
+  }
+}
+
+/** True when the registration's script is this app's own /sw.js (any ?v=). */
+function isOwnServiceWorker(registration: ServiceWorkerRegistration): boolean {
+  const worker = registration.active ?? registration.waiting ?? registration.installing;
+  if (!worker) return false;
+  try {
+    return new URL(worker.scriptURL).pathname === "/sw.js";
+  } catch {
+    return false;
   }
 }
 

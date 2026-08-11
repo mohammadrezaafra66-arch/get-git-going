@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SupplierForm } from "@/shared/components/SupplierForm";
+import { PersonRoleCrossLinks } from "@/components/persons/PersonRoleCrossLinks";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/suppliers_/$supplierId")({
@@ -44,6 +45,7 @@ interface SupplierDetail {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  person_id: string | null;
 }
 
 function SupplierDetailPage() {
@@ -52,7 +54,8 @@ function SupplierDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { roles } = useAuth();
-  const canManage = hasAnyRole(roles, ["admin", "accountant"]);
+  // P1.5b — see SupplierForm: role_permissions is the source of truth.
+  const canManage = hasPermissionEx(roles, "suppliers", "update");
 
   const { data, isLoading } = useQuery({
     queryKey: ["supplier", supplierId],
@@ -61,12 +64,32 @@ function SupplierDetailPage() {
       const { data, error } = await supabase
         .from("suppliers")
         .select(
-          "id, name, contact_name, phone, city, notes, trust_level, status, created_at, updated_at, created_by",
+          "id, name, contact_name, phone, city, notes, trust_level, status, created_at, updated_at, created_by, person_id",
         )
         .eq("id", supplierId)
         .maybeSingle();
       if (error) throw error;
       return data as SupplierDetail | null;
+    },
+  });
+
+  // The Asan code is read from person_identifiers, not from
+  // suppliers.accounting_code. The column is a mirror kept in step by triggers
+  // (migrations 308/309); the identifier is the source, and it is what
+  // asan_list_purchase_export actually reads.
+  const { data: asanCode } = useQuery({
+    queryKey: ["supplier-asan-code", data?.person_id],
+    enabled: Boolean(data?.person_id),
+    queryFn: async () => {
+      const { data: row, error } = await supabase
+        .from("person_identifiers")
+        .select("value_raw")
+        .eq("person_id", data!.person_id as string)
+        .eq("kind", "asan_person_code")
+        .neq("status", "revoked")
+        .maybeSingle();
+      if (error) throw error;
+      return ((row as { value_raw: string | null } | null)?.value_raw ?? "") as string;
     },
   });
 
@@ -200,10 +223,15 @@ function SupplierDetailPage() {
         </Card>
       )}
 
+      {/* P1.3 — the same person can be a customer too; without this the two
+          sides of one human are invisible to each other. */}
+      <PersonRoleCrossLinks personId={data.person_id} currentSide="supplier" />
+
       <Card>
         <CardContent className="pt-6">
           <SupplierForm
             supplierId={data.id}
+            personId={data.person_id}
             hideStatus
             defaultValues={{
               name: data.name,
@@ -211,6 +239,7 @@ function SupplierDetailPage() {
               phone: data.phone ?? "",
               city: data.city ?? "",
               notes: data.notes ?? "",
+              accounting_code: asanCode ?? "",
               trust_level: data.trust_level,
               status: data.status,
             }}

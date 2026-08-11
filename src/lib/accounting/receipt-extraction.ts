@@ -17,6 +17,10 @@ export type DocumentChannel =
   | "other"
   | "unknown";
 
+/** Re-export canonical structured OCR type (strict JSON schema). */
+export type { ReceiptOcrResult as ReceiptStructuredExtraction } from "@/lib/accounting/receipt-ocr-structured";
+import type { ReceiptOcrResult } from "@/lib/accounting/receipt-ocr-structured";
+
 export interface ReceiptExtractionResult {
   raw_text: string;
   tracking_number: string | null;
@@ -30,6 +34,8 @@ export interface ReceiptExtractionResult {
   document_channel: DocumentChannel;
   detected_keywords: string[];
   warnings: string[];
+  /** Full vision JSON when structured OCR succeeded. */
+  structured?: ReceiptOcrResult | null;
 }
 
 export const EMPTY_EXTRACTION: ReceiptExtractionResult = {
@@ -172,15 +178,22 @@ export function parseReceiptText(rawText: string): ReceiptExtractionResult {
   const NON_AMOUNT_HINT =
     /(شماره\s*کارت|شماره\s*حساب|شبا|iban|sheba|card|شناسه\s*پرداخت|کد\s*پیگیری|شماره\s*پیگیری|reference|tracking)/i;
 
-  const amountLabeled = findFirst(
-    /(?:مبلغ\s*تراکنش|مبلغ\s*واریزی|مبلغ\s*انتقال|مبلغ|amount)\s*[:#\-]?\s*([0-9][0-9,،\s]{2,20})\s*(?:ریال|تومان|rial|toman)?/i,
-    text,
-  );
-  if (amountLabeled) {
-    const n = parseAmountToNumber(amountLabeled);
+  // واحد را هم capture می‌کنیم تا اگر روی فیش «ریال» بود، مثل شاخهٔ fallback به تومان تبدیل شود.
+  const amountLabeledMatch =
+    /(?:مبلغ\s*تراکنش|مبلغ\s*واریزی|مبلغ\s*انتقال|مبلغ|amount)\s*[:#\-]?\s*([0-9][0-9,،\s]{2,20})\s*(ریال|تومان|rial|toman)?/i.exec(
+      text,
+    );
+  if (amountLabeledMatch) {
+    const n = parseAmountToNumber(amountLabeledMatch[1]);
     if (n) {
-      result.amount = n;
-      detected.add("amount");
+      const unit = (amountLabeledMatch[2] ?? "").toLowerCase();
+      const isRial = unit === "ریال" || unit === "rial";
+      const value = isRial ? Math.round(n / 10) : n;
+      if (value > 0) {
+        result.amount = value;
+        detected.add("amount");
+        if (isRial) result.warnings.push("مبلغ به ریال بود؛ به تومان تبدیل شد.");
+      }
     }
   }
   if (result.amount == null) {

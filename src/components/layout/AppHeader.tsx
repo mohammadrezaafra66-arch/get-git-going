@@ -13,6 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { NotificationBell } from "@/shared/components/NotificationBell";
+import { QuoteRejectionNoticeDialog } from "@/shared/components/QuoteRejectionNoticeDialog";
+import { ClockInOutButton } from "@/components/attendance/ClockInOutButton";
+import { OnlineDot } from "@/components/presence/OnlineDot";
+import { InstallAppButton } from "@/components/pwa/InstallAppButton";
 
 export function AppHeader() {
   const { user, roles, signOut } = useAuth();
@@ -30,12 +34,17 @@ export function AppHeader() {
     <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:px-4">
       <SidebarTrigger />
       <div className="flex-1" />
+      {/* Renders only when the browser offers an install (https). */}
+      <InstallAppButton />
+      <ClockInOutButton />
+      <QuoteRejectionNoticeDialog />
       <NotificationBell />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="gap-2 px-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
+            <div className="relative flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
               {initials}
+              {user?.id ? <OnlineDot userId={user.id} /> : null}
             </div>
             <div className="hidden text-right sm:block">
               <div className="text-xs font-medium text-foreground">{user?.email}</div>

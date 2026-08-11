@@ -17,7 +17,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { toFaDigits } from "@/lib/i18n/formatters";
+import { parseDateToGregorianIso } from "@/lib/i18n/jalali";
 import { cn } from "@/lib/utils";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
+import { toHtmlTimeValue } from "@/lib/accounting/receipt-ocr-structured";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -110,6 +113,59 @@ export const ALLOWED_DOC_ACCEPT = [
 export const MAX_DOC_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 export const MAX_DOC_COUNT = 10;
 
+/**
+ * Extension -> MIME, used only when the browser reports nothing usable.
+ *
+ * Migration 267 gave payment-receipt-documents a MIME allowlist. Uploading with
+ * `application/octet-stream` (the old fallback) would now be rejected by
+ * Storage, and allowing octet-stream in the bucket instead would have made the
+ * allowlist meaningless since any file can be sent under that type. Phones
+ * routinely report an empty type for screenshots and forwarded files, which is
+ * exactly the case this table covers.
+ */
+const EXTENSION_MIME: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  bmp: "image/bmp",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+  heic: "image/heic",
+  heif: "image/heif",
+  svg: "image/svg+xml",
+  pdf: "application/pdf",
+  txt: "text/plain",
+  csv: "text/csv",
+  rtf: "application/rtf",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  zip: "application/zip",
+  rar: "application/vnd.rar",
+  "7z": "application/x-7z-compressed",
+};
+
+/**
+ * The Content-Type to upload a staged file under.
+ *
+ * Falls back to application/octet-stream only for an extension we do not know,
+ * which validateReceiptFile already rejects before upload — so that path means
+ * something unexpected got through and Storage should refuse it. Guessing a
+ * concrete type here (e.g. defaulting to PDF) would mislabel the object and
+ * defeat the point of the allowlist.
+ */
+function resolveUploadContentType(file: File): string {
+  const reported = (file.type || "").toLowerCase();
+  if (reported && reported !== "application/octet-stream") return reported;
+  const ext = file.name.toLowerCase().split(".").pop() ?? "";
+  return EXTENSION_MIME[ext] ?? "application/octet-stream";
+}
+
 export type ReceiptDocumentRow = {
   id: string;
   receipt_id: string;
@@ -189,14 +245,9 @@ const APPLY_FIELD_TO_COLUMN: Record<ApplyFieldKey, string> = {
   document_channel: "document_channel",
 };
 
-function normalizeGregorianDate(s: string): string | null {
-  // Accept 19xx/20xx with /, -, . and normalize to YYYY-MM-DD.
-  const m = /^((?:19|20)\d{2})[\/\-.](\d{1,2})[\/\-.](\d{1,2})$/.exec(s.trim());
-  if (!m) return null;
-  const yyyy = m[1];
-  const mm = m[2].padStart(2, "0");
-  const dd = m[3].padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+function normalizeExtractedPaymentDate(s: string): string | null {
+  // Jalali (e.g. 1405/04/23) or Gregorian → ISO YYYY-MM-DD.
+  return parseDateToGregorianIso(s);
 }
 
 function normalizeReceiptTime(s: string): string | null {
@@ -224,12 +275,14 @@ function effectiveExtractedValue(
       return extracted.amount != null && extracted.amount > 0 ? extracted.amount : undefined;
     case "receipt_date": {
       if (!extracted.receipt_date) return undefined;
-      const norm = normalizeGregorianDate(extracted.receipt_date);
+      const norm = normalizeExtractedPaymentDate(extracted.receipt_date);
       return norm ?? undefined;
     }
     case "receipt_time": {
       if (!extracted.receipt_time) return undefined;
-      return normalizeReceiptTime(extracted.receipt_time) ?? undefined;
+      const tm =
+        toHtmlTimeValue(extracted.receipt_time) || normalizeReceiptTime(extracted.receipt_time);
+      return tm || undefined;
     }
     case "source_bank":
       return extracted.source_bank?.trim() || undefined;
@@ -250,7 +303,7 @@ function effectiveExtractedValue(
 function displayValue(key: ApplyFieldKey, v: string | number | undefined | null): string {
   if (v == null || v === "") return "—";
   if (key === "amount" && typeof v === "number") {
-    return `${toFaDigits(v.toLocaleString("en-US"))} ریال`;
+    return `${toFaDigits(v.toLocaleString("en-US"))} تومان`;
   }
   if (key === "document_channel") {
     return CHANNEL_LABELS[v as DocumentChannel] ?? String(v);
@@ -312,9 +365,10 @@ export async function uploadReceiptDocuments(
   let failed = 0;
   for (const file of files) {
     try {
-      const path = `${receiptId}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+      const path = `${receiptId}/${safeRandomUUID()}-${safeFileName(file.name)}`;
+      const contentType = resolveUploadContentType(file);
       const { error: upErr } = await supabase.storage.from(RECEIPT_DOCS_BUCKET).upload(path, file, {
-        contentType: file.type || "application/octet-stream",
+        contentType,
         upsert: false,
       });
       if (upErr) throw upErr;
@@ -325,7 +379,9 @@ export async function uploadReceiptDocuments(
           receipt_id: receiptId,
           storage_path: path,
           file_name: file.name,
-          file_type: file.type || "application/octet-stream",
+          // Record the type the object was actually stored under, so the
+          // viewer's isImage/PDF branches agree with Storage.
+          file_type: contentType,
           file_size: file.size,
           uploaded_by: userId,
         } as never)
@@ -345,7 +401,7 @@ export async function uploadReceiptDocuments(
         diff: {
           document_id: (row as { id: string }).id,
           file_name: file.name,
-          file_type: file.type,
+          file_type: contentType,
           file_size: file.size,
           storage_path: path,
         },
@@ -618,8 +674,16 @@ export function ReceiptDocumentsList({
           (ocr as { reason?: string }).reason === "ocr_disabled";
 
         const text = ocr.raw_text || "";
-        const parsed = parseReceiptText(text);
-        parsed.warnings = [...(ocr.warnings ?? []), ...parsed.warnings];
+        const parsed =
+          ocr.structured ??
+          (() => {
+            const p = parseReceiptText(text);
+            p.warnings = [...(ocr.warnings ?? []), ...p.warnings];
+            return p;
+          })();
+        if (ocr.structured && ocr.warnings?.length) {
+          parsed.warnings = [...ocr.warnings, ...parsed.warnings];
+        }
 
         let confidence = scoreExtraction(parsed);
         // Conservative blend: never above field-derived score; if engine
@@ -627,7 +691,7 @@ export function ReceiptDocumentsList({
         if (ocr.engine_confidence != null) {
           confidence = Math.min(confidence, Math.max(0, Math.min(1, ocr.engine_confidence)));
         }
-        const status = decideStatus(parsed, Boolean(text.trim()));
+        const status = decideStatus(parsed, Boolean(text.trim() || parsed.amount != null));
 
         const method = ocr.method as OcrMethod;
         const methodNote =
@@ -880,7 +944,7 @@ export function ReceiptDocumentsList({
       const { data: receiptRow, error: rErr } = await supabase
         .from("payment_receipts")
         .select(
-          "id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel, has_perforation, is_typed_receipt, security_warnings",
+          "id, posting_status, tracking_number, amount, payment_date, receipt_time, source_bank, destination_bank, payer_name_on_receipt, receiver_name_on_receipt, document_channel, has_perforation, is_typed_receipt, is_mobile_bank_screenshot, security_warnings",
         )
         .eq("id", doc.receipt_id)
         .single();
@@ -923,6 +987,7 @@ export function ReceiptDocumentsList({
         payer_name_on_receipt: (merged.payer_name_on_receipt as string | null) ?? null,
         has_perforation: (merged.has_perforation as boolean | null) ?? null,
         is_typed_receipt: (merged.is_typed_receipt as boolean | null) ?? null,
+        is_mobile_bank_screenshot: (merged.is_mobile_bank_screenshot as boolean | null) ?? null,
         extracted_data: ex,
         extraction_confidence: doc.extraction_confidence,
       });
@@ -1109,7 +1174,7 @@ export function ReceiptDocumentsList({
                         label="مبلغ"
                         value={
                           extracted.amount != null
-                            ? `${toFaDigits(extracted.amount.toLocaleString("en-US"))} ریال`
+                            ? `${toFaDigits(extracted.amount.toLocaleString("en-US"))} تومان`
                             : null
                         }
                       />

@@ -1,54 +1,54 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  Package,
-  FileText,
-  Mail,
-  Menu,
-  ShoppingCart,
-  ListOrdered,
-  Receipt,
-  Wallet,
-  Coins,
-  Sparkles,
-  BarChart3,
-  Bell,
-} from "lucide-react";
+import { Menu } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermissionEx, type ModuleKey, type AppRole } from "@/lib/rbac/roles";
+import type { AppRole } from "@/lib/rbac/roles";
+import { getNavigationEntryByRoute, isNavigationEntryVisible } from "@/lib/navigation/selectors";
+import type { NavigationEntry } from "@/lib/navigation/types";
 
-type ShortcutItem = { to: string; label: string; icon: typeof LayoutDashboard; module: ModuleKey };
+type ShortcutItem = { to: string; label: string };
+type ResolvedShortcutItem = ShortcutItem & { entry: NavigationEntry };
 
 const SHORTCUTS_BY_ROLE: Partial<Record<AppRole, ShortcutItem[]>> = {
   admin: [
-    { to: "/dashboard", label: "خانه", icon: LayoutDashboard, module: "dashboard" },
-    { to: "/products", label: "محصولات", icon: Package, module: "products" },
-    { to: "/pricing/quick-price", label: "قیمت سریع", icon: Sparkles, module: "pricing" },
-    { to: "/reports", label: "گزارش‌ها", icon: BarChart3, module: "reports" },
+    { to: "/dashboard", label: "خانه" },
+    { to: "/products", label: "محصولات" },
+    { to: "/pricing/quick-price", label: "قیمت سریع" },
+    { to: "/reports", label: "گزارش‌ها" },
   ],
   manager: [
-    { to: "/dashboard", label: "خانه", icon: LayoutDashboard, module: "dashboard" },
-    { to: "/products", label: "محصولات", icon: Package, module: "products" },
-    { to: "/pricing/quick-price", label: "قیمت سریع", icon: Sparkles, module: "pricing" },
-    { to: "/reports", label: "گزارش‌ها", icon: BarChart3, module: "reports" },
+    { to: "/dashboard", label: "خانه" },
+    { to: "/products", label: "محصولات" },
+    { to: "/pricing/quick-price", label: "قیمت سریع" },
+    { to: "/reports", label: "گزارش‌ها" },
   ],
   sales: [
-    { to: "/dashboard", label: "خانه", icon: LayoutDashboard, module: "dashboard" },
-    { to: "/sales", label: "فروش", icon: ShoppingCart, module: "sales" },
-    { to: "/sales/quotes", label: "پیش‌فاکتور", icon: FileText, module: "invoices" },
-    { to: "/pricing/sale-lists", label: "لیست فروش", icon: ListOrdered, module: "pricing" },
+    { to: "/dashboard", label: "خانه" },
+    { to: "/sales", label: "فروش" },
+    { to: "/sales/quotes", label: "پیش‌فاکتور" },
+    { to: "/pricing/sale-lists", label: "لیست فروش" },
   ],
   accountant: [
-    { to: "/dashboard", label: "خانه", icon: LayoutDashboard, module: "dashboard" },
-    { to: "/accounting/receipts", label: "فیش‌ها", icon: Receipt, module: "accounting" },
-    { to: "/accounting/receivables", label: "مطالبات", icon: Wallet, module: "accounting" },
-    { to: "/accounting/daily-capital", label: "سرمایه", icon: Coins, module: "accounting" },
+    { to: "/dashboard", label: "خانه" },
+    { to: "/accounting/receipts", label: "فیش‌ها" },
+    { to: "/accounting/receivables", label: "مطالبات" },
+    { to: "/accounting/dynamic-capital", label: "سرمایه" },
   ],
   viewer: [
-    { to: "/dashboard", label: "خانه", icon: LayoutDashboard, module: "dashboard" },
-    { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages" },
-    { to: "/messages", label: "پیام‌ها", icon: Mail, module: "messages" },
+    { to: "/dashboard", label: "خانه" },
+    { to: "/notifications", label: "اعلان‌ها" },
+    { to: "/messages", label: "پیام‌ها" },
+  ],
+  // P0/5 — the owner's primary mobile role. NOT /purchases/create: purchases.create
+  // is admin/manager only, so that shortcut would land the user on a page the route
+  // guard refuses. /purchase is their actual workspace and only resolves because of
+  // the registry seed added alongside this — getNavigationEntryByRoute drops any
+  // shortcut it cannot resolve, silently.
+  purchase_specialist: [
+    { to: "/dashboard", label: "خانه" },
+    { to: "/purchase", label: "فضای خرید" },
+    { to: "/products", label: "محصولات" },
+    { to: "/messages", label: "پیام‌ها" },
   ],
 };
 
@@ -60,13 +60,14 @@ export function MobileBottomNav() {
   const { roles } = useAuth();
 
   // Merge shortcut lists across roles, dedupe by `to`, keep insertion order.
-  const merged: ShortcutItem[] = [];
+  const merged: ResolvedShortcutItem[] = [];
   const seen = new Set<string>();
   for (const r of roles) {
     for (const it of SHORTCUTS_BY_ROLE[r] ?? []) {
-      if (!seen.has(it.to) && hasPermissionEx(roles, it.module, "view")) {
+      const entry = getNavigationEntryByRoute(it.to);
+      if (entry && !seen.has(it.to) && isNavigationEntryVisible(entry, roles)) {
         seen.add(it.to);
-        merged.push(it);
+        merged.push({ ...it, entry });
         if (merged.length >= MAX_SHORTCUTS) break;
       }
     }
@@ -87,7 +88,7 @@ export function MobileBottomNav() {
             to={it.to}
             className={`flex flex-col items-center gap-1 py-2 text-[10px] ${active ? "text-primary" : "text-muted-foreground"}`}
           >
-            <it.icon className="h-5 w-5" />
+            <it.entry.icon className="h-5 w-5" />
             <span>{it.label}</span>
           </Link>
         );

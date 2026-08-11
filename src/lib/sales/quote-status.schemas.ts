@@ -2,11 +2,8 @@
  * SF-1.b — Quote status hardening
  *
  * Zod schema for `updateQuoteStatus` serverFn. Mirrors the existing browser
- * mutation payload shape exactly (`id`, `next`, optional `reason`). Cancel
- * transitions require a reason; non-cancel transitions ignore it and the
- * handler always clears `cancel_reason` for non-cancel — matching the prior
- * browser behavior where canceled wrote both fields and other transitions
- * wrote only `status`.
+ * mutation payload shape exactly (`id`, `next`, optional `reason`). Cancel and
+ * reject transitions require a reason; other transitions ignore it.
  */
 
 import { z } from "zod";
@@ -29,10 +26,15 @@ export const UpdateQuoteStatusInputSchema = z
           (SALES_QUOTE_STATUS_VALUES as readonly string[]).includes(v),
         { message: "وضعیت نامعتبر است" },
       ),
-    reason: z.string().trim().max(500, "دلیل لغو حداکثر ۵۰۰ کاراکتر").optional(),
+    reason: z.string().trim().max(2000, "دلیل حداکثر ۲۰۰۰ کاراکتر").optional(),
   })
   .refine((v) => v.next !== "canceled" || (v.reason && v.reason.length > 0), {
     message: "برای لغو پیش‌فاکتور، دلیل لغو الزامی است",
+    path: ["reason"],
+  })
+  // Item 195 — a rejection must say why, the same way a cancellation does.
+  .refine((v) => v.next !== "rejected" || (v.reason && v.reason.length > 0), {
+    message: "برای رد پیش‌فاکتور، نوشتن دلیل رد الزامی است",
     path: ["reason"],
   });
 

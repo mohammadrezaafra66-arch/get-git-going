@@ -1,0 +1,48 @@
+{
+ "counts": {
+  "afrakala": 355,
+  "asan": 7256
+ },
+ "barcode": {
+  "afrakala_populated": 0,
+  "asan_populated": 0,
+  "matches": 0
+ },
+ "exact_name": {
+  "keys": 0,
+  "afrakala_rows": 0
+ },
+ "normalized_name": {
+  "keys": 3,
+  "afrakala_rows": 3,
+  "asan_rows": 3,
+  "ambiguous_asan_side": 0,
+  "ambiguous_afrakala_side": 0
+ },
+ "matched_pairs": [
+  {
+   "afrakala_sku": "AFK-2026-00039",
+   "afrakala_name": "ساید الجی x24 دودی چین",
+   "asan_code": "7009",
+   "asan_name": "سایدالجیx24دودی چین",
+   "asan_candidates": 1,
+   "afrakala_candidates": 1
+  },
+  {
+   "afrakala_sku": "AFK-2026-00178",
+   "afrakala_name": "کولر18هزارجنرال SH",
+   "asan_code": "7243",
+   "asan_name": "کولر18هزارجنرالSH",
+   "asan_candidates": 1,
+   "afrakala_candidates": 1
+  },
+  {
+   "afrakala_sku": "AFK-2026-00179",
+   "afrakala_name": "کولر24هزارجنرالSH",
+   "asan_code": "7272",
+   "asan_name": "کولر24هزارجنرالsh",
+   "asan_candidates": 1,
+   "afrakala_candidates": 1
+  }
+ ]
+}

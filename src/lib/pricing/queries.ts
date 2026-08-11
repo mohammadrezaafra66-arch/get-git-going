@@ -104,7 +104,7 @@ export async function fetchLatestCurrencyRate(currency: string, db: SbClient = s
   const nowIso = new Date().toISOString();
   const { data, error } = await db
     .from("currency_rates")
-    .select("id, currency, rate_to_toman, effective_at, is_active")
+    .select("id, currency, rate_to_toman, effective_at, is_active, source_name")
     .eq("currency", currency)
     .eq("is_active", true)
     .lte("effective_at", nowIso)

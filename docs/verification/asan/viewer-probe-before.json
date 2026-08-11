@@ -1,0 +1,1176 @@
+{
+ "viewer": "20303d30-ab9d-4fc6-be96-ec5db1dcb647",
+ "sales": "00ebe9d3-b467-453c-89d6-08bab46335c2",
+ "results": [
+  {
+   "table": "academy_courses",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "academy_lessons",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "academy_quiz_attempts",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "academy_quiz_questions",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "academy_quiz_questions_public",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "academy_quizzes",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "academy_user_progress",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "achievements",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "ai_conversations",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "ai_generated_content",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "ai_provider_health",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "ai_providers",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "ai_usage_routes",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "appeal_reviewers",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "audit_logs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_artifacts",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_checkpoints",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_driver_outputs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_job_runs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_jobs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_log_events",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_modules",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_worker_heartbeats",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "automation_workers",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "bank_accounts",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "bot_api_key_audit_log",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "bot_api_key_label_access",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "bot_api_key_table_access",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "bot_api_keys",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "bot_api_usage_logs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "brands",
+   "viewer_status": 206,
+   "viewer_rows": "40"
+  },
+  {
+   "table": "call_logs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "capital_allocation_ledger",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "categories",
+   "viewer_status": 206,
+   "viewer_rows": "12"
+  },
+  {
+   "table": "category_product_attributes",
+   "viewer_status": 206,
+   "viewer_rows": "60"
+  },
+  {
+   "table": "category_required_services",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "credit_requests",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "credit_score_snapshots",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "credit_scoring_rules",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "currencies",
+   "viewer_status": 206,
+   "viewer_rows": "4"
+  },
+  {
+   "table": "currency_rate_fetches",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "currency_rates",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "currency_sources",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "custom_roles",
+   "viewer_status": 206,
+   "viewer_rows": "9"
+  },
+  {
+   "table": "customer_capital_allocations_dynamic",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "customer_credit_balance",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "customer_credit_ledger",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "customer_credit_profile",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "customers",
+   "viewer_status": 206,
+   "viewer_rows": "14"
+  },
+  {
+   "table": "daily_capital_inputs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "daily_capital_settings",
+   "viewer_status": 206,
+   "viewer_rows": "14"
+  },
+  {
+   "table": "daily_capital_snapshots",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "daily_mood_entries",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "daily_mood_hafez_poems",
+   "viewer_status": 206,
+   "viewer_rows": "21"
+  },
+  {
+   "table": "daily_mood_questions",
+   "viewer_status": 206,
+   "viewer_rows": "93"
+  },
+  {
+   "table": "daily_mood_scenarios",
+   "viewer_status": 206,
+   "viewer_rows": "10"
+  },
+  {
+   "table": "dashboard_ticker_events",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "delivery_receipt_status_history",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "delivery_receipts",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "didar_activities",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "didar_import_log",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "document_status_history",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "documents",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "dynamic_entity_scores",
+   "viewer_status": 206,
+   "viewer_rows": "99"
+  },
+  {
+   "table": "dynamic_parameter_weights",
+   "viewer_status": 206,
+   "viewer_rows": "16"
+  },
+  {
+   "table": "dynamic_parameter_weights_backup_142",
+   "viewer_status": 206,
+   "viewer_rows": "18"
+  },
+  {
+   "table": "dynamic_parameter_weights_backup_20260722",
+   "viewer_status": 206,
+   "viewer_rows": "18"
+  },
+  {
+   "table": "dynamic_scoring_parameters",
+   "viewer_status": 206,
+   "viewer_rows": "16"
+  },
+  {
+   "table": "dynamic_table_cells",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "dynamic_table_columns",
+   "viewer_status": 206,
+   "viewer_rows": "29"
+  },
+  {
+   "table": "dynamic_table_row_counters",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "dynamic_table_rows",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "dynamic_tables",
+   "viewer_status": 206,
+   "viewer_rows": "2"
+  },
+  {
+   "table": "effective_currencies_view",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_achievements",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_leagues",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_level_up_events",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_mission_progress",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_monthly_hours",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_profiles",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_progress",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_score_events",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_scores",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "employee_streaks",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "external_parties",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "feedback",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "feedback_items",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "gamification_kpi_rules",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "gamification_kpis",
+   "viewer_status": 206,
+   "viewer_rows": "13"
+  },
+  {
+   "table": "gamification_rewards",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "inquiries",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "inquiry_price_cache",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "inquiry_replies",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "inquiry_status_history",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "inquiry_transfers",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "invoice_items",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "invoice_workflow_stages",
+   "viewer_status": 206,
+   "viewer_rows": "5"
+  },
+  {
+   "table": "invoices",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "journal_entries",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "journal_lines",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "knowledge_articles",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "knowledge_confirmations",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "knowledge_document_chunks",
+   "viewer_status": 206,
+   "viewer_rows": "139"
+  },
+  {
+   "table": "knowledge_documents",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "knowledge_documents_backup_20260722",
+   "viewer_status": 206,
+   "viewer_rows": "42"
+  },
+  {
+   "table": "league_seasons",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "league_settings",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "market_indicators",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "market_product_match_events",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "market_product_matches",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "market_rate_ingestion_runs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "market_rate_source_mappings",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "market_rate_sources",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "market_rate_ticks",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "marketing_channels",
+   "viewer_status": 206,
+   "viewer_rows": "56"
+  },
+  {
+   "table": "marketing_task_templates",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "message_embeddings",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "messages",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "messenger_attachments",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "messenger_group_members",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "messenger_groups",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "messenger_messages",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "messenger_read_receipts",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "missions",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "notification_events",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "notification_queue",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "payment_receipt_custom_fields",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "payment_receipt_documents",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "payment_receipt_links",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "payment_receipts",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "payment_receipts_backup_20260722",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "payment_terms",
+   "viewer_status": 206,
+   "viewer_rows": "5"
+  },
+  {
+   "table": "payment_vouchers",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "penalty_appeals",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "performance_penalties",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "person_aliases",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "person_context_links",
+   "viewer_status": 206,
+   "viewer_rows": "71"
+  },
+  {
+   "table": "person_field_definitions",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "person_field_values",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "person_identifiers",
+   "viewer_status": 206,
+   "viewer_rows": "28"
+  },
+  {
+   "table": "person_merge_candidates",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "person_merge_log",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "persons",
+   "viewer_status": 206,
+   "viewer_rows": "70"
+  },
+  {
+   "table": "presence_logs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "price_alert_notifications",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "price_alert_rules",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "price_calculation_snapshots",
+   "viewer_status": 500,
+   "viewer_rows": "?"
+  },
+  {
+   "table": "price_change_reasons",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "price_list_items",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "price_lists",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "pricing_board_access_requests",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "pricing_board_settings",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "pricing_board_viewer_sessions",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "pricing_recompute_queue",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "pricing_rules",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "product_attribute_groups",
+   "viewer_status": 206,
+   "viewer_rows": "6"
+  },
+  {
+   "table": "product_attributes",
+   "viewer_status": 206,
+   "viewer_rows": "308"
+  },
+  {
+   "table": "product_category_attribute_values",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "product_computed_prices",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "product_computed_prices_public",
+   "viewer_status": 206,
+   "viewer_rows": "463"
+  },
+  {
+   "table": "product_images",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "product_interaction_events",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "product_label_links",
+   "viewer_status": 206,
+   "viewer_rows": "694"
+  },
+  {
+   "table": "product_labels",
+   "viewer_status": 206,
+   "viewer_rows": "12"
+  },
+  {
+   "table": "product_owner_assignments",
+   "viewer_status": 206,
+   "viewer_rows": "362"
+  },
+  {
+   "table": "product_recommendation_overrides",
+   "viewer_status": 206,
+   "viewer_rows": "1535"
+  },
+  {
+   "table": "product_sale_price_history",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "product_service_types",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "product_sku_counters",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "product_suppliers",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "products",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "profile_field_definitions",
+   "viewer_status": 206,
+   "viewer_rows": "4"
+  },
+  {
+   "table": "profile_field_values",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "profiles",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "promotion_nomination_policy",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "promotion_nominations",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "publish_recipients_view",
+   "viewer_status": 206,
+   "viewer_rows": "24"
+  },
+  {
+   "table": "purchase_idempotency",
+   "viewer_status": 403,
+   "viewer_rows": "?"
+  },
+  {
+   "table": "purchase_items",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "purchase_prices",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "purchase_receipts",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "purchase_request_fulfillments",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "purchase_request_status_history",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "purchase_requests",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "purchases",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "recent_purchase_settings",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "role_permissions",
+   "viewer_status": 206,
+   "viewer_rows": "137"
+  },
+  {
+   "table": "sale_list_items",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sale_list_versions",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sale_lists",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sale_price_types",
+   "viewer_status": 206,
+   "viewer_rows": "3"
+  },
+  {
+   "table": "sales_quote_counters",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sales_quote_item_services",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sales_quote_items",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sales_quote_send_queue",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sales_quote_share_logs",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sales_quotes",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "sales_reminders",
+   "viewer_status": 206,
+   "viewer_rows": "5"
+  },
+  {
+   "table": "salesperson_capital_allocations_dynamic",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "score_level_thresholds",
+   "viewer_status": 206,
+   "viewer_rows": "4"
+  },
+  {
+   "table": "score_snapshots",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "settlement_types",
+   "viewer_status": 206,
+   "viewer_rows": "10"
+  },
+  {
+   "table": "shipping_cost_rules",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "shop_settings",
+   "viewer_status": 206,
+   "viewer_rows": "26"
+  },
+  {
+   "table": "staff_daily_performance_metrics",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "stock_alert_requests",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "stock_movements",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "stock_transfer_items",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "stock_transfers",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "suppliers",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "tasks",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "user_roles",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "v_dynamic_customer_capital_balances",
+   "viewer_status": 206,
+   "viewer_rows": "4"
+  },
+  {
+   "table": "v_dynamic_salesperson_capital_balances",
+   "viewer_status": 206,
+   "viewer_rows": "182"
+  },
+  {
+   "table": "v_latest_active_purchase_prices",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "v_league_tiers_public",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "v_pricing_recompute_queue_summary",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "v_promotion_suggestions",
+   "viewer_status": 206,
+   "viewer_rows": "19880"
+  },
+  {
+   "table": "v_purchase_item_allocation",
+   "viewer_status": 403,
+   "viewer_rows": "?"
+  },
+  {
+   "table": "v_purchase_request_fulfillment",
+   "viewer_status": 403,
+   "viewer_rows": "?"
+  },
+  {
+   "table": "v_purchase_requests_legacy_unknown",
+   "viewer_status": 403,
+   "viewer_rows": "?"
+  },
+  {
+   "table": "validation_rules",
+   "viewer_status": 206,
+   "viewer_rows": "5"
+  },
+  {
+   "table": "visitors",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "vw_account_balances",
+   "viewer_status": 200,
+   "viewer_rows": "1"
+  },
+  {
+   "table": "vw_customer_receivables",
+   "viewer_status": 403,
+   "viewer_rows": "?"
+  },
+  {
+   "table": "vw_purchase_float",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "vw_supplier_payables",
+   "viewer_status": 403,
+   "viewer_rows": "?"
+  },
+  {
+   "table": "warehouse_stock",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "warehouses",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "waybill_custom_fields",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "waybill_items",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "waybill_number_counter",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "waybills",
+   "viewer_status": 200,
+   "viewer_rows": "0"
+  },
+  {
+   "table": "workflow_settings",
+   "viewer_status": 206,
+   "viewer_rows": "5"
+  }
+ ]
+}

@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import {
   Select,
   SelectContent,
@@ -109,11 +110,9 @@ function FieldInput({
       );
     case "date":
       return (
-        <Input
-          type="date"
-          dir="ltr"
-          value={(value as string) ?? ""}
-          onChange={(e) => onChange(e.target.value || null)}
+        <PersianDatePicker
+          value={(value as string) || null}
+          onChange={(v) => onChange(v)}
           disabled={disabled}
         />
       );

@@ -1,0 +1,29 @@
+SET client_encoding='UTF8';
+
+-- Down-script for migration 333 (waybill_custom_fields).
+--
+-- 333 dropped one table that held 0 rows, plus its single trigger. No data was lost and
+-- no other object referenced it.
+--
+-- To restore the table, take its DDL from the backup taken at the start of this mission:
+--   D:\AfraKalaTest\backups\invoices-subsystem-20260808.sql   (pg_dump, 7 tables)
+-- or from git:
+--   git show 888f4c13:supabase/schema_full_export.sql
+-- Apply with docker cp + psql -f, never a PowerShell pipe.
+--
+-- Then re-create its updated_at trigger (the FUNCTION was never dropped — it is shared by
+-- ~72 other tables — so only the trigger needs recreating):
+--
+--   CREATE TRIGGER trg_wcf_updated_at BEFORE UPDATE ON public.waybill_custom_fields
+--     FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+--
+-- And restore the admin page:
+--   git checkout 888f4c13 -- src/routes/_app.admin.waybill-fields.tsx
+-- plus its registry seed and its "/admin/waybill-fields" entry in PRIMARY_MODULES.
+--
+-- ⚠️ Do NOT "restore" src/shared/components/WaybillCustomFieldsInput.tsx — it was never
+-- deleted. It is generic despite its name and the live PaymentReceiptForm uses it against
+-- payment_receipt_custom_fields.
+--
+-- Honestly: restoring this only makes sense if waybills themselves come back, which means
+-- reversing 332 and 323 first. The feature had zero rows for its entire life.

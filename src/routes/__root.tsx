@@ -1,3 +1,4 @@
+import "@/lib/polyfills/crypto-uuid";
 import {
   Outlet,
   Link,
@@ -12,8 +13,10 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
 import { initCacheBuster, forceHardReload } from "@/lib/cache-buster";
+import { registerServiceWorker } from "@/lib/pwa/register-sw";
 
 import appCss from "../styles.css?url";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 function NotFoundComponent() {
   return (
@@ -151,23 +154,23 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "دستیار هوشمند افراکالا" },
+      { title: getPageTitle() },
       {
         name: "description",
-        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+        content: BRANDING.metaDescriptionFa,
       },
-      { property: "og:title", content: "دستیار هوشمند افراکالا" },
+      { property: "og:title", content: BRANDING.defaultTitle },
       {
         property: "og:description",
-        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+        content: BRANDING.metaDescriptionFa,
       },
       { property: "og:type", content: "website" },
-      { property: "og:site_name", content: "افراکالا" },
+      { property: "og:site_name", content: BRANDING.platformName },
       { property: "og:locale", content: "fa_IR" },
-      { name: "twitter:title", content: "دستیار هوشمند افراکالا" },
+      { name: "twitter:title", content: BRANDING.defaultTitle },
       {
         name: "twitter:description",
-        content: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+        content: BRANDING.metaDescriptionFa,
       },
       {
         property: "og:image",
@@ -180,12 +183,27 @@ export const Route = createRootRoute({
           "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/6acdff0a-3360-441d-831a-b188d077dd2e/id-preview-9cbe8fe7--6906e01f-9a81-48a3-a856-35cbd0c22eb2.lovable.app-1779096434314.png",
       },
       { name: "twitter:card", content: "summary_large_image" },
+      // PWA (Phase 8.1). theme-color paints the Android status bar and the
+      // standalone title bar; it matches --primary in src/styles.css.
+      { name: "theme-color", content: "#007d7e" },
+      { name: "application-name", content: BRANDING.applicationName },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-title", content: BRANDING.applicationName },
+      { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+      { name: "mobile-web-app-capable", content: "yes" },
     ],
     links: [
       {
         rel: "stylesheet",
         href: appCss,
       },
+      // PWA (Phase 8.1). All icons are local files under public/icons/ —
+      // self-host rules 2 and 13 forbid depending on a CDN for critical assets.
+      { rel: "manifest", href: "/manifest.webmanifest" },
+      { rel: "icon", href: "/icons/icon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { rel: "icon", href: "/icons/favicon-16.png", sizes: "16x16", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/icons/apple-touch-icon.png", sizes: "180x180" },
       {
         rel: "preload",
         href: "/fonts/vazirmatn/Vazirmatn-400.woff2",
@@ -210,13 +228,23 @@ export const Route = createRootRoute({
     ],
     scripts: [
       {
+        // Inline crypto.randomUUID polyfill — runs in <head> BEFORE any Vite
+        // module chunk (including @supabase/supabase-js) loads. Required for
+        // self-host over LAN HTTP where the origin is non-secure and the
+        // browser hides crypto.randomUUID. Do NOT rely on the module import
+        // at the top of this file — module chunks may be evaluated after
+        // vendor chunks that already captured a reference to crypto.
+        children:
+          "(function(){try{var g=globalThis;var c=g.crypto;function mk(src){return function(){var b=new Uint8Array(16);if(src&&typeof src.getRandomValues==='function'){try{src.getRandomValues(b);}catch(e){for(var i=0;i<16;i++)b[i]=Math.floor(Math.random()*256);}}else{for(var i=0;i<16;i++)b[i]=Math.floor(Math.random()*256);}b[6]=(b[6]&0x0f)|0x40;b[8]=(b[8]&0x3f)|0x80;var h=[];for(var i=0;i<16;i++)h.push(b[i].toString(16).padStart(2,'0'));return h.slice(0,4).join('')+'-'+h.slice(4,6).join('')+'-'+h.slice(6,8).join('')+'-'+h.slice(8,10).join('')+'-'+h.slice(10,16).join('');};}if(c&&typeof c.randomUUID==='function'){try{c.randomUUID();return;}catch(e){}}var patched=mk(c);if(c){try{c.randomUUID=patched;return;}catch(e){}try{Object.defineProperty(g,'crypto',{configurable:true,value:{getRandomValues:c.getRandomValues?c.getRandomValues.bind(c):function(b){for(var i=0;i<b.length;i++)b[i]=Math.floor(Math.random()*256);return b;},subtle:c.subtle,randomUUID:patched}});}catch(e){}return;}try{Object.defineProperty(g,'crypto',{configurable:true,value:{getRandomValues:function(b){for(var i=0;i<b.length;i++)b[i]=Math.floor(Math.random()*256);return b;},randomUUID:patched}});}catch(e){}}catch(e){try{console.warn('[crypto-uuid] polyfill install failed',e);}catch(_){}}try{console.debug('[crypto-uuid] ready',typeof crypto!=='undefined'&&typeof crypto.randomUUID);}catch(_){}})();",
+      },
+      {
         type: "application/ld+json",
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "افراکالا",
-          url: "https://get-git-going.lovable.app",
-          description: "سامانه یکپارچه مدیریت محصولات، قیمت‌گذاری، فروش و فاکتور افراکالا.",
+          name: BRANDING.platformName,
+          url: BRANDING.publicOrigin,
+          description: BRANDING.metaDescriptionFa,
         }),
       },
       {
@@ -224,8 +252,8 @@ export const Route = createRootRoute({
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "WebSite",
-          name: "افراکالا",
-          url: "https://get-git-going.lovable.app",
+          name: BRANDING.platformName,
+          url: BRANDING.publicOrigin,
           inLanguage: "fa-IR",
         }),
       },
@@ -297,7 +325,7 @@ function EnvironmentSafetyBanner() {
 
   const bannerText = suspiciousProductionRuntime
     ? "هشدار ایمنی: محیط production روی آدرس تست/محلی اجرا شده است. قبل از ورود اطلاعات واقعی، تنظیمات را بررسی کنید."
-    : configuredBannerText || "«محیط تست افراکالا — اطلاعات این بخش واقعی نیست»";
+    : configuredBannerText || `«محیط تست ${BRANDING.platformName} — اطلاعات این بخش واقعی نیست»`;
 
   const className = suspiciousProductionRuntime
     ? "border-b border-red-700 bg-red-600 px-4 py-2 text-center text-sm font-semibold text-white shadow-sm"
@@ -319,6 +347,8 @@ function RootComponent() {
   );
   useEffect(() => {
     initCacheBuster();
+    // No-ops in dev and over plain http (LAN today) — see register-sw.ts.
+    registerServiceWorker();
   }, []);
   return (
     <QueryClientProvider client={queryClient}>

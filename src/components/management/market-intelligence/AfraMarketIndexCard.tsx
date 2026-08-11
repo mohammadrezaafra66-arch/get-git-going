@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { MICardShell } from "./CardShell";
 import { fetchMarketIndex, type RangeDays } from "@/lib/management/market-intelligence";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { BRANDING } from "@/config/branding";
 
 const STATUS_LABEL: Record<string, { label: string; color: string; Icon: typeof ArrowUp }> = {
   rising: { label: "صعودی", color: "text-emerald-600", Icon: ArrowUp },
@@ -26,9 +27,9 @@ export function AfraMarketIndexCard({ days }: { days: RangeDays }) {
 
   return (
     <MICardShell
-      title="شاخص بازار افراکالا"
+      title={`شاخص بازار ${BRANDING.platformName}`}
       description={`میانگین وزنی تغییر قیمت محصولات فعال موجود در ${formatNumber(days)} روز اخیر`}
-      rule="شاخص افراکالا شاخص داخلی است و نماینده کل بازار کشور نیست."
+      rule={`شاخص ${BRANDING.platformName} شاخص داخلی است و نماینده کل بازار کشور نیست.`}
       icon={<Activity className="h-4 w-4 text-primary" />}
     >
       {q.isLoading ? (

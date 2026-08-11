@@ -42,6 +42,13 @@ function NewProductPage() {
           primary_spec: v.primary_spec || null,
           description: v.description || null,
           technical_notes: v.technical_notes || null,
+          barcode: v.barcode?.trim() ? v.barcode.trim() : null,
+          // کد کالای آسان — اختیاری. مقدار خالی به NULL تبدیل می‌شود (تریگر ۲۸۹ هم همین
+          // کار را سمت دیتابیس می‌کند تا فراخوان مستقیم API هم از قاعده جا نماند).
+          accounting_code: v.accounting_code?.trim() ? v.accounting_code.trim() : null,
+          torob_url: v.torob_url?.trim() ? v.torob_url.trim() : null,
+          // Item 166 — standalone promotion weight (1 = neutral).
+          promotion_weight: v.promotion_weight ?? 1,
         })
         .select("id")
         .single();
@@ -65,6 +72,10 @@ function NewProductPage() {
       const msg = String(e?.message ?? "");
       if (code === "23505" && /products_dedup_key_unique/i.test(msg)) {
         toast.error("محصول تکراری است: ترکیب «برند + دسته + مدل + رنگ + ظرفیت» قبلاً ثبت شده است.");
+      } else if (code === "23505" && /products_accounting_code_unique/i.test(msg)) {
+        toast.error("این «کد کالا در آسان» قبلاً برای محصول دیگری ثبت شده است.");
+      } else if (code === "23514" && /products_torob_url_http_chk/i.test(msg)) {
+        toast.error("لینک ترب نامعتبر است؛ باید با http:// یا https:// شروع شود.");
       } else if (code === "23505" || /duplicate key|sku/i.test(msg)) {
         toast.error("محصولی با این مشخصات (SKU) قبلاً ثبت شده است.");
       } else {

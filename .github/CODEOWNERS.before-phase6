@@ -1,0 +1,33 @@
+# AfraKala Automation Platform — CODEOWNERS
+# Baseline freeze: 2026-06-05
+#
+# GitHub is the source of truth. Changes to baseline, ADRs, automation contracts,
+# security docs, and ops runbooks require explicit review before merge.
+
+# Default owners for the control plane / core repository
+*                                   @mohammadrezaafra66-arch
+
+# Baseline freeze artifacts
+/docs/baseline/                     @mohammadrezaafra66-arch
+/docs/adr/                          @mohammadrezaafra66-arch
+/docs/ops/                          @mohammadrezaafra66-arch
+/docs/process/                      @mohammadrezaafra66-arch
+/docs/automation/                   @mohammadrezaafra66-arch
+/docs/security/                     @mohammadrezaafra66-arch
+
+# Automation contracts (schemas + OpenAPI only — no worker runtime here)
+/automation/                        @mohammadrezaafra66-arch
+/openapi/                           @mohammadrezaafra66-arch
+
+# Database migrations and RLS (source of truth: Supabase/PostgreSQL)
+/supabase/migrations/               @mohammadrezaafra66-arch
+
+# Control plane / UI / server boundaries
+/src/                               @mohammadrezaafra66-arch
+/server/                            @mohammadrezaafra66-arch
+
+# Self-host deployment stacks
+/deploy/                            @mohammadrezaafra66-arch
+
+# CI / release automation
+/.github/                           @mohammadrezaafra66-arch

@@ -22,6 +22,7 @@ import {
   type StockStatus,
   type ProductType,
 } from "@/lib/products/constants";
+import { BRANDING } from "@/config/branding";
 
 export type SaleListPdfColumn =
   | "name"
@@ -73,6 +74,7 @@ export interface SaleListPdfInput {
    */
   settlementTypeTitle?: string | null;
   termsText?: string | null;
+  usdRate?: number | null;
   selectedColumns: SaleListPdfColumn[];
   items: SaleListPdfItem[];
   /**
@@ -112,10 +114,19 @@ export interface SaleListPdfInput {
     fontSize?: number;
     rowPaddingY?: number;
     cellPaddingX?: number;
+    /**
+     * Optional per-column widths. Keys are `"row"` (leading row-number column,
+     * in PIXELS) and `SaleListPdfColumn` keys (in PERCENT). When provided and
+     * non-empty, the table switches to `table-layout: fixed` and applies these
+     * widths; columns without an explicit width share the remaining space
+     * equally. Percentages are clamped to 3–60 and normalized if they exceed
+     * 100. When omitted/null/empty, the current auto-layout behavior is kept.
+     */
+    columnWidths?: Record<string, number> | null;
   } | null;
 }
 
-const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
+export const COLUMN_LABELS: Record<SaleListPdfColumn, string> = {
   name: "نام محصول",
   brand: "برند",
   category: "دسته",
@@ -297,11 +308,57 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
   const padY = Math.max(0, Math.min(20, Number(input.options?.rowPaddingY ?? 4)));
   const padX = Math.max(0, Math.min(20, Number(input.options?.cellPaddingX ?? 6)));
 
+  // Optional per-column widths. When provided (non-empty), switch the table to
+  // a fixed layout and apply explicit widths; otherwise keep the current auto
+  // layout so lists without saved widths render exactly as before.
+  const widthsInput = input.options?.columnWidths ?? null;
+  const useFixedLayout = !!widthsInput && Object.keys(widthsInput).length > 0;
+  const rawRowW = Number(widthsInput?.row);
+  const rowColPx =
+    useFixedLayout && Number.isFinite(rawRowW) ? Math.max(24, Math.min(200, rawRowW)) : 48;
+
+  // Percent width per data column (excludes the row-number column).
+  const colPct = new Map<SaleListPdfColumn, number>();
+  if (useFixedLayout) {
+    const clampPct = (n: number) => Math.max(3, Math.min(60, n));
+    const undefinedCols: SaleListPdfColumn[] = [];
+    let definedSum = 0;
+    for (const c of cols) {
+      const raw = Number((widthsInput as Record<string, number>)[c]);
+      if (Number.isFinite(raw)) {
+        const v = clampPct(raw);
+        colPct.set(c, v);
+        definedSum += v;
+      } else {
+        undefinedCols.push(c);
+      }
+    }
+    // Columns without an explicit width share the remaining space equally
+    // (min 3% each so they never vanish).
+    if (undefinedCols.length > 0) {
+      const share = Math.max(3, Math.max(0, 100 - definedSum) / undefinedCols.length);
+      for (const c of undefinedCols) colPct.set(c, share);
+    }
+    // Never overflow 100% — normalize proportionally instead of breaking layout.
+    let total = 0;
+    colPct.forEach((v) => (total += v));
+    if (total > 100) {
+      const f = 100 / total;
+      colPct.forEach((v, c) => colPct.set(c, v * f));
+    }
+  }
+
   // Always include a leading row-number column ("ردیف").
   const totalCols = cols.length + 1;
   const headerCells =
-    `<th style="width:48px">ردیف</th>` +
-    cols.map((c) => `<th>${escapeHtml(COLUMN_LABELS[c])}</th>`).join("");
+    `<th style="width:${rowColPx}px">ردیف</th>` +
+    cols
+      .map((c) => {
+        const w = colPct.get(c);
+        const st = w != null ? ` style="width:${Math.round(w * 100) / 100}%"` : "";
+        return `<th${st}>${escapeHtml(COLUMN_LABELS[c])}</th>`;
+      })
+      .join("");
 
   const changeClass = (it: SaleListPdfItem): string => {
     const amount = it.change_amount;
@@ -372,6 +429,11 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
   const settlementLine =
     input.settlementTypeTitle && input.settlementTypeTitle.trim()
       ? `<div>نوع تسویه: ${escapeHtml(input.settlementTypeTitle.trim())}</div>`
+      : "";
+
+  const usdRateLine =
+    input.usdRate && input.usdRate > 0
+      ? `<div style="font-weight:700;color:#1e293b">نرخ دلار (در لحظهٔ صدور): ${escapeHtml(formatNumber(Math.round(input.usdRate)))} تومان</div>`
       : "";
 
   return `<!DOCTYPE html>
@@ -447,7 +509,7 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
     width: 100%;
     border-collapse: collapse;
     margin-top: 8px;
-    table-layout: auto;
+    table-layout: ${useFixedLayout ? "fixed" : "auto"};
   }
   th, td {
     border: 1px solid #e5e7eb;
@@ -527,7 +589,7 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
   </div>
   <div class="header">
     <div>
-      <div class="brand">افراکالا</div>
+      <div class="brand">${BRANDING.displayNameFa}</div>
       <div class="meta">
         <div>${escapeHtml(input.listName)} — نسخه ${escapeHtml(formatNumber(input.versionNumber))}</div>
       </div>
@@ -536,6 +598,7 @@ function buildHtmlDocument(input: SaleListPdfInput, autoPrint: boolean): string 
       <div class="doc-title">لیست فروش</div>
       <div class="meta">
         <div>تاریخ: ${escapeHtml(formatDateFa(new Date()))}</div>
+        ${usdRateLine}
         <div>ایجادکننده: ${escapeHtml(input.createdByName)}</div>
         ${settlementLine}
       </div>

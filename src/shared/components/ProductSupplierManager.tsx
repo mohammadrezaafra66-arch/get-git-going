@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Plus, Trash2, Loader2, Check, ChevronsUpDown, Star } from "lucide-react";
+import { Plus, Trash2, Loader2, Check, ChevronsUpDown, Star, UserRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, hasPermissionEx } from "@/lib/rbac/roles";
@@ -46,6 +46,8 @@ type TrustLevel = "low" | "medium" | "high";
 interface ProductSupplierRow {
   id: string;
   supplier_id: string;
+  /** Item 235 (Phase 7.1) — the unified person behind this supplier link. */
+  supplier_person_id: string | null;
   is_primary: boolean;
   notes: string | null;
   supplier: {
@@ -85,7 +87,7 @@ export function ProductSupplierManager({ productId }: { productId: string }) {
       const { data, error } = await supabase
         .from("product_suppliers")
         .select(
-          "id, supplier_id, is_primary, notes, supplier:suppliers(id,name,contact_name,phone,city,trust_level,status)",
+          "id, supplier_id, supplier_person_id, is_primary, notes, supplier:suppliers(id,name,contact_name,phone,city,trust_level,status)",
         )
         .eq("product_id", productId)
         .order("is_primary", { ascending: false });
@@ -156,6 +158,20 @@ export function ProductSupplierManager({ productId }: { productId: string }) {
                             </Link>
                           ) : (
                             <span className="text-muted-foreground">—</span>
+                          )}
+                          {/* Phase 7.5 — the supplier link still goes to the
+                              supplier page; this exposes the unified person
+                              behind it without replacing that navigation. */}
+                          {r.supplier_person_id && (
+                            <Link
+                              to="/persons/$personId/edit"
+                              params={{ personId: r.supplier_person_id }}
+                              title="پروندهٔ شخص"
+                              aria-label="پروندهٔ شخص"
+                              className="text-muted-foreground hover:text-primary"
+                            >
+                              <UserRound className="h-3.5 w-3.5" />
+                            </Link>
                           )}
                           {r.is_primary && (
                             <Badge className="bg-primary text-primary-foreground hover:bg-primary">

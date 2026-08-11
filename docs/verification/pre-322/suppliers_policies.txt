@@ -1,0 +1,28 @@
+viewer_restricted
+(NOT is_viewer_only(uid()))
+--with_check--
+(NOT is_viewer_only(uid()))
+suppliers_select_dynamic
+has_dynamic_permission(uid(), 'suppliers'::text, 'view'::text)
+--with_check--
+
+manager admin write suppliers
+has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])
+--with_check--
+has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])
+suppliers_delete_privileged
+has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])
+--with_check--
+
+suppliers_insert_privileged
+
+--with_check--
+has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])
+suppliers_select_role_scoped
+has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])
+--with_check--
+
+suppliers_update_privileged
+has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])
+--with_check--
+has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])

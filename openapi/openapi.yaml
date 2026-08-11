@@ -1,0 +1,640 @@
+openapi: 3.1.0
+
+info:
+  title: AfraKala Platform API
+  version: 0.1.0
+  summary: AfraKala UI-facing API contract
+  description: >
+    This OpenAPI document is the UI-facing API contract for the AfraKala platform.
+    It defines the approved API surface that Lovable may consume and Cursor may implement.
+    This is a Phase 6 contract skeleton and must not be treated as automatic production implementation.
+
+servers:
+  - url: http://localhost:3000
+    description: Local development or staging web app
+  - url: https://app.afrakala.local
+    description: Production placeholder. Replace only through approved deployment governance.
+
+tags:
+  - name: System
+    description: Health and system metadata
+  - name: Session
+    description: Authentication and current-user session contract
+  - name: Products
+    description: Product catalog UI contract
+  - name: Pricing
+    description: Pricing UI contract
+  - name: SalesLists
+    description: Sales list UI contract
+  - name: Worker
+    description: Worker status and output display contract
+  - name: Governance
+    description: Governance and API contract metadata
+
+paths:
+  /api/healthz:
+    get:
+      tags:
+        - System
+      summary: Health check
+      operationId: getHealthz
+      responses:
+        '200':
+          description: Application is reachable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/session:
+    get:
+      tags:
+        - Session
+      summary: Get current session
+      operationId: getCurrentSession
+      responses:
+        '200':
+          description: Current session information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/products:
+    get:
+      tags:
+        - Products
+      summary: List products for UI
+      operationId: listProducts
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: query
+          in: query
+          required: false
+          description: Search text for product name, model, or brand.
+          schema:
+            type: string
+        - name: brand
+          in: query
+          required: false
+          description: Optional brand filter.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductList'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/products/{productId}:
+    get:
+      tags:
+        - Products
+      summary: Get product details
+      operationId: getProduct
+      parameters:
+        - $ref: '#/components/parameters/ProductIdParam'
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/pricing/calculate:
+    post:
+      tags:
+        - Pricing
+      summary: Calculate sale prices
+      operationId: calculatePrices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriceCalculationRequest'
+      responses:
+        '200':
+          description: Calculated prices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PriceCalculationResponse'
+        '400':
+          $ref: '#/components/responses/InvalidRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/sales-lists:
+    get:
+      tags:
+        - SalesLists
+      summary: List sales lists
+      operationId: listSalesLists
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+      responses:
+        '200':
+          description: Sales list collection
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesListCollection'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/sales-lists/{listId}:
+    get:
+      tags:
+        - SalesLists
+      summary: Get sales list details
+      operationId: getSalesList
+      parameters:
+        - $ref: '#/components/parameters/ListIdParam'
+      responses:
+        '200':
+          description: Sales list details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SalesList'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/worker/jobs:
+    get:
+      tags:
+        - Worker
+      summary: List Worker jobs for status display
+      operationId: listWorkerJobs
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PageSizeParam'
+        - name: status
+          in: query
+          required: false
+          description: Optional Worker job status filter.
+          schema:
+            $ref: '#/components/schemas/WorkerJobStatus'
+      responses:
+        '200':
+          description: Worker job list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerJobList'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/worker/jobs/{jobId}:
+    get:
+      tags:
+        - Worker
+      summary: Get Worker job details
+      operationId: getWorkerJob
+      parameters:
+        - $ref: '#/components/parameters/JobIdParam'
+      responses:
+        '200':
+          description: Worker job details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkerJob'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /api/governance/api-contract:
+    get:
+      tags:
+        - Governance
+      summary: Get API contract metadata
+      operationId: getApiContractMetadata
+      responses:
+        '200':
+          description: API contract metadata
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiContractMetadata'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+components:
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      required: false
+      description: Page number starting from 1.
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: pageSize
+      in: query
+      required: false
+      description: Number of records per page.
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+
+    ProductIdParam:
+      name: productId
+      in: path
+      required: true
+      description: Product identifier.
+      schema:
+        type: string
+
+    ListIdParam:
+      name: listId
+      in: path
+      required: true
+      description: Sales list identifier.
+      schema:
+        type: string
+
+    JobIdParam:
+      name: jobId
+      in: path
+      required: true
+      description: Worker job identifier.
+      schema:
+        type: string
+
+  responses:
+    InvalidRequest:
+      description: Invalid request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthenticated:
+      description: User is not authenticated
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: User does not have permission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Requested resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Conflict:
+      description: Request conflicts with current state
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    ServerError:
+      description: Server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+  schemas:
+    HealthStatus:
+      type: object
+      required:
+        - ok
+        - environment
+      properties:
+        ok:
+          type: boolean
+        environment:
+          type: string
+          enum:
+            - local
+            - staging
+            - production
+        version:
+          type: string
+
+    Session:
+      type: object
+      required:
+        - authenticated
+      properties:
+        authenticated:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+
+    User:
+      type: object
+      required:
+        - id
+        - displayName
+      properties:
+        id:
+          type: string
+        displayName:
+          type: string
+        role:
+          type: string
+
+    ProductList:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    Product:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+          enum:
+            - active
+            - inactive
+            - draft
+
+    PriceCalculationRequest:
+      type: object
+      required:
+        - productId
+        - purchasePrice
+      properties:
+        productId:
+          type: string
+        purchasePrice:
+          type: number
+          minimum: 0
+        currency:
+          type: string
+          enum:
+            - IRR
+            - USD
+            - AED
+        marginPercent:
+          type: number
+          minimum: 0
+
+    PriceCalculationResponse:
+      type: object
+      required:
+        - productId
+        - prices
+      properties:
+        productId:
+          type: string
+        prices:
+          type: array
+          items:
+            $ref: '#/components/schemas/CalculatedPrice'
+
+    CalculatedPrice:
+      type: object
+      required:
+        - type
+        - amount
+        - currency
+      properties:
+        type:
+          type: string
+          enum:
+            - cash
+            - prepay
+            - one_day
+            - multi_day
+            - credit
+        amount:
+          type: number
+        currency:
+          type: string
+
+    SalesListCollection:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalesList'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    SalesList:
+      type: object
+      required:
+        - id
+        - title
+        - items
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SalesListItem'
+
+    SalesListItem:
+      type: object
+      required:
+        - productId
+        - displayPrice
+      properties:
+        productId:
+          type: string
+        productName:
+          type: string
+        displayPrice:
+          type: number
+        currency:
+          type: string
+
+    WorkerJobStatus:
+      type: string
+      enum:
+        - queued
+        - running
+        - succeeded
+        - failed
+        - cancelled
+
+    WorkerJobList:
+      type: object
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkerJob'
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+
+    WorkerJob:
+      type: object
+      required:
+        - id
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+        status:
+          $ref: '#/components/schemas/WorkerJobStatus'
+        taskType:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        outputSummary:
+          type: string
+
+    ApiContractMetadata:
+      type: object
+      required:
+        - name
+        - version
+        - sourceOfTruth
+      properties:
+        name:
+          type: string
+        version:
+          type: string
+        sourceOfTruth:
+          type: string
+          enum:
+            - GitHub
+        contractFiles:
+          type: array
+          items:
+            type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true

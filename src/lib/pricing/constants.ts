@@ -6,9 +6,9 @@ export type ShippingCostType = Database["public"]["Enums"]["shipping_cost_type"]
 
 export const CURRENCY_LABELS: Record<CurrencyCode, string> = {
   toman: "تومان",
-  usd: "دلار",
-  aed: "درهم",
-  usd_us: "دلار آمریکا",
+  usd: "دلار سلیمانیه",
+  aed: "درهم امارات",
+  usd_us: "دلار تهران",
 };
 
 export const MARGIN_TYPE_LABELS: Record<MarginType, string> = {
@@ -24,6 +24,20 @@ export const SHIPPING_COST_TYPE_LABELS: Record<ShippingCostType, string> = {
 };
 
 export const PRICING_PAGE_SIZE = 20;
+
+/**
+ * کد نوع‌قیمتِ «نقدی» در `sale_price_types`.
+ *
+ * هر بار انتشار قیمت (`publishProductPrices`) برای **همهٔ** نوع‌قیمت‌های فعال
+ * یک ردیف در `product_computed_prices` می‌نویسد — نقدی، چکی، همکاری. پس هر
+ * کوئری‌ای که می‌خواهد «یک» قیمت فروش برای هر محصول نشان دهد، باید صریحاً نوع را
+ * انتخاب کند؛ وگرنه ردیفی برمی‌گردد که آخر از همه محاسبه شده (همکاری، یا اگر
+ * همکاری نداشته باشد چکی) و عددِ اشتباه نمایش داده می‌شود.
+ *
+ * جاهایی که عمداً همهٔ نوع‌قیمت‌ها را نشان می‌دهند (کارت انتشار محصول، پیشنهادهای
+ * فروش) نباید از این ثابت استفاده کنند.
+ */
+export const BASE_SALE_PRICE_TYPE_CODE = "cash_price";
 
 /**
  * گرد کردن قیمت تومانی بر اساس بازه:

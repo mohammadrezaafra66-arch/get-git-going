@@ -26,6 +26,7 @@ export interface ReceiptSecurityInput {
   payer_name_on_receipt?: string | null;
   has_perforation?: boolean | null;
   is_typed_receipt?: boolean | null;
+  is_mobile_bank_screenshot?: boolean | null;
   /** Optional OCR side. */
   extracted_data?: ReceiptExtractionResult | null;
   extraction_confidence?: number | null;

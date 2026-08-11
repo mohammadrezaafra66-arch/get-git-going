@@ -66,6 +66,8 @@ export function NotificationBell() {
     setOpen(false);
     if (n.reference_type === "stock_alert_request") {
       navigate({ to: "/sales/stock-alerts" });
+    } else if (n.reference_type === "sales_quote" && n.reference_id) {
+      navigate({ to: "/sales/quotes/$quoteId", params: { quoteId: n.reference_id } });
     } else {
       navigate({ to: "/notifications" });
     }
@@ -128,6 +130,7 @@ export function NotificationBell() {
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-foreground">
                     {n.type === "birthday" ? "🎂 " : ""}
+                    {n.type === "quote_rejected" ? "رد پیش‌فاکتور: " : ""}
                     {n.title}
                   </span>
                   <span className="text-[10px] text-muted-foreground">

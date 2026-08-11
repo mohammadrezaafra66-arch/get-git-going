@@ -7,7 +7,7 @@ import {
   BarChart3,
   Settings,
 } from "lucide-react";
-import type { NavItem } from "./nav-items";
+import type { NavigationEntry } from "@/lib/navigation/types";
 
 export type PrimaryModuleKey =
   | "dashboard"
@@ -32,6 +32,13 @@ export interface PrimaryModule {
  * Exactly 7 primary modules. No fallback module is permitted. Every
  * user-facing route in NAV_ITEMS must be mapped intentionally into one of
  * these 7. RBAC filtering happens downstream against NAV_ITEMS.
+ *
+ * THIS IS THE ONLY ROUTE->MODULE LIST. Until 2026-08-08 a second copy lived in
+ * src/lib/navigation/registry.ts as PRIMARY_MODULE_PATHS; it rendered nothing and
+ * had drifted on eight routes, so it was deleted and registry.ts now derives
+ * entry.primaryModule from this list via resolveActiveModule(). A route that is not
+ * listed here is reachable only through search -- it will never appear in the sidebar,
+ * because itemsForModule() below matches paths exactly, not by prefix.
  */
 export const PRIMARY_MODULES: PrimaryModule[] = [
   {
@@ -39,7 +46,14 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
     label: "داشبورد",
     icon: LayoutDashboard,
     defaultTo: "/dashboard",
-    paths: ["/dashboard", "/notifications", "/operations/tasks", "/operations/daily-mood"],
+    paths: [
+      "/dashboard",
+      "/notifications",
+      "/popup-center",
+      "/collaboration",
+      "/operations/tasks",
+      "/operations/daily-mood",
+    ],
   },
   {
     key: "assistant",
@@ -52,9 +66,12 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/pricing/price-alerts",
       "/marketing/suggestions",
       "/marketing/suggestions-history",
+      "/marketing/my-tasks",
       "/messages",
+      "/messages/inquiries",
       "/knowledge",
       "/academy",
+      "/updates",
     ],
   },
   {
@@ -73,14 +90,20 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/pricing/quick-price",
       "/pricing/calculator",
       "/pricing/my-workbench",
+      "/pricing/attention",
       "/pricing/sale-lists",
+      "/pricing/live-price-list",
       "/price-lists",
       "/pricing/amin-hozoor-board",
       "/pricing/rules",
       "/pricing/sale-price-types",
       "/pricing/recompute-prices",
       "/suppliers",
+      "/purchase",
       "/purchases",
+      "/warehouses",
+      "/warehouses/transfers",
+      "/warehouses/kardex",
     ],
   },
   {
@@ -92,12 +115,16 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/sales",
       "/sales/customers",
       "/persons",
+      "/persons/import",
+      "/persons/merge",
       "/sales/quotes",
-      "/sales/invoices",
-      "/invoices",
+      "/my-rejected-quotes",
+      "/sales/product-videos",
       "/sales/stock-alerts",
+      "/sales/promotion-nominations",
       "/sales/credit-customers",
       "/sales/credit-rules",
+      "/sales/customers/credit-training",
       "/sales/send-queue",
     ],
   },
@@ -108,14 +135,18 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
     defaultTo: "/accounting/receipts",
     paths: [
       "/accounting/receipts",
+      "/accounting/receipts/training",
       "/accounting/receivables",
       "/accounting/payables",
       "/accounting/purchase-payments",
+      "/accounting/payment-vouchers",
       "/accounting/bank-accounts",
+      "/accounting/treasury",
       "/accounting/external-parties",
-      "/accounting/customer-capital-allocations",
-      "/accounting/salesperson-capital-allocations",
-      "/accounting/daily-capital",
+      "/accounting/salesperson-scoring",
+      "/accounting/mutual-settlement",
+      // Item 141 — legacy capital paths dropped; dynamic-capital is official.
+      "/accounting/dynamic-capital",
     ],
   },
   {
@@ -128,6 +159,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/sales/quote-share-logs",
       "/gamification",
       "/gamification/leaderboard",
+      "/gamification/league",
       "/gamification/admin/analytics",
       "/audit-logs",
       "/data-tables",
@@ -145,13 +177,36 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/admin/roles",
       "/admin/profile-fields",
       "/admin/settings",
+      "/admin/platform-releases",
       "/admin/marketing-channels",
+      "/admin/marketing-task-templates",
       "/admin/payment-terms",
-      "/admin/waybill-fields",
+      "/admin/visitors",
       "/admin/receipt-fields",
       "/admin/recent-purchase-settings",
       "/admin/workflow-stages",
+      "/admin/workflow-settings",
       "/admin/validation-rules",
+      "/admin/sales-reminders",
+      "/admin/penalties",
+      "/admin/audit",
+      "/admin/ai-providers",
+      "/admin/asan-import",
+      "/admin/asan-export",
+      "/admin/purchase",
+      "/admin/documents",
+      "/admin/delivery-receipts",
+      "/admin/automation",
+      "/admin/phone-collisions",
+      "/gamification/settings",
+      "/gamification/admin/kpi-rules",
+      "/gamification/admin/achievements",
+      "/gamification/admin/missions",
+      "/gamification/admin/leagues",
+      "/gamification/admin/rewards",
+      "/gamification/admin/purchase-settings",
+      "/gamification/admin/manual-metrics",
+      "/gamification/admin/manual-metrics/guide",
       "/pricing/currencies",
       "/pricing/currency-sources",
       "/pricing/currency-rates",
@@ -161,6 +216,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/pricing/change-reasons",
       "/pricing",
       "/bot-api-keys",
+      "/operations/didar",
       "/market-matches",
       "/operations/daily-mood/admin",
       "/feedback",
@@ -188,11 +244,14 @@ export function resolveActiveModule(pathname: string): PrimaryModuleKey {
  * Filter NAV_ITEMS to those belonging to a given primary module, preserving
  * the order declared in PRIMARY_MODULES.paths.
  */
-export function itemsForModule(moduleKey: PrimaryModuleKey, visibleItems: NavItem[]): NavItem[] {
+export function itemsForModule(
+  moduleKey: PrimaryModuleKey,
+  visibleItems: NavigationEntry[],
+): NavigationEntry[] {
   const m = PRIMARY_MODULES.find((x) => x.key === moduleKey);
   if (!m) return [];
-  const byPath = new Map(visibleItems.map((i) => [i.to, i] as const));
-  const out: NavItem[] = [];
+  const byPath = new Map(visibleItems.map((i) => [i.route, i] as const));
+  const out: NavigationEntry[] = [];
   for (const p of m.paths) {
     const it = byPath.get(p);
     if (it) out.push(it);

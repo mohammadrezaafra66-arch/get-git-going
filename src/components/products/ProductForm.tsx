@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/products/category-attrs";
 import { findDuplicateProduct, type DuplicateProduct } from "@/lib/products/duplicate-check";
 import { useDebounce } from "@/hooks/use-debounce";
+import { ProductImagesSection } from "@/components/products/ProductImagesSection";
 
 interface Props {
   initial?: Partial<ProductFormValues>;
@@ -55,6 +57,10 @@ interface Props {
     dynamic: { values: DynamicAttrValues; defs: CategoryAttributeDef[]; categoryChanged: boolean },
   ) => Promise<void> | void;
   onCancel?: () => void;
+  /** Fired with `true` when the form gains unsaved changes after hydration; `false` after reset. */
+  onDirtyChange?: (dirty: boolean) => void;
+  /** Imperative handle to the underlying <form> so parents can `.requestSubmit()`. */
+  formRef?: React.Ref<HTMLFormElement>;
 }
 
 const DEFAULTS: ProductFormValues = {
@@ -72,8 +78,28 @@ const DEFAULTS: ProductFormValues = {
   primary_spec: "",
   description: "",
   technical_notes: "",
+  barcode: "",
+  accounting_code: "",
+  torob_url: "",
+  promotion_weight: 1,
   label_ids: [],
 };
+
+const UNSAVED_CHANGES_MESSAGE = "تغییرات ذخیره‌نشده از بین می‌رود. بدون ذخیره خارج می‌شوید؟";
+
+const normalizeDynamicValues = (values: DynamicAttrValues) =>
+  Object.fromEntries(Object.entries(values).sort(([a], [b]) => a.localeCompare(b)));
+
+const normalizeProductFormValues = (values: ProductFormValues): ProductFormValues => ({
+  ...values,
+  label_ids: [...values.label_ids].sort(),
+});
+
+const serializeFormState = (values: ProductFormValues, dynamicValues: DynamicAttrValues) =>
+  JSON.stringify({
+    values: normalizeProductFormValues(values),
+    dynamicValues: normalizeDynamicValues(dynamicValues),
+  });
 
 export function ProductForm({
   initial,
@@ -86,14 +112,88 @@ export function ProductForm({
   initialCategoryId,
   onSubmit,
   onCancel,
+  onDirtyChange,
+  formRef,
 }: Props) {
-  const [values, setValues] = useState<ProductFormValues>({ ...DEFAULTS, ...initial });
+  const initialValues = { ...DEFAULTS, ...initial };
+  const initialDynamic = initialDynamicValues ?? {};
+  const [values, setValues] = useState<ProductFormValues>(initialValues);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [autoName, setAutoName] = useState<boolean>(!isEdit && !initial?.name);
   const lastAutoNameRef = useRef<string>("");
-  const [dynValues, setDynValues] = useState<DynamicAttrValues>(initialDynamicValues ?? {});
+  const [dynValues, setDynValues] = useState<DynamicAttrValues>(initialDynamic);
   const [dynErrors, setDynErrors] = useState<Record<string, string>>({});
   const initialCatRef = useRef<string | null>(initialCategoryId ?? initial?.category_id ?? null);
+  const initialSnapshotRef = useRef(serializeFormState(initialValues, initialDynamic));
+  const submittingRef = useRef(false);
+
+  // ---------- پیش‌نویس ذخیره‌نشده در sessionStorage ----------
+  // نکته: از sessionStorage استفاده می‌شود تا با بسته‌شدن تب مرورگر
+  // پیش‌نویس به‌صورت خودکار پاک شود و ریسک stale draft از بین برود.
+  const draftKey = productId ? `afrakala_product_draft_${productId}` : null;
+  const [draftRestoredBanner, setDraftRestoredBanner] = useState(false);
+  const draftHydratedRef = useRef(false);
+  const draftRestoredRef = useRef(false);
+
+  // Restore draft on mount (once)
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const raw = typeof window !== "undefined" ? window.sessionStorage.getItem(draftKey) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as {
+          values?: ProductFormValues;
+          dynValues?: DynamicAttrValues;
+        };
+        if (parsed?.values) setValues((s) => ({ ...s, ...parsed.values }));
+        if (parsed?.dynValues) setDynValues(parsed.dynValues);
+        setDraftRestoredBanner(true);
+        setAutoName(false);
+        draftRestoredRef.current = true;
+        onDirtyChange?.(true);
+      }
+    } catch {
+      /* ignore corrupt draft */
+    } finally {
+      draftHydratedRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced save of draft (500ms) whenever values/dynValues change
+  useEffect(() => {
+    if (!draftKey) return;
+    if (!draftHydratedRef.current) return;
+    const t = setTimeout(() => {
+      try {
+        window.sessionStorage.setItem(draftKey, JSON.stringify({ values, dynValues }));
+        draftRestoredRef.current = true;
+        onDirtyChange?.(true);
+      } catch {
+        /* quota or unavailable */
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [draftKey, values, dynValues, onDirtyChange]);
+
+  const dismissDraftBanner = () => setDraftRestoredBanner(false);
+  const resetDraft = () => {
+    if (draftKey) {
+      try {
+        window.sessionStorage.removeItem(draftKey);
+      } catch {
+        /* ignore */
+      }
+    }
+    setValues({ ...DEFAULTS, ...initial });
+    setDynValues(initialDynamicValues ?? {});
+    setErrors({});
+    setDynErrors({});
+    setAutoName(!isEdit && !initial?.name);
+    setDraftRestoredBanner(false);
+    draftRestoredRef.current = false;
+    onDirtyChange?.(false);
+  };
 
   // ---------- بررسی زنده تکراری بودن محصول ----------
   const dupKey = useMemo(
@@ -125,13 +225,55 @@ export function ProductForm({
   const dupChecking = dupQ.isFetching;
 
   useEffect(() => {
-    setValues({ ...DEFAULTS, ...initial });
+    // اگر پیش‌نویس بازیابی شده، props تازه از سرور نباید روی state کاربر بنویسد؛
+    // فقط شناسهٔ دستهٔ اولیه را برای تشخیص تغییر دسته به‌روزرسانی می‌کنیم.
+    if (draftRestoredRef.current) {
+      initialCatRef.current = initialCategoryId ?? initial?.category_id ?? initialCatRef.current;
+      return;
+    }
+    const nextValues = { ...DEFAULTS, ...initial };
+    const nextDynamic = initialDynamicValues ?? {};
+    setValues(nextValues);
     setAutoName(!isEdit && !initial?.name);
     lastAutoNameRef.current = "";
-    setDynValues(initialDynamicValues ?? {});
+    setDynValues(nextDynamic);
     setDynErrors({});
     initialCatRef.current = initialCategoryId ?? initial?.category_id ?? null;
+    initialSnapshotRef.current = serializeFormState(nextValues, nextDynamic);
   }, [initial, isEdit, initialDynamicValues, initialCategoryId]);
+
+  const currentSnapshot = useMemo(() => serializeFormState(values, dynValues), [dynValues, values]);
+  const hasUnsavedChanges = isEdit === true && currentSnapshot !== initialSnapshotRef.current;
+
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+
+    const confirmLeaving = () => window.confirm(UNSAVED_CHANGES_MESSAGE);
+
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (submittingRef.current) return;
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const warnOnLinkClick = (event: MouseEvent) => {
+      if (submittingRef.current) return;
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const link = target.closest("a[href]");
+      if (!link) return;
+      if (confirmLeaving()) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    document.addEventListener("click", warnOnLinkClick, true);
+    return () => {
+      window.removeEventListener("beforeunload", warnBeforeUnload);
+      document.removeEventListener("click", warnOnLinkClick, true);
+    };
+  }, [hasUnsavedChanges]);
 
   const brandsQ = useQuery({ queryKey: ["brands-lite"], queryFn: fetchBrandsLite });
   const catsQ = useQuery({ queryKey: ["categories-lite"], queryFn: fetchCategoriesLite });
@@ -349,6 +491,14 @@ export function ProductForm({
     }));
   };
 
+  const handleCancel = () => {
+    if (hasUnsavedChanges && !window.confirm(UNSAVED_CHANGES_MESSAGE)) {
+      return;
+    }
+
+    onCancel?.();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (duplicate) {
@@ -379,15 +529,36 @@ export function ProductForm({
     setDynErrors({});
     const categoryChanged =
       isEdit === true && (values.category_id ?? null) !== initialCatRef.current;
-    await onSubmit(parsed.success ? parsed.data : (valuesForSubmit as ProductFormValues), {
-      values: dynValues,
-      defs: dynDefs,
-      categoryChanged,
-    });
+    submittingRef.current = true;
+    try {
+      await onSubmit(parsed.success ? parsed.data : (valuesForSubmit as ProductFormValues), {
+        values: dynValues,
+        defs: dynDefs,
+        categoryChanged,
+      });
+    } finally {
+      submittingRef.current = false;
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-4">
+      {draftRestoredBanner && (
+        <div
+          className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-yellow-400/60 bg-yellow-50 p-3 text-sm text-yellow-900 dark:bg-yellow-950/40 dark:text-yellow-100"
+          role="status"
+        >
+          <span>شما تغییرات ذخیره‌نشده دارید.</span>
+          <div className="flex gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={dismissDraftBanner}>
+              ادامه ویرایش
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={resetDraft}>
+              شروع مجدد
+            </Button>
+          </div>
+        </div>
+      )}
       {duplicate && (
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
@@ -457,6 +628,42 @@ export function ProductForm({
                 کد محصول بعد از ذخیره به‌صورت خودکار توسط سیستم ساخته می‌شود.
               </p>
             )}
+          </Field>
+          <Field label="بارکد" error={errors.barcode}>
+            <Input
+              value={values.barcode ?? ""}
+              onChange={(e) => set("barcode", e.target.value)}
+              dir="ltr"
+              placeholder="بارکد محصول (اختیاری)"
+              maxLength={64}
+            />
+          </Field>
+          <Field label="کد کالا در آسان" error={errors.accounting_code}>
+            <Input
+              value={values.accounting_code ?? ""}
+              onChange={(e) => set("accounting_code", e.target.value)}
+              dir="ltr"
+              placeholder="کد کالا در نرم‌افزار آسان (اختیاری)"
+              maxLength={32}
+            />
+            <p className="text-xs text-muted-foreground">
+              کلید مشترک این کالا با نرم‌افزار آسان. اختیاری است؛ کالای بدون کد هم ذخیره می‌شود و در
+              خروجی فروش/خرید ستون «کد کالا» خالی می‌ماند تا آسان خودش کد بسازد.
+            </p>
+          </Field>
+          <Field label="لینک ترب" error={errors.torob_url}>
+            <Input
+              value={values.torob_url ?? ""}
+              onChange={(e) => set("torob_url", e.target.value)}
+              dir="ltr"
+              placeholder="https://torob.com/p/… (اختیاری)"
+              maxLength={500}
+              inputMode="url"
+              autoComplete="off"
+            />
+            <p className="text-xs text-muted-foreground">
+              آدرس صفحهٔ همین کالا در ترب. اختیاری است؛ خالی بگذارید اگر هنوز لینک ندارید.
+            </p>
           </Field>
 
           <Field label="برند">
@@ -663,6 +870,26 @@ export function ProductForm({
               </p>
             </Field>
           )}
+
+          {/* Item 166 — standalone promotion weight, independent of label weights. */}
+          <Field label="وزن تبلیغ محصول" error={errors.promotion_weight}>
+            <Input
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min={0}
+              max={100}
+              dir="ltr"
+              className="text-left"
+              value={String(values.promotion_weight ?? 1)}
+              onChange={(e) => set("promotion_weight", Number(e.target.value))}
+            />
+            <p className="text-xs text-muted-foreground">
+              ضریب مستقل این محصول در امتیاز پیشنهادهای تبلیغاتی. ۱ یعنی خنثی (رفتار پیش‌فرض)،
+              بزرگ‌تر از ۱ محصول را بالاتر می‌آورد و ۰ آن را از پیشنهادها خارج می‌کند. این ضریب جدا
+              از مجموع وزن برچسب‌هاست.
+            </p>
+          </Field>
         </CardContent>
       </Card>
 
@@ -749,9 +976,15 @@ export function ProductForm({
         </CardContent>
       </Card>
 
+      <Card>
+        <CardContent className="p-4">
+          <ProductImagesSection productId={productId ?? null} />
+        </CardContent>
+      </Card>
+
       <div className="flex flex-wrap items-center justify-end gap-2">
         {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={handleCancel}>
             <X className="ms-1 h-4 w-4" />
             انصراف
           </Button>
@@ -845,7 +1078,7 @@ function DynamicAttrField({
       );
       break;
     case "date":
-      control = <Input type="date" value={value} onChange={(e) => onChange(e.target.value)} />;
+      control = <PersianDatePicker value={value || null} onChange={(v) => onChange(v ?? "")} />;
       break;
     case "text":
     default:

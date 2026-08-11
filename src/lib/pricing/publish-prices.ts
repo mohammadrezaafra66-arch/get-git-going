@@ -58,6 +58,15 @@ export async function publishProductPrices(
   if (sptErr) throw sptErr;
 
   const list = spts ?? [];
+
+  // ترم‌های تسویهٔ فعال — برای تولید یک قیمت مستقل به‌ازای هر (نوع‌قیمت × ترم تسویه).
+  const { data: setts, error: settErr } = await db
+    .from("settlement_types")
+    .select("id, title, sort_order")
+    .eq("is_active", true)
+    .order("sort_order");
+  if (settErr) throw settErr;
+  const settlementList = setts ?? [];
   let uid: string | null = opts.actingUserId ?? null;
   if (uid === null) {
     try {
@@ -108,11 +117,13 @@ export async function publishProductPrices(
 
       const b = res.breakdown;
 
-      // upsert در product_computed_prices تا /sales/search ببیند
+      // upsert ردیفِ پایه (settlement = NULL) در product_computed_prices تا /sales/search ببیند.
+      // این همان قیمتی است که امروز محاسبه می‌شود؛ رفتارش تغییر نکرده.
       const { error: upErr } = await db.from("product_computed_prices").upsert(
         {
           product_id: productId,
           sale_price_type_id: spt.id,
+          settlement_type_id: null,
           purchase_price_id: b.purchase_price_id,
           pricing_rule_id: b.pricing_rule_id,
           input_purchase_price: b.input_purchase_price,
@@ -127,9 +138,52 @@ export async function publishProductPrices(
           computed_by: uid,
           source,
         },
-        { onConflict: "product_id,sale_price_type_id" },
+        { onConflict: "product_id,sale_price_type_id,settlement_type_id" },
       );
       if (upErr) throw upErr;
+
+      // قیمت به‌ازای هر ترم تسویه: یک ردیف محاسبه‌شده به‌ازای هر
+      // (محصول، نوع‌قیمت، ترم تسویه). snapshot/history فقط برای ردیف پایه ثبت می‌شود
+      // (force_snapshot=false) تا حجم تاریخچه چند برابر نشود.
+      for (const st of settlementList) {
+        try {
+          const resS = await calculateSalePrice(
+            {
+              product_id: productId,
+              sale_price_type_id: spt.id,
+              settlement_type_id: st.id,
+              force_snapshot: false,
+              acting_user_id: uid,
+            },
+            db,
+          );
+          const bs = resS.breakdown;
+          const { error: upSErr } = await db.from("product_computed_prices").upsert(
+            {
+              product_id: productId,
+              sale_price_type_id: spt.id,
+              settlement_type_id: st.id,
+              purchase_price_id: bs.purchase_price_id,
+              pricing_rule_id: bs.pricing_rule_id,
+              input_purchase_price: bs.input_purchase_price,
+              input_currency: bs.input_currency,
+              currency_rate: bs.currency_rate,
+              purchase_price_toman: bs.purchase_price_toman,
+              shipping_cost: bs.shipping_cost,
+              margin_amount: bs.margin_amount,
+              final_sale_price: bs.final_sale_price,
+              rounded_sale_price: bs.rounded_sale_price,
+              computed_at: new Date().toISOString(),
+              computed_by: uid,
+              source,
+            },
+            { onConflict: "product_id,sale_price_type_id,settlement_type_id" },
+          );
+          if (upSErr) throw upSErr;
+        } catch {
+          // یک ترم شکست‌خورده نباید کل انتشار را متوقف کند.
+        }
+      }
 
       results.push({
         sale_price_type_id: spt.id,

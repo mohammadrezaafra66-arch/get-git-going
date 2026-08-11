@@ -16,6 +16,7 @@ import {
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -296,16 +297,14 @@ function StockAlertsPage() {
                 </SelectContent>
               </Select>
             )}
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+            <PersianDatePicker
+              value={dateFrom || null}
+              onChange={(v) => setDateFrom(v ?? "")}
               placeholder="از تاریخ"
             />
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+            <PersianDatePicker
+              value={dateTo || null}
+              onChange={(v) => setDateTo(v ?? "")}
               placeholder="تا تاریخ"
             />
           </div>

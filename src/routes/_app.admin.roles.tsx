@@ -334,6 +334,8 @@ function CreateRoleDialog({ onClose }: { onClose: () => void }) {
     onSuccess: () => {
       toast.success("نقش جدید ایجاد شد");
       qc.invalidateQueries({ queryKey: ["custom-roles"] });
+      qc.invalidateQueries({ queryKey: ["all-roles-combined"] });
+      qc.invalidateQueries({ queryKey: ["roles-matrix"] });
       invalidateRolePermissionsCache();
       onClose();
     },

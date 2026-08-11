@@ -37,6 +37,7 @@ import {
   type SearchPersonsInput,
   type UpdatePersonInput,
 } from "./schemas";
+import { normalizeIdentifier } from "./identifiers-normalize";
 
 const GetPersonInputSchema = z.object({
   id: z.string().uuid({ message: "شناسه شخص نامعتبر است" }),
@@ -193,6 +194,11 @@ export async function validateRequiredPersonFields(
   return missing.length === 0 ? { ok: true } : { ok: false, missing };
 }
 
+/**
+ * @deprecated Superseded by public.person_create_full() (item 226). createPerson
+ * no longer issues separate field-value INSERTs. Retained only because removing
+ * it is out of scope for this phase; delete once no caller remains.
+ */
 async function insertFieldValues(
   // Loosely typed — matches the authenticated client from middleware context.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -216,6 +222,24 @@ async function insertFieldValues(
 
 /* ---------- createPerson ---------- */
 
+/**
+ * Atomic person creation — item 226.
+ *
+ * Delegates the whole write to `public.person_create_full()`, which inserts
+ * persons + person_identifiers + person_field_values + an optional
+ * person_context_links observation inside ONE function body, i.e. one
+ * transaction. This closes the partial-write window described in the module
+ * header: previously the person row and its field values were separate round
+ * trips and a failure on the second left an orphan person behind.
+ *
+ * Division of responsibility (deliberate — do not "fix" by duplicating):
+ *   - Normalization of identifier values: TypeScript only (normalizeIdentifier).
+ *   - Uniqueness + required-field enforcement + authorization: database only.
+ *
+ * The old client-side required-field pre-check was dropped so the rule has a
+ * single implementation. `validateRequiredPersonFields` is still used by
+ * updatePerson and remains exported.
+ */
 export const createPerson = createServerFn({ method: "POST" })
   .middleware([surfaceAuthError, requireSupabaseAuth])
   .inputValidator((input) => CreatePersonInputSchema.parse(input))
@@ -224,43 +248,60 @@ export const createPerson = createServerFn({ method: "POST" })
       const input: CreatePersonInput = data;
       const { supabase } = context;
 
-      // Required-field pre-check (best-effort: not atomic with INSERTs).
-      const check = await validateRequiredPersonFields(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        supabase as any,
-        input.kind,
-        input.field_values,
-      );
-      if (!check.ok) {
-        const labels = check.missing.map((m) => m.label).join("، ");
-        throw new Error(`فیلدهای الزامی تکمیل نشده: ${labels}`);
-      }
+      // Normalize before any write, so an invalid identifier fails fast and
+      // never leaves a half-created person behind.
+      const identifiers = input.identifiers.map((idf) => {
+        const norm = normalizeIdentifier(idf.kind, idf.value_raw);
+        if (!norm.ok) throw new Error(norm.message_fa);
+        return {
+          kind: idf.kind,
+          value_raw: idf.value_raw,
+          value_normalized: norm.value_normalized,
+          is_primary: idf.is_primary,
+          status: idf.status,
+        };
+      });
 
-      const { data: personRow, error: personErr } = await supabase
+      const { data: rpcRes, error: rpcErr } = await supabase.rpc("person_create_full", {
+        p_display_name: input.display_name,
+        p_kind: input.kind,
+        p_legal_name: input.legal_name ?? null,
+        p_visibility_scope: input.visibility_scope,
+        p_notes: input.notes ?? null,
+        p_is_active: input.is_active,
+        p_identifiers: identifiers,
+        p_field_values: input.field_values,
+        p_context_kind: input.context_kind ?? null,
+        p_context_ref_table: input.context_ref_table ?? null,
+        p_context_ref_id: input.context_ref_id ?? null,
+        p_context_note: input.context_note ?? null,
+      });
+      if (rpcErr) throw mapPgError(rpcErr.code, rpcErr.message);
+
+      const personId = (rpcRes as { person_id?: string } | null)?.person_id;
+      if (!personId) throw new Error("ایجاد شخص ناموفق بود — شناسه‌ای بازگردانده نشد");
+
+      // Read back the committed row (and any field values) for the DTO.
+      const { data: personRow, error: readErr } = await supabase
         .from("persons")
-        .insert({
-          kind: input.kind,
-          display_name: input.display_name,
-          legal_name: input.legal_name ?? null,
-          visibility_scope: input.visibility_scope,
-          is_active: input.is_active,
-          notes: input.notes ?? null,
-          created_by: context.userId,
-        })
         .select(
           "id, kind, display_name, legal_name, visibility_scope, is_active, notes, created_by, created_at, updated_at",
         )
+        .eq("id", personId)
         .single();
-      if (personErr) throw mapPgError(personErr.code, personErr.message);
+      if (readErr) throw mapPgError(readErr.code, readErr.message);
       if (!personRow) throw new Error("ایجاد شخص ناموفق بود — رکوردی بازگردانده نشد");
 
-      const person = personRow as PersonDTO;
-      if (!person.id) {
-        throw new Error("ایجاد شخص ناموفق بود — شناسه‌ای بازگردانده نشد");
-      }
-      const values = await insertFieldValues(supabase, person.id, input.field_values);
+      const { data: fvRows, error: fvErr } = await supabase
+        .from("person_field_values")
+        .select("id, person_id, field_definition_id, value, updated_at")
+        .eq("person_id", personId);
+      if (fvErr) throw mapPgError(fvErr.code, fvErr.message);
 
-      return { ...person, field_values: values };
+      return {
+        ...(personRow as PersonDTO),
+        field_values: (fvRows as PersonFieldValueDTO[] | null) ?? [],
+      };
     } catch (e) {
       throw toServerError(e);
     }
@@ -418,19 +459,15 @@ function sanitizeSearchTerm(raw: string): string {
 }
 
 /**
- * Read-only person picker search.
+ * Read-only person picker search — Phase 2.
  *
- * - Auth: `requireSupabaseAuth` (same chain + `surfaceAuthError` as the rest
- *   of this module). No service role, no SECURITY DEFINER.
- * - RLS: relies on the user-scoped Supabase client from middleware context.
- *   Restricted persons are filtered automatically by
- *   `persons_select_by_visibility_scope`.
- * - Columns: narrow DTO only — id, display_name, legal_name, kind, is_active.
- *   No notes, no identifiers, no field_values, no visibility_scope.
- * - Search: ilike on `display_name` OR `legal_name`. Identifier search is
- *   deliberately NOT included in this step (existence-leak risk for
- *   restricted persons).
- * - If trimmed query length < 2 → returns [] without hitting the DB.
+ * Delegates to `public.search_visible_persons` (migration 299, SECURITY INVOKER).
+ * Identifier/alias matching is enforced inside the RPC under RLS; this serverFn
+ * never queries person_identifiers directly and never uses a service role.
+ * Directory filters are omitted here — picker UX stays query-only.
+ *
+ * Narrow DTO only — id, display_name, legal_name, kind, is_active.
+ * If trimmed query length < 2 → returns [] without hitting the DB (picker UX).
  */
 export const searchPersons = createServerFn({ method: "POST" })
   .middleware([surfaceAuthError, requireSupabaseAuth])
@@ -442,22 +479,31 @@ export const searchPersons = createServerFn({ method: "POST" })
       if (term.length < 2) return [];
 
       const { supabase } = context;
-      const pattern = `%${term}%`;
-
-      let q = supabase
-        .from("persons")
-        .select("id, display_name, legal_name, kind, is_active")
-        .or(`display_name.ilike.${pattern},legal_name.ilike.${pattern}`)
-        .order("display_name", { ascending: true })
-        .limit(input.limit);
-
-      if (!input.include_inactive) q = q.eq("is_active", true);
-      if (input.kind !== "all") q = q.eq("kind", input.kind);
-
-      const { data: rows, error } = await q;
+      const { data: rows, error } = await supabase.rpc("search_visible_persons", {
+        p_query: term,
+        p_limit: input.limit,
+        p_offset: 0,
+        p_kind: input.kind === "all" ? null : input.kind,
+      });
       if (error) throw mapPgError(error.code, error.message);
 
-      return (rows as SearchPersonResultDTO[] | null) ?? [];
+      const mapped = ((rows as Array<{
+        id: string;
+        display_name: string;
+        legal_name: string | null;
+        kind: PersonKind;
+        is_active: boolean;
+      }> | null) ?? [])
+        .filter((r) => (input.include_inactive ? true : r.is_active))
+        .map((r) => ({
+          id: r.id,
+          display_name: r.display_name,
+          legal_name: r.legal_name,
+          kind: r.kind,
+          is_active: r.is_active,
+        }));
+
+      return mapped;
     } catch (e) {
       throw toServerError(e);
     }

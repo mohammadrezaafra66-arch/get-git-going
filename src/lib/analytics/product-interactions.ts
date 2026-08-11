@@ -42,13 +42,7 @@ const DEDUP_WINDOW_MS = 30_000;
 const recent = new Map<string, number>();
 
 function makeKey(a: TrackArgs): string {
-  return [
-    a.productId,
-    a.eventType,
-    a.source,
-    a.salePriceTypeId ?? "_",
-    a.searchSessionId ?? "_",
-  ].join("|");
+  return [a.productId, a.eventType, a.source, a.salePriceTypeId ?? "_", a.searchSessionId ?? "_"].join("|");
 }
 
 function gc() {

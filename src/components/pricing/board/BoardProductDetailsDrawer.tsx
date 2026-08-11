@@ -346,8 +346,9 @@ export function BoardProductDetailsDrawer({
                                 change > 0 ? "default" : change < 0 ? "destructive" : "secondary"
                               }
                             >
-                              {change > 0 ? "+" : ""}
-                              {formatNumber(change)}٪
+                              {Math.abs(change) > 999
+                                ? `${change > 0 ? "+" : "-"}۹۹۹٪+`
+                                : `${change > 0 ? "+" : ""}${formatNumber(change)}٪`}
                             </Badge>
                           )}
                         </li>

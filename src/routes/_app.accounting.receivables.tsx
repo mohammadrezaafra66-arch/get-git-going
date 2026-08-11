@@ -1,8 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, Loader2, Search, X, Eye, FileText } from "lucide-react";
+import { CalendarIcon, Loader2, Search, X, Eye } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 
 import { PageHeader } from "@/components/common/PageHeader";
+import { AgingBucketBadge, AgingBucketCards } from "@/components/accounting/AgingBuckets";
+import type { AgingBucket } from "@/lib/accounting/aging";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +50,7 @@ export const Route = createFileRoute("/_app/accounting/receivables")({
   component: ReceivablesPage,
 });
 
-type DueFilter = "all" | "overdue" | "today" | "tomorrow" | "future";
+type DueFilter = "all" | "overdue" | "today" | "tomorrow" | "future" | AgingBucket;
 
 type SummaryRow = {
   total_outstanding: number;
@@ -57,6 +59,16 @@ type SummaryRow = {
   due_tomorrow: number;
   future_outstanding: number;
   items_count: number;
+  bucket_current: number;
+  bucket_d1_30: number;
+  bucket_d31_60: number;
+  bucket_d61_90: number;
+  bucket_d90_plus: number;
+  count_current: number;
+  count_d1_30: number;
+  count_d31_60: number;
+  count_d61_90: number;
+  count_d90_plus: number;
 };
 
 type ListRow = {
@@ -74,6 +86,7 @@ type ListRow = {
   days_until_due: number | null;
   is_overdue: boolean | null;
   created_at: string;
+  aging_bucket: string | null;
 };
 
 type DetailRow = {
@@ -258,6 +271,21 @@ function ReceivablesPage() {
         />
       </div>
 
+      {/* Aging buckets */}
+      <div className="space-y-2">
+        <div className="text-sm font-medium text-muted-foreground">سطل‌های سنی مطالبات</div>
+        <AgingBucketCards
+          summary={summary as unknown as Record<string, unknown> | null}
+          isLoading={summaryQ.isLoading}
+          fmtMoney={fmtMoney}
+          activeBucket={dueFilter}
+          onSelect={(b) => {
+            setDueFilter((prev) => (prev === b ? "all" : b));
+            setPage(0);
+          }}
+        />
+      </div>
+
       {summaryQ.isError && <div className="text-sm text-destructive">{errMsg(summaryQ.error)}</div>}
 
       {/* Filters */}
@@ -336,6 +364,11 @@ function ReceivablesPage() {
                   <SelectItem value="today">امروز</SelectItem>
                   <SelectItem value="tomorrow">فردا</SelectItem>
                   <SelectItem value="future">آینده</SelectItem>
+                  <SelectItem value="current">سطل: سررسید نشده</SelectItem>
+                  <SelectItem value="d1_30">سطل: ۱ تا ۳۰ روز</SelectItem>
+                  <SelectItem value="d31_60">سطل: ۳۱ تا ۶۰ روز</SelectItem>
+                  <SelectItem value="d61_90">سطل: ۶۱ تا ۹۰ روز</SelectItem>
+                  <SelectItem value="d90_plus">سطل: بیش از ۹۰ روز</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -422,6 +455,7 @@ function ReceivablesPage() {
                       <TableHead className="text-right">پیش‌پرداخت</TableHead>
                       <TableHead className="text-right">پرداخت تأییدشده</TableHead>
                       <TableHead className="text-right">مانده</TableHead>
+                      <TableHead className="text-right">سطل سنی</TableHead>
                       <TableHead className="text-right">وضعیت</TableHead>
                       <TableHead className="text-right">عملیات</TableHead>
                     </TableRow>
@@ -439,6 +473,9 @@ function ReceivablesPage() {
                         <TableCell>{fmtMoney(r.confirmed_paid_amount)}</TableCell>
                         <TableCell className="font-semibold">
                           {fmtMoney(r.outstanding_amount)}
+                        </TableCell>
+                        <TableCell>
+                          <AgingBucketBadge bucket={r.aging_bucket} />
                         </TableCell>
                         <TableCell>
                           {r.is_overdue ? (
@@ -460,14 +497,10 @@ function ReceivablesPage() {
                             >
                               <Eye className="h-4 w-4 ml-1" /> جزئیات
                             </Button>
-                            <Button asChild size="sm" variant="ghost">
-                              <Link
-                                to="/sales/invoices/$invoiceId"
-                                params={{ invoiceId: r.invoice_id }}
-                              >
-                                <FileText className="h-4 w-4" />
-                              </Link>
-                            </Button>
+                            {/* 2026-08-08: the "open the invoice page" icon link was removed
+                                with the invoice routes (migration 323). The «جزئیات» button
+                                beside it opens the same receivable in a dialog, so nothing
+                                a user could reach is lost. */}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -487,13 +520,16 @@ function ReceivablesPage() {
                           فاکتور {r.invoice_number ? toFaDigits(r.invoice_number) : NA}
                         </div>
                       </div>
-                      {r.is_overdue ? (
-                        <Badge variant="destructive">معوق</Badge>
-                      ) : (
-                        <Badge variant="secondary">
-                          {toFaDigits(String(r.days_until_due ?? 0))} روز
-                        </Badge>
-                      )}
+                      <div className="flex flex-col items-end gap-1">
+                        {r.is_overdue ? (
+                          <Badge variant="destructive">معوق</Badge>
+                        ) : (
+                          <Badge variant="secondary">
+                            {toFaDigits(String(r.days_until_due ?? 0))} روز
+                          </Badge>
+                        )}
+                        <AgingBucketBadge bucket={r.aging_bucket} />
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
@@ -522,11 +558,8 @@ function ReceivablesPage() {
                       >
                         <Eye className="h-4 w-4 ml-1" /> جزئیات
                       </Button>
-                      <Button asChild size="sm" variant="ghost">
-                        <Link to="/sales/invoices/$invoiceId" params={{ invoiceId: r.invoice_id }}>
-                          <FileText className="h-4 w-4" />
-                        </Link>
-                      </Button>
+                      {/* 2026-08-08: mobile twin of the removed invoice icon link — see the
+                          note in the table view above. */}
                     </div>
                   </div>
                 ))}

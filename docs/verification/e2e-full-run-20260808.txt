@@ -1,0 +1,1809 @@
+
+Running 526 tests using 1 worker
+
+(node:5788) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    1 [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:70:1 › the Latin header row is reproduced exactly (146ms)
+  ✓    2 [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:98:1 › only approved receipts that landed in one of our banks appear (273ms)
+  ✘    3 [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:117:1 › ⛔ the amount is Toman × 10 and the bank code is the owner's real one (12ms)
+(node:24172) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓    4 [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:138:1 › the same receipt through both paths shows the same amount and payer (178ms)
+  ✓    5 [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:175:1 › a deposit whose payer has no Asan code is blocked, not silently dropped (128ms)
+  ✓    6 [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:206:1 › this layout consumes no Asan number (3ms)
+  ✓    7 [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:221:1 › a salesperson cannot list bank deposits (8ms)
+  ✓    8 [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:228:1 › the alternative deposit path is offered on the page, clearly labelled (2.2s)
+  ✘    9 [chromium-admin] › e2e\asan\export-journal.spec.ts:95:3 › the one posted entry on this database › row count equals its line count, and both account codes resolve (177ms)
+(node:35424) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   10 [chromium-admin] › e2e\asan\export-journal.spec.ts:114:3 › the one posted entry on this database › only posted entries are candidates (175ms)
+  ✓   11 [chromium-admin] › e2e\asan\export-journal.spec.ts:123:3 › the one posted entry on this database › the line's own description is used, not the entry's corrupted one (156ms)
+  ✓   12 [chromium-admin] › e2e\asan\export-journal.spec.ts:137:3 › the one posted entry on this database › a salesperson cannot list accounting documents (9ms)
+  ✓   13 [chromium-admin] › e2e\asan\export-journal.spec.ts:144:3 › the one posted entry on this database › an unknown filter and an inverted range are both refused (17ms)
+  ✘   14 [chromium-admin] › e2e\asan\export-journal.spec.ts:158:3 › the six-column layout › headers are exact, and a financial line leaves B and D empty (12ms)
+(node:34840) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   15 [chromium-admin] › e2e\asan\export-journal.spec.ts:187:3 › the six-column layout › ⛔ amounts are Toman × 10, and every exported document balances (23ms)
+(node:22240) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   16 [chromium-admin] › e2e\asan\export-journal.spec.ts:209:3 › the six-column layout › the same document exported twice is byte-identical (45ms)
+(node:33584) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   17 [chromium-admin] › e2e\asan\export-journal.spec.ts:257:3 › documents that must be blocked › an unbalanced document is blocked, and the imbalance is named (1.0s)
+  ✓   18 [chromium-admin] › e2e\asan\export-journal.spec.ts:283:3 › documents that must be blocked › ⛔ O4 — an invoice_ar line exports as 989 and the document still balances (1.1s)
+  ✓   19 [chromium-admin] › e2e\asan\export-journal.spec.ts:317:3 › documents that must be blocked › a line whose party has no code still blocks the WHOLE document, not just that line (1.0s)
+  ✓   20 [chromium-admin] › e2e\asan\export-journal.spec.ts:342:3 › documents that must be blocked › clearing and other are blocked with their own reasons, and never emit a code (1.7s)
+  ✓   21 [chromium-admin] › e2e\asan\export-journal.spec.ts:365:3 › documents that must be blocked › an external_party line resolves once the party has a code, and blocks until it does (1.9s)
+  ✓   22 [chromium-admin] › e2e\asan\export-journal.spec.ts:415:3 › documents that must be blocked › a posted entry with no lines at all is listed and blocked (765ms)
+  ✘   23 [chromium-admin] › e2e\asan\export-numbering.spec.ts:76:1 › three documents receive 1, 2, 3 in order (0ms)
+  -   24 [chromium-admin] › e2e\asan\export-numbering.spec.ts:82:1 › a document exported twice keeps its number
+  -   25 [chromium-admin] › e2e\asan\export-numbering.spec.ts:91:1 › each document type has its own register
+  -   26 [chromium-admin] › e2e\asan\export-numbering.spec.ts:96:1 › two simultaneous assignments receive two different numbers
+  -   27 [chromium-admin] › e2e\asan\export-numbering.spec.ts:110:1 › a duplicate number cannot be inserted even from inside the database
+  -   28 [chromium-admin] › e2e\asan\export-numbering.spec.ts:133:1 › no client can mint, edit or delete a number directly
+  -   29 [chromium-admin] › e2e\asan\export-numbering.spec.ts:161:1 › a salesperson cannot assign a number
+  -   30 [chromium-admin] › e2e\asan\export-numbering.spec.ts:175:1 › cancelling a document burns its number instead of recycling it
+(node:44744) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   31 [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:79:1 › ⛔ one quote exported alone is byte-identical to the same quote in a range export (35ms)
+(node:42200) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   32 [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:114:1 › the single-quote path owns no mapping of its own (11ms)
+  ✓   33 [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:130:1 › a quote that is not exportable produces a Persian reason, not a partial file (31ms)
+  ✓   34 [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:148:1 › the detail page offers it to admin and accountant only (3ms)
+  ✘   35 [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:164:1 › the button is on the page in a real browser, and the export set is enforced (295ms)
+(node:32036) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   36 [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:180:3 › a salesperson › never sees the Asan export button (3.3s)
+  ✓   37 [chromium-admin] › e2e\asan\export-purchase.spec.ts:149:3 › the candidate set › every received purchase in range is listed (208ms)
+  ✘   38 [chromium-admin] › e2e\asan\export-purchase.spec.ts:159:3 › the candidate set › today every purchase is blocked, and each names its own supplier (20ms)
+(node:43408) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   39 [chromium-admin] › e2e\asan\export-purchase.spec.ts:173:3 › the candidate set › a salesperson cannot list the purchase export (12ms)
+  ✓   40 [chromium-admin] › e2e\asan\export-purchase.spec.ts:180:3 › the candidate set › an inverted date range is refused (10ms)
+  ✓   41 [chromium-admin] › e2e\asan\export-purchase.spec.ts:190:3 › one row builder, two tabs › the purchase layout differs from sales in exactly three headers (2ms)
+  ✓   42 [chromium-admin] › e2e\asan\export-purchase.spec.ts:198:3 › one row builder, two tabs › the same builder produces both, so the difference is data and not a second mapper (13ms)
+  ✓   43 [chromium-admin] › e2e\asan\export-purchase.spec.ts:236:3 › one row builder, two tabs › the two source functions expose the identical row shape (270ms)
+  ✓   44 [chromium-admin] › e2e\asan\export-purchase.spec.ts:286:3 › with a supplier that does have an Asan code › the purchase becomes exportable and carries the supplier code in column C (14ms)
+  ✓   45 [chromium-admin] › e2e\asan\export-purchase.spec.ts:297:3 › with a supplier that does have an Asan code › ⛔ T Toman becomes exactly T × 10 on the purchase side too (158ms)
+  ✓   46 [chromium-admin] › e2e\asan\export-purchase.spec.ts:314:3 › with a supplier that does have an Asan code › the purchase register starts at 1 even though sales has already reached N (544ms)
+  ✓   47 [chromium-admin] › e2e\asan\export-purchase.spec.ts:358:3 › with a supplier that does have an Asan code › the file carries the purchase headers and the ×10 amounts, read by openpyxl (734ms)
+  ✓   48 [chromium-admin] › e2e\asan\export-purchase.spec.ts:392:3 › with a supplier that does have an Asan code › the same selection exported twice is byte-identical (38ms)
+  ✓   49 [chromium-admin] › e2e\asan\export-purchase.spec.ts:408:1 › ⛔ a fractional Toman amount blocks its document instead of throwing (1.1s)
+  ✓   50 [chromium-admin] › e2e\asan\export-purchase.spec.ts:449:1 › the purchase export is selectable on the page in a real browser (2.3s)
+  ✓   51 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:108:3 › the three exports share one builder › the registry entries reference the SAME buildRows implementation (10ms)
+  ✓   52 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:131:3 › the three exports share one builder › all three carry the same layout and the one-document-per-file rule (4ms)
+  ✘   53 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:144:3 › the three exports share one builder › the same document produces identical rows whichever export routes it (14ms)
+(node:43344) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   54 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:164:3 › the three filters › receipts contain only money coming in (170ms)
+  ✓   55 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:180:3 › the three filters › payments mirror receipts — the bank is credited instead (1.0s)
+  ✓   56 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:212:3 › the three filters › third-party contains only entries with an external_party line (1.6s)
+  ✓   57 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:255:3 › the three filters › the three filters partition the whole set, leaving nothing invisible (1.2s)
+  ✓   58 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:292:1 › a file may hold exactly one accounting document (8ms)
+  ✓   59 [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:306:1 › all three appear as built exports on the page (2.2s)
+  ✓   60 [chromium-admin] › e2e\asan\export-sales-batch-selected.spec.ts:26:3 › selected batch sales export UI › range controls, eligible selection, preview, confirm-cancel (3.6s)
+  ✓   61 [chromium-admin] › e2e\asan\export-sales-batch-selected.spec.ts:82:5 › selected batch sales export UI › accountant › accountant reaches the shell (2.1s)
+  ✓   62 [chromium-admin] › e2e\asan\export-sales-batch-selected.spec.ts:91:5 › selected batch sales export UI › sales denied › salesperson is denied (3.2s)
+  ✓   63 [chromium-admin] › e2e\asan\export-sales-batch-selected.spec.ts:101:3 › JWT helpers for selected batch › inverted range rejected; sales role denied; empty assign is no-op (333ms)
+  ✓   64 [chromium-admin] › e2e\asan\export-sales-batch-selected.spec.ts:127:3 › JWT helpers for selected batch › duplicate selected ids mint once; cleanup removes fixture (670ms)
+  ✓   65 [chromium-admin] › e2e\asan\export-sales-batch-selected.spec.ts:151:3 › JWT helpers for selected batch › tickAllEligible and batch limit stay documented (3ms)
+  ✓   66 [chromium-admin] › e2e\asan\export-sales.spec.ts:198:3 › the exportable set › only accepted quotes are candidates, and every one of them is listed (314ms)
+  ✓   67 [chromium-admin] › e2e\asan\export-sales.spec.ts:219:3 › the exportable set › both halves of the rule are required, and each failure names itself (1.1s)
+  ✓   68 [chromium-admin] › e2e\asan\export-sales.spec.ts:247:3 › the exportable set › the three pre-trigger quotes are blocked and named, not silently missing (18ms)
+  ✓   69 [chromium-admin] › e2e\asan\export-sales.spec.ts:262:3 › the exportable set › a salesperson cannot list the export at all (6ms)
+  ✓   70 [chromium-admin] › e2e\asan\export-sales.spec.ts:270:3 › the exportable set › an inverted date range is refused rather than silently returning nothing (7ms)
+  ✓   71 [chromium-admin] › e2e\asan\export-sales.spec.ts:276:3 › the exportable set › the range really filters (18ms)
+  ✓   72 [chromium-admin] › e2e\asan\export-sales.spec.ts:288:3 › the file › the header row matches the Asan layout character for character, read by openpyxl (601ms)
+  ✘   73 [chromium-admin] › e2e\asan\export-sales.spec.ts:300:3 › the file › one row per line item, with the invoice number repeating across its lines (34ms)
+(node:37372) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   74 [chromium-admin] › e2e\asan\export-sales.spec.ts:318:3 › the file › ⛔ T Toman becomes exactly T × 10 — the assertion this whole mission turns on (14ms)
+(node:27360) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   75 [chromium-admin] › e2e\asan\export-sales.spec.ts:350:3 › the file › the ×10 survives into the written file, verified by openpyxl (836ms)
+  ✓   76 [chromium-admin] › e2e\asan\export-sales.spec.ts:371:3 › the file › dates are valid Jalali strings in Asan's exact format (377ms)
+  ✘   77 [chromium-admin] › e2e\asan\export-sales.spec.ts:389:3 › the file › column K stays empty and a missing product code does not block the line (382ms)
+(node:2800) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   78 [chromium-admin] › e2e\asan\export-sales.spec.ts:419:3 › the file › the same selection exported twice is byte-identical (151ms)
+  ✓   79 [chromium-admin] › e2e\asan\export-sales.spec.ts:429:3 › the file › the workbook is a real xlsx, not a renamed csv (12ms)
+  ✓   80 [chromium-admin] › e2e\asan\export-sales.spec.ts:439:3 › cash and bank › ⛔ the deposit is the amount ALLOCATED to the invoice, never the receipt total (306ms)
+  ✓   81 [chromium-admin] › e2e\asan\export-sales.spec.ts:465:3 › cash and bank › payment totals appear on the first line only (10ms)
+  ✓   82 [chromium-admin] › e2e\asan\export-sales.spec.ts:475:3 › cash and bank › an unapproved receipt is not money received (140ms)
+  ✘   83 [chromium-admin] › e2e\asan\export-sales.spec.ts:493:1 › an exported invoice keeps its number, and the preview shows it (9ms)
+(node:41260) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘   84 [chromium-admin] › e2e\asan\export-sales.spec.ts:529:1 › a quote whose customer has no Asan code is blocked, not dropped (36ms)
+(node:17740) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   85 [chromium-admin] › e2e\asan\export-sales.spec.ts:597:1 › the export page lists the sales invoices in a real browser (3.5s)
+  ✓   86 [chromium-admin] › e2e\asan\export-shell.spec.ts:125:3 › what the accountant has ticked › the default state is every row ticked (8ms)
+  ✓   87 [chromium-admin] › e2e\asan\export-shell.spec.ts:133:3 › what the accountant has ticked › unticking survives a page-size change that moves the row off screen (75ms)
+  ✓   88 [chromium-admin] › e2e\asan\export-shell.spec.ts:157:3 › what the accountant has ticked › "this page" touches only the page currently displayed (12ms)
+  ✓   89 [chromium-admin] › e2e\asan\export-shell.spec.ts:173:3 › what the accountant has ticked › "all N matching" touches every page — and is a different operation (2ms)
+  ✓   90 [chromium-admin] › e2e\asan\export-shell.spec.ts:188:3 › what the accountant has ticked › a page-size change that leaves the page past the end is clamped, not empty (2ms)
+  ✓   91 [chromium-admin] › e2e\asan\export-shell.spec.ts:198:3 › what the accountant has ticked › a blocked row is never exported, whatever its tick says (3ms)
+  ✓   92 [chromium-admin] › e2e\asan\export-shell.spec.ts:218:3 › what the accountant has ticked › «انتخاب همه نتایج قابل خروجی» ticks eligible rows only (3ms)
+  ✓   93 [chromium-admin] › e2e\asan\export-shell.spec.ts:235:3 › the layouts are the contract with Asan › every header is reproduced character for character (29ms)
+  ✓   94 [chromium-admin] › e2e\asan\export-shell.spec.ts:293:3 › the layouts are the contract with Asan › the sales layout's blank column K holds its position in a real file (208ms)
+  ✓   95 [chromium-admin] › e2e\asan\export-shell.spec.ts:320:3 › the layouts are the contract with Asan › amounts are written as numbers, never as formatted strings (10ms)
+  ✓   96 [chromium-admin] › e2e\asan\export-shell.spec.ts:340:3 › the currency unit — Toman × 10 = Rial › conversion is exact integer arithmetic (3ms)
+  ✓   97 [chromium-admin] › e2e\asan\export-shell.spec.ts:349:3 › the currency unit — Toman × 10 = Rial › an inapplicable amount stays empty rather than becoming zero (2ms)
+  ✓   98 [chromium-admin] › e2e\asan\export-shell.spec.ts:356:3 › the currency unit — Toman × 10 = Rial › a fractional Toman value is refused, never silently rounded (5ms)
+  ✓   99 [chromium-admin] › e2e\asan\export-shell.spec.ts:362:3 › the currency unit — Toman × 10 = Rial › no amount column on the live database carries a fraction (191ms)
+  ✓  100 [chromium-admin] › e2e\asan\export-shell.spec.ts:379:1 › dates are Jalali YYYY/MM/DD in Latin digits (4ms)
+  ✓  101 [chromium-admin] › e2e\asan\export-shell.spec.ts:397:3 › the export catalogue › an export that is not built refuses to produce a file (1ms)
+  ✓  102 [chromium-admin] › e2e\asan\export-shell.spec.ts:412:3 › the export catalogue › every export names a real layout and its numbering register (13ms)
+  ✓  103 [chromium-admin] › e2e\asan\export-shell.spec.ts:429:3 › the export catalogue › the accounting-document layout is one document per file, and the invoice layouts are not (4ms)
+  ✓  104 [chromium-admin] › e2e\asan\export-shell.spec.ts:440:3 › the export catalogue › a blocked document is absent from the file while the rest still export (7ms)
+  ✓  105 [chromium-admin] › e2e\asan\export-shell.spec.ts:482:3 › assigning Asan numbers to a whole export › a batch is numbered in one transaction, in a predictable order (278ms)
+  ✓  106 [chromium-admin] › e2e\asan\export-shell.spec.ts:504:3 › assigning Asan numbers to a whole export › re-exporting the same batch returns the same numbers and mints nothing (253ms)
+  ✓  107 [chromium-admin] › e2e\asan\export-shell.spec.ts:516:3 › assigning Asan numbers to a whole export › an empty selection is a no-op rather than an error (279ms)
+  ✓  108 [chromium-admin] › e2e\asan\export-shell.spec.ts:524:3 › assigning Asan numbers to a whole export › a salesperson cannot number an export, and the whole batch rolls back (169ms)
+  ✓  109 [chromium-admin] › e2e\asan\export-shell.spec.ts:535:3 › assigning Asan numbers to a whole export › the batch function is a loop over the single-document function, not a second implementation (145ms)
+  ✓  110 [chromium-admin] › e2e\asan\export-shell.spec.ts:550:3 › who may export › role_permissions has a row for every role, and can_view is exactly admin + accountant (534ms)
+  ✓  111 [chromium-admin] › e2e\asan\export-shell.spec.ts:572:3 › who may export › the static permission matrix agrees with what the migration seeded (257ms)
+  ✓  112 [chromium-admin] › e2e\asan\export-shell.spec.ts:592:3 › who may export › the page keeps the guards this phase depends on (4ms)
+  ✓  113 [chromium-admin] › e2e\asan\export-shell.spec.ts:621:3 › the /admin/asan-export route in a real browser › an admin reaches it, sees the unit stated, and opening it numbers nothing (2.2s)
+  ✓  114 [chromium-admin] › e2e\asan\export-shell.spec.ts:644:5 › the /admin/asan-export route in a real browser › accountant › an accountant reaches it too — she is who it is for (1.9s)
+  ✓  115 [chromium-admin] › e2e\asan\export-shell.spec.ts:654:5 › the /admin/asan-export route in a real browser › sales › a salesperson never sees the page (3.3s)
+  ✓  116 [chromium-admin] › e2e\asan\export-shell.spec.ts:667:5 › the /admin/asan-export route in a real browser › anonymous › an anonymous visitor never sees the page (2.9s)
+  ✓  117 [chromium-admin] › e2e\asan\final-verification.spec.ts:122:1 › 5.2/3 — every module this program added is seeded for every role (991ms)
+  ✓  118 [chromium-admin] › e2e\asan\final-verification.spec.ts:151:1 › 5.2/3b — no table in public has RLS switched off (1.1s)
+  ✓  119 [chromium-admin] › e2e\asan\final-verification.spec.ts:175:1 › 5.2/4 — a viewer and a salesperson read zero rows from every table this program created (152ms)
+  ✓  120 [chromium-admin] › e2e\asan\final-verification.spec.ts:192:1 › 5.2/4b — an accountant reads the Asan tables and an admin reads all of them (69ms)
+  ✓  121 [chromium-admin] › e2e\asan\final-verification.spec.ts:208:1 › 5.2/4c — nobody can write to the tables that take no writes (729ms)
+  ✘  122 [chromium-admin] › e2e\asan\final-verification.spec.ts:236:1 › 5.2/5 — no fixture from any phase of this program survives (1.0s)
+(node:20960) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  123 [chromium-admin] › e2e\asan\final-verification.spec.ts:270:1 › 5.2/8 — export 1 (sales) produces a real file whose header matches the spec (18ms)
+(node:45908) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  124 [chromium-admin] › e2e\asan\final-verification.spec.ts:296:1 › 5.2/8b — export 2 (purchase) produces a real file whose header matches the spec (605ms)
+  ✘  125 [chromium-admin] › e2e\asan\final-verification.spec.ts:322:1 › 5.2/8c — exports 3/4/5 (accounting document) produce a real file whose header matches (13ms)
+(node:47776) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  126 [chromium-admin] › e2e\asan\final-verification.spec.ts:342:1 › 5.2/8d — the secondary bank-deposit file matches the Latin layout (17ms)
+(node:46276) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  127 [chromium-admin] › e2e\asan\final-verification.spec.ts:357:1 › 5.2/8e — every sample file is a real xlsx and every header matches asan-layouts.md (1.5s)
+  ✓  128 [chromium-admin] › e2e\asan\final-verification.spec.ts:379:1 › 5.2/7 — nothing this program wrote re-corrupted Persian text (897ms)
+  -  129 [chromium-admin] › e2e\asan\import-persons.spec.ts:113:3 › M3.3 — Asan person import › the workbook parses by header text into 488 rows
+  -  130 [chromium-admin] › e2e\asan\import-persons.spec.ts:128:3 › M3.3 — Asan person import › a shuffled column order parses identically — proving header-driven mapping
+  -  131 [chromium-admin] › e2e\asan\import-persons.spec.ts:140:3 › M3.3 — Asan person import › staging then classifying matches what the research measured
+  -  132 [chromium-admin] › e2e\asan\import-persons.spec.ts:177:3 › M3.3 — Asan person import › a conflict row cannot be accepted, even by a direct PostgREST PATCH
+  -  133 [chromium-admin] › e2e\asan\import-persons.spec.ts:219:3 › M3.3 — Asan person import › committing applies only accepted rows, and re-importing changes nothing
+  ✓  134 [chromium-admin] › e2e\asan\import-persons.spec.ts:295:3 › M3.3 — Asan person import › a viewer-only account cannot read the staging tables (153ms)
+  ✓  135 [chromium-admin] › e2e\asan\import-persons.spec.ts:311:3 › M3.3 — Asan person import › the route and the registry are wired to the same two roles (3ms)
+  ✓  136 [chromium-admin] › e2e\asan\import-persons.spec.ts:339:3 › M3.3 — Asan person import › every role has an explicit asan-import permission row (451ms)
+  ✓  137 [chromium-admin] › e2e\asan\import-persons.spec.ts:366:3 › M3.3 — the /admin/asan-import route › an admin reaches the page, and merely opening it writes nothing (2.6s)
+  ✓  138 [chromium-admin] › e2e\asan\import-persons.spec.ts:386:5 › M3.3 — the /admin/asan-import route › accountant › an accountant reaches it too — this page is built for that role (2.0s)
+  ✓  139 [chromium-admin] › e2e\asan\import-persons.spec.ts:396:5 › M3.3 — the /admin/asan-import route › sales › a salesperson never sees the page (3.4s)
+  ✓  140 [chromium-admin] › e2e\asan\import-persons.spec.ts:410:5 › M3.3 — the /admin/asan-import route › anonymous › an anonymous visitor never sees the page (3.1s)
+  -  141 [chromium-admin] › e2e\asan\import-products.spec.ts:133:3 › M3.4 — Asan product import › the workbook parses by header text into 7 256 rows
+  -  142 [chromium-admin] › e2e\asan\import-products.spec.ts:161:3 › M3.4 — Asan product import › a shuffled column order parses identically — proving header-driven mapping
+  -  143 [chromium-admin] › e2e\asan\import-products.spec.ts:172:3 › M3.4 — Asan product import › staging and classifying reproduces what the research measured
+  -  144 [chromium-admin] › e2e\asan\import-products.spec.ts:206:3 › M3.4 — Asan product import › an unmatched row cannot be accepted, even by a direct PostgREST PATCH
+  -  145 [chromium-admin] › e2e\asan\import-products.spec.ts:231:3 › M3.4 — Asan product import › the link path works, and committing never creates a product
+  -  146 [chromium-admin] › e2e\asan\import-products.spec.ts:294:3 › M3.4 — Asan product import › re-importing the same file changes nothing
+  ✓  147 [chromium-admin] › e2e\asan\import-products.spec.ts:330:3 › M3.4 — Asan product import › a viewer-only account cannot read the product staging table (147ms)
+  -  148 [chromium-admin] › e2e\asan\import-products.spec.ts:347:3 › M3.4 — Asan product import › the normalizer reproduces R1.5's measurement, not just some measurement
+  ✓  149 [chromium-admin] › e2e\asan\import-products.spec.ts:391:3 › M3.4 — Asan product import › the normalizer's folding rules still hold, on constructed input (260ms)
+  ✓  150 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:35:3 › M3.2 — phone normalization is enforced at the database › every format from the research frequency table normalizes to 09XXXXXXXXX (1.3s)
+  ✓  151 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:55:3 › M3.2 — phone normalization is enforced at the database › a landline keeps its area code and is not forced into the mobile shape (279ms)
+  ✓  152 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:60:3 › M3.2 — phone normalization is enforced at the database › an unparseable value is returned untouched rather than rejected (187ms)
+  ✓  153 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:65:3 › M3.2 — phone normalization is enforced at the database › a direct PostgREST INSERT is normalized by the trigger (16ms)
+  ✓  154 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:76:3 › M3.2 — phone normalization is enforced at the database › a direct PostgREST PATCH is normalized too (25ms)
+  ✓  155 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:88:3 › M3.2 — phone normalization is enforced at the database › a collision is queued, both rows survive, and nothing is merged (962ms)
+  ✓  156 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:136:3 › M3.2 — phone normalization is enforced at the database › the three collisions the research predicted are queued (147ms)
+  ✓  157 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:145:3 › M3.2 — phone normalization is enforced at the database › person_identifiers keeps its E.164 contract — this phase did not touch it (146ms)
+  ✓  158 [chromium-admin] › e2e\asan\phone-normalization.spec.ts:153:3 › M3.2 — phone normalization is enforced at the database › a viewer-only account cannot read the collision queue (147ms)
+  ✓  159 [chromium-admin] › e2e\asan\product-asan-code.spec.ts:61:3 › the create form › a product created through the form with an Asan code stores it (2.4s)
+  ✓  160 [chromium-admin] › e2e\asan\product-asan-code.spec.ts:76:3 › the create form › a product created without an Asan code still saves (2.2s)
+  ✓  161 [chromium-admin] › e2e\asan\product-asan-code.spec.ts:92:3 › the edit form › an existing product gets its Asan code set by hand and it survives a round-trip (4.0s)
+  ✓  162 [chromium-admin] › e2e\asan\product-asan-code.spec.ts:118:3 › the rules live in the database, not in the form › a direct PostgREST PATCH is normalised by the trigger (572ms)
+  ✓  163 [chromium-admin] › e2e\asan\product-asan-code.spec.ts:136:3 › the rules live in the database, not in the form › two products cannot claim one Asan code (155ms)
+  ✓  164 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:111:1 › the video requirement is data, not code (402ms)
+  ✓  165 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:135:1 › the bucket already accepts video, so no bucket change was needed (251ms)
+  ✓  166 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:148:1 › delivery_receipts learned a third type, and only a third (123ms)
+  ✓  167 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:159:1 › selling a TV creates the chain and a video task in the sales queue (394ms)
+  ✓  168 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:214:1 › a quote with no TV product creates no video task at all (340ms)
+  ✓  169 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:235:1 › uploading advances the stage and informs the salesperson (437ms)
+  ✓  170 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:286:1 › ⛔ a direct write that skips a stage is refused by the trigger, not just by the RPC (446ms)
+  ✓  171 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:334:1 › double-ticking a stage succeeds without writing a second event (407ms)
+  ✓  172 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:374:1 › the waiting query answers the owner's question in one call (447ms)
+  ✓  173 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:428:1 › the module is seeded for every role and the tables take no direct writes (556ms)
+  ✓  174 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:450:1 › the page keeps the guards and does not run video through the image pipeline (3ms)
+  ✓  175 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:468:1 › the page renders for an admin and writes nothing by being opened (2.1s)
+  ✘  176 [chromium-admin] › e2e\asan\product-video-chain.spec.ts:480:3 › a viewer › a salesperson reaches the page — this queue is theirs (1.2s)
+(node:18056) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  177 [chromium-admin] › e2e\branding\platform-branding.spec.ts:36:3 › branding config › exports canonical myafrakala.ir values (10ms)
+  ✓  178 [chromium-admin] › e2e\branding\platform-branding.spec.ts:43:3 › branding config › getPageTitle avoids duplicated suffix (8ms)
+  ✓  179 [chromium-admin] › e2e\branding\platform-branding.spec.ts:53:3 › branding config › getBrandedFileName prefixes once (4ms)
+  ✓  180 [chromium-admin] › e2e\branding\platform-branding.spec.ts:60:3 › PWA manifest › name and short_name are myafrakala.ir (5ms)
+  ✓  181 [chromium-admin] › e2e\branding\platform-branding.spec.ts:71:3 › static scan — no old chrome literals in branded surfaces › scanned files reject blocked old brand strings (3ms)
+  ✓  182 [chromium-admin] › e2e\branding\platform-branding.spec.ts:82:3 › static scan — no old chrome literals in branded surfaces › branding.ts is the only TS source of the platformName literal among config (2ms)
+  ✓  183 [chromium-admin] › e2e\branding\platform-branding.spec.ts:89:3 › UI chrome on deployed LAN › login shows myafrakala.ir and title uses helper (1.2s)
+  ✓  184 [chromium-admin] › e2e\branding\platform-branding.spec.ts:100:3 › UI chrome on deployed LAN › sidebar brand after auth (1.9s)
+  ✓  185 [chromium-admin] › e2e\branding\platform-branding.spec.ts:108:3 › UI chrome on deployed LAN › mobile header brand fits at 375px (1.1s)
+  ✘  186 [chromium-admin] › e2e\business-flows\211-216-rejected-quote-notification.spec.ts:398:3 › Business flow 211/216 - rejected quote notification lifecycle › real UI rejection reason notification persists, is isolated by recipient, and can be acknowledged (16.1s)
+(node:40244) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+psql:/tmp/afrakala-e2e-6e575d1c-24bf-407b-a61c-70bbc573c88d.sql:120: ERROR:  null value in column "person_id" of relation "customers" violates not-null constraint
+DETAIL:  Failing row contains (71d77ea7-99ae-46a3-a4c7-92e765d65b6f, E2E_AUDIT_212_1786209582110_Sufficient Customer, 09109583599, null, null, null, 2026-08-08 17:19:43.789961+00, 2026-08-08 17:19:43.789961+00, null, E2E_AUDIT_212_1786209582110_sufficient, t, ea9b35dd-fd57-4905-9355-50ca8646d4d1, null, null, null, null, null).
+CONTEXT:  SQL statement "INSERT INTO public.customers (name, phone, responsible_id, is_active, notes)
+  VALUES ('E2E_AUDIT_212_1786209582110_Sufficient Customer', '09109583599', 'ea9b35dd-fd57-4905-9355-50ca8646d4d1'::uuid, true, 'E2E_AUDIT_212_1786209582110_sufficient')
+  RETURNING id"
+PL/pgSQL function inline_code_block line 66 at SQL statement
+  ✘  187 [chromium-admin] › e2e\business-flows\212-quote-credit-guard.spec.ts:607:1 › Requirement 212 credit guard and permitted exceptions are enforced through UI and API (1.9s)
+(node:22208) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+psql:/tmp/afrakala-e2e-d0775ed7-6f96-4a03-a24f-0dec91785abf.sql:9: ERROR:  null value in column "person_id" of relation "customers" violates not-null constraint
+DETAIL:  Failing row contains (692a9b96-e98d-420c-8ad3-a7ce4e062875, E2E_AUDIT_213_1786209584980_ customer, 09900000001, null, null, null, 2026-08-08 17:19:46.888938+00, 2026-08-08 17:19:46.888938+00, null, E2E_AUDIT_213_1786209584980_ main customer, t, ea9b35dd-fd57-4905-9355-50ca8646d4d1, null, null, null, null, null).
+  ✘  188 [chromium-admin] › e2e\business-flows\213-dynamic-customer-credit-scoring.spec.ts:486:1 › Requirement 213 dynamic customer credit scoring and recompute is proven end-to-end (2.3s)
+(node:37392) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  189 [chromium-admin] › e2e\business-flows\214-whatsapp-market-purchase-advisor.spec.ts:35:3 › Requirement 214 - WhatsApp market mirror and purchase advisor context › mirrors WhatsApp top products and uses seller context in purchase advice (2.7m)
+(node:37160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  190 [chromium-admin] › e2e\business-flows\215-quote-inventory-finalization.spec.ts:329:3 › Requirement 215 - business inventory finalization flow › inventory is enforced only at quote acceptance/finalization (49.3s)
+  ✓  191 [chromium-admin] › e2e\capital\no-override.spec.ts:22:3 › D8-1 — the computed capital ceiling is read-only › a direct API UPDATE of final_capital is refused (43ms)
+  ✓  192 [chromium-admin] › e2e\capital\no-override.spec.ts:48:3 › D8-1 — the computed capital ceiling is read-only › the INPUT side is still writable — the lock took nothing away (12ms)
+  ✓  193 [chromium-admin] › e2e\capital\no-override.spec.ts:55:3 › D8-1 — the computed capital ceiling is read-only › anon holds no DML on the capital tables (11ms)
+  ✓  194 [chromium-admin] › e2e\capital\no-override.spec.ts:63:3 › D8-1 — the computed capital ceiling is read-only › the legacy save RPC is gone, not merely stripped of its override argument (25ms)
+  ✓  195 [chromium-admin] › e2e\capital\no-override.spec.ts:78:3 › D8-1 — the computed capital ceiling is read-only › the dynamic path still computes — removing the legacy one took nothing away (26ms)
+  ✓  196 [chromium-admin] › e2e\capital\no-override.spec.ts:87:3 › D8-1 — the computed capital ceiling is read-only › the legacy allocation tables are absent from the API (11ms)
+  ✓  197 [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:57:3 › promotion nomination cluster › nominate then cancel with real sales JWT (78ms)
+  ✓  198 [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:133:3 › inquiries cluster › update_inquiry_status is wired (not missing) (10ms)
+  ✘  199 [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:148:3 › inquiries cluster › tick_inquiries is reachable but blocked by backend ON CONFLICT (12ms)
+(node:15920) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  200 [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:162:3 › gamification league cluster › start_league_season is blocked by validate_league_season (title_fa) (32ms)
+(node:19876) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  201 [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:179:3 › gamification league cluster › get_current_league returns JSON for sales user (11ms)
+  ✓  202 [chromium-admin] › e2e\marketing\recurring-tasks.spec.ts:96:3 › 224 — recurring marketing tasks › the cron endpoint rejects a missing or wrong token (8ms)
+  ✓  203 [chromium-admin] › e2e\marketing\recurring-tasks.spec.ts:109:3 › 224 — recurring marketing tasks › only admin/manager/accountant can define a template (11ms)
+  ✓  204 [chromium-admin] › e2e\marketing\recurring-tasks.spec.ts:132:3 › 224 — recurring marketing tasks › running the job twice for the same day creates exactly one set (45ms)
+  ✓  205 [chromium-admin] › e2e\marketing\recurring-tasks.spec.ts:185:3 › 224 — recurring marketing tasks › a stranger cannot see or tick someone else's task (19ms)
+  ✓  206 [chromium-admin] › e2e\marketing\recurring-tasks.spec.ts:203:3 › 224 — recurring marketing tasks › the rollover back door is closed: due_date cannot be moved (11ms)
+  ✓  207 [chromium-admin] › e2e\marketing\recurring-tasks.spec.ts:216:3 › 224 — recurring marketing tasks › completion reaches the person's score, breakdown and the leaderboard (59ms)
+  ✓  208 [chromium-admin] › e2e\marketing\recurring-tasks.spec.ts:268:3 › 224 — recurring marketing tasks › a completed task cannot be ticked again or reopened (16ms)
+  ✓  209 [chromium-admin] › e2e\marketing\recurring-tasks.spec.ts:287:3 › 224 — recurring marketing tasks › an unfinished task does not roll over: it expires and is not recreated (49ms)
+URL after /persons: http://192.168.170.8:3100/persons
+BODY HEAD: هشدار ایمنی: محیط production روی آدرس تست/محلی اجرا شده است. قبل از ورود اطلاعات واقعی، تنظیمات را بررسی کنید. myafrakala.ir سامانه یکپارچه مدیریت سازمانی جستجوی سریع فروش Ctrl K نیازمند اقدام صف انتشار قیمت نیازمند بررسی خطا 8 کاربران در انتظار تأیید 4 آخرین استفاده‌ها کاربران داشبورد فروش جستجوی سریع فروش مشتریان اشخاص ایمپورت اشخاص اشخاص تکراری پیش‌فاکتورها درخواست‌های رد شدهٔ من ویدئوی محصول ه
+  ✓  210 [chromium-admin] › e2e\persons\_session-probe.spec.ts:11:1 › admin storage state still authenticates (2.2s)
+  ✓  211 [chromium-admin] › e2e\persons\aliases-crud.spec.ts:123:1 › admin CRUD + audit + search integration (705ms)
+  ✓  212 [chromium-admin] › e2e\persons\aliases-crud.spec.ts:196:1 › manager can write; sales/accountant/viewer cannot (193ms)
+  ✓  213 [chromium-admin] › e2e\persons\aliases-crud.spec.ts:243:1 › hidden person aliases invisible; anon blocked (22ms)
+  ✓  214 [chromium-admin] › e2e\persons\aliases-crud.spec.ts:256:1 › whitespace / empty rejected by check (7ms)
+  ✓  215 [chromium-admin] › e2e\persons\aliases-ui.spec.ts:38:1 › admin adds, updates, deletes alias; search tracks changes (13.7s)
+  -  216 [chromium-admin] › e2e\persons\aliases-ui.spec.ts:85:3 › read-only roles › accountant sees aliases read-only
+  ✓  217 [chromium-admin] › e2e\persons\aliases-ui.spec.ts:120:1 › mobile viewport shows alias section (2.1s)
+  ✓  218 [chromium-admin] › e2e\persons\credit-unchanged.spec.ts:16:1 › every customer's credit resolves through their person, one customer per person (259ms)
+  ✓  219 [chromium-admin] › e2e\persons\credit-unchanged.spec.ts:34:1 › the credit tables are fully person-backed with no drift (635ms)
+  ✓  220 [chromium-admin] › e2e\persons\credit-unchanged.spec.ts:54:1 › for 3+ customers the UI credit figure equals the DB function output (4.0s)
+  ✓  221 [chromium-admin] › e2e\persons\credit-unchanged.spec.ts:125:1 › خان محمدی's credit is still exactly what it was before Phase 8 (304ms)
+  ✘  222 [chromium-admin] › e2e\persons\credit-uses-person.spec.ts:21:1 › the credit page shows the same number the DB holds (2.5s)
+(node:39500) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  223 [chromium-admin] › e2e\persons\credit-uses-person.spec.ts:53:1 › credit tables are fully person-backed with zero drift (892ms)
+  ✓  224 [chromium-admin] › e2e\persons\credit-uses-person.spec.ts:84:1 › person_fk_drift_report is empty across all migrated references (145ms)
+  ✓  225 [chromium-admin] › e2e\persons\customer-form-person.spec.ts:35:1 › CustomerForm creates a customer with a person and a context link (2.4s)
+  ✓  226 [chromium-admin] › e2e\persons\duplicate-mobile-blocked.spec.ts:59:1 › a second person cannot take a mobile that already belongs to someone (3.1s)
+  ✓  227 [chromium-admin] › e2e\persons\external-party-person.spec.ts:57:1 › creating an external party through its form also creates a person and a context link (3.3s)
+  ✓  228 [chromium-admin] › e2e\persons\external-party-person.spec.ts:115:1 › external_parties.person_id is NOT NULL and no row escapes it (257ms)
+  ✓  229 [chromium-admin] › e2e\persons\external-party-person.spec.ts:130:1 › the receipt flow can still read external parties (2.3s)
+  ✓  230 [chromium-admin] › e2e\persons\filters-ui.spec.ts:74:1 › context, active, missing filters and clear-all (4.6s)
+  ✓  231 [chromium-admin] › e2e\persons\filters-ui.spec.ts:108:1 › URL state preserved on refresh; مشاهده opens profile (4.0s)
+  ✓  232 [chromium-admin] › e2e\persons\filters-ui.spec.ts:126:1 › mobile viewport shows filter controls (2.0s)
+  ✓  233 [chromium-admin] › e2e\persons\filters-ui.spec.ts:138:3 › viewer privacy on list filters › viewer does not see missing-data filters (1.9s)
+  ✓  234 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:143:3 › search_visible_persons — context filters › customer filter returns customer-linked persons once (29ms)
+  ✓  235 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:151:3 › search_visible_persons — context filters › supplier + customer is OR (29ms)
+  ✓  236 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:157:3 › search_visible_persons — context filters › staff_link and accounting_party and no_context (73ms)
+  ✓  237 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:170:3 › search_visible_persons — context filters › no_context OR customer matches either (46ms)
+  ✓  238 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:178:3 › search_visible_persons — active + missing › active / inactive / all (61ms)
+  ✓  239 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:191:3 › search_visible_persons — active + missing › missing mobile / national_id / asan (76ms)
+  ✓  240 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:212:3 › search_visible_persons — active + missing › combined missing filters are AND (48ms)
+  ✓  241 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:221:3 › search_visible_persons — active + missing › search + context + active + missing (43ms)
+  ✓  242 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:235:3 › search_visible_persons — privacy › hidden executive never appears for sales (82ms)
+  ✓  243 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:249:3 › search_visible_persons — privacy › viewer-only ignores missing filters (no identifier oracle) (237ms)
+  ✓  244 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:278:3 › search_visible_persons — privacy › anonymous cannot execute (7ms)
+  ✓  245 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:283:3 › search_visible_persons — privacy › empty arrays and junk tokens are no-ops / stripped (44ms)
+  ✓  246 [chromium-admin] › e2e\persons\filters-visible-persons.spec.ts:300:3 › search_visible_persons — privacy › admin finds hidden; fixtures stay unique (17ms)
+  ✓  247 [chromium-admin] › e2e\persons\inline-supplier-create.spec.ts:39:1 › inline supplier creation from the purchase form (3.2s)
+  ✓  248 [chromium-admin] › e2e\persons\inline-supplier-create.spec.ts:106:1 › newly created supplier is auto-selected in the purchase form (2.9s)
+  ✓  249 [chromium-admin] › e2e\persons\merge-ui-guard.spec.ts:56:1 › a both-have-customer pair is warned about and cannot be merged from the UI (2.0s)
+  ✓  250 [chromium-admin] › e2e\persons\merge-ui-guard.spec.ts:77:1 › calling person_merge directly for that pair still raises (996ms)
+  ✓  251 [chromium-admin] › e2e\persons\merge-ui.spec.ts:62:1 › the merge page reviews a pending pair and merges it (3.3s)
+  ✓  252 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:61:5 › mobile 320x568 › /persons list (1.9s)
+  ✓  253 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:70:5 › mobile 320x568 › /persons/$id profile (2.1s)
+  ✓  254 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:77:5 › mobile 320x568 › /persons/$id/edit (2.0s)
+  ✓  255 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:84:5 › mobile 320x568 › /persons/merge (1.8s)
+  ✓  256 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:91:5 › mobile 320x568 › /admin/phone-collisions (1.9s)
+  ✓  257 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:101:5 › mobile 320x568 › /persons/import (1.9s)
+  ✓  258 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:108:5 › mobile 320x568 › /admin/asan-import (1.8s)
+  ✓  259 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:61:5 › mobile 375x667 › /persons list (2.1s)
+  ✓  260 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:70:5 › mobile 375x667 › /persons/$id profile (2.1s)
+  ✓  261 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:77:5 › mobile 375x667 › /persons/$id/edit (2.0s)
+  ✓  262 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:84:5 › mobile 375x667 › /persons/merge (1.8s)
+  ✓  263 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:91:5 › mobile 375x667 › /admin/phone-collisions (2.0s)
+  ✓  264 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:101:5 › mobile 375x667 › /persons/import (2.0s)
+  ✓  265 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:108:5 › mobile 375x667 › /admin/asan-import (1.9s)
+  ✓  266 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:61:5 › mobile 390x844 › /persons list (1.9s)
+  ✓  267 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:70:5 › mobile 390x844 › /persons/$id profile (2.2s)
+  ✓  268 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:77:5 › mobile 390x844 › /persons/$id/edit (2.0s)
+  ✓  269 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:84:5 › mobile 390x844 › /persons/merge (2.1s)
+  ✓  270 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:91:5 › mobile 390x844 › /admin/phone-collisions (1.9s)
+  ✓  271 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:101:5 › mobile 390x844 › /persons/import (1.9s)
+  ✓  272 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:108:5 › mobile 390x844 › /admin/asan-import (1.9s)
+  ✓  273 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:61:5 › mobile 430x932 › /persons list (2.0s)
+  ✓  274 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:70:5 › mobile 430x932 › /persons/$id profile (2.2s)
+  ✓  275 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:77:5 › mobile 430x932 › /persons/$id/edit (2.3s)
+  ✓  276 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:84:5 › mobile 430x932 › /persons/merge (2.1s)
+  ✓  277 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:91:5 › mobile 430x932 › /admin/phone-collisions (1.9s)
+  ✓  278 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:101:5 › mobile 430x932 › /persons/import (2.0s)
+  ✓  279 [chromium-admin] › e2e\persons\mobile-rtl-qa.spec.ts:108:5 › mobile 430x932 › /admin/asan-import (2.1s)
+  ✓  280 [chromium-admin] › e2e\persons\one-person-one-customer.spec.ts:56:1 › the unique constraint exists and is the mechanism that enforces Decision 1 (308ms)
+  ✓  281 [chromium-admin] › e2e\persons\one-person-one-customer.spec.ts:73:1 › a second customer for the same person is rejected (677ms)
+  ✓  282 [chromium-admin] › e2e\persons\one-person-one-customer.spec.ts:111:1 › the customers list still renders that person's single customer (2.0s)
+  ✓  283 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:129:3 › API — persons SELECT matrix › admin sees owned + hidden; sales sees owned not hidden; anon empty (24ms)
+  ✓  284 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:150:3 › API — persons SELECT matrix › existence-leak: hidden vs fake equivalent for sales (14ms)
+  ✓  285 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:161:3 › API — search / filters / aliases / collisions / merge › search by name/alias/mobile for admin; sales no hidden mobile leak (107ms)
+  ✓  286 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:181:3 › API — search / filters / aliases / collisions / merge › alias write: admin ok; sales denied (7ms)
+  ✓  287 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:200:3 › API — search / filters / aliases / collisions / merge › merge candidates + phone_collisions role gates (21ms)
+  ✓  288 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:225:3 › API — search / filters / aliases / collisions / merge › audit_logs: sales empty (592ms)
+  ✓  289 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:232:3 › UI — route access matrix (admin default storage) › admin can open persons list/profile/edit/merge/import/phone-collisions/asan-import (12.9s)
+  ✓  290 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:255:3 › UI — accountant › accountant: list+profile ok; edit/merge/phone-collisions denied; asan-import ok (10.2s)
+  ✓  291 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:290:3 › UI — sales › sales: list/profile according to RLS; privileged routes denied (6.7s)
+  ✓  292 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:321:3 › UI — viewer › viewer: profile read-only; no privileged queues (3.4s)
+  ✓  293 [chromium-admin] › e2e\persons\permission-matrix.spec.ts:346:3 › optional roles present › purchase_specialist / site JWT smoke when available (16ms)
+  ✓  294 [chromium-admin] › e2e\persons\person-create-normalize.spec.ts:54:1 › create a person, add an identifier, and see it normalized by the database (3.3s)
+  ✓  295 [chromium-admin] › e2e\persons\person-create-with-identifier.spec.ts:37:1 › create a person and its identifier in a single submit (2.7s)
+  ✓  296 [chromium-admin] › e2e\persons\person-edit.spec.ts:9:1 › person edit page shows core fields and the identifier section (2.9s)
+  ✓  297 [chromium-admin] › e2e\persons\person-edit.spec.ts:52:1 › existing identifiers are stored in normalized form (2.3s)
+  ✘  298 [chromium-admin] › e2e\persons\person-profile.spec.ts:24:3 › person profile — admin › admin opens the read-only profile from the list (2.9s)
+(node:34904) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  299 [chromium-admin] › e2e\persons\person-profile.spec.ts:46:3 › person profile — admin › admin edit CTA opens the existing edit route (3.0s)
+  ✓  300 [chromium-admin] › e2e\persons\person-profile.spec.ts:62:3 › person profile — accountant (view, no update) › accountant opens profile without unauthorized redirect (2.7s)
+  ✓  301 [chromium-admin] › e2e\persons\person-profile.spec.ts:78:3 › person profile — sales › salesperson opens a visible person profile (1.7s)
+  -  302 [chromium-admin] › e2e\persons\person-profile.spec.ts:94:3 › person profile — sales › salesperson cannot open a restricted_executive person via profile URL
+  ✓  303 [chromium-admin] › e2e\persons\person-profile.spec.ts:118:3 › person profile — viewer via login › viewer opens a visible person without unauthorized redirect (2.3s)
+  ✓  304 [chromium-admin] › e2e\persons\person-profile.spec.ts:144:1 › list shows مشاهده for everyone and ویرایش only for managers (2.5s)
+  ✓  305 [chromium-admin] › e2e\persons\phone-collisions-ui.spec.ts:119:3 › phone-collisions — admin browser › admin opens queue, sees fixtures, no merge action, can resolve (4.1s)
+  ✓  306 [chromium-admin] › e2e\persons\phone-collisions-ui.spec.ts:161:3 › phone-collisions — admin browser › admin can ignore a pending collision (4.5s)
+  ✓  307 [chromium-admin] › e2e\persons\phone-collisions-ui.spec.ts:184:3 › phone-collisions — denied roles (browser) › accountant UI denied even if RLS SELECT exists (2.2s)
+  ✓  308 [chromium-admin] › e2e\persons\phone-collisions-ui.spec.ts:195:3 › phone-collisions — sales denied › sales cannot open queue (1.4s)
+  ✓  309 [chromium-admin] › e2e\persons\phone-collisions-ui.spec.ts:205:3 › phone-collisions — viewer denied › viewer cannot open queue (2.0s)
+  ✓  310 [chromium-admin] › e2e\persons\phone-collisions-ui.spec.ts:216:3 › phone-collisions — anonymous denied › anonymous bounced to login (1.0s)
+  ✓  311 [chromium-admin] › e2e\persons\phone-collisions-ui.spec.ts:224:3 › phone-collisions — JWT permissions › admin/manager can SELECT; sales/viewer cannot; accountant may SELECT (283ms)
+  -  312 [chromium-admin] › e2e\persons\phone-collisions-ui.spec.ts:266:3 › phone-collisions — JWT permissions › manager browser path when login available
+  ✓  313 [chromium-admin] › e2e\persons\product-supplier-person.spec.ts:9:1 › a product's supplier links through to the unified person (2.8s)
+  ✓  314 [chromium-admin] › e2e\persons\product-supplier-person.spec.ts:38:1 › product_suppliers is fully person-backed (257ms)
+  ✓  315 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:126:1 › redaction helper never echoes identifier values (4ms)
+  ✓  316 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:143:3 › JWT matrix — person visibility › admin can read host person (10ms)
+  ✓  317 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:152:3 › JWT matrix — person visibility › sales can read internal_general host (17ms)
+  ✓  318 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:167:3 › JWT matrix — person visibility › anonymous blocked on persons (8ms)
+  ✓  319 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:179:3 › JWT matrix — deep-link targets › admin sees customer/supplier/external targets (22ms)
+  ✓  320 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:194:3 › JWT matrix — deep-link targets › broken customer ref returns empty (no existence leak shape) (8ms)
+  ✓  321 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:205:3 › JWT matrix — merge / collision / audit / identifiers › admin/manager see pending merge; sales does not (24ms)
+  ✓  322 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:227:3 › JWT matrix — merge / collision / audit / identifiers › admin/accountant see collision; viewer does not (22ms)
+  ✓  323 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:248:3 › JWT matrix — merge / collision / audit / identifiers › audit_logs: admin can read; sales cannot; UI gate remains admin-only (34ms)
+  ✓  324 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:264:3 › JWT matrix — merge / collision / audit / identifiers › viewer-only cannot read identifiers (9ms)
+  ✓  325 [chromium-admin] › e2e\persons\profile-dossier-jwt.spec.ts:273:3 › JWT matrix — merge / collision / audit / identifiers › no service-role behavior from anon key alone (8ms)
+  ✓  326 [chromium-admin] › e2e\persons\profile-dossier-ui.spec.ts:100:3 › admin dossier › admin sees all sections, deep links, merge, collision, redacted audit (11.8s)
+  ✓  327 [chromium-admin] › e2e\persons\profile-dossier-ui.spec.ts:170:3 › accountant dossier › accountant sees profile; no edit; no merge review (2.6s)
+  ✓  328 [chromium-admin] › e2e\persons\profile-dossier-ui.spec.ts:185:3 › sales dossier › sales sees dossier without privileged merge/audit (1.6s)
+  ✓  329 [chromium-admin] › e2e\persons\profile-dossier-ui.spec.ts:202:3 › viewer dossier › viewer: no write controls, identifier privacy copy (2.2s)
+  ✓  330 [chromium-admin] › e2e\persons\profile-dossier-ui.spec.ts:231:3 › mobile dossier › 375px stacks without horizontal overflow (2.2s)
+  ✓  331 [chromium-admin] › e2e\persons\profile-dossier-ui.spec.ts:242:3 › mobile dossier › 320px usable (2.4s)
+  ✓  332 [chromium-admin] › e2e\persons\purchase-price-person.spec.ts:16:1 › every purchase price with a supplier resolves to that supplier's person (415ms)
+  ✓  333 [chromium-admin] › e2e\persons\purchase-price-person.spec.ts:39:1 › the consistency guard rejects a person without a supplier (181ms)
+  ✓  334 [chromium-admin] › e2e\persons\purchase-price-person.spec.ts:49:1 › external parties and their receipts are person-backed (332ms)
+  ✓  335 [chromium-admin] › e2e\persons\quote-customer-link.spec.ts:18:1 › quote detail links the customer to their unified person record (2.7s)
+  ✘  336 [chromium-admin] › e2e\persons\quote-customer-link.spec.ts:52:1 › a quote with no customer shows a plain name, not a broken link (13.0s)
+(node:30548) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  337 [chromium-admin] › e2e\persons\quote-list-link.spec.ts:9:1 › clicking a quote number in the list opens its detail page (2.4s)
+  ✘  338 [chromium-admin] › e2e\persons\quote-list-link.spec.ts:33:1 › the customer on that detail page links to their person record (2.8s)
+(node:7660) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  339 [chromium-admin] › e2e\persons\receipt-person-link.spec.ts:11:1 › receipt detail links the paying customer to their person record (2.7s)
+  ✓  340 [chromium-admin] › e2e\persons\receipt-person-link.spec.ts:35:1 › every receipt's person matches the person of its legacy customer (177ms)
+  ✓  341 [chromium-admin] › e2e\persons\search-ui.spec.ts:57:1 › list search finds by name, alias, mobile, and Asan code (7.5s)
+  ✓  342 [chromium-admin] › e2e\persons\search-ui.spec.ts:64:1 › clear restores the directory and مشاهده opens the profile (2.6s)
+  ✓  343 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:132:3 › search_visible_persons — salesperson › finds owned person A by every searchable field (280ms)
+  ✓  344 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:149:3 › search_visible_persons — salesperson › hidden person B is invisible by every field — same shape as a miss (148ms)
+  ✓  345 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:165:3 › search_visible_persons — salesperson › one person returned once when alias and name both match (19ms)
+  ✓  346 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:175:3 › search_visible_persons — admin / viewer / anon › admin finds both A and B (31ms)
+  ✓  347 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:182:3 › search_visible_persons — admin / viewer / anon › viewer-only account can name-search but not by mobile (281) (204ms)
+  ✓  348 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:205:3 › search_visible_persons — admin / viewer / anon › anonymous cannot execute the RPC (8ms)
+  ✓  349 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:213:3 › search_visible_persons — functional guards › wildcard characters do not broaden the match (20ms)
+  ✓  350 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:221:3 › search_visible_persons — functional guards › empty query returns a paginated visible directory (17ms)
+  ✓  351 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:229:3 › search_visible_persons — functional guards › limit is capped at 100 (20ms)
+  ✓  352 [chromium-admin] › e2e\persons\search-visible-persons.spec.ts:235:3 › search_visible_persons — functional guards › apostrophe in query does not error (18ms)
+  ✓  353 [chromium-admin] › e2e\persons\supplier-form-person.spec.ts:42:1 › SupplierForm creates a supplier with a person and a context link (2.7s)
+  ✓  354 [chromium-admin] › e2e\products\torob-url-and-excel.spec.ts:75:3 › PostgREST + CHECK (migration 301) › create product with valid https torob_url (161ms)
+  ✓  355 [chromium-admin] › e2e\products\torob-url-and-excel.spec.ts:92:3 › PostgREST + CHECK (migration 301) › edit torob_url to http then clear to NULL (323ms)
+  ✓  356 [chromium-admin] › e2e\products\torob-url-and-excel.spec.ts:124:3 › PostgREST + CHECK (migration 301) › reject invalid torob_url values (177ms)
+  ✓  357 [chromium-admin] › e2e\products\torob-url-and-excel.spec.ts:150:3 › zod + Excel helper (no deploy required) › schema accepts http/https and empty; rejects ftp/plain (10ms)
+  ✓  358 [chromium-admin] › e2e\products\torob-url-and-excel.spec.ts:167:3 › zod + Excel helper (no deploy required) › Excel columns/order include لینک ترب; writeFile is the only side effect (807ms)
+  ✓  359 [chromium-admin] › e2e\products\torob-url-and-excel.spec.ts:225:3 › zod + Excel helper (no deploy required) › export cap constant is 5000 and used on the list route (5ms)
+  ✓  360 [chromium-admin] › e2e\products\torob-url-and-excel.spec.ts:235:3 › UI on deployed /products (needs rebuilt web) › detail shows Torob link; list has Excel; download respects filters; no mutation (9.4s)
+  ✓  361 [chromium-admin] › e2e\products\tv-packaging-mandatory.spec.ts:41:3 › 223 — mandatory television packaging › the rule is configured against a stable category identifier (14ms)
+  -  362 [chromium-admin] › e2e\products\tv-packaging-mandatory.spec.ts:55:3 › 223 — mandatory television packaging › adding a television to a proforma attaches the packaging service automatically
+  -  363 [chromium-admin] › e2e\products\tv-packaging-mandatory.spec.ts:134:3 › 223 — mandatory television packaging › the mandatory service cannot be deleted through the API
+  -  364 [chromium-admin] › e2e\products\tv-packaging-mandatory.spec.ts:162:3 › 223 — mandatory television packaging › it cannot be quietly downgraded to optional either
+  ✓  365 [chromium-admin] › e2e\products\tv-packaging-mandatory.spec.ts:187:3 › 223 — mandatory television packaging › an anonymous caller cannot read the services table (7ms)
+  ✓  366 [chromium-admin] › e2e\purchase\c1-foundation.spec.ts:20:1 › E2E-1 /purchases/create still registers a purchase with its side effects (4.6s)
+  ✓  367 [chromium-admin] › e2e\purchase\c1-foundation.spec.ts:89:1 › E2E-2 purchase request space renders and still uses the old status dialog (2.5s)
+  ✓  368 [chromium-admin] › e2e\purchase\c1-foundation.spec.ts:108:1 › E2E-2b non-purchase transitions still open the old confirm dialog (3.2s)
+  ✓  369 [chromium-admin] › e2e\purchase\c1-foundation.spec.ts:137:1 › E2E-3 the new objects are not reachable from the client (2.4s)
+  ✓  370 [chromium-admin] › e2e\purchase\c1-foundation.spec.ts:169:1 › E2E-4 the legacy-flagged request renders without fabricated numbers (2.6s)
+  ✓  371 [chromium-admin] › e2e\purchase\c1-foundation.spec.ts:194:3 › E2E-5 mobile smoke at 360px (3.8s)
+  ✓  372 [chromium-admin] › e2e\purchase\c1-foundation.spec.ts:194:3 › E2E-5 mobile smoke at 390px (4.2s)
+  ✓  373 [chromium-admin] › e2e\purchase\c1-foundation.spec.ts:194:3 › E2E-5 mobile smoke at 430px (3.9s)
+  ✓  374 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:46:1 › E2E-1 the page registers a purchase through the central RPC (5.7s)
+  ✓  375 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:111:1 › E2E-2 a server-rejected submit creates nothing and preserves the form (4.3s)
+  ✓  376 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:151:1 › E2E-3 double submit creates exactly one purchase and one stock movement (6.4s)
+  ✓  377 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:197:1 › E2E-4 network failure then retry reuses the key and creates one purchase (4.4s)
+  ✓  378 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:241:1 › E2E-5 reusing the browser's key with a different payload is refused (4.3s)
+  ✓  379 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:293:1 › E2E-7 non-purchase transitions still use the status dialog (2.9s)
+  ✓  380 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:316:3 › E2E-8 mobile smoke at 360px (2.0s)
+  ✓  381 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:316:3 › E2E-8 mobile smoke at 390px (2.0s)
+  ✓  382 [chromium-admin] › e2e\purchase\c2-central-rpc.spec.ts:316:3 › E2E-8 mobile smoke at 430px (2.1s)
+  ✓  383 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:105:1 › E2E-1 «خرید انجام شد» opens the purchase form (5.2s)
+  ✓  384 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:126:1 › E2E-2 the form is prefilled from the request and the product is locked (5.2s)
+  ✓  385 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:148:1 › E2E-3 a partial purchase yields partially_purchased (7.7s)
+  ✓  386 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:187:1 › E2E-4 a second purchase completes a partially supplied request (13.5s)
+  ✓  387 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:227:1 › E2E-5 the card shows the registered purchase (8.7s)
+  ✓  388 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:254:1 › E2E-6 double submit registers exactly one purchase (8.7s)
+  ✓  389 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:307:1 › E2E-7 an over-allocated purchase is refused without side effects (7.3s)
+  ✓  390 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:355:1 › E2E-8 a cancelled request is refused by the server (6.8s)
+  ✓  391 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:386:1 › E2E-9 the standalone purchase page is unaffected (3.6s)
+  ✓  392 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:415:3 › E2E-10 the drawer is usable at 360px (3.9s)
+  ✓  393 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:415:3 › E2E-10 the drawer is usable at 390px (4.1s)
+  ✓  394 [chromium-admin] › e2e\purchase\c3-request-purchase.spec.ts:415:3 › E2E-10 the drawer is usable at 430px (3.9s)
+  ✓  395 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:110:1 › E2E-1 a new request goes to the configured default assignee (6.0s)
+  ✓  396 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:141:1 › E2E-2 with no default and no specialist the request is unassigned (6.1s)
+  ✓  397 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:182:1 › E2E-3 an ownerless request is labelled on the card (6.9s)
+  ✓  398 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:197:1 › E2E-4 a manager can assign an ownerless request (8.4s)
+  ✓  399 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:242:1 › E2E-5 the dialog offers only active users with a purchase role (7.4s)
+  ✓  400 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:281:1 › E2E-6 a tampered assignee is rejected by the backend (8.9s)
+  ✓  401 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:334:1 › E2E-7 a conflict response keeps the dialog open and explains itself (9.4s)
+  ✓  402 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:412:1 › E2E-8 a manager can remove the assignee (10.3s)
+  ✓  403 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:453:1 › E2E-9 the unassigned filter shows only ownerless requests (14.6s)
+  ✓  404 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:477:1 › E2E-10 changing the default leaves existing requests alone (11.9s)
+  ✓  405 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:504:1 › E2E-11 an unusable default does not break request creation (7.9s)
+  ✓  406 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:547:1 › E2E-12 the assignment controls are admin/manager only (7.8s)
+  ✓  407 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:573:1 › E2E-13 a purchase can still be registered against an assigned request (12.6s)
+  ✓  408 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:621:3 › E2E-14 the assign dialog is usable at 320px (8.8s)
+  ✓  409 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:621:3 › E2E-14 the assign dialog is usable at 360px (8.4s)
+  ✓  410 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:621:3 › E2E-14 the assign dialog is usable at 390px (8.6s)
+  ✓  411 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:621:3 › E2E-14 the assign dialog is usable at 430px (8.6s)
+  ✓  412 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:621:3 › E2E-14 the assign dialog is usable at 768px (8.2s)
+  ✓  413 [chromium-admin] › e2e\purchase\c4-assignment.spec.ts:660:1 › E2E-15 the default assignee setting is restored (3.3s)
+  ✓  414 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:49:1 › E2E-1 approving a request offers the purchase form, never a price dialog (8.2s)
+  ✓  415 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:89:1 › E2E-2 the RPC refuses a manual purchased and changes nothing (6.7s)
+  -  416 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:140:1 › E2E-3 the legacy request offers no action at all
+  ✓  417 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:172:1 › E2E-4 an admin can still register a standalone purchase (4.4s)
+  ✓  418 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:196:1 › E2E-5 role_permissions advertises only what the backend honours (500ms)
+  ✓  419 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:224:1 › E2E-6 anon can neither execute the RPCs nor read the tables (1.2s)
+  ✓  420 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:253:1 › E2E-7 authenticated cannot insert purchases or lines directly (168ms)
+  ✓  421 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:278:1 › E2E-8 the trigger blocks a hand-written purchased status (307ms)
+  ✓  422 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:307:1 › E2E-9 a purchased request can still be delivered (12.8s)
+  ✓  423 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:386:3 › E2E-10 the purchase space has no overflow at 320px (2.2s)
+  ✓  424 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:386:3 › E2E-10 the purchase space has no overflow at 360px (2.0s)
+  ✓  425 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:386:3 › E2E-10 the purchase space has no overflow at 390px (2.2s)
+  ✓  426 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:386:3 › E2E-10 the purchase space has no overflow at 430px (2.3s)
+  ✓  427 [chromium-admin] › e2e\purchase\c5-permissions.spec.ts:386:3 › E2E-10 the purchase space has no overflow at 768px (2.5s)
+  ✓  428 [chromium-admin] › e2e\purchase\c5-role-review.spec.ts:26:1 › R0 the session fixtures are the pure roles this review assumes (281ms)
+REVIEW sales-purchases-create-url=http://192.168.170.8:3100/purchases/create
+REVIEW sales-form-rendered=true
+  ✓  429 [chromium-admin] › e2e\purchase\c5-role-review.spec.ts:45:3 › sales › R1 sales cannot create a purchase, and the form cannot be submitted (5.4s)
+  ✓  430 [chromium-admin] › e2e\purchase\c5-role-review.spec.ts:85:3 › sales › R2 the request space works, with no purchase action and no money (1.6s)
+  ✓  431 [chromium-admin] › e2e\purchase\c5-role-review.spec.ts:104:3 › sales › R3 the summary the server sends carries no financial key (1.6s)
+REVIEW purchase-panel-menu-visible-to-sales=true
+REVIEW purchases-route-url=open
+  ✓  432 [chromium-admin] › e2e\purchase\c5-role-review.spec.ts:129:3 › sales › R4 the purchase panel menu entry — recorded, not assumed (2.7s)
+REVIEW accountant-purchases-create-url=http://192.168.170.8:3100/purchases/create
+  ✓  433 [chromium-admin] › e2e\purchase\c5-role-review.spec.ts:158:3 › accountant › R5 an accountant cannot create a purchase either (5.9s)
+  ✓  434 [chromium-admin] › e2e\purchase\c5-role-review.spec.ts:170:3 › accountant › R6 an accountant has no assignment control (2.3s)
+REVIEW anon /purchase -> http://192.168.170.8:3100/purchase
+REVIEW anon /purchases -> http://192.168.170.8:3100/purchases
+REVIEW anon /purchases/create -> http://192.168.170.8:3100/purchases/create
+  ✓  435 [chromium-admin] › e2e\purchase\c5-role-review.spec.ts:186:3 › anonymous › R7 an anonymous visitor cannot reach the data (8.4s)
+  ✓  436 [chromium-admin] › e2e\requirements\211.spec.ts:9:3 › Requirement 211 - quote rejection reason visibility › rejection-related pages are reachable and expose salesperson-facing surfaces (2.2s)
+  ✓  437 [chromium-admin] › e2e\requirements\212.spec.ts:10:3 › Requirement 212 - quote credit, commitment, and stock guards › quote creation page exposes guardable fields and backend RPC signature is deployed (1.6s)
+  ✓  438 [chromium-admin] › e2e\requirements\212.spec.ts:31:3 › Requirement 212 - quote credit, commitment, and stock guards › stock and exception persistence columns exist (457ms)
+  ✓  439 [chromium-admin] › e2e\requirements\213.spec.ts:10:3 › Requirement 213 - dynamic customer credit scoring › credit scoring rule and dynamic capital pages are reachable (1.7s)
+  ✓  440 [chromium-admin] › e2e\requirements\213.spec.ts:21:3 › Requirement 213 - dynamic customer credit scoring › scoring RPCs and active parameter weights exist (601ms)
+  ✓  441 [chromium-admin] › e2e\requirements\214-1.spec.ts:9:3 › Requirement 214.1 - purchase advisor uses WhatsApp seller context › purchase advisor page renders product, quantity, urgency and AI action (1.2s)
+  ✓  442 [chromium-admin] › e2e\requirements\214-1.spec.ts:20:3 › Requirement 214.1 - purchase advisor uses WhatsApp seller context › seller endpoint returns source sellers for the top WhatsApp product (719ms)
+  ✓  443 [chromium-admin] › e2e\requirements\214.spec.ts:9:3 › Requirement 214 - WhatsApp top products mirror › source reporting page and destination market card both render (2.0s)
+  ✓  444 [chromium-admin] › e2e\requirements\214.spec.ts:24:3 › Requirement 214 - WhatsApp top products mirror › WhatsApp API returns real top-products data (716ms)
+  ✓  445 [chromium-admin] › e2e\requirements\215.spec.ts:12:3 › Requirement 215 - quote stock rule at creation vs finalization › quote creation UI is reachable without forcing a stock decision up front (1.4s)
+  ✓  446 [chromium-admin] › e2e\requirements\215.spec.ts:24:3 › Requirement 215 - quote stock rule at creation vs finalization › backend does not block stock during create, but blocks insufficient stock on finalization (790ms)
+  ✓  447 [chromium-admin] › e2e\requirements\215.spec.ts:56:3 › Requirement 215 - quote stock rule at creation vs finalization › quote detail source defines finalization stock preview messages (302ms)
+  ✓  448 [chromium-admin] › e2e\requirements\215.spec.ts:67:3 › Requirement 215 - quote stock rule at creation vs finalization › real UI allows above-stock quote creation and blocks finalization with exact shortage details (10.4s)
+  ✓  449 [chromium-admin] › e2e\requirements\216.spec.ts:10:3 › Requirement 216 - notification queue type check regression › notification UI is reachable and queue supports quote rejection (1.1s)
+  ✓  450 [chromium-admin] › e2e\requirements\217-1.spec.ts:10:3 › Requirement 217.1 - visitor selection on quotes › quote creation page can render the visitor picker when visitors exist (1.4s)
+  ✓  451 [chromium-admin] › e2e\requirements\217-1.spec.ts:23:3 › Requirement 217.1 - visitor selection on quotes › sales quote backend has independent salesperson and visitor fields (459ms)
+  ✓  452 [chromium-admin] › e2e\requirements\217.spec.ts:10:3 › Requirement 217 - visitor management › admin visitor management page renders list and create affordance (954ms)
+  ✓  453 [chromium-admin] › e2e\requirements\217.spec.ts:19:3 › Requirement 217 - visitor management › visitor table and active visitor fixture exist (510ms)
+  ✓  454 [chromium-admin] › e2e\requirements\218.spec.ts:10:3 › Requirement 218 - mobile-bank screenshot receipt marker › receipt creation form exposes mobile-bank screenshot option (1.3s)
+  ✓  455 [chromium-admin] › e2e\requirements\218.spec.ts:19:3 › Requirement 218 - mobile-bank screenshot receipt marker › receipt table, detail and export mapping can persist the marker (428ms)
+  ✓  456 [chromium-admin] › e2e\scoring\manual-score-preview.spec.ts:25:3 › D8-5 — manual score preview equals the stored result › preview projects the same total the calculator would store (30ms)
+  ✓  457 [chromium-admin] › e2e\scoring\manual-score-preview.spec.ts:68:3 › D8-5 — manual score preview equals the stored result › a malformed manual adjustment is rejected (15ms)
+  ✓  458 [chromium-admin] › e2e\scoring\threshold-levels.spec.ts:27:3 › D8-4 — versioned score bands › exactly four bands, contiguous and non-overlapping (11ms)
+  ✓  459 [chromium-admin] › e2e\scoring\threshold-levels.spec.ts:41:3 › D8-4 — versioned score bands › each band returns its Persian label at the boundary and inside (32ms)
+  ✓  460 [chromium-admin] › e2e\scoring\threshold-levels.spec.ts:59:3 › D8-4 — versioned score bands › boundaries land in exactly one band — no gap, no overlap (38ms)
+  ✓  461 [chromium-admin] › e2e\scoring\threshold-levels.spec.ts:79:3 › D8-4 — versioned score bands › an overlapping band cannot be inserted (18ms)
+  ✓  462 [chromium-admin] › e2e\scoring\threshold-levels.spec.ts:104:3 › D8-4 — versioned score bands › history is stable: a stored label is not recomputed by the client (21ms)
+  ✓  463 [chromium-admin] › e2e\security\emergency-admin-dormant.spec.ts:24:3 › M1.6 — the emergency admin is dormant › the account exists but its profile is inactive (139ms)
+  ✓  464 [chromium-admin] › e2e\security\emergency-admin-dormant.spec.ts:34:3 › M1.6 — the emergency admin is dormant › the app refuses any profile that is not active (2ms)
+  ✓  465 [chromium-admin] › e2e\security\emergency-admin-dormant.spec.ts:44:3 › M1.6 — the emergency admin is dormant › the e2e harness no longer depends on the emergency account (151ms)
+  ✓  466 [chromium-admin] › e2e\security\emergency-admin-dormant.spec.ts:65:3 › M1.6 — the emergency admin is dormant › the replacement harness admin is active and really is an admin (130ms)
+  ✓  467 [chromium-admin] › e2e\security\persons-rls-ownership.spec.ts:29:3 › persons RLS is ownership-aware › a salesperson sees strictly fewer persons than an admin (24ms)
+  ✓  468 [chromium-admin] › e2e\security\persons-rls-ownership.spec.ts:40:3 › persons RLS is ownership-aware › identifiers of an unowned customer's person are not readable (24ms)
+  ✓  469 [chromium-admin] › e2e\security\persons-rls-ownership.spec.ts:68:3 › persons RLS is ownership-aware › the salesperson is not blinded: owned/unassigned persons stay visible (13ms)
+  ✓  470 [chromium-admin] › e2e\security\persons-rls-ownership.spec.ts:75:3 › persons RLS is ownership-aware › an anonymous caller reads no persons at all (7ms)
+  ✓  471 [chromium-admin] › e2e\security\persons-rls-ownership.spec.ts:81:3 › persons RLS is ownership-aware › INSERT ... RETURNING still works (the 265 regression) (11ms)
+  ✓  472 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:117:3 › M1.3 — the viewer role is restricted at the database › the account under test really is viewer-only (7ms)
+  ✓  473 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from person_identifiers (8ms)
+  ✓  474 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from customers (11ms)
+  ✓  475 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from suppliers (8ms)
+  ✓  476 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from visitors (8ms)
+  ✓  477 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from sales_quotes (9ms)
+  ✓  478 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from sales_quote_items (10ms)
+  ✓  479 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from payment_receipts (8ms)
+  ✓  480 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from payment_receipt_links (7ms)
+  ✓  481 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from journal_entries (7ms)
+  ✓  482 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from journal_lines (8ms)
+  ✓  483 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from bank_accounts (9ms)
+  ✓  484 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from customer_credit_balance (8ms)
+  ✓  485 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from customer_credit_ledger (10ms)
+  ✓  486 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from daily_capital_settings (9ms)
+  ✓  487 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from salesperson_capital_allocations_dynamic (10ms)
+  ✓  488 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from purchase_prices (48ms)
+  ✓  489 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from purchases (11ms)
+  ✓  490 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from product_computed_prices (35ms)
+  ✓  491 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from pricing_rules (9ms)
+  ✓  492 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from shop_settings (7ms)
+  ✓  493 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from audit_logs (470ms)
+  ✓  494 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from bot_api_keys (11ms)
+  ✓  495 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from user_roles (12ms)
+  ✓  496 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:128:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from role_permissions (15ms)
+  ✓  497 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:134:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from view vw_account_balances (9ms)
+  ✓  498 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:134:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from view v_dynamic_salesperson_capital_balances (11ms)
+  ✓  499 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:134:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from view v_dynamic_customer_capital_balances (20ms)
+  ✓  500 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:134:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from view v_promotion_suggestions (14ms)
+  ✓  501 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:134:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from view product_computed_prices_public (7ms)
+  ✓  502 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:134:5 › M1.3 — the viewer role is restricted at the database › viewer gets zero rows from view publish_recipients_view (9ms)
+  ✓  503 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:139:3 › M1.3 — the viewer role is restricted at the database › no sensitive column reaches the viewer through an embed (15ms)
+  ✓  504 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:153:5 › M1.3 — the viewer role is restricted at the database › viewer still reads persons (12ms)
+  ✓  505 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:153:5 › M1.3 — the viewer role is restricted at the database › viewer still reads brands (10ms)
+  ✓  506 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:153:5 › M1.3 — the viewer role is restricted at the database › viewer still reads product_labels (8ms)
+  ✓  507 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:153:5 › M1.3 — the viewer role is restricted at the database › viewer still reads knowledge_documents (13ms)
+  ✓  508 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:159:3 › M1.3 — the viewer role is restricted at the database › aggregate statistics still resolve for a viewer (469ms)
+  ✓  509 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:165:3 › M1.3 — the viewer role is restricted at the database › a salesperson is unaffected (38ms)
+  ✓  510 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:173:3 › M1.3 — the viewer role is restricted at the database › the viewer cannot write either (13ms)
+  ✓  511 [chromium-admin] › e2e\security\viewer-restrictions.spec.ts:187:3 › M1.3 — the viewer role is restricted at the database › every table in public has row level security enabled (129ms)
+  ✓  512 [chromium-admin] › e2e\updates\platform-releases-jwt.spec.ts:91:3 › format helpers › Jalali + Tehran display and title helper (26ms)
+  ✓  513 [chromium-admin] › e2e\updates\platform-releases-jwt.spec.ts:103:3 › RLS published vs draft › seeded published releases visible to authenticated roles (33ms)
+  ✓  514 [chromium-admin] › e2e\updates\platform-releases-jwt.spec.ts:123:3 › RLS published vs draft › anonymous cannot read releases (7ms)
+  ✓  515 [chromium-admin] › e2e\updates\platform-releases-jwt.spec.ts:128:3 › RLS published vs draft › non-admin cannot see or count drafts (153ms)
+  ✓  516 [chromium-admin] › e2e\updates\platform-releases-jwt.spec.ts:172:3 › RLS published vs draft › sales cannot insert or publish (173ms)
+  ✓  517 [chromium-admin] › e2e\updates\platform-releases-jwt.spec.ts:205:3 › RLS published vs draft › admin publish assigns stable sequential number; published immutable (623ms)
+  ✓  518 [chromium-admin] › e2e\updates\platform-releases-ui.spec.ts:16:3 › updates page UI › lists newest release first with Jalali time and category (1.3s)
+  ✓  519 [chromium-admin] › e2e\updates\platform-releases-ui.spec.ts:43:3 › updates page UI › admin management controls visible; draft not on public list (1.2s)
+  ✓  520 [chromium-admin] › e2e\updates\platform-releases-ui.spec.ts:51:3 › updates page UI › mobile widths do not clip brand of page header (1.4s)
+  ✓  521 [chromium-admin] › e2e\updates\platform-releases-ui.spec.ts:66:3 › update notice link contract › register-sw offers مشاهده تغییرات to /updates (5ms)
+  ✓  522 [chromium-admin] › e2e\updates\platform-releases-ui.spec.ts:75:3 › update notice link contract › format helper sample matches Tehran clock wording (2ms)
+  ✓  523 [chromium-admin] › e2e\warehouse\line-level-warehouse.spec.ts:23:3 › D8-8 — line-level warehouse › the schema carries a warehouse on the LINE, not only the document (17ms)
+  ✓  524 [chromium-admin] › e2e\warehouse\line-level-warehouse.spec.ts:37:3 › D8-8 — line-level warehouse › backfill left no line without a warehouse where the DOCUMENT had one (21ms)
+  ✓  525 [chromium-admin] › e2e\warehouse\line-level-warehouse.spec.ts:58:3 › D8-8 — line-level warehouse › the shortage message names the product AND the warehouse (18ms)
+  ✓  526 [chromium-admin] › e2e\warehouse\line-level-warehouse.spec.ts:101:3 › D8-8 — line-level warehouse › stock is reported per (product, warehouse) (23ms)
+
+
+  1) [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:117:1 › ⛔ the amount is Toman × 10 and the bank code is the owner's real one 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      118 |   const rows = await listOk();
+      119 |   const docs = groupBankDepositRows(rows).filter((d) => !d.blockedReason);
+    > 120 |   expect(docs.length).toBeGreaterThan(0);
+          |                       ^
+      121 |
+      122 |   for (const d of docs) {
+      123 |     const toman = Number(dbScalar(`select amount from payment_receipts where id = '${d.sourceId}'`));
+        at D:\AfraKalaTest\app\e2e\asan\export-bank-deposits.spec.ts:120:23
+
+    Error Context: test-results\211-218\asan-export-bank-deposits--2c684-ode-is-the-owner-s-real-one-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-bank-deposits--2c684-ode-is-the-owner-s-real-one-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-bank-deposits--2c684-ode-is-the-owner-s-real-one-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-bank-deposits--2c684-ode-is-the-owner-s-real-one-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium-admin] › e2e\asan\export-journal.spec.ts:95:3 › the one posted entry on this database › row count equals its line count, and both account codes resolve 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+      109 |     const codes = rows.map((r) => r.account_code).sort();
+      110 |     expect(codes).toContain("8");
+    > 111 |     expect(rows.every((r) => (r.account_code ?? "") !== "")).toBe(true);
+          |                                                              ^
+      112 |   });
+      113 |
+      114 |   test("only posted entries are candidates", async () => {
+        at D:\AfraKalaTest\app\e2e\asan\export-journal.spec.ts:111:62
+
+    Error Context: test-results\211-218\asan-export-journal-the-on-4fa70--both-account-codes-resolve-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-journal-the-on-4fa70--both-account-codes-resolve-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-journal-the-on-4fa70--both-account-codes-resolve-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-journal-the-on-4fa70--both-account-codes-resolve-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium-admin] › e2e\asan\export-journal.spec.ts:158:3 › the six-column layout › headers are exact, and a financial line leaves B and D empty 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      159 |     const rows = await listOk();
+      160 |     const docs = groupJournalRows(rows, new Map()).filter((d) => !d.blockedReason);
+    > 161 |     expect(docs.length).toBeGreaterThan(0);
+          |                         ^
+      162 |
+      163 |     const built = buildJournalRows(docs[0].payload as never);
+      164 |     expect(built.length).toBe(docs[0].rowCount);
+        at D:\AfraKalaTest\app\e2e\asan\export-journal.spec.ts:161:25
+
+    Error Context: test-results\211-218\asan-export-journal-the-si-96fb0-l-line-leaves-B-and-D-empty-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-journal-the-si-96fb0-l-line-leaves-B-and-D-empty-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-journal-the-si-96fb0-l-line-leaves-B-and-D-empty-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-journal-the-si-96fb0-l-line-leaves-B-and-D-empty-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  4) [chromium-admin] › e2e\asan\export-journal.spec.ts:187:3 › the six-column layout › ⛔ amounts are Toman × 10, and every exported document balances 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      188 |     const rows = await listOk();
+      189 |     const docs = groupJournalRows(rows, new Map()).filter((d) => !d.blockedReason);
+    > 190 |     expect(docs.length).toBeGreaterThan(0);
+          |                         ^
+      191 |
+      192 |     for (const d of docs) {
+      193 |       const built = buildJournalRows(d.payload as never);
+        at D:\AfraKalaTest\app\e2e\asan\export-journal.spec.ts:190:25
+
+    Error Context: test-results\211-218\asan-export-journal-the-si-55f7b--exported-document-balances-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-journal-the-si-55f7b--exported-document-balances-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-journal-the-si-55f7b--exported-document-balances-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-journal-the-si-55f7b--exported-document-balances-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  5) [chromium-admin] › e2e\asan\export-journal.spec.ts:209:3 › the six-column layout › the same document exported twice is byte-identical 
+
+    TypeError: Cannot read properties of undefined (reading 'payload')
+
+      212 |       return buildAsanWorkbook({
+      213 |         headers: JOURNAL_HEADERS,
+    > 214 |         rows: buildJournalRows(docs[0].payload as never),
+          |                                        ^
+      215 |       });
+      216 |     };
+      217 |     const h = (b: ArrayBuffer) => crypto.createHash("sha256").update(Buffer.from(b)).digest("hex");
+        at make (D:\AfraKalaTest\app\e2e\asan\export-journal.spec.ts:214:40)
+        at D:\AfraKalaTest\app\e2e\asan\export-journal.spec.ts:218:14
+
+    Error Context: test-results\211-218\asan-export-journal-the-si-f74ec-ted-twice-is-byte-identical-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-journal-the-si-f74ec-ted-twice-is-byte-identical-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-journal-the-si-f74ec-ted-twice-is-byte-identical-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-journal-the-si-f74ec-ted-twice-is-byte-identical-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  6) [chromium-admin] › e2e\asan\export-numbering.spec.ts:76:1 › three documents receive 1, 2, 3 in order 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 2
+
+      52 |   // The table must start empty, otherwise "the first document gets 1" is not a test of
+      53 |   // anything. This is the first phase to touch it.
+    > 54 |   expect(Number(dbScalar("select count(*) from asan_export_numbers"))).toBe(0);
+         |                                                                        ^
+      55 | });
+      56 |
+      57 | test.afterAll(() => {
+        at D:\AfraKalaTest\app\e2e\asan\export-numbering.spec.ts:54:72
+
+    Error: rule 2.10
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 2
+
+      68 |      delete from sales_quotes where customer_name like '${MARK}%';`,
+      69 |   );
+    > 70 |   expect(Number(dbScalar("select count(*) from asan_export_numbers")), "rule 2.10").toBe(0);
+         |                                                                                     ^
+      71 |   expect(
+      72 |     Number(dbScalar(`select count(*) from sales_quotes where customer_name like '${MARK}%'`)),
+      73 |   ).toBe(0);
+        at D:\AfraKalaTest\app\e2e\asan\export-numbering.spec.ts:70:85
+
+    Error Context: test-results\211-218\asan-export-numbering-three-documents-receive-1-2-3-in-order-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-numbering-three-documents-receive-1-2-3-in-order-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-numbering-three-documents-receive-1-2-3-in-order-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-numbering-three-documents-receive-1-2-3-in-order-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  7) [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:79:1 › ⛔ one quote exported alone is byte-identical to the same quote in a range export 
+
+    Error: need an exportable quote to compare
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      80 |   const all = await listRange(FULL_RANGE.from, FULL_RANGE.to);
+      81 |   const exportable = groupInvoiceRows(all, new Map()).filter((d) => !d.blockedReason);
+    > 82 |   expect(exportable.length, "need an exportable quote to compare").toBeGreaterThan(0);
+         |                                                                    ^
+      83 |   const target = exportable[0];
+      84 |
+      85 |   // Number it once, so both files carry the same column A. Assignment is idempotent, so this is
+        at D:\AfraKalaTest\app\e2e\asan\export-preinvoice.spec.ts:82:68
+
+    Error Context: test-results\211-218\asan-export-preinvoice-⛔-o-fe7ee-ame-quote-in-a-range-export-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-preinvoice-⛔-o-fe7ee-ame-quote-in-a-range-export-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-preinvoice-⛔-o-fe7ee-ame-quote-in-a-range-export-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-preinvoice-⛔-o-fe7ee-ame-quote-in-a-range-export-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  8) [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:164:1 › the button is on the page in a real browser, and the export set is enforced 
+
+    TypeError: Cannot read properties of undefined (reading 'sourceId')
+
+      167 |   const all = await listRange(FULL_RANGE.from, FULL_RANGE.to);
+      168 |   const exportable = groupInvoiceRows(all, new Map()).filter((d) => !d.blockedReason);
+    > 169 |   const quoteId = exportable[0].sourceId;
+          |                                 ^
+      170 |
+      171 |   await page.goto(`/sales/quotes/${quoteId}`);
+      172 |   await page.waitForLoadState("networkidle");
+        at D:\AfraKalaTest\app\e2e\asan\export-preinvoice.spec.ts:169:33
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-preinvoice-the-cf04a--the-export-set-is-enforced-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-preinvoice-the-cf04a--the-export-set-is-enforced-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\asan-export-preinvoice-the-cf04a--the-export-set-is-enforced-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-preinvoice-the-cf04a--the-export-set-is-enforced-chromium-admin\error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-preinvoice-the-cf04a--the-export-set-is-enforced-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-preinvoice-the-cf04a--the-export-set-is-enforced-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  9) [chromium-admin] › e2e\asan\export-purchase.spec.ts:159:3 › the candidate set › today every purchase is blocked, and each names its own supplier 
+
+    Error: no supplier has an Asan code yet
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 2
+
+      162 |     const rows = await listOk();
+      163 |     const exportable = rows.filter((r) => r.blocked_reason === null);
+    > 164 |     expect(exportable.length, "no supplier has an Asan code yet").toBe(0);
+          |                                                                   ^
+      165 |     for (const r of rows) {
+      166 |       expect(r.blocked_reason).toContain("کد آسان");
+      167 |       expect(r.blocked_reason).not.toContain("?");
+        at D:\AfraKalaTest\app\e2e\asan\export-purchase.spec.ts:164:67
+
+    Error Context: test-results\211-218\asan-export-purchase-the-c-4df60-each-names-its-own-supplier-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-purchase-the-c-4df60-each-names-its-own-supplier-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-purchase-the-c-4df60-each-names-its-own-supplier-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-purchase-the-c-4df60-each-names-its-own-supplier-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  10) [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:144:3 › the three exports share one builder › the same document produces identical rows whichever export routes it 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      145 |     const rows = await listFilter("all");
+      146 |     const docs = groupJournalRows(rows, new Map()).filter((d) => !d.blockedReason);
+    > 147 |     expect(docs.length).toBeGreaterThan(0);
+          |                         ^
+      148 |
+      149 |     // The three definitions differ only in their filter, so the mapping must be indifferent to
+      150 |     // which one asked. Routing one document through the builder three times is the behavioural
+        at D:\AfraKalaTest\app\e2e\asan\export-receipts-payments.spec.ts:147:25
+
+    Error Context: test-results\211-218\asan-export-receipts-payme-764fe--whichever-export-routes-it-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-receipts-payme-764fe--whichever-export-routes-it-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-receipts-payme-764fe--whichever-export-routes-it-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-receipts-payme-764fe--whichever-export-routes-it-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  11) [chromium-admin] › e2e\asan\export-sales.spec.ts:300:3 › the file › one row per line item, with the invoice number repeating across its lines 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      302 |     const { docs } = await buildFile(rows, new Map());
+      303 |     const exportable = docs.filter((d) => !d.blockedReason);
+    > 304 |     expect(exportable.length).toBeGreaterThan(0);
+          |                               ^
+      305 |
+      306 |     for (const d of exportable) {
+      307 |       const built = buildInvoiceRows(d.payload as never, 7);
+        at D:\AfraKalaTest\app\e2e\asan\export-sales.spec.ts:304:31
+
+    Error Context: test-results\211-218\asan-export-sales-the-file-4bdd9--repeating-across-its-lines-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-sales-the-file-4bdd9--repeating-across-its-lines-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-sales-the-file-4bdd9--repeating-across-its-lines-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-sales-the-file-4bdd9--repeating-across-its-lines-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  12) [chromium-admin] › e2e\asan\export-sales.spec.ts:318:3 › the file › ⛔ T Toman becomes exactly T × 10 — the assertion this whole mission turns on 
+
+    Error: there must be at least one exportable invoice
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      320 |     const docs = groupInvoiceRows(rows, new Map());
+      321 |     const exportable = docs.filter((d) => !d.blockedReason);
+    > 322 |     expect(exportable.length, "there must be at least one exportable invoice").toBeGreaterThan(0);
+          |                                                                                ^
+      323 |
+      324 |     for (const d of exportable) {
+      325 |       // The oracle is the database, read independently of the RPC that produced the rows.
+        at D:\AfraKalaTest\app\e2e\asan\export-sales.spec.ts:322:80
+
+    Error Context: test-results\211-218\asan-export-sales-the-file-69fd4-this-whole-mission-turns-on-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-sales-the-file-69fd4-this-whole-mission-turns-on-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-sales-the-file-69fd4-this-whole-mission-turns-on-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-sales-the-file-69fd4-this-whole-mission-turns-on-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  13) [chromium-admin] › e2e\asan\export-sales.spec.ts:389:3 › the file › column K stays empty and a missing product code does not block the line 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      392 |     const aoa = readWithOpenpyxl(bytes);
+      393 |     const dataRows = aoa.slice(1);
+    > 394 |     expect(dataRows.length).toBeGreaterThan(0);
+          |                             ^
+      395 |
+      396 |     for (const r of dataRows) {
+      397 |       expect(r[10] ?? null, "column K is confirmed empty on the sales tab").toBeNull();
+        at D:\AfraKalaTest\app\e2e\asan\export-sales.spec.ts:394:29
+
+    Error Context: test-results\211-218\asan-export-sales-the-file-8d293-ode-does-not-block-the-line-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-sales-the-file-8d293-ode-does-not-block-the-line-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-sales-the-file-8d293-ode-does-not-block-the-line-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-sales-the-file-8d293-ode-does-not-block-the-line-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  14) [chromium-admin] › e2e\asan\export-sales.spec.ts:493:1 › an exported invoice keeps its number, and the preview shows it 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      494 |   const rows = await listOk();
+      495 |   const exportable = groupInvoiceRows(rows, new Map()).filter((d) => !d.blockedReason);
+    > 496 |   expect(exportable.length).toBeGreaterThan(0);
+          |                             ^
+      497 |   const target = exportable[0];
+      498 |
+      499 |   const assign = async () =>
+        at D:\AfraKalaTest\app\e2e\asan\export-sales.spec.ts:496:29
+
+    Error Context: test-results\211-218\asan-export-sales-an-expor-4d859-er-and-the-preview-shows-it-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-sales-an-expor-4d859-er-and-the-preview-shows-it-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-sales-an-expor-4d859-er-and-the-preview-shows-it-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-sales-an-expor-4d859-er-and-the-preview-shows-it-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  15) [chromium-admin] › e2e\asan\export-sales.spec.ts:529:1 › a quote whose customer has no Asan code is blocked, not dropped 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      540 |   const rows = await listOk();
+      541 |   const exportable = groupInvoiceRows(rows, new Map()).filter((d) => !d.blockedReason);
+    > 542 |   expect(exportable.length).toBeGreaterThan(0);
+          |                             ^
+      543 |   const target = exportable[0];
+      544 |
+      545 |   const personId = dbScalar(
+        at D:\AfraKalaTest\app\e2e\asan\export-sales.spec.ts:542:29
+
+    Error Context: test-results\211-218\asan-export-sales-a-quote--12db1-code-is-blocked-not-dropped-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\asan-export-sales-a-quote--12db1-code-is-blocked-not-dropped-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-export-sales-a-quote--12db1-code-is-blocked-not-dropped-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-export-sales-a-quote--12db1-code-is-blocked-not-dropped-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  16) [chromium-admin] › e2e\asan\final-verification.spec.ts:236:1 › 5.2/5 — no fixture from any phase of this program survives 
+
+    Error: minted Asan numbers
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 2
+
+      254 |   ];
+      255 |   for (const [label, sql, expected] of checks) {
+    > 256 |     expect(Number(dbScalar(sql)), label).toBe(expected);
+          |                                          ^
+      257 |   }
+      258 |
+      259 |   // The catalogue is exactly as the program found it.
+        at D:\AfraKalaTest\app\e2e\asan\final-verification.spec.ts:256:42
+
+    Error Context: test-results\211-218\asan-final-verification-5--27fb4-se-of-this-program-survives-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-final-verification-5--27fb4-se-of-this-program-survives-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-final-verification-5--27fb4-se-of-this-program-survives-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  17) [chromium-admin] › e2e\asan\final-verification.spec.ts:270:1 › 5.2/8 — export 1 (sales) produces a real file whose header matches the spec 
+
+    Error: at least one sales invoice must be exportable
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      275 |   expect(res.status, res.text).toBeLessThan(300);
+      276 |   const docs = groupInvoiceRows(res.body ?? [], new Map()).filter((d) => !d.blockedReason);
+    > 277 |   expect(docs.length, "at least one sales invoice must be exportable").toBeGreaterThan(0);
+          |                                                                        ^
+      278 |
+      279 |   const rows = buildInvoiceRows(docs[0].payload as never, 1);
+      280 |   const aoa = await writeSample("1-sales", SALES_HEADERS, rows);
+        at D:\AfraKalaTest\app\e2e\asan\final-verification.spec.ts:277:72
+
+    Error Context: test-results\211-218\asan-final-verification-5--7ceee-ose-header-matches-the-spec-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-final-verification-5--7ceee-ose-header-matches-the-spec-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-final-verification-5--7ceee-ose-header-matches-the-spec-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  18) [chromium-admin] › e2e\asan\final-verification.spec.ts:322:1 › 5.2/8c — exports 3/4/5 (accounting document) produce a real file whose header matches 
+
+    Error: at least one accounting document must be exportable
+
+    expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      327 |   expect(res.status, res.text).toBeLessThan(300);
+      328 |   const docs = groupJournalRows(res.body ?? [], new Map()).filter((d) => !d.blockedReason);
+    > 329 |   expect(docs.length, "at least one accounting document must be exportable").toBeGreaterThan(0);
+          |                                                                              ^
+      330 |
+      331 |   const rows = buildJournalRows(docs[0].payload as never);
+      332 |   const aoa = await writeSample("3-accounting-document", JOURNAL_HEADERS, rows);
+        at D:\AfraKalaTest\app\e2e\asan\final-verification.spec.ts:329:78
+
+    Error Context: test-results\211-218\asan-final-verification-5--d94f3-l-file-whose-header-matches-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-final-verification-5--d94f3-l-file-whose-header-matches-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-final-verification-5--d94f3-l-file-whose-header-matches-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  19) [chromium-admin] › e2e\asan\final-verification.spec.ts:342:1 › 5.2/8d — the secondary bank-deposit file matches the Latin layout 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      347 |   expect(res.status, res.text).toBeLessThan(300);
+      348 |   const docs = groupBankDepositRows(res.body ?? []).filter((d) => !d.blockedReason);
+    > 349 |   expect(docs.length).toBeGreaterThan(0);
+          |                       ^
+      350 |
+      351 |   const rows = buildBankDepositRows(docs[0].payload as never);
+      352 |   const aoa = await writeSample("4-bank-deposits", BANK_DEPOSIT_HEADERS, rows);
+        at D:\AfraKalaTest\app\e2e\asan\final-verification.spec.ts:349:23
+
+    Error Context: test-results\211-218\asan-final-verification-5--6c65d-le-matches-the-Latin-layout-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-final-verification-5--6c65d-le-matches-the-Latin-layout-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-final-verification-5--6c65d-le-matches-the-Latin-layout-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  20) [chromium-admin] › e2e\asan\product-video-chain.spec.ts:480:3 › a viewer › a salesperson reaches the page — this queue is theirs 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 1
+
+      104 |     Number(dbScalar(`select count(*) from sales_quotes where customer_name like '${MARK}%'`)),
+      105 |   ).toBe(0);
+    > 106 |   expect(Number(dbScalar("select count(*) from delivery_receipts"))).toBe(0);
+          |                                                                      ^
+      107 | });
+      108 |
+      109 | // -------------------------------------------------- the requirement, as permanent data ----
+        at D:\AfraKalaTest\app\e2e\asan\product-video-chain.spec.ts:106:70
+
+    attachment #1: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\asan-product-video-chain-a-fea52-page-—-this-queue-is-theirs-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\asan-product-video-chain-a-fea52-page-—-this-queue-is-theirs-chromium-admin\error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\asan-product-video-chain-a-fea52-page-—-this-queue-is-theirs-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\asan-product-video-chain-a-fea52-page-—-this-queue-is-theirs-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  21) [chromium-admin] › e2e\business-flows\211-216-rejected-quote-notification.spec.ts:398:3 › Business flow 211/216 - rejected quote notification lifecycle › real UI rejection reason notification persists, is isolated by recipient, and can be acknowledged 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText(/ردشده|رد شده/)
+    Expected: visible
+    Error: strict mode violation: getByText(/ردشده|رد شده/) resolved to 2 elements:
+        1) <span class="truncate">درخواست‌های رد شدهٔ من</span> aka getByRole('link', { name: 'درخواست‌های رد شدهٔ من' })
+        2) <div class="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 bg-destructive/10 text-destructive border-destructive/30">ردشده</div> aka getByText('ردشده')
+
+    Call log:
+      - Expect "toBeVisible" with timeout 10000ms
+      - waiting for getByText(/ردشده|رد شده/)
+
+
+      378 |     .toBe(`rejected|${reason}`);
+      379 |   await page.reload({ waitUntil: "domcontentloaded" });
+    > 380 |   await expect(page.getByText(/ردشده|رد شده/)).toBeVisible();
+          |                                                ^
+      381 | }
+      382 |
+      383 | async function expectNoUnexpectedFailedResponses(page: Page, testInfo: TestInfo, label: string) {
+        at rejectQuoteAsAccountant (D:\AfraKalaTest\app\e2e\business-flows\211-216-rejected-quote-notification.spec.ts:380:48)
+        at D:\AfraKalaTest\app\e2e\business-flows\211-216-rejected-quote-notification.spec.ts:464:7
+
+    attachment #1: console-errors (text/plain) ─────────────────────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: console-errors (text/plain) ─────────────────────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: console-errors (text/plain) ─────────────────────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #4: console-errors (text/plain) ─────────────────────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #5: salesperson-a-create-400-403-500 (text/plain) ───────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #6: accountant-reject-400-403-500 (text/plain) ──────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #7: salesperson-a-read-400-403-500 (text/plain) ─────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #8: salesperson-b-isolation-400-403-500 (text/plain) ────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #9: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #10: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #11: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\test-failed-4.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #12: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\test-failed-3.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #13: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\test-failed-5.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #14: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\test-failed-7.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #15: screenshot (image/png) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\test-failed-6.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\error-context.md
+
+    attachment #17: trace (application/zip) ────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\business-flows-211-216-rej-9c0d0-ent-and-can-be-acknowledged-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  22) [chromium-admin] › e2e\business-flows\212-quote-credit-guard.spec.ts:607:1 › Requirement 212 credit guard and permitted exceptions are enforced through UI and API 
+
+    Error: Command failed: docker exec afrakala-lan-db bash -lc PGPASSWORD="$POSTGRES_PASSWORD" psql -U supabase_admin -d afrakala -f /tmp/afrakala-e2e-6e575d1c-24bf-407b-a61c-70bbc573c88d.sql
+    psql:/tmp/afrakala-e2e-6e575d1c-24bf-407b-a61c-70bbc573c88d.sql:120: ERROR:  null value in column "person_id" of relation "customers" violates not-null constraint
+    DETAIL:  Failing row contains (71d77ea7-99ae-46a3-a4c7-92e765d65b6f, E2E_AUDIT_212_1786209582110_Sufficient Customer, 09109583599, null, null, null, 2026-08-08 17:19:43.789961+00, 2026-08-08 17:19:43.789961+00, null, E2E_AUDIT_212_1786209582110_sufficient, t, ea9b35dd-fd57-4905-9355-50ca8646d4d1, null, null, null, null, null).
+    CONTEXT:  SQL statement "INSERT INTO public.customers (name, phone, responsible_id, is_active, notes)
+      VALUES ('E2E_AUDIT_212_1786209582110_Sufficient Customer', '09109583599', 'ea9b35dd-fd57-4905-9355-50ca8646d4d1'::uuid, true, 'E2E_AUDIT_212_1786209582110_sufficient')
+      RETURNING id"
+    PL/pgSQL function inline_code_block line 66 at SQL statement
+
+
+       at helpers\db-write.ts:40
+
+      38 |   try {
+      39 |     execFileSync("docker", ["cp", local, `afrakala-lan-db:${remote}`], { encoding: "utf8" });
+    > 40 |     return execFileSync(
+         |            ^
+      41 |       "docker",
+      42 |       [
+      43 |         "exec",
+        at dbExecE2e (D:\AfraKalaTest\app\e2e\helpers\db-write.ts:40:12)
+        at setupFixture (D:\AfraKalaTest\app\e2e\business-flows\212-quote-credit-guard.spec.ts:247:3)
+        at D:\AfraKalaTest\app\e2e\business-flows\212-quote-credit-guard.spec.ts:626:19
+
+    attachment #1: console-errors (text/plain) ─────────────────────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-212-quote-c-35279-enforced-through-UI-and-API-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-212-quote-c-35279-enforced-through-UI-and-API-chromium-admin\test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\business-flows-212-quote-c-35279-enforced-through-UI-and-API-chromium-admin\error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-212-quote-c-35279-enforced-through-UI-and-API-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\business-flows-212-quote-c-35279-enforced-through-UI-and-API-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  23) [chromium-admin] › e2e\business-flows\213-dynamic-customer-credit-scoring.spec.ts:486:1 › Requirement 213 dynamic customer credit scoring and recompute is proven end-to-end 
+
+    Error: Command failed: docker exec afrakala-lan-db bash -lc PGPASSWORD="$POSTGRES_PASSWORD" psql -U supabase_admin -d afrakala -f /tmp/afrakala-e2e-d0775ed7-6f96-4a03-a24f-0dec91785abf.sql
+    psql:/tmp/afrakala-e2e-d0775ed7-6f96-4a03-a24f-0dec91785abf.sql:9: ERROR:  null value in column "person_id" of relation "customers" violates not-null constraint
+    DETAIL:  Failing row contains (692a9b96-e98d-420c-8ad3-a7ce4e062875, E2E_AUDIT_213_1786209584980_ customer, 09900000001, null, null, null, 2026-08-08 17:19:46.888938+00, 2026-08-08 17:19:46.888938+00, null, E2E_AUDIT_213_1786209584980_ main customer, t, ea9b35dd-fd57-4905-9355-50ca8646d4d1, null, null, null, null, null).
+
+
+       at helpers\db-write.ts:40
+
+      38 |   try {
+      39 |     execFileSync("docker", ["cp", local, `afrakala-lan-db:${remote}`], { encoding: "utf8" });
+    > 40 |     return execFileSync(
+         |            ^
+      41 |       "docker",
+      42 |       [
+      43 |         "exec",
+        at dbExecE2e (D:\AfraKalaTest\app\e2e\helpers\db-write.ts:40:12)
+        at createFixtures (D:\AfraKalaTest\app\e2e\business-flows\213-dynamic-customer-credit-scoring.spec.ts:443:3)
+        at D:\AfraKalaTest\app\e2e\business-flows\213-dynamic-customer-credit-scoring.spec.ts:517:15
+
+    attachment #1: console-errors (text/plain) ─────────────────────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-213-dynamic-097cc-ompute-is-proven-end-to-end-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-213-dynamic-097cc-ompute-is-proven-end-to-end-chromium-admin\test-failed-2.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\business-flows-213-dynamic-097cc-ompute-is-proven-end-to-end-chromium-admin\error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-213-dynamic-097cc-ompute-is-proven-end-to-end-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\business-flows-213-dynamic-097cc-ompute-is-proven-end-to-end-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  24) [chromium-admin] › e2e\business-flows\214-whatsapp-market-purchase-advisor.spec.ts:35:3 › Requirement 214 - WhatsApp market mirror and purchase advisor context › mirrors WhatsApp top products and uses seller context in purchase advice 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('توصیه هوش مصنوعی')
+    Expected: visible
+    Timeout: 150000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 150000ms
+      - waiting for getByText('توصیه هوش مصنوعی')
+
+
+      111 |     await page.getByRole("button", { name: /دریافت توصیه/ }).click();
+      112 |
+    > 113 |     await expect(page.getByText("توصیه هوش مصنوعی", { exact: false })).toBeVisible({
+          |                                                                        ^
+      114 |       timeout: 150_000,
+      115 |     });
+      116 |     const advice = page.getByText("فروشندگان اخیر واتساپ برای این محصول", { exact: false });
+        at D:\AfraKalaTest\app\e2e\business-flows\214-whatsapp-market-purchase-advisor.spec.ts:113:72
+
+    attachment #1: console-errors (text/plain) ─────────────────────────────────────────────────────
+    none
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-214-whatsap-060c0--context-in-purchase-advice-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #3: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-214-whatsap-060c0--context-in-purchase-advice-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\business-flows-214-whatsap-060c0--context-in-purchase-advice-chromium-admin\error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-214-whatsap-060c0--context-in-purchase-advice-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\business-flows-214-whatsap-060c0--context-in-purchase-advice-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  25) [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:148:3 › inquiries cluster › tick_inquiries is reachable but blocked by backend ON CONFLICT 
+
+    Error: expect(received).toContain(expected) // indexOf
+
+    Expected value: 204
+    Received array: [200, 400]
+
+      152 |     });
+      153 |     // Documented stop: RPC exists (not 404) but fails 42P10 inside a callee.
+    > 154 |     expect([200, 400]).toContain(tick.status);
+          |                        ^
+      155 |     if (tick.status !== 200) {
+      156 |       expect(tick.text).toMatch(/42P10|ON CONFLICT|conflict/i);
+      157 |     }
+        at D:\AfraKalaTest\app\e2e\clusters\new-clusters-jwt.spec.ts:154:24
+
+    Error Context: test-results\211-218\clusters-new-clusters-jwt--beeda-cked-by-backend-ON-CONFLICT-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\clusters-new-clusters-jwt--beeda-cked-by-backend-ON-CONFLICT-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\clusters-new-clusters-jwt--beeda-cked-by-backend-ON-CONFLICT-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  26) [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:162:3 › gamification league cluster › start_league_season is blocked by validate_league_season (title_fa) 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 400
+    Received: 200
+
+      173 |       body: JSON.stringify({ _name: seasonName, _start: start, _end: end }),
+      174 |     });
+    > 175 |     expect(started.status).toBe(400);
+          |                            ^
+      176 |     expect(started.text).toMatch(/عنوان فارسی الزامی است|P0001/);
+      177 |   });
+      178 |
+        at D:\AfraKalaTest\app\e2e\clusters\new-clusters-jwt.spec.ts:175:28
+
+    Error Context: test-results\211-218\clusters-new-clusters-jwt--09ddc-ate-league-season-title-fa--chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\clusters-new-clusters-jwt--09ddc-ate-league-season-title-fa--chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\clusters-new-clusters-jwt--09ddc-ate-league-season-title-fa--chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  27) [chromium-admin] › e2e\persons\credit-uses-person.spec.ts:21:1 › the credit page shows the same number the DB holds 
+
+    Error: final_limit 3000000000 not found on the credit page
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected substring: "3000000000"
+    Received string:    "هشدار ایمنی: محیط production روی آدرس تست/محلی اجرا شده است. قبل از ورود اطلاعات واقعی، تنظیمات را بررسی کنید.
+    myafrakala.ir
+    سامانه یکپارچه مدیریت سازمانی
+    جستجوی سریع فروش
+    Ctrl K
+    نیازمند اقدام
+    صف انتشار قیمت
+    نیازمند بررسی خطا
+    8
+    کاربران در انتظار تأیید
+    4
+    آخرین استفاده‌ها
+    کاربران
+    داشبورد
+    فروش
+    جستجوی سریع فروش
+    مشتریان
+    اشخاص
+    ایمپورت اشخاص
+    اشخاص تکراری
+    پیش‌فاکتورها
+    درخواست‌های رد شدهٔ من
+    ویدئوی محصول
+    هشدار موجودی
+    نامزدی تبلیغ
+    اعتبار مشتریان
+    قوانین اعتبار
+    آموزش اعتبار مشتریان
+    صف ارسال
+    اعلان‌ها
+    راهنما
+    TE
+    test.admin@afrakala.local
+    مدیر کل
+    Toggle Sidebar
+    9+
+    TE
+    test.admin@afrakala.local
+    مدیر کل
+    مشتریان
+    جزئیات
+    پروفایل اعتباری محمدزین الدین·
+    امتیازدهی پویا و آخرین سقف اعتبار مؤثر مشتری·
+    بازگشت به مشتریان
+    سقف اعتبار مؤثر
+    0
+    زنده
+    تومان
+    امتیاز وزنی
+    0.000
+    0 از 10 پارامتر ارزیابی شده
+    قید فعال
+    فرمول امتیاز
+    تاریخ تخصیص
+    11 مرداد 1405، 3:30
+    قدیمی
+    امتیازدهی پویا — ماه جاری·
+    پس از 60 ثانیه، عدد سقف اعتبار مؤثر بر اساس داده جدید تغییر خواهد کرد.·
+    سقف اعتبار — محاسبه زنده
+    زنده
+    0تومان
+    امتیاز وزنی: 0.000
+    ·
+    0 از 10 پارامتر ارزیابی شده
+    ·
+    فرمول
+    سرمایه از تاریخ 11 مرداد 1405، 3:30 (قدیمی) استفاده شده
+    چرا سقف اعتبار صفر شده است؟
+    امتیاز وزنی مشتری صفر است؛ ممکن است مقادیر امتیازدهی ذخیره نشده باشند یا وزن‌های پارامترها برای این دوره معتبر نباشند.
+    سهم خام مشتری از سرمایه صفر شده است؛ امتیاز مشتری یا مجموع امتیازهای مشتریان همان کارشناس را بررسی کنید.
+    محاسبه با سرمایه قدیمی انجام شده است؛ تخصیص سرمایه روز جاری را دوباره اجرا کنید.
+    امتیاز وزنی
+    0.000
+    پارامترهای ارزیابی‌شده
+    0 از 10
+    سهم خام از سرمایه
+    0
+    سرمایهٔ کارشناس
+    2091080254
+    نسبت سهم
+    0.0000
+    تاریخ سرمایهٔ استفاده‌شده
+    11 مرداد 1405، 3:30
+    عامل تعیین‌کننده
+    محاسبه بر اساس فرمول (عادی)
+    کد فنی: formula
+    امتیاز وزنی کل
+    0.000
+    پرریسک
+    انضباط در واریز و پرداخت
+    ثبت نشده
+    customer_payment_discipline
+    0 = خیر، 1 = بله
+    امتیاز نرمال‌شده: 0.00
+    سابقه همکاری
+    ثبت نشده
+    customer_cooperation_months
+    ماه
+    بین 1 تا 240 ماه
+    امتیاز نرمال‌شده: 0.00
+    سود 3 ماه گذشته
+    ثبت نشده
+    customer_profit_3m
+    تومان
+    مبلغ به تومان
+    امتیاز نرمال‌شده: 0.00
+    خرید 3 ماه گذشته
+    ثبت نشده
+    customer_purchase_3m
+    تومان
+    مبلغ به تومان
+    امتیاز نرمال‌شده: 0.00
+    خرید 1 سال گذشته
+    ثبت نشده
+    customer_purchase_1y
+    تومان
+    مبلغ به تومان
+    امتیاز نرمال‌شده: 0.00
+    سود 1 سال گذشته
+    ثبت نشده
+    customer_profit_1y
+    تومان
+    مبلغ به تومان
+    امتیاز نرمال‌شده: 0.00
+    خرید 3 سال گذشته
+    ثبت نشده
+    customer_purchase_3y
+    تومان
+    مبلغ به تومان
+    امتیاز نرمال‌شده: 0.00
+    سود 3 سال گذشته
+    ثبت نشده
+    customer_profit_3y
+    تومان
+    مبلغ به تومان
+    امتیاز نرمال‌شده: 0.00
+    رفتار حرفه‌ای و احترام
+    ثبت نشده
+    customer_professional_behavior
+    0
+    امتیاز نرمال‌شده: 0.00
+    میزان در دسترس بودن
+    ثبت نشده
+    customer_availability
+    0
+    امتیاز نرمال‌شده: 0.00"
+
+      48 |   const shown = faToEn(await page.locator("body").innerText()).replace(/,/g, "");
+      49 |   const expected = Number(finalLimit).toLocaleString("en-US").replace(/,/g, "");
+    > 50 |   expect(shown, `final_limit ${expected} not found on the credit page`).toContain(expected);
+         |                                                                         ^
+      51 | });
+      52 |
+      53 | test("credit tables are fully person-backed with zero drift", async ({}) => {
+        at D:\AfraKalaTest\app\e2e\persons\credit-uses-person.spec.ts:50:73
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\persons-credit-uses-person-62abf-he-same-number-the-DB-holds-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\persons-credit-uses-person-62abf-he-same-number-the-DB-holds-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\persons-credit-uses-person-62abf-he-same-number-the-DB-holds-chromium-admin\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\persons-credit-uses-person-62abf-he-same-number-the-DB-holds-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\persons-credit-uses-person-62abf-he-same-number-the-DB-holds-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  28) [chromium-admin] › e2e\persons\person-profile.spec.ts:24:3 › person profile — admin › admin opens the read-only profile from the list 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('link', { name: 'اشخاص تکراری' })
+    Expected: visible
+    Error: strict mode violation: getByRole('link', { name: 'اشخاص تکراری' }) resolved to 2 elements:
+        1) <a href="/persons/merge" class="relative flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2">…</a> aka locator('a').filter({ hasText: /^اشخاص تکراری$/ })
+        2) <a href="/persons/merge" class="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">…</a> aka getByRole('link', { name: 'اشخاص تکراری' }).nth(1)
+
+    Call log:
+      - Expect "toBeVisible" with timeout 10000ms
+      - waiting for getByRole('link', { name: 'اشخاص تکراری' })
+
+
+      39 |     await expect(page.getByRole("button", { name: "ذخیره تغییرات" })).toHaveCount(0);
+      40 |     await expect(page.getByRole("link", { name: "ویرایش" })).toBeVisible();
+    > 41 |     await expect(page.getByRole("link", { name: "اشخاص تکراری" })).toBeVisible();
+         |                                                                    ^
+      42 |     await expect(page.getByText("شناسه‌ها").first()).toBeVisible();
+      43 |     await expect(page.getByText("نقش‌ها و پرونده‌های مرتبط").first()).toBeVisible();
+      44 |   });
+        at D:\AfraKalaTest\app\e2e\persons\person-profile.spec.ts:41:68
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\persons-person-profile-per-6c438--only-profile-from-the-list-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\persons-person-profile-per-6c438--only-profile-from-the-list-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\persons-person-profile-per-6c438--only-profile-from-the-list-chromium-admin\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\persons-person-profile-per-6c438--only-profile-from-the-list-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\persons-person-profile-per-6c438--only-profile-from-the-list-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  29) [chromium-admin] › e2e\persons\quote-customer-link.spec.ts:52:1 › a quote with no customer shows a plain name, not a broken link 
+
+    Error: expect(locator).toHaveCount(expected) failed
+
+    Locator:  locator('a[href*="/persons/"]')
+    Expected: 0
+    Received: 2
+    Timeout:  10000ms
+
+    Call log:
+      - Expect "toHaveCount" with timeout 10000ms
+      - waiting for locator('a[href*="/persons/"]')
+        23 × locator resolved to 2 elements
+           - unexpected value "2"
+
+
+      60 |   await page.goto(`/sales/quotes/${quoteId}`);
+      61 |   await page.waitForLoadState("networkidle");
+    > 62 |   await expect(page.locator('a[href*="/persons/"]')).toHaveCount(0);
+         |                                                      ^
+      63 | });
+      64 |
+        at D:\AfraKalaTest\app\e2e\persons\quote-customer-link.spec.ts:62:54
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\persons-quote-customer-lin-1d7d9-lain-name-not-a-broken-link-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\persons-quote-customer-lin-1d7d9-lain-name-not-a-broken-link-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\persons-quote-customer-lin-1d7d9-lain-name-not-a-broken-link-chromium-admin\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\persons-quote-customer-lin-1d7d9-lain-name-not-a-broken-link-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\persons-quote-customer-lin-1d7d9-lain-name-not-a-broken-link-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  30) [chromium-admin] › e2e\persons\quote-list-link.spec.ts:33:1 › the customer on that detail page links to their person record 
+
+    Error: expect(received).toMatch(expected)
+
+    Expected pattern: /\/persons\/[0-9a-f-]{36}/
+    Received string:  "/persons/import"
+
+      40 |   await expect(personLink).toBeVisible({ timeout: 15_000 });
+      41 |   const href = await personLink.getAttribute("href");
+    > 42 |   expect(href).toMatch(/\/persons\/[0-9a-f-]{36}/);
+         |                ^
+      43 |
+      44 |   await personLink.click();
+      45 |   await page.waitForLoadState("networkidle");
+        at D:\AfraKalaTest\app\e2e\persons\quote-list-link.spec.ts:42:16
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\persons-quote-list-link-th-bfadb-inks-to-their-person-record-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\persons-quote-list-link-th-bfadb-inks-to-their-person-record-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\persons-quote-list-link-th-bfadb-inks-to-their-person-record-chromium-admin\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\persons-quote-list-link-th-bfadb-inks-to-their-person-record-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\persons-quote-list-link-th-bfadb-inks-to-their-person-record-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  30 failed
+    [chromium-admin] › e2e\asan\export-bank-deposits.spec.ts:117:1 › ⛔ the amount is Toman × 10 and the bank code is the owner's real one 
+    [chromium-admin] › e2e\asan\export-journal.spec.ts:95:3 › the one posted entry on this database › row count equals its line count, and both account codes resolve 
+    [chromium-admin] › e2e\asan\export-journal.spec.ts:158:3 › the six-column layout › headers are exact, and a financial line leaves B and D empty 
+    [chromium-admin] › e2e\asan\export-journal.spec.ts:187:3 › the six-column layout › ⛔ amounts are Toman × 10, and every exported document balances 
+    [chromium-admin] › e2e\asan\export-journal.spec.ts:209:3 › the six-column layout › the same document exported twice is byte-identical 
+    [chromium-admin] › e2e\asan\export-numbering.spec.ts:76:1 › three documents receive 1, 2, 3 in order 
+    [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:79:1 › ⛔ one quote exported alone is byte-identical to the same quote in a range export 
+    [chromium-admin] › e2e\asan\export-preinvoice.spec.ts:164:1 › the button is on the page in a real browser, and the export set is enforced 
+    [chromium-admin] › e2e\asan\export-purchase.spec.ts:159:3 › the candidate set › today every purchase is blocked, and each names its own supplier 
+    [chromium-admin] › e2e\asan\export-receipts-payments.spec.ts:144:3 › the three exports share one builder › the same document produces identical rows whichever export routes it 
+    [chromium-admin] › e2e\asan\export-sales.spec.ts:300:3 › the file › one row per line item, with the invoice number repeating across its lines 
+    [chromium-admin] › e2e\asan\export-sales.spec.ts:318:3 › the file › ⛔ T Toman becomes exactly T × 10 — the assertion this whole mission turns on 
+    [chromium-admin] › e2e\asan\export-sales.spec.ts:389:3 › the file › column K stays empty and a missing product code does not block the line 
+    [chromium-admin] › e2e\asan\export-sales.spec.ts:493:1 › an exported invoice keeps its number, and the preview shows it 
+    [chromium-admin] › e2e\asan\export-sales.spec.ts:529:1 › a quote whose customer has no Asan code is blocked, not dropped 
+    [chromium-admin] › e2e\asan\final-verification.spec.ts:236:1 › 5.2/5 — no fixture from any phase of this program survives 
+    [chromium-admin] › e2e\asan\final-verification.spec.ts:270:1 › 5.2/8 — export 1 (sales) produces a real file whose header matches the spec 
+    [chromium-admin] › e2e\asan\final-verification.spec.ts:322:1 › 5.2/8c — exports 3/4/5 (accounting document) produce a real file whose header matches 
+    [chromium-admin] › e2e\asan\final-verification.spec.ts:342:1 › 5.2/8d — the secondary bank-deposit file matches the Latin layout 
+    [chromium-admin] › e2e\asan\product-video-chain.spec.ts:480:3 › a viewer › a salesperson reaches the page — this queue is theirs 
+    [chromium-admin] › e2e\business-flows\211-216-rejected-quote-notification.spec.ts:398:3 › Business flow 211/216 - rejected quote notification lifecycle › real UI rejection reason notification persists, is isolated by recipient, and can be acknowledged 
+    [chromium-admin] › e2e\business-flows\212-quote-credit-guard.spec.ts:607:1 › Requirement 212 credit guard and permitted exceptions are enforced through UI and API 
+    [chromium-admin] › e2e\business-flows\213-dynamic-customer-credit-scoring.spec.ts:486:1 › Requirement 213 dynamic customer credit scoring and recompute is proven end-to-end 
+    [chromium-admin] › e2e\business-flows\214-whatsapp-market-purchase-advisor.spec.ts:35:3 › Requirement 214 - WhatsApp market mirror and purchase advisor context › mirrors WhatsApp top products and uses seller context in purchase advice 
+    [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:148:3 › inquiries cluster › tick_inquiries is reachable but blocked by backend ON CONFLICT 
+    [chromium-admin] › e2e\clusters\new-clusters-jwt.spec.ts:162:3 › gamification league cluster › start_league_season is blocked by validate_league_season (title_fa) 
+    [chromium-admin] › e2e\persons\credit-uses-person.spec.ts:21:1 › the credit page shows the same number the DB holds 
+    [chromium-admin] › e2e\persons\person-profile.spec.ts:24:3 › person profile — admin › admin opens the read-only profile from the list 
+    [chromium-admin] › e2e\persons\quote-customer-link.spec.ts:52:1 › a quote with no customer shows a plain name, not a broken link 
+    [chromium-admin] › e2e\persons\quote-list-link.spec.ts:33:1 › the customer on that detail page links to their person record 
+  19 skipped
+  7 did not run
+  470 passed (19.6m)

@@ -16,6 +16,7 @@ import {
   sanitizeDiagnosticsForClipboard,
 } from "@/lib/auth/diagnostics";
 import { AlertCircle } from "lucide-react";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => {
@@ -44,30 +45,35 @@ export const Route = createFileRoute("/login")({
   component: LoginPage,
   head: () => ({
     meta: [
-      { title: "ورود به افراکالا" },
+      { title: getPageTitle("ورود") },
       {
         name: "description",
-        content: "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+        content: `ورود به ${BRANDING.platformName} برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.`,
       },
-      { property: "og:title", content: "ورود به افراکالا" },
+      { property: "og:title", content: getPageTitle("ورود") },
       {
         property: "og:description",
-        content: "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+        content: `ورود به ${BRANDING.platformName} برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.`,
       },
-      { property: "og:url", content: "https://get-git-going.lovable.app/login" },
-      { name: "twitter:title", content: "ورود به افراکالا" },
+      { property: "og:url", content: `${BRANDING.publicOrigin}/login` },
+      { name: "twitter:title", content: getPageTitle("ورود") },
       {
         name: "twitter:description",
-        content: "ورود به دستیار هوشمند افراکالا برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.",
+        content: `ورود به ${BRANDING.platformName} برای مدیریت محصولات، قیمت‌گذاری، فروش و فاکتورها.`,
       },
     ],
-    links: [{ rel: "canonical", href: "https://get-git-going.lovable.app/login" }],
+    links: [{ rel: "canonical", href: `${BRANDING.publicOrigin}/login` }],
   }),
 });
 
 function LoginPage() {
   const { signIn, signUp, refreshRoles } = useAuth();
   const navigate = useNavigate();
+  const { redirect: redirectSearch } = Route.useSearch();
+  const safeRedirect =
+    redirectSearch && redirectSearch.startsWith("/") && !redirectSearch.startsWith("//")
+      ? redirectSearch
+      : null;
   const [loginSubmitting, setLoginSubmitting] = useState(false);
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [hydrated, setHydrated] = useState(false);
@@ -195,7 +201,11 @@ function LoginPage() {
         // non-blocking
       }
       toast.success("خوش آمدید");
-      navigate({ to: "/dashboard", replace: true });
+      if (safeRedirect) {
+        navigate({ to: safeRedirect, replace: true });
+      } else {
+        navigate({ to: "/dashboard", replace: true });
+      }
     } catch (err) {
       const fa = translateAuthError(err instanceof Error ? err.message : null);
       setLoginError(fa);
@@ -282,8 +292,8 @@ function LoginPage() {
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
             <Sparkles className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">دستیار هوشمند افراکالا</h1>
-          <p className="mt-1 text-sm text-muted-foreground">سامانه یکپارچه مدیریت سازمانی</p>
+          <h1 className="text-2xl font-bold text-foreground">{BRANDING.displayNameFa}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{BRANDING.taglineFa}</p>
         </div>
 
         <Card>

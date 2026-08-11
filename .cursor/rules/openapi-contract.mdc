@@ -1,0 +1,24 @@
+---
+description: OpenAPI contract rule for AfraKala API coordination.
+alwaysApply: true
+---
+
+# OpenAPI Contract Rule
+
+OpenAPI is the shared contract between UI, backend, Lovable, Cursor, and Worker integrations.
+
+Rules:
+
+- Do not create new API endpoints by guessing.
+- Every new API must be defined in OpenAPI first.
+- Every API response shape change must update the OpenAPI contract.
+- Lovable must consume only approved API endpoints.
+- Cursor must not silently change API behavior without contract updates.
+- Any breaking API change must be documented in the Pull Request.
+
+Approved contract locations:
+
+- `automation/openapi/automation-v1.yaml`
+- `openapi/**` if introduced later
+
+If an API is needed but not defined, stop and document the missing contract instead of inventing an endpoint.

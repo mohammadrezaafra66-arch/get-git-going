@@ -6,6 +6,8 @@ import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/common/PageHeader";
 import { CustomerForm } from "@/shared/components/CustomerForm";
+import { CustomerPersonLink } from "@/components/customers/CustomerPersonLink";
+import { PersonRoleCrossLinks } from "@/components/persons/PersonRoleCrossLinks";
 
 export const Route = createFileRoute("/_app/sales_/customers_/$customerId/edit")({
   beforeLoad: async () => {
@@ -22,7 +24,7 @@ function EditCustomerPage() {
       const { data, error } = await supabase
         .from("customers")
         .select(
-          "id, name, phone, city, notes, accounting_code, link_group, birth_date, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)",
+          "id, name, phone, city, notes, accounting_code, link_group, birth_date, person_id, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)",
         )
         .eq("id", customerId)
         .maybeSingle();
@@ -40,6 +42,19 @@ function EditCustomerPage() {
         </div>
       )}
       {error && <p className="text-destructive">{(error as Error).message}</p>}
+      {/* P1.3 — the mirror of the link on the supplier page. */}
+      {data && (
+        <PersonRoleCrossLinks
+          personId={(data as { person_id?: string | null }).person_id ?? null}
+          currentSide="customer"
+        />
+      )}
+      {data && (
+        <CustomerPersonLink
+          customerId={customerId}
+          personId={(data as { person_id?: string | null }).person_id ?? null}
+        />
+      )}
       {data && (
         <CustomerForm
           customerId={customerId}

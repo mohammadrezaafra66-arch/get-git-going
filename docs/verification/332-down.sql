@@ -1,0 +1,63 @@
+SET client_encoding='UTF8';
+
+-- Down-script for migration 332 — restoring the invoices table.
+--
+-- ⚠️ READ THIS FIRST. 332 dropped a TABLE. Unlike every other migration in this mission,
+-- reverting it is not a matter of re-applying a function definition. The table held 0
+-- rows when it was dropped (asserted inside the migration before the DROP), so no
+-- business data was lost, but the schema object, its 11 triggers and its 3 RLS policies
+-- all went with it.
+--
+-- ---------------------------------------------------------------------------
+-- ORDER MATTERS — the same rule 332 itself followed, in reverse
+-- ---------------------------------------------------------------------------
+-- Migration 328's event trigger aborts any DDL that leaves the persons FK set and the
+-- person_merge registry out of step. Restoring the table re-creates
+-- invoices.customer_person_id, so:
+--
+--   1. Restore the TABLE first (its FK to persons comes back with it).
+--      The gate WILL fire on that CREATE TABLE and WILL reject it, because the registry
+--      no longer has the key. That is correct and expected. Disable it for the restore:
+--
+--        ALTER EVENT TRIGGER trg_person_fk_registry_gate DISABLE;
+--        ... restore the table ...
+--        -- re-add 'invoices.customer_person_id', 'generic' to person_merge's _registry
+--        ALTER EVENT TRIGGER trg_person_fk_registry_gate ENABLE;
+--        SELECT public.assert_person_fk_registry();   -- must pass before you continue
+--
+--   2. Re-add the registry key by restoring the pre-332 person_merge:
+--        docs/verification/pre-332/pre-332-person_merge.sql
+--
+--   3. Restore the view:
+--        docs/verification/pre-332/pre-332-vw_customer_receivables.sql
+--
+-- ---------------------------------------------------------------------------
+-- Where the pieces are
+-- ---------------------------------------------------------------------------
+-- Table DDL, triggers, policies and the (empty) data:
+--   D:\AfraKalaTest\backups\invoices-subsystem-20260808.sql   (pg_dump, 7 tables)
+-- Apply with docker cp + psql -f, never a PowerShell pipe — a pipe destroyed the Persian
+-- inside 44 functions on 2026-07-11.
+--
+-- The nine invoice-only trigger functions dropped by 332 (audit_invoice_insert,
+-- enforce_no_overdue_on_commitment, invoices_log_type_changes,
+-- recompute_employee_scores_on_invoice, set_invoice_settlement_due_date,
+-- trg_block_overdue_invoice, trg_create_preinvoice_workflow_tasks,
+-- trg_invoice_settlement_update, trg_ticker_invoice_approved) plus
+-- complete_invoice_task and create_preinvoice_workflow_tasks are in git at a10ba29b:
+--   git show a10ba29b:supabase/schema_full_export.sql
+--
+-- NOTE: set_updated_at and tg_credit_derive_customer_person were NOT dropped — they are
+-- shared by 73 and 7 other tables respectively. Do not "restore" them; you would create
+-- duplicates.
+--
+-- ---------------------------------------------------------------------------
+-- Also reverse, if you truly want the subsystem back
+-- ---------------------------------------------------------------------------
+-- 331-down.sql (the seven readers), 330-down.sql (the four receipt triggers),
+-- 329-down.sql (the two FKs and three functions), 327-down.sql
+-- (post_receipt_accounting), 323-down.sql (invoice_items, waybills, waybill_items).
+-- Reverse order: 332 → 331 → 330 → 329 → 327 → 323.
+--
+-- Honestly: if you are here, consider whether rebuilding on sales_quotes is the better
+-- path. The invoice subsystem held zero rows for its entire life.

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -8,7 +8,7 @@ import { CalendarIcon, Loader2, CheckCircle2, Wallet, Search, X } from "lucide-r
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
-import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
+import { toFaDigits, formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
 
@@ -36,6 +36,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
+import {
+  ACCOUNT_TYPE_FA,
+  VOUCHER_CHANNELS,
+  fetchAccountBalances,
+  fetchActiveExternalParties,
+  payPurchaseWithVoucher,
+} from "@/lib/treasury/queries";
+
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -45,6 +54,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+/** Sentinel: Radix Select cannot hold an empty string value. */
+const NO_ACCOUNT = "__no_account__";
+/** Same reason, for the third-party payee select (empty = pay the supplier). */
+const NO_PARTY = "__no_party__";
 
 export const Route = createFileRoute("/_app/accounting/purchase-payments")({
   beforeLoad: async () => {
@@ -66,6 +80,8 @@ type Row = {
   paid_by: string | null;
   product: { name: string | null } | null;
   supplier: { name: string | null } | null;
+  /** Item 231 — the unified person behind this purchase's supplier, if linked. */
+  supplier_person_id: string | null;
   payment_term: { name: string | null; days: number | null } | null;
 };
 
@@ -87,6 +103,31 @@ function PurchasePaymentsPage() {
   const [tab, setTab] = useState<"unpaid" | "paid">("unpaid");
   const [target, setTarget] = useState<Row | null>(null);
   const [paidAt, setPaidAt] = useState<Date>(new Date());
+  // Item 180 / 9.2 — optional treasury source. Empty keeps the pre-phase-9
+  // behaviour (stamp paid_at only, no voucher).
+  const [sourceAccountId, setSourceAccountId] = useState<string>("");
+  const [voucherChannel, setVoucherChannel] = useState<string>("cash");
+  const [chequeNumber, setChequeNumber] = useState("");
+  const [chequeDueDate, setChequeDueDate] = useState("");
+  // Migration 313 — payee identity. Empty payeePartyId means the payee is the
+  // purchase's own supplier; a value means we paid a third party on the
+  // supplier's behalf. Exactly one of the two, mirroring the receipt side and
+  // the payment_vouchers_payee_matches_type_chk CHECK.
+  const [payeePartyId, setPayeePartyId] = useState<string>("");
+  const [trackingNumber, setTrackingNumber] = useState("");
+  const [payeeAccountingCode, setPayeeAccountingCode] = useState("");
+
+  const accountsQ = useQuery({
+    queryKey: ["account-balances", "purchase-payment"],
+    queryFn: () => fetchAccountBalances({ includeInactive: false }),
+    staleTime: 60_000,
+  });
+
+  const partiesQ = useQuery({
+    queryKey: ["external-parties", "purchase-payment"],
+    queryFn: fetchActiveExternalParties,
+    staleTime: 60_000,
+  });
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState<
@@ -102,7 +143,7 @@ function PurchasePaymentsPage() {
         .select(
           `
           id, number, purchase_date, purchase_price, cash_price, quantity,
-          total_amount, currency, paid_at, paid_by,
+          total_amount, currency, paid_at, paid_by, supplier_person_id,
           product:products(name),
           supplier:suppliers(name),
           payment_term:payment_terms(name, days)
@@ -120,6 +161,29 @@ function PurchasePaymentsPage() {
   const markPaid = useMutation({
     mutationFn: async () => {
       if (!target || !user?.id) throw new Error("کاربر یا خرید نامشخص");
+
+      // Item 180 / 9.2 — when a source account is chosen, the payment goes
+      // through pay_purchase_with_voucher so money leaving the treasury gets a
+      // real document. That function stamps paid_at itself, atomically.
+      if (sourceAccountId) {
+        await payPurchaseWithVoucher({
+          purchaseId: target.id,
+          sourceBankAccountId: sourceAccountId,
+          paymentDate: paidAt.toISOString().slice(0, 10),
+          documentChannel: voucherChannel,
+          chequeNumber: voucherChannel === "cheque" ? chequeNumber : null,
+          chequeDueDate: voucherChannel === "cheque" ? chequeDueDate || null : null,
+          description: "پرداخت خرید",
+          // Migration 313 — payee identity + tracking number reach the RPC,
+          // which records them on the voucher and posts the journal entry.
+          payeePartyId: payeePartyId || null,
+          trackingNumber: trackingNumber.trim() || null,
+          payeeAccountingCode: payeeAccountingCode.trim() || null,
+        });
+        return;
+      }
+
+      // Fallback: mark paid without a voucher (behaviour before phase 9).
       const { error } = await supabase
         .from("purchases")
         .update({ paid_at: paidAt.toISOString(), paid_by: user.id })
@@ -127,9 +191,23 @@ function PurchasePaymentsPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("پرداخت ثبت شد و امتیاز محاسبه گردید");
+      toast.success(
+        sourceAccountId
+          ? "پرداخت ثبت شد، سند پرداخت و سند حسابداری ساخته شد و از ماندهٔ حساب کسر گردید."
+          : "پرداخت ثبت شد و امتیاز محاسبه گردید",
+      );
       setTarget(null);
+      setSourceAccountId("");
+      setVoucherChannel("cash");
+      setChequeNumber("");
+      setChequeDueDate("");
+      setPayeePartyId("");
+      setTrackingNumber("");
+      setPayeeAccountingCode("");
       qc.invalidateQueries({ queryKey: ["purchase-payments"] });
+      qc.invalidateQueries({ queryKey: ["account-balances"] });
+      qc.invalidateQueries({ queryKey: ["payment-vouchers"] });
+      qc.invalidateQueries({ queryKey: ["account-ledger"] });
     },
     onError: (e: Error) => toast.error(`ثبت پرداخت ناموفق: ${e.message}`),
   });
@@ -297,7 +375,21 @@ function PurchasePaymentsPage() {
                           <TableRow key={r.id}>
                             <TableCell className="font-mono text-xs">{r.number ?? "—"}</TableCell>
                             <TableCell>{r.product?.name ?? "—"}</TableCell>
-                            <TableCell>{r.supplier?.name ?? "—"}</TableCell>
+                            <TableCell>
+                              {/* Item 231 — link through to the unified person
+                                  record when the supplier is linked to one. */}
+                              {r.supplier_person_id ? (
+                                <Link
+                                  to="/persons/$personId/edit"
+                                  params={{ personId: r.supplier_person_id }}
+                                  className="text-primary hover:underline"
+                                >
+                                  {r.supplier?.name ?? "—"}
+                                </Link>
+                              ) : (
+                                (r.supplier?.name ?? "—")
+                              )}
+                            </TableCell>
                             <TableCell>
                               {toFaDigits(formatDateFa(new Date(r.purchase_date)))}
                             </TableCell>
@@ -334,6 +426,11 @@ function PurchasePaymentsPage() {
                                   onClick={() => {
                                     setTarget(r);
                                     setPaidAt(new Date());
+                                    // Never carry a previous row's payee into
+                                    // the next payment.
+                                    setPayeePartyId("");
+                                    setTrackingNumber("");
+                                    setPayeeAccountingCode("");
                                   }}
                                 >
                                   <Wallet className="ml-1 h-4 w-4" />
@@ -411,6 +508,141 @@ function PurchasePaymentsPage() {
                   </PopoverContent>
                 </Popover>
               </div>
+
+              {/* Item 180 / 9.2 — choosing a source account creates a payment
+                  voucher so the outflow is recorded in the treasury. */}
+              <div className="space-y-2">
+                <Label>از حساب / صندوق (اختیاری)</Label>
+                <Select
+                  value={sourceAccountId || NO_ACCOUNT}
+                  onValueChange={(v) => setSourceAccountId(v === NO_ACCOUNT ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NO_ACCOUNT}>بدون سند خزانه (فقط علامت پرداخت)</SelectItem>
+                    {(accountsQ.data ?? []).map((a) => (
+                      <SelectItem key={a.account_id} value={a.account_id}>
+                        {a.title} — {ACCOUNT_TYPE_FA[a.account_type] ?? a.account_type} (مانده:{" "}
+                        {formatNumber(a.current_balance)})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  اگر حساب را انتخاب کنید، یک «سند پرداخت» ساخته می‌شود و مبلغ از ماندهٔ آن حساب کسر
+                  می‌گردد. در غیر این صورت فقط خرید پرداخت‌شده علامت می‌خورد.
+                </p>
+              </div>
+
+              {sourceAccountId && (
+                <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+                  <div className="space-y-2">
+                    <Label>روش پرداخت</Label>
+                    <Select
+                      value={voucherChannel}
+                      onValueChange={(v) => {
+                        setVoucherChannel(v);
+                        if (v !== "cheque") {
+                          setChequeNumber("");
+                          setChequeDueDate("");
+                        }
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {VOUCHER_CHANNELS.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {voucherChannel === "cheque" && (
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <Label>
+                          شمارهٔ چک <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          dir="ltr"
+                          className="text-left font-mono"
+                          value={chequeNumber}
+                          onChange={(e) => setChequeNumber(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label>سررسید چک</Label>
+                        <JalaliDateInput value={chequeDueDate} onChange={setChequeDueDate} />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* مهاجرت ۳۱۳ — هویت گیرندهٔ پرداخت. دقیقاً یکی: یا
+                      تأمین‌کنندهٔ خودِ خرید، یا یک طرف حساب خارجی. همان الگوی
+                      «حالت ۱ / حالت ۲» فرم فیش دریافت. */}
+                  <div className="space-y-2 border-t pt-3">
+                    <Label>گیرندهٔ پرداخت</Label>
+                    <Select
+                      value={payeePartyId || NO_PARTY}
+                      onValueChange={(v) => setPayeePartyId(v === NO_PARTY ? "" : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_PARTY}>
+                          حالت ۱: تأمین‌کنندهٔ همین خرید
+                          {target?.supplier?.name ? ` — ${target.supplier.name}` : ""}
+                        </SelectItem>
+                        {(partiesQ.data ?? []).map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            حالت ۲: {p.full_name}
+                            {p.accounting_code ? ` (کد ${toFaDigits(p.accounting_code)})` : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      اگر پول به‌جای تأمین‌کننده به شخص دیگری پرداخت شده، او را اینجا انتخاب کنید.
+                      بدهی تأمین‌کننده در هر دو حالت کم می‌شود؛ فقط گیرندهٔ واقعی در سند ثبت
+                      می‌گردد.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <Label>شمارهٔ پیگیری</Label>
+                      <Input
+                        dir="ltr"
+                        className="text-left font-mono"
+                        placeholder="شمارهٔ پیگیری تراکنش"
+                        value={trackingNumber}
+                        onChange={(e) => setTrackingNumber(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label>کد آسان ذینفع (اختیاری)</Label>
+                      <Input
+                        dir="ltr"
+                        className="text-left font-mono"
+                        placeholder="کد حسابداری گیرنده"
+                        value={payeeAccountingCode}
+                        onChange={(e) => setPayeeAccountingCode(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    با ثبت این پرداخت یک سند حسابداری متوازن ساخته می‌شود: بدهکار «بدهی به
+                    تأمین‌کننده» و بستانکار «حساب بانکی».
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -418,7 +650,13 @@ function PurchasePaymentsPage() {
             <Button variant="ghost" onClick={() => setTarget(null)}>
               انصراف
             </Button>
-            <Button onClick={() => markPaid.mutate()} disabled={markPaid.isPending}>
+            <Button
+              onClick={() => markPaid.mutate()}
+              disabled={
+                markPaid.isPending ||
+                (!!sourceAccountId && voucherChannel === "cheque" && !chequeNumber.trim())
+              }
+            >
               {markPaid.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
               ثبت پرداخت
             </Button>

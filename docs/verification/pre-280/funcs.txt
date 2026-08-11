@@ -1,0 +1,128 @@
+_archive_prior_allocations_on_active()
+CREATE OR REPLACE FUNCTION public._archive_prior_allocations_on_active()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NEW.is_active = true AND (TG_OP='INSERT' OR OLD.is_active = false) THEN
+    UPDATE public.customer_capital_allocations
+       SET status = 'archived', updated_at = now()
+     WHERE capital_snapshot_id <> NEW.id AND status NOT IN ('archived');
+    UPDATE public.salesperson_capital_allocations
+       SET status = 'archived', updated_at = now()
+     WHERE capital_snapshot_id <> NEW.id AND status NOT IN ('archived');
+  END IF;
+  RETURN NEW;
+END;
+$function$
+
+person_fk_drift_report()
+CREATE OR REPLACE FUNCTION public.person_fk_drift_report()
+ RETURNS TABLE(table_name text, drifted_rows bigint)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+  -- Phase 5 (migration 231)
+  SELECT 'sales_quotes'::text, count(*)
+    FROM public.sales_quotes q
+    LEFT JOIN public.customers c ON c.id = q.customer_id
+   WHERE q.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'purchases'::text, count(*)
+    FROM public.purchases p
+    LEFT JOIN public.suppliers s ON s.id = p.supplier_id
+   WHERE p.supplier_person_id IS DISTINCT FROM s.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'payment_vouchers'::text, count(*)
+    FROM public.payment_vouchers v
+    LEFT JOIN public.suppliers s ON s.id = v.payee_supplier_id
+    LEFT JOIN public.customers c ON c.id = v.payee_customer_id
+    LEFT JOIN public.external_parties ep ON ep.id = v.payee_party_id
+   WHERE v.payee_person_id IS DISTINCT FROM coalesce(s.person_id, c.person_id, ep.person_id)
+  HAVING count(*) > 0
+  -- Phase 7.1 (Group A, migration 235)
+  UNION ALL
+  SELECT 'product_suppliers'::text, count(*)
+    FROM public.product_suppliers ps
+    LEFT JOIN public.suppliers s ON s.id = ps.supplier_id
+   WHERE ps.supplier_person_id IS DISTINCT FROM s.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'purchase_prices'::text, count(*)
+    FROM public.purchase_prices pp
+    LEFT JOIN public.suppliers s ON s.id = pp.supplier_id
+   WHERE pp.supplier_person_id IS DISTINCT FROM s.person_id
+  HAVING count(*) > 0
+  -- Phase 7.2 (Group B, migration 236)
+  UNION ALL
+  SELECT 'payment_receipts.customer'::text, count(*)
+    FROM public.payment_receipts pr
+    LEFT JOIN public.customers c ON c.id = pr.customer_id
+   WHERE pr.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'payment_receipts.receiver_party'::text, count(*)
+    FROM public.payment_receipts pr
+    LEFT JOIN public.external_parties ep ON ep.id = pr.receiver_party_id
+   WHERE pr.receiver_party_person_id IS DISTINCT FROM ep.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'delivery_receipts'::text, count(*)
+    FROM public.delivery_receipts dr
+    LEFT JOIN public.customers c ON c.id = dr.customer_id
+   WHERE dr.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  -- Phase 7.3 (Group C, migration 237)
+  UNION ALL
+  SELECT 'credit_requests'::text, count(*)
+    FROM public.credit_requests x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'credit_score_snapshots'::text, count(*)
+    FROM public.credit_score_snapshots x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'customer_capital_allocations'::text, count(*)
+    FROM public.customer_capital_allocations x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'customer_capital_allocations_dynamic'::text, count(*)
+    FROM public.customer_capital_allocations_dynamic x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'customer_credit_balance'::text, count(*)
+    FROM public.customer_credit_balance x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'customer_credit_ledger'::text, count(*)
+    FROM public.customer_credit_ledger x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'customer_credit_profile'::text, count(*)
+    FROM public.customer_credit_profile x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  -- Phase 7.4 (Group D, this migration)
+  UNION ALL
+  SELECT 'invoices'::text, count(*)
+    FROM public.invoices x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0
+  UNION ALL
+  SELECT 'didar_activities'::text, count(*)
+    FROM public.didar_activities x LEFT JOIN public.customers c ON c.id = x.customer_id
+   WHERE x.customer_person_id IS DISTINCT FROM c.person_id
+  HAVING count(*) > 0;
+$function$
+

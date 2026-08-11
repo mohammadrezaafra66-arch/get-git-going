@@ -3,22 +3,21 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, ChevronsUpDown, X, CalendarIcon } from "lucide-react";
+import { Loader2, Check, ChevronsUpDown, X } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
-import { useServerFn } from "@tanstack/react-start";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
-import { createCustomer, updateCustomer } from "@/lib/customers/functions";
+import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import {
   Command,
   CommandEmpty,
@@ -88,8 +87,6 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, roles } = useAuth();
-  const createCustomerFn = useServerFn(createCustomer);
-  const updateCustomerFn = useServerFn(updateCustomer);
 
   const isAdminOrManager = roles.includes("admin") || roles.includes("manager");
   const isSales = roles.includes("sales");
@@ -131,28 +128,103 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
         link_group: values.link_group?.trim() || null,
         birth_date: values.birth_date ? values.birth_date : null,
       };
-      // Belt-and-suspenders: explicitly attach bearer token at call site.
-      // Mirrors the proven persons pattern — guarantees Authorization header
-      // is present even if the global attachSupabaseAuth middleware misfires
-      // (hydration timing, bundler quirk), avoiding «نشست کاربری معتبر نیست».
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      if (!token) {
+      if (!user?.id) {
         throw new Error("نشست کاربری معتبر نیست. لطفاً دوباره وارد شوید.");
       }
-      const authHeaders = { Authorization: `Bearer ${token}` };
-      if (customerId) {
-        const row = await updateCustomerFn({
-          headers: authHeaders,
-          data: { id: customerId, patch: payload },
-        });
-        return row.id;
+
+      const duplicateFilters: string[] = [];
+      if (payload.accounting_code) {
+        duplicateFilters.push(`accounting_code.eq.${payload.accounting_code}`);
       }
-      const row = await createCustomerFn({
-        headers: authHeaders,
-        data: payload,
+      if (payload.phone) {
+        duplicateFilters.push(`phone.eq.${payload.phone}`);
+      }
+
+      if (duplicateFilters.length > 0) {
+        let duplicateQuery = supabase
+          .from("customers")
+          .select("id, name, phone, accounting_code")
+          .or(duplicateFilters.join(","))
+          .limit(1);
+
+        if (customerId) {
+          duplicateQuery = duplicateQuery.neq("id", customerId);
+        }
+
+        const { data: duplicateRows, error: duplicateError } = await duplicateQuery;
+        if (duplicateError) throw new Error(duplicateError.message);
+
+        const duplicate = duplicateRows?.[0] as
+          | {
+              id: string;
+              name: string | null;
+              phone: string | null;
+              accounting_code: string | null;
+            }
+          | undefined;
+
+        if (duplicate) {
+          if (payload.accounting_code && duplicate.accounting_code === payload.accounting_code) {
+            throw new Error(
+              `کد حسابداری تکراری است؛ مشتری «${duplicate.name ?? "بدون نام"}» قبلاً با این کد ثبت شده است.`,
+            );
+          }
+          if (payload.phone && duplicate.phone === payload.phone) {
+            throw new Error(
+              `شماره تماس تکراری است؛ مشتری «${duplicate.name ?? "بدون نام"}» قبلاً با این شماره ثبت شده است.`,
+            );
+          }
+          throw new Error("مشتری مشابه قبلاً ثبت شده است.");
+        }
+      }
+
+      if (customerId) {
+        const { data: row, error } = await supabase
+          .from("customers")
+          .update(payload as never)
+          .eq("id", customerId)
+          .select("id")
+          .single();
+
+        if (error) throw new Error(error.message);
+        if (!row) throw new Error("مشتری یافت نشد یا دسترسی به آن ندارید");
+        return (row as { id: string }).id;
+      }
+
+      // Phase 6.2 — creation goes through person_create_inline so a customer can
+      // never exist without a person. The duplicate guard above still runs first;
+      // it protects the legacy accounting_code/phone uniqueness rules, which are
+      // separate from the person-level identifier uniqueness of migration 228.
+      const { data: rpcRow, error: rpcError } = await supabase.rpc("person_create_inline", {
+        p_display_name: payload.name,
+        p_context_kind: "customer",
+        p_identifiers: payload.phone
+          ? [
+              {
+                kind: "mobile_e164",
+                value_raw: payload.phone,
+                is_primary: true,
+                status: "provisional",
+              },
+            ]
+          : [],
+        p_city: payload.city,
+        p_notes: payload.notes,
+        p_accounting_code: payload.accounting_code,
+        // Customer-only columns, applied by the RPC whitelist (migration 232).
+        p_legacy_fields: {
+          responsible_id: payload.responsible_id,
+          link_group: payload.link_group,
+          birth_date: payload.birth_date,
+        },
       });
-      return row.id;
+
+      if (rpcError) throw new Error(rpcError.message);
+      const created = rpcRow as { legacy_id: string | null } | null;
+      if (!created?.legacy_id) {
+        throw new Error("ایجاد مشتری ناموفق بود — رکوردی بازگردانده نشد");
+      }
+      return created.legacy_id;
     },
     onSuccess: () => {
       toast.success(customerId ? "مشتری ویرایش شد" : "مشتری ثبت شد");
@@ -229,6 +301,17 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
           {...form.register("phone")}
         />
         {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+        {/* P1.2 — the number is the identity key, so a match means the same
+            person needs a customer role, not a second person record. */}
+        <ExistingPersonPrompt
+          phone={form.watch("phone")}
+          targetRole="customer"
+          enabled={!customerId}
+          onUseExisting={(id) => {
+            queryClient.invalidateQueries({ queryKey: ["customers"] });
+            navigate({ to: "/sales/customers/$customerId/edit", params: { customerId: id } });
+          }}
+        />
       </div>
 
       <div className="space-y-2">
@@ -238,9 +321,11 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
 
       <div className="space-y-2">
         <Label htmlFor="birth_date">تاریخ تولد (اختیاری)</Label>
-        <BirthDatePicker
+        <PersianDatePicker
           value={form.watch("birth_date") ?? null}
           onChange={(iso) => form.setValue("birth_date", iso, { shouldValidate: true })}
+          placeholder="انتخاب تاریخ تولد"
+          max={new Date().toISOString().slice(0, 10)}
         />
         {errors.birth_date && (
           <p className="text-xs text-destructive">{errors.birth_date.message as string}</p>
@@ -316,68 +401,6 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
 }
 
 /* ------------- Responsible autocomplete ------------- */
-
-/* ------------- Birth-date picker (Gregorian shadcn DatePicker) ------------- */
-
-function BirthDatePicker({
-  value,
-  onChange,
-}: {
-  value: string | null;
-  onChange: (iso: string | null) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const dateValue = value ? new Date(value) : undefined;
-  const display = dateValue ? dateValue.toLocaleDateString("fa-IR") : "انتخاب تاریخ تولد";
-  return (
-    <div className="flex gap-2">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            className={cn("flex-1 justify-start font-normal", !value && "text-muted-foreground")}
-          >
-            <CalendarIcon className="ml-2 h-4 w-4 opacity-60" />
-            {display}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={dateValue}
-            onSelect={(d) => {
-              if (!d) {
-                onChange(null);
-              } else {
-                // Use local YYYY-MM-DD (avoid TZ shift to previous day)
-                const y = d.getFullYear();
-                const m = String(d.getMonth() + 1).padStart(2, "0");
-                const day = String(d.getDate()).padStart(2, "0");
-                onChange(`${y}-${m}-${day}`);
-              }
-              setOpen(false);
-            }}
-            disabled={(date) => date > new Date()}
-            initialFocus
-            className={cn("p-3 pointer-events-auto")}
-          />
-        </PopoverContent>
-      </Popover>
-      {value && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => onChange(null)}
-          aria-label="پاک کردن"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      )}
-    </div>
-  );
-}
 
 interface ResponsiblePickerProps {
   value: string | null;

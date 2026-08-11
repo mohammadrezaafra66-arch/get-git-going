@@ -2,9 +2,14 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Sidebar, SidebarContent, SidebarHeader, SidebarFooter } from "@/components/ui/sidebar";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarResizeHandle,
+} from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { NAV_ITEMS, type NavItem } from "./nav-items";
 import {
   PRIMARY_MODULES,
   resolveActiveModule,
@@ -13,9 +18,16 @@ import {
 } from "./primary-modules";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
-import { Sparkles, Search, Bell, HelpCircle, LogOut } from "lucide-react";
+import { Sparkles, Search, Bell, HelpCircle, LogOut, Star, ScanSearch } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
-import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
+import { getPrimaryActionEntry, getVisibleNavigationEntries } from "@/lib/navigation/selectors";
+import { normalizeNavigationSearch, searchNavigationEntries } from "@/lib/navigation/search";
+import { resolveNeedsActionItems } from "@/lib/navigation/needs-action";
+import type { NavigationEntry } from "@/lib/navigation/types";
+import { useNavigationFavorites } from "@/hooks/navigation/useNavigationFavorites";
+import { useNavigationRecent } from "@/hooks/navigation/useNavigationRecent";
+import { FloatingReactionBurst } from "@/components/common/FloatingReactionBurst";
+import { BRANDING } from "@/config/branding";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -41,7 +53,7 @@ const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
     "/accounting/receipts",
     "/accounting/receivables",
     "/accounting/payables",
-    "/accounting/daily-capital",
+    "/accounting/dynamic-capital",
   ],
   viewer: [],
 };
@@ -53,6 +65,8 @@ export function AppSidebar() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
+  const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [quickSalesBurst, setQuickSalesBurst] = useState(0);
   const [activeModule, setActiveModule] = useState<PrimaryModuleKey>(() =>
     resolveActiveModule(location.pathname),
   );
@@ -67,14 +81,12 @@ export function AppSidebar() {
   const isAccountant = roles.includes("accountant");
   const canSeeAdminOnly = isAdmin || isManager;
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
-  const visible = useMemo(
-    () =>
-      NAV_ITEMS.filter((i) => {
-        if (i.adminOnly && !canSeeAdminOnly) return false;
-        return hasPermissionEx(roles, i.module, "view");
-      }),
-    [roles, canSeeAdminOnly],
-  );
+  const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
+  const visible = useMemo(() => getVisibleNavigationEntries(roles), [roles]);
+  const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
+  const { favorites, favoriteIdSet, toggleFavorite, maxFavorites } =
+    useNavigationFavorites(visible);
+  const { recent, maxRecent } = useNavigationRecent(location.pathname, visible);
 
   // QUICK-ACCESS — merge per-role shortcut paths, dedupe, restrict to items the
   // user can actually see, and cap at QUICK_ACCESS_LIMIT.
@@ -103,8 +115,8 @@ export function AppSidebar() {
         }
       }
     }
-    const byPath = new Map(visible.map((i) => [i.to, i] as const));
-    const items: NavItem[] = [];
+    const byPath = new Map(visible.map((i) => [i.route, i] as const));
+    const items: NavigationEntry[] = [];
     for (const p of paths) {
       const it = byPath.get(p);
       if (it) items.push(it);
@@ -113,16 +125,22 @@ export function AppSidebar() {
     return items;
   }, [roles, visible]);
 
-  // SIDEBAR-SEARCH — match against permission-filtered `visible` items only.
-  const normalizedQuery = normalizeSearchText(searchQuery).toLowerCase();
+  // SIDEBAR-SEARCH — rank permission-filtered Registry entries only.
+  const normalizedQuery = normalizeNavigationSearch(searchQuery);
   const isSearching = normalizedQuery.length > 0;
   const searchResults = useMemo(() => {
-    if (!isSearching) return [] as NavItem[];
-    return visible.filter((i) =>
-      normalizeSearchText(i.label).toLowerCase().includes(normalizedQuery),
-    );
-  }, [isSearching, normalizedQuery, visible]);
-  const { data: pendingCount } = useQuery({
+    if (!isSearching) return [] as NavigationEntry[];
+    return searchNavigationEntries(visible, searchQuery).map((result) => result.entry);
+  }, [isSearching, searchQuery, visible]);
+  // KBD-NAV — reset highlight when query or results change.
+  useEffect(() => {
+    setHighlightedIndex(0);
+  }, [searchQuery, searchResults.length]);
+  const {
+    data: pendingCount,
+    isLoading: isPendingUsersLoading,
+    isError: isPendingUsersError,
+  } = useQuery({
     queryKey: ["pending-users-count"],
     enabled: isAdmin,
     queryFn: async () => {
@@ -135,11 +153,13 @@ export function AppSidebar() {
   });
 
   // PRICE-RT.4 — small queue alert badge (admin/manager/accountant only).
-  const { data: pricingQueueHealth } = useQuery({
+  const {
+    data: pricingQueueHealth,
+    isLoading: isPricingQueueLoading,
+    isError: isPricingQueueError,
+  } = useQuery({
     queryKey: ["sidebar-pricing-queue-summary"],
     enabled: canSeePricingQueue,
-    refetchInterval: 30_000,
-    refetchIntervalInBackground: false,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_pricing_recompute_queue_summary")
@@ -161,6 +181,24 @@ export function AppSidebar() {
       : pendingPricing > 100 || oldestPendingMs > 10 * 60 * 1000
         ? "warning"
         : null;
+  const needsActionItems = useMemo(
+    () =>
+      resolveNeedsActionItems(roles, {
+        pendingUsersCount: pendingCount,
+        pricingQueue: pricingQueueHealth
+          ? {
+              pending_count: pricingQueueHealth.pending_count,
+              failed_count: pricingQueueHealth.failed_count,
+              oldest_pending_at: pricingQueueHealth.oldest_pending_at,
+            }
+          : null,
+      }),
+    [roles, pendingCount, pricingQueueHealth],
+  );
+  const needsActionLoading =
+    (isAdmin && isPendingUsersLoading) || (canSeePricingQueue && isPricingQueueLoading);
+  const needsActionError =
+    (isAdmin && isPendingUsersError) || (canSeePricingQueue && isPricingQueueError);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -175,53 +213,81 @@ export function AppSidebar() {
     };
   }, [isAdmin, qc]);
 
-  const isItemActive = (to: string) =>
-    location.pathname === to || location.pathname.startsWith(to + "/");
+  const isItemActive = (route: string) =>
+    location.pathname === route || location.pathname.startsWith(route + "/");
 
-  const renderItem = (item: NavItem) => {
-    const active = isItemActive(item.to);
-    const showBadge = item.to === "/users" && isAdmin && (pendingCount ?? 0) > 0;
+  const renderItem = (item: NavigationEntry, index?: number) => {
+    const active = isItemActive(item.route);
+    const isHighlighted = isSearching && typeof index === "number" && index === highlightedIndex;
+    const showBadge = item.route === "/users" && isAdmin && (pendingCount ?? 0) > 0;
     const showPricingBadge =
-      item.to === "/pricing/recompute-prices" && pricingAlertVariant !== null;
+      item.route === "/pricing/recompute-prices" && pricingAlertVariant !== null;
+    const isFavorite = favoriteIdSet.has(item.id);
     return (
-      <Link
-        key={item.to}
-        to={item.to}
-        aria-current={active ? "page" : undefined}
-        className={`group relative flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-[13px] transition-colors
+      <div
+        key={item.route}
+        onMouseEnter={
+          isSearching && typeof index === "number" ? () => setHighlightedIndex(index) : undefined
+        }
+        className={`group relative flex h-9 items-center rounded-lg transition-colors
           ${
             active
               ? "bg-sidebar-accent/70 font-semibold text-sidebar-primary shadow-sm"
               : "text-sidebar-foreground/85 hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
-          }`}
+          } ${isHighlighted ? "ring-1 ring-sidebar-primary/60 bg-sidebar-accent/50" : ""}`}
       >
-        {active && (
-          <span className="absolute inset-y-1.5 right-0 w-[3px] rounded-l-full bg-sidebar-primary" />
-        )}
-        <item.icon
-          className={`h-4 w-4 ${active ? "text-sidebar-primary" : "text-sidebar-foreground/65"}`}
-        />
-        <span className="truncate">{item.label}</span>
-        {showBadge && (
-          <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
-            {pendingCount}
-          </span>
-        )}
-        {showPricingBadge && (
-          <span
-            className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
-              pricingAlertVariant === "alert" ? "bg-destructive" : "bg-amber-500"
+        <Link
+          to={item.route}
+          aria-current={active ? "page" : undefined}
+          className="relative flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2"
+        >
+          {active && (
+            <span className="absolute inset-y-1.5 right-0 w-[3px] rounded-l-full bg-sidebar-primary" />
+          )}
+          <item.icon
+            className={`h-4 w-4 ${active ? "text-sidebar-primary" : "text-sidebar-foreground/65"}`}
+          />
+          <span className="truncate">{item.title}</span>
+          {showBadge && (
+            <span className="mr-auto rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">
+              {pendingCount}
+            </span>
+          )}
+          {showPricingBadge && (
+            <span
+              className={`mr-auto rounded-full px-2 py-0.5 text-[10px] font-bold text-white ${
+                pricingAlertVariant === "alert" ? "bg-destructive" : "bg-amber-500"
+              }`}
+              title={
+                pricingAlertVariant === "alert"
+                  ? `${failedCount} مورد ناموفق در صف قیمت`
+                  : `${pendingPricing} مورد در انتظار در صف قیمت`
+              }
+            >
+              {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
+            </span>
+          )}
+        </Link>
+        {item.pinnable && (
+          <button
+            type="button"
+            aria-label={isFavorite ? "حذف از میانبرهای من" : "افزودن به میانبرهای من"}
+            title={isFavorite ? "حذف از میانبرهای من" : "افزودن به میانبرهای من"}
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              toggleFavorite(item);
+            }}
+            className={`ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+              isFavorite
+                ? "text-amber-500 hover:bg-sidebar-accent/50"
+                : "text-sidebar-foreground/35 opacity-0 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground/70 group-hover:opacity-100 focus:opacity-100"
             }`}
-            title={
-              pricingAlertVariant === "alert"
-                ? `${failedCount} مورد ناموفق در صف قیمت`
-                : `${pendingPricing} مورد در انتظار در صف قیمت`
-            }
           >
-            {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
-          </span>
+            <Star className={`h-3.5 w-3.5 ${isFavorite ? "fill-current" : ""}`} />
+          </button>
         )}
-      </Link>
+      </div>
     );
   };
 
@@ -236,6 +302,8 @@ export function AppSidebar() {
   return (
     <TooltipProvider delayDuration={120}>
       <Sidebar side="right" collapsible="icon" className="border-l-0">
+        {/* Item 209 — drag the inner edge to resize; double-click resets. */}
+        <SidebarResizeHandle />
         <SidebarHeader className="border-b border-sidebar-border p-0">
           <div className="flex items-center gap-2 px-3 py-3 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-2">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
@@ -243,29 +311,46 @@ export function AppSidebar() {
             </div>
             <div className="flex flex-col overflow-hidden group-data-[collapsible=icon]:hidden">
               <span className="truncate text-[13px] font-bold leading-tight text-sidebar-foreground">
-                افراکالا
+                {BRANDING.displayNameFa}
               </span>
               <span className="truncate text-[10.5px] text-sidebar-foreground/65">
-                دستیار هوشمند کسب‌وکار
+                {BRANDING.taglineFa}
               </span>
             </div>
-          </div>
-          {/* Global search */}
-          <div className="border-t border-sidebar-border/60 px-2 py-2 group-data-[collapsible=icon]:hidden">
-            <div className="relative">
-              <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/50" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="جستجوی سریع..."
-                aria-label="جستجوی سریع"
-                className="h-8 w-full rounded-md border border-sidebar-border/60 bg-sidebar-accent/25 pr-8 pl-12 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/40"
-              />
-              <kbd className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 rounded border border-sidebar-border/60 bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-sidebar-foreground/60">
-                Ctrl K
-              </kbd>
-            </div>
+            {primaryAction && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to={primaryAction.route}
+                    aria-label={primaryAction.title}
+                    className="hidden h-9 w-9 items-center justify-center rounded-lg border border-sidebar-border/60 bg-sidebar-accent/35 text-sidebar-primary transition-colors hover:bg-sidebar-accent/60 group-data-[collapsible=icon]:flex"
+                  >
+                    <primaryAction.icon className="h-4 w-4" />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  {primaryAction.title}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {canQuickSalesSearch && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    to="/sales/search"
+                    aria-label="جستجوی سریع فروش"
+                    onClick={() => setQuickSalesBurst((value) => value + 1)}
+                    className="relative hidden h-9 w-9 items-center justify-center overflow-visible rounded-lg border border-sidebar-primary/35 bg-sidebar-primary text-sidebar-primary-foreground shadow-sm transition-colors hover:bg-sidebar-primary/90 group-data-[collapsible=icon]:flex"
+                  >
+                    <ScanSearch className="h-4 w-4" />
+                    <FloatingReactionBurst trigger={quickSalesBurst} />
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  جستجوی سریع فروش
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </SidebarHeader>
 
@@ -286,7 +371,7 @@ export function AppSidebar() {
                       disabled={disabled}
                       onClick={() => {
                         setActiveModule(m.key);
-                        if (m.defaultTo && visible.some((i) => i.to === m.defaultTo)) {
+                        if (m.defaultTo && visible.some((i) => i.route === m.defaultTo)) {
                           navigate({ to: m.defaultTo });
                         }
                       }}
@@ -314,6 +399,61 @@ export function AppSidebar() {
 
           {/* SUBMENU PANEL — only the active module's items, or search results */}
           <div className="flex min-w-0 flex-1 flex-col overflow-y-auto py-2 pl-2 group-data-[collapsible=icon]:hidden">
+            <div className="sticky top-0 z-30 mb-3 border-b border-sidebar-border/60 bg-sidebar/95 px-2 pb-2 pt-0 backdrop-blur">
+              {canQuickSalesSearch && (
+                <div className="relative mb-2 overflow-visible">
+                  <Link
+                    to="/sales/search"
+                    title="جستجوی سریع فروش"
+                    aria-label="جستجوی سریع فروش"
+                    onClick={() => setQuickSalesBurst((value) => value + 1)}
+                    className="relative flex h-10 items-center justify-center gap-2 overflow-visible rounded-lg border border-sidebar-primary/40 bg-sidebar-primary px-3 text-xs font-bold text-sidebar-primary-foreground shadow-md shadow-sidebar-primary/15 ring-1 ring-sidebar-primary/20 transition-colors hover:bg-sidebar-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary/60"
+                  >
+                    <ScanSearch className="h-4 w-4" />
+                    <span>جستجوی سریع فروش</span>
+                    <FloatingReactionBurst trigger={quickSalesBurst} />
+                  </Link>
+                </div>
+              )}
+              <div className="relative">
+                <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-sidebar-foreground/50" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (!isSearching) {
+                      if (e.key === "Escape") setSearchQuery("");
+                      return;
+                    }
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setHighlightedIndex((i) =>
+                        searchResults.length === 0 ? 0 : Math.min(i + 1, searchResults.length - 1),
+                      );
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setHighlightedIndex((i) => Math.max(i - 1, 0));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const target = searchResults[highlightedIndex];
+                      if (target) {
+                        navigate({ to: target.route });
+                        setSearchQuery("");
+                      }
+                    } else if (e.key === "Escape") {
+                      setSearchQuery("");
+                    }
+                  }}
+                  placeholder="جستجوی سریع..."
+                  aria-label="جستجوی سریع"
+                  className="h-8 w-full rounded-md border border-sidebar-border/60 bg-sidebar-accent/25 pr-8 pl-12 text-xs text-sidebar-foreground placeholder:text-sidebar-foreground/50 outline-none focus:border-sidebar-primary/50 focus:bg-sidebar-accent/40"
+                />
+                <kbd className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 rounded border border-sidebar-border/60 bg-sidebar-accent/40 px-1.5 py-0.5 font-mono text-[9px] text-sidebar-foreground/60">
+                  Ctrl K
+                </kbd>
+              </div>
+            </div>
             {isSearching ? (
               <>
                 <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
@@ -321,7 +461,7 @@ export function AppSidebar() {
                 </div>
                 <div className="flex flex-col gap-0.5">
                   {searchResults.length > 0 ? (
-                    searchResults.map(renderItem)
+                    searchResults.map((it, idx) => renderItem(it, idx))
                   ) : (
                     <div className="px-3 py-4 text-center text-xs text-sidebar-foreground/60">
                       موردی یافت نشد
@@ -331,6 +471,99 @@ export function AppSidebar() {
               </>
             ) : (
               <>
+                {(needsActionItems.length > 0 || needsActionLoading || needsActionError) && (
+                  <div className="mb-3 rounded-lg border border-sidebar-border/60 bg-sidebar-accent/15 p-2">
+                    <div className="mb-1.5 flex items-center justify-between px-1 text-[11px] font-semibold text-sidebar-primary/85">
+                      <span>نیازمند اقدام</span>
+                      {needsActionLoading && (
+                        <span className="text-[10px] font-normal text-sidebar-foreground/50">
+                          در حال بررسی
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {needsActionItems.map((item) => (
+                        <Link
+                          key={item.id}
+                          to={item.route}
+                          className="flex h-8 items-center gap-2 rounded-md bg-sidebar/50 px-2 text-[11px] text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/50"
+                        >
+                          <item.entry.icon
+                            className={`h-3.5 w-3.5 ${
+                              item.tone === "danger" ? "text-destructive" : "text-amber-500"
+                            }`}
+                          />
+                          <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                          {item.detail && (
+                            <span className="hidden truncate text-[10px] text-sidebar-foreground/50 xl:inline">
+                              {item.detail}
+                            </span>
+                          )}
+                          <span
+                            className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white ${
+                              item.tone === "danger" ? "bg-destructive" : "bg-amber-500"
+                            }`}
+                          >
+                            {item.count}
+                          </span>
+                        </Link>
+                      ))}
+                      {needsActionError && (
+                        <div className="rounded-md bg-sidebar/40 px-2 py-1.5 text-[10px] text-sidebar-foreground/55">
+                          بررسی بعضی اقدام‌ها ممکن نشد
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {favorites.length > 0 && (
+                  <>
+                    <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-primary/80">
+                      میانبرهای من
+                    </div>
+                    <div className="mb-3 grid grid-cols-2 gap-1">
+                      {favorites.slice(0, maxFavorites).map((item) => {
+                        const active = isItemActive(item.route);
+                        return (
+                          <Link
+                            key={`fav-${item.id}`}
+                            to={item.route}
+                            className={`flex h-8 items-center gap-1.5 truncate rounded-md border px-2 text-[11px] transition-colors ${
+                              active
+                                ? "border-sidebar-primary/40 bg-sidebar-accent/70 text-sidebar-primary"
+                                : "border-sidebar-border/50 bg-sidebar-accent/20 text-sidebar-foreground/80 hover:bg-sidebar-accent/50"
+                            }`}
+                          >
+                            <item.icon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{item.title}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+                {recent.length > 1 && (
+                  <>
+                    <div className="px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
+                      آخرین استفاده‌ها
+                    </div>
+                    <div className="mb-3 flex flex-col gap-0.5">
+                      {recent
+                        .filter((item) => item.route !== location.pathname)
+                        .slice(0, maxRecent)
+                        .map((item) => (
+                          <Link
+                            key={`recent-${item.id}`}
+                            to={item.route}
+                            className="flex h-7 items-center gap-2 rounded-md px-2 text-[11px] text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+                          >
+                            <item.icon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{item.title}</span>
+                          </Link>
+                        ))}
+                    </div>
+                  </>
+                )}
                 <div className="flex items-center gap-2 px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55">
                   {activeModuleMeta && (
                     <>
@@ -357,11 +590,11 @@ export function AppSidebar() {
                     </div>
                     <div className="grid grid-cols-2 gap-1">
                       {quickAccess.map((item) => {
-                        const active = isItemActive(item.to);
+                        const active = isItemActive(item.route);
                         return (
                           <Link
-                            key={`qa-${item.to}`}
-                            to={item.to}
+                            key={`qa-${item.route}`}
+                            to={item.route}
                             className={`flex h-8 items-center gap-1.5 truncate rounded-md border px-2 text-[11px] transition-colors ${
                               active
                                 ? "border-sidebar-primary/40 bg-sidebar-accent/70 text-sidebar-primary"
@@ -369,7 +602,7 @@ export function AppSidebar() {
                             }`}
                           >
                             <item.icon className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{item.label}</span>
+                            <span className="truncate">{item.title}</span>
                           </Link>
                         );
                       })}

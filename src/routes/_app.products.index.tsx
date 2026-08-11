@@ -2,13 +2,33 @@ import { useMemo, useState } from "react";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Package, ChevronLeft, ChevronRight, Pencil, Eye, Tag } from "lucide-react";
+import {
+  Plus,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  Pencil,
+  Eye,
+  Tag,
+  History,
+  ImageIcon,
+  Download,
+  Loader2,
+} from "lucide-react";
+import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
@@ -28,16 +48,23 @@ import {
   PRODUCT_STATUS_VARIANTS,
   PRODUCTS_PAGE_SIZE,
 } from "@/lib/products/constants";
-import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import { fetchSettlementTypes, fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
+import { ProductTimelineDialog } from "@/components/products/ProductTimelineDialog";
 import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
+import { exportProductCatalogToExcel } from "@/lib/export/product-catalog-excel";
+import { BRANDING, getPageTitle } from "@/config/branding";
+
+const EXPORT_ROW_CAP = 5000;
 
 export const Route = createFileRoute("/_app/products/")({
   beforeLoad: async () => {
     await requirePermission("products", "view");
   },
+  head: () => ({ meta: [{ title: getPageTitle("محصولات") }] }),
   component: ProductsPage,
 });
 
@@ -58,6 +85,31 @@ interface ProductRow {
   labels: { id: string; title: string; color: string }[];
 }
 
+const PRODUCT_SELECT = `id, name, sku, product_type, base_currency, stock_status, status, updated_at, color, capacity, model,
+   brand:brands(id,name), category:categories(id,name),
+   product_label_links(label:product_labels(id,title,color))`;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function normalizeProduct(r: any): ProductRow {
+  return {
+    id: r.id,
+    name: r.name,
+    sku: r.sku,
+    product_type: r.product_type,
+    base_currency: r.base_currency,
+    stock_status: r.stock_status,
+    status: r.status,
+    updated_at: r.updated_at,
+    color: r.color ?? null,
+    capacity: r.capacity ?? null,
+    model: r.model ?? null,
+    brand: r.brand ?? null,
+    category: r.category ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    labels: (r.product_label_links ?? []).map((x: any) => x.label).filter(Boolean),
+  };
+}
+
 function ProductsPage() {
   const { roles } = useAuth();
   const canCreate = hasPermission(roles, "products", "create");
@@ -68,7 +120,13 @@ function ProductsPage() {
     EMPTY_FILTERS,
   );
   const [page, setPage] = useSessionStorageState<number>("products:list:page", 0);
+  const [pageSize, setPageSize] = useSessionStorageState<number>(
+    "products:list:pageSize",
+    PRODUCTS_PAGE_SIZE,
+  );
   const [labelTarget, setLabelTarget] = useState<{ id: string; name: string } | null>(null);
+  const [timelineTarget, setTimelineTarget] = useState<{ id: string; name: string } | null>(null);
+  const [exporting, setExporting] = useState(false);
   const debouncedRaw = useDebounce(filters.q, 350);
   const debouncedNorm = normalizeSearchText(debouncedRaw);
   const debouncedQ = debouncedNorm.length >= 2 ? debouncedNorm : "";
@@ -76,109 +134,392 @@ function ProductsPage() {
   // any change in filters resets page to 0
   const stableFilters = useMemo(() => ({ ...filters, q: debouncedQ }), [filters, debouncedQ]);
 
+  // Sort + settlement-term selectors (settlement affects price-based sorts too).
+  const [sortMode, setSortMode] = useSessionStorageState<string>("products:list:sort", "default");
+  const [settlementTypeId, setSettlementTypeId] = useState<string>("__base");
+  const settlementTypesQ = useQuery({
+    queryKey: ["settlement-types-active"],
+    queryFn: () => fetchSettlementTypes(true),
+    staleTime: 300_000,
+  });
+  const salePriceTypesQ = useQuery({
+    queryKey: ["sale-price-types-active"],
+    queryFn: () => fetchSalePriceTypes(true),
+    staleTime: 300_000,
+  });
+  // "primary" price type = first active by sort_order (نقدی).
+  const primaryPriceTypeId = salePriceTypesQ.data?.[0]?.id ?? null;
+  const primaryPriceTypeTitle = salePriceTypesQ.data?.[0]?.title ?? "";
+
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ["products", stableFilters, page],
+    queryKey: [
+      "products",
+      stableFilters,
+      page,
+      pageSize,
+      sortMode,
+      settlementTypeId,
+      primaryPriceTypeId,
+    ],
     queryFn: async () => {
-      const from = page * PRODUCTS_PAGE_SIZE;
-      const to = from + PRODUCTS_PAGE_SIZE - 1;
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
 
-      let query = supabase
-        .from("products")
-        .select(
-          `id, name, sku, product_type, base_currency, stock_status, status, updated_at, color, capacity, model,
-           brand:brands(id,name), category:categories(id,name),
-           product_label_links(label:product_labels(id,title,color))`,
-          { count: "exact" },
-        )
-        .order("updated_at", { ascending: false })
-        .range(from, to);
-
+      // Resolve text-search ids once (shared by both code paths).
+      let textIds: string[] | null = null;
+      let textFallback = false;
       if (stableFilters.q.trim()) {
         const term = stableFilters.q.trim().replace(/[%_]/g, "");
-        // Use server-side multi-field search RPC to also match brand, category,
-        // model, color, capacity, primary_spec, and dynamic attribute values.
         const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
           p_term: term,
           p_limit: 500,
         });
         if (idsErr) {
-          // Fallback to legacy name/sku search if RPC is unavailable
-          query = query.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+          textFallback = true;
         } else {
-          const ids = (idsData ?? []).map((r: { id: string }) => r.id);
-          if (ids.length === 0) {
-            return { rows: [] as ProductRow[], total: 0 };
-          }
-          query = query.in("id", ids);
+          textIds = (idsData ?? []).map((r: { id: string }) => r.id);
+          if (textIds.length === 0) return { rows: [] as ProductRow[], total: 0 };
         }
       }
-      if (stableFilters.brand_id) query = query.eq("brand_id", stableFilters.brand_id);
-      if (stableFilters.category_id) query = query.eq("category_id", stableFilters.category_id);
-      if (stableFilters.product_type) query = query.eq("product_type", stableFilters.product_type);
-      if (stableFilters.base_currency)
-        query = query.eq("base_currency", stableFilters.base_currency);
-      if (stableFilters.stock_status) query = query.eq("stock_status", stableFilters.stock_status);
-      if (stableFilters.status) query = query.eq("status", stableFilters.status);
-      if (stableFilters.color) query = query.eq("color", stableFilters.color);
-      if (stableFilters.capacity) query = query.eq("capacity", stableFilters.capacity);
-      if (stableFilters.model) query = query.eq("model", stableFilters.model);
 
-      const { data: rows, error, count } = await query;
-      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const applyFilters = (qb: any) => {
+        if (textIds) qb = qb.in("id", textIds);
+        else if (textFallback && stableFilters.q.trim()) {
+          const term = stableFilters.q.trim().replace(/[%_]/g, "");
+          qb = qb.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+        }
+        if (stableFilters.brand_id) qb = qb.eq("brand_id", stableFilters.brand_id);
+        if (stableFilters.category_id) qb = qb.eq("category_id", stableFilters.category_id);
+        if (stableFilters.product_type) qb = qb.eq("product_type", stableFilters.product_type);
+        if (stableFilters.base_currency) qb = qb.eq("base_currency", stableFilters.base_currency);
+        if (stableFilters.stock_status) qb = qb.eq("stock_status", stableFilters.stock_status);
+        if (stableFilters.status) qb = qb.eq("status", stableFilters.status);
+        if (stableFilters.color) qb = qb.eq("color", stableFilters.color);
+        if (stableFilters.capacity) qb = qb.eq("capacity", stableFilters.capacity);
+        if (stableFilters.model) qb = qb.eq("model", stableFilters.model);
+        return qb;
+      };
 
-      let normalized: ProductRow[] = (rows ?? []).map((r) => {
-        const row = r as any;
-        return {
-          id: row.id,
-          name: row.name,
-          sku: row.sku,
-          product_type: row.product_type,
-          base_currency: row.base_currency,
-          stock_status: row.stock_status,
-          status: row.status,
-          updated_at: row.updated_at,
-          color: row.color ?? null,
-          capacity: row.capacity ?? null,
-          model: row.model ?? null,
-          brand: row.brand ?? null,
-          category: row.category ?? null,
-          labels: (row.product_label_links ?? []).map((x: any) => x.label).filter(Boolean),
-        };
-      });
+      const isRankSort =
+        sortMode === "cheapest" || sortMode === "expensive" || sortMode === "most_viewed";
 
-      // فیلتر برچسب‌ها سمت کلاینت (چون m2m)
-      if (stableFilters.label_ids.length > 0) {
-        normalized = normalized.filter((p) =>
-          stableFilters.label_ids.every((id) => p.labels.some((l) => l.id === id)),
-        );
+      // Default / newest: order + range on the products table (server-side).
+      if (!isRankSort) {
+        const orderCol = sortMode === "newest" ? "created_at" : "updated_at";
+        const query = applyFilters(
+          supabase.from("products").select(PRODUCT_SELECT, { count: "exact" }),
+        )
+          .order(orderCol, { ascending: false })
+          .range(from, to);
+        const { data: rows, error, count } = await query;
+        if (error) throw error;
+        let normalized = (rows ?? []).map(normalizeProduct);
+        if (stableFilters.label_ids.length > 0) {
+          normalized = normalized.filter((p) =>
+            stableFilters.label_ids.every((id) => p.labels.some((l) => l.id === id)),
+          );
+        }
+        return { rows: normalized, total: count ?? 0 };
       }
 
-      return { rows: normalized, total: count ?? 0 };
+      // Cheapest / expensive / most-viewed: rank across ALL filtered ids, then
+      // paginate the sorted list (so pagination is correct, not per-page).
+      const { data: idRows, error: idErr } = await applyFilters(
+        supabase
+          .from("products")
+          .select("id, product_label_links(label:product_labels(id))")
+          .limit(5000),
+      );
+      if (idErr) throw idErr;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let allIds = (idRows ?? []).map((r: any) => r.id as string);
+      if (stableFilters.label_ids.length > 0) {
+        allIds = (idRows ?? [])
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((r: any) =>
+            stableFilters.label_ids.every((id) =>
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (r.product_label_links ?? []).some((x: any) => x.label?.id === id),
+            ),
+          )
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((r: any) => r.id as string);
+      }
+
+      const rankMap = new Map<string, number>();
+      if (sortMode === "most_viewed") {
+        const { data: vc } = await (
+          supabase.rpc as unknown as (
+            fn: string,
+            args: { p_product_ids: string[] },
+          ) => Promise<{ data: { product_id: string; cnt: number }[] | null }>
+        )("get_product_view_counts_7d", { p_product_ids: allIds });
+        (vc ?? []).forEach((r) => rankMap.set(r.product_id, Number(r.cnt)));
+      } else if (primaryPriceTypeId) {
+        let pq = supabase
+          .from("product_computed_prices")
+          .select("product_id, rounded_sale_price, final_sale_price")
+          .eq("sale_price_type_id", primaryPriceTypeId)
+          .in("product_id", allIds);
+        pq =
+          settlementTypeId === "__base"
+            ? pq.is("settlement_type_id", null)
+            : pq.eq("settlement_type_id", settlementTypeId);
+        const { data: pr } = await pq;
+        (pr ?? []).forEach((r) => {
+          const row = r as {
+            product_id: string;
+            rounded_sale_price: number | null;
+            final_sale_price: number | null;
+          };
+          const v = row.rounded_sale_price ?? row.final_sale_price ?? null;
+          if (v != null) rankMap.set(row.product_id, Number(v));
+        });
+      }
+
+      // Products with a value first (asc for cheapest, desc otherwise);
+      // products with no price / no views go to the END.
+      const dir = sortMode === "cheapest" ? 1 : -1;
+      const sorted = [...allIds].sort((a, b) => {
+        const va = rankMap.get(a);
+        const vb = rankMap.get(b);
+        if (va !== undefined && vb !== undefined) return (va - vb) * dir;
+        if (va !== undefined) return -1;
+        if (vb !== undefined) return 1;
+        return 0;
+      });
+
+      const total = sorted.length;
+      const pageIds = sorted.slice(from, to + 1);
+      if (pageIds.length === 0) return { rows: [] as ProductRow[], total };
+
+      const { data: rows, error } = await supabase
+        .from("products")
+        .select(PRODUCT_SELECT)
+        .in("id", pageIds);
+      if (error) throw error;
+      const byId = new Map<string, ProductRow>();
+      for (const r of rows ?? []) {
+        const n = normalizeProduct(r);
+        byId.set(n.id, n);
+      }
+      return { rows: pageIds.map((id) => byId.get(id)).filter(Boolean) as ProductRow[], total };
     },
   });
 
   const total = data?.total ?? 0;
-  const totalPages = Math.max(1, Math.ceil(total / PRODUCTS_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // Fetch one thumbnail per visible product (primary first, else lowest sort_order)
+  const visibleIds = useMemo(() => (data?.rows ?? []).map((r) => r.id), [data?.rows]);
+  const thumbnailsQ = useQuery({
+    enabled: visibleIds.length > 0,
+    queryKey: ["product-thumbnails", visibleIds],
+    queryFn: async () => {
+      const { data: imgs, error } = await supabase
+        .from("product_images")
+        .select("product_id, url, is_primary, sort_order")
+        .in("product_id", visibleIds)
+        .order("is_primary", { ascending: false })
+        .order("sort_order", { ascending: true });
+      if (error) throw error;
+      const firstByProduct = new Map<string, string>();
+      for (const r of imgs ?? []) {
+        if (!firstByProduct.has((r as any).product_id))
+          firstByProduct.set((r as any).product_id, (r as any).url);
+      }
+      const paths = Array.from(firstByProduct.values());
+      if (paths.length === 0) return new Map<string, string>();
+      const { data: signed } = await supabase.storage
+        .from("product-images")
+        .createSignedUrls(paths, 3600);
+      const signedByPath = new Map<string, string>();
+      (signed ?? []).forEach((s: any) => {
+        if (s.path && s.signedUrl) signedByPath.set(s.path, s.signedUrl);
+      });
+      const out = new Map<string, string>();
+      firstByProduct.forEach((path, pid) => {
+        const u = signedByPath.get(path);
+        if (u) out.set(pid, u);
+      });
+      return out;
+    },
+    staleTime: 60_000,
+  });
+  const thumbnailFor = (id: string) => thumbnailsQ.data?.get(id);
+
+  // Sale-price column values for the visible page (settlement-aware).
+  const pricesQ = useQuery({
+    enabled: visibleIds.length > 0 && !!primaryPriceTypeId,
+    queryKey: ["product-list-prices", visibleIds, primaryPriceTypeId, settlementTypeId],
+    queryFn: async () => {
+      let pq = supabase
+        .from("product_computed_prices")
+        .select("product_id, rounded_sale_price, final_sale_price")
+        .eq("sale_price_type_id", primaryPriceTypeId as string)
+        .in("product_id", visibleIds);
+      pq =
+        settlementTypeId === "__base"
+          ? pq.is("settlement_type_id", null)
+          : pq.eq("settlement_type_id", settlementTypeId);
+      const { data: rows, error } = await pq;
+      if (error) throw error;
+      const map = new Map<string, number>();
+      for (const r of rows ?? []) {
+        const row = r as {
+          product_id: string;
+          rounded_sale_price: number | null;
+          final_sale_price: number | null;
+        };
+        const price = row.rounded_sale_price ?? row.final_sale_price ?? null;
+        if (price != null) map.set(row.product_id, Number(price));
+      }
+      return map;
+    },
+  });
+  const priceFor = (id: string): number | null => pricesQ.data?.get(id) ?? null;
 
   const onFiltersChange = (next: ProductFilterState) => {
     setFilters(next);
     setPage(0);
   };
 
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      let textIds: string[] | null = null;
+      let textFallback = false;
+      if (stableFilters.q.trim()) {
+        const term = stableFilters.q.trim().replace(/[%_]/g, "");
+        const { data: idsData, error: idsErr } = await supabase.rpc("search_product_ids", {
+          p_term: term,
+          p_limit: 500,
+        });
+        if (idsErr) {
+          textFallback = true;
+        } else {
+          textIds = (idsData ?? []).map((r: { id: string }) => r.id);
+          if (textIds.length === 0) {
+            toast.error("محصولی برای خروجی گرفتن وجود ندارد.");
+            return;
+          }
+        }
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let qb: any = supabase
+        .from("products")
+        .select(
+          `sku, name, barcode, accounting_code, torob_url, color, capacity, model, unit,
+           product_type, stock_status, status,
+           brand:brands(name), category:categories(name),
+           product_label_links(label_id)`,
+        )
+        .order("updated_at", { ascending: false })
+        .limit(EXPORT_ROW_CAP);
+
+      if (textIds) qb = qb.in("id", textIds);
+      else if (textFallback && stableFilters.q.trim()) {
+        const term = stableFilters.q.trim().replace(/[%_]/g, "");
+        qb = qb.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
+      }
+      if (stableFilters.brand_id) qb = qb.eq("brand_id", stableFilters.brand_id);
+      if (stableFilters.category_id) qb = qb.eq("category_id", stableFilters.category_id);
+      if (stableFilters.product_type) qb = qb.eq("product_type", stableFilters.product_type);
+      if (stableFilters.base_currency) qb = qb.eq("base_currency", stableFilters.base_currency);
+      if (stableFilters.stock_status) qb = qb.eq("stock_status", stableFilters.stock_status);
+      if (stableFilters.status) qb = qb.eq("status", stableFilters.status);
+      if (stableFilters.color) qb = qb.eq("color", stableFilters.color);
+      if (stableFilters.capacity) qb = qb.eq("capacity", stableFilters.capacity);
+      if (stableFilters.model) qb = qb.eq("model", stableFilters.model);
+
+      const { data: rows, error } = await qb;
+      if (error) throw error;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let list = (rows ?? []) as any[];
+      if (stableFilters.label_ids.length > 0) {
+        list = list.filter((r) => {
+          const ids = new Set(
+            (r.product_label_links ?? []).map((x: { label_id: string }) => x.label_id),
+          );
+          return stableFilters.label_ids.every((id) => ids.has(id));
+        });
+      }
+
+      if (list.length === 0) {
+        toast.error("محصولی برای خروجی گرفتن وجود ندارد.");
+        return;
+      }
+
+      const result = await exportProductCatalogToExcel(
+        list.map((r) => ({
+          sku: r.sku ?? null,
+          name: r.name,
+          brand: r.brand?.name ?? null,
+          category: r.category?.name ?? null,
+          productType:
+            PRODUCT_TYPE_LABELS[r.product_type as keyof typeof PRODUCT_TYPE_LABELS] ??
+            r.product_type,
+          stockStatus:
+            STOCK_STATUS_LABELS[r.stock_status as keyof typeof STOCK_STATUS_LABELS] ??
+            r.stock_status,
+          status: PRODUCT_STATUS_LABELS[r.status as keyof typeof PRODUCT_STATUS_LABELS] ?? r.status,
+          barcode: r.barcode ?? null,
+          accountingCode: r.accounting_code ?? null,
+          torobUrl: r.torob_url ?? null,
+          color: r.color ?? null,
+          capacity: r.capacity ?? null,
+          model: r.model ?? null,
+          unit: r.unit ?? null,
+        })),
+      );
+
+      const capped = list.length >= EXPORT_ROW_CAP;
+      toast.success(
+        capped
+          ? `خروجی اکسل آماده شد (${toFaDigits(String(result.rowCount))} ردیف — سقف ${toFaDigits(String(EXPORT_ROW_CAP))})`
+          : `خروجی اکسل آماده شد (${toFaDigits(String(result.rowCount))} ردیف)`,
+      );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "خطا در ساخت خروجی اکسل.";
+      toast.error(msg);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-5">
       <PageHeader
         title="محصولات"
-        description="مدیریت محصولات افراکالا، دسته‌ها، برندها و برچسب‌ها"
+        description={`مدیریت محصولات ${BRANDING.platformName}، دسته‌ها، برندها و برچسب‌ها`}
         actions={
-          canCreate ? (
-            <Button asChild size="sm">
-              <Link to="/products/new">
-                <Plus className="ms-1 h-4 w-4" />
-                محصول جدید
-              </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={exporting}
+              onClick={() => void handleExportExcel()}
+            >
+              {exporting ? (
+                <Loader2 className="ms-1 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="ms-1 h-4 w-4" />
+              )}
+              خروجی اکسل
             </Button>
-          ) : null
+            {canCreate ? (
+              <Button asChild size="sm">
+                <Link to="/products/new">
+                  <Plus className="ms-1 h-4 w-4" />
+                  محصول جدید
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
@@ -233,6 +574,47 @@ function ProductsPage() {
         />
       ) : (
         <RecentPurchaseGroup productIds={(data?.rows ?? []).map((p) => p.id)}>
+          {/* Settlement-term selector for the sale-price column */}
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">مرتب‌سازی:</span>
+            <Select
+              value={sortMode}
+              onValueChange={(v) => {
+                setSortMode(v);
+                setPage(0);
+              }}
+            >
+              <SelectTrigger className="h-8 w-[160px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="default">پیش‌فرض</SelectItem>
+                <SelectItem value="cheapest">ارزان‌ترین</SelectItem>
+                <SelectItem value="expensive">گران‌ترین</SelectItem>
+                <SelectItem value="most_viewed">پربازدیدترین (۷ روز)</SelectItem>
+                <SelectItem value="newest">جدیدترین</SelectItem>
+              </SelectContent>
+            </Select>
+            <span className="text-xs text-muted-foreground">نوع تسویه (قیمت فروش):</span>
+            <Select value={settlementTypeId} onValueChange={setSettlementTypeId}>
+              <SelectTrigger className="h-8 w-[180px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__base">قیمت پایه</SelectItem>
+                {(settlementTypesQ.data ?? []).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {primaryPriceTypeTitle && (
+              <span className="text-[11px] text-muted-foreground">
+                (نوع قیمت: {primaryPriceTypeTitle})
+              </span>
+            )}
+          </div>
           {/* Desktop table */}
           <Card className="hidden md:block">
             <CardContent className="p-0">
@@ -240,6 +622,7 @@ function ProductsPage() {
                 <table className="w-full text-sm">
                   <thead className="border-b bg-muted/50 text-right text-xs text-muted-foreground">
                     <tr>
+                      <th className="p-3 font-medium w-12">تصویر</th>
                       <th className="p-3 font-medium">نام</th>
                       <th className="p-3 font-medium">SKU</th>
                       <th className="p-3 font-medium">برند</th>
@@ -250,14 +633,33 @@ function ProductsPage() {
                       <th className="p-3 font-medium">نوع / ارز</th>
                       <th className="p-3 font-medium">موجودی</th>
                       <th className="p-3 font-medium">خرید اخیر</th>
+                      <th className="p-3 font-medium">قیمت فروش</th>
                       <th className="p-3 font-medium">وضعیت</th>
                       <th className="p-3 font-medium">به‌روزرسانی</th>
                       <th className="p-3 font-medium">عملیات</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(data?.rows ?? []).map((p) => (
-                      <tr key={p.id} className="border-b last:border-0 hover:bg-muted/30">
+                    {(data?.rows ?? []).map((p, index) => (
+                      <tr
+                        key={p.id}
+                        className="border-b last:border-0 hover:bg-muted/30 animate-in fade-in slide-in-from-bottom-1 duration-300 fill-mode-forwards"
+                        style={{ animationDelay: `${index * 30}ms`, animationFillMode: "forwards" }}
+                      >
+                        <td className="p-2">
+                          {thumbnailFor(p.id) ? (
+                            <img
+                              src={thumbnailFor(p.id)}
+                              alt=""
+                              className="h-10 w-10 rounded-md object-cover border border-border transition-transform duration-200 hover:scale-110"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+                              <ImageIcon className="h-4 w-4" />
+                            </div>
+                          )}
+                        </td>
                         <td className="p-3">
                           <Link
                             to="/products/$id"
@@ -301,6 +703,13 @@ function ProductsPage() {
                         <td className="p-3">
                           <RecentPurchaseBadge productId={p.id} />
                         </td>
+                        <td className="p-3 font-medium">
+                          {priceFor(p.id) != null ? (
+                            `${formatNumber(priceFor(p.id) as number)} ت`
+                          ) : (
+                            <span className="text-xs text-muted-foreground">قیمت ثبت نشده</span>
+                          )}
+                        </td>
                         <td className="p-3">
                           <Badge variant={PRODUCT_STATUS_VARIANTS[p.status]}>
                             {PRODUCT_STATUS_LABELS[p.status]}
@@ -315,6 +724,20 @@ function ProductsPage() {
                               <Link to="/products/$id" params={{ id: p.id }}>
                                 <Eye className="h-4 w-4" />
                               </Link>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="تاریخچه"
+                              title="تاریخچه"
+                              onClick={() =>
+                                setTimelineTarget({
+                                  id: p.id,
+                                  name: formatProductDisplayNameWithFallback(p),
+                                })
+                              }
+                            >
+                              <History className="h-4 w-4" />
                             </Button>
                             {canUpdate && (
                               <Button asChild variant="ghost" size="icon" aria-label="ویرایش">
@@ -355,13 +778,34 @@ function ProductsPage() {
               <Card key={p.id}>
                 <CardContent className="space-y-2 p-3">
                   <div className="flex items-start justify-between gap-2">
-                    <Link
-                      to="/products/$id"
-                      params={{ id: p.id }}
-                      className="font-semibold text-foreground hover:underline"
-                    >
-                      {formatProductDisplayNameWithFallback(p)}
-                    </Link>
+                    <div className="flex min-w-0 items-start gap-2">
+                      <Link
+                        to="/products/$id"
+                        params={{ id: p.id }}
+                        className="shrink-0"
+                        aria-label="مشاهده محصول"
+                      >
+                        {thumbnailFor(p.id) ? (
+                          <img
+                            src={thumbnailFor(p.id)}
+                            alt=""
+                            className="h-12 w-12 rounded-md border border-border object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 items-center justify-center rounded-md border border-border bg-muted text-muted-foreground">
+                            <ImageIcon className="h-4 w-4" />
+                          </div>
+                        )}
+                      </Link>
+                      <Link
+                        to="/products/$id"
+                        params={{ id: p.id }}
+                        className="min-w-0 font-semibold text-foreground hover:underline"
+                      >
+                        {formatProductDisplayNameWithFallback(p)}
+                      </Link>
+                    </div>
                     <div className="flex shrink-0 gap-1">
                       <Badge variant={PRODUCT_STATUS_VARIANTS[p.status]}>
                         {PRODUCT_STATUS_LABELS[p.status]}
@@ -389,9 +833,27 @@ function ProductsPage() {
                         {STOCK_STATUS_LABELS[p.stock_status]}
                       </Badge>
                       <RecentPurchaseBadge productId={p.id} />
+                      <span className="text-xs font-medium">
+                        {priceFor(p.id) != null
+                          ? `${formatNumber(priceFor(p.id) as number)} ت`
+                          : "قیمت ثبت نشده"}
+                      </span>
                     </div>
                     {canUpdate && (
                       <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setTimelineTarget({
+                              id: p.id,
+                              name: formatProductDisplayNameWithFallback(p),
+                            })
+                          }
+                        >
+                          <History className="ms-1 h-3.5 w-3.5" />
+                          تاریخچه
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -427,6 +889,23 @@ function ProductsPage() {
               {isFetching && <span className="ms-2 text-xs">در حال به‌روزرسانی...</span>}
             </div>
             <div className="flex items-center gap-2">
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => {
+                  setPageSize(Number(v));
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[130px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="20">۲۰ در صفحه</SelectItem>
+                  <SelectItem value="50">۵۰ در صفحه</SelectItem>
+                  <SelectItem value="100">۱۰۰ در صفحه</SelectItem>
+                  <SelectItem value="200">۲۰۰ در صفحه</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 variant="outline"
                 size="sm"
@@ -459,6 +938,15 @@ function ProductsPage() {
         open={!!labelTarget}
         onOpenChange={(o) => {
           if (!o) setLabelTarget(null);
+        }}
+      />
+
+      <ProductTimelineDialog
+        productId={timelineTarget?.id ?? null}
+        productName={timelineTarget?.name ?? ""}
+        open={!!timelineTarget}
+        onOpenChange={(o) => {
+          if (!o) setTimelineTarget(null);
         }}
       />
     </div>

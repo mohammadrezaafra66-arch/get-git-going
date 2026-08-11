@@ -26,6 +26,7 @@ export interface PricingBreakdown {
   input_purchase_price: number;
   input_currency: CurrencyCode;
   currency_rate: number;
+  currency_rate_source: string | null;
   purchase_price_toman: number;
   shipping_cost: number;
   shipping_rule: { id: string; title: string } | null;
@@ -125,11 +126,13 @@ export async function calculateSalePrice(
 
   // 3) نرخ ارز
   let currency_rate = 1;
+  let currency_rate_source: string | null = null;
   if (purchase.currency !== "toman") {
     const rate = await fetchLatestCurrencyRate(purchase.currency, db);
     if (!rate)
       throw new PricingError("NO_CURRENCY_RATE", "نرخ ارز معتبر برای محاسبه قیمت موجود نیست.");
     currency_rate = Number(rate.rate_to_toman);
+    currency_rate_source = (rate as { source_name?: string | null }).source_name ?? null;
   }
   const input_purchase_price = Number(purchase.purchase_price);
   const purchase_price_toman = Math.round(input_purchase_price * currency_rate);
@@ -292,6 +295,7 @@ export async function calculateSalePrice(
     input_purchase_price,
     input_currency: purchase.currency,
     currency_rate,
+    currency_rate_source,
     purchase_price_toman,
     shipping_cost,
     shipping_rule: shipping_rule_used,

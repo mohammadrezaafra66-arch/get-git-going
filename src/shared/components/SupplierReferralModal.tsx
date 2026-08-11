@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -43,7 +44,7 @@ interface Props {
 }
 
 export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Props) {
-  const { user } = useAuth();
+  // created_by is stamped server-side from auth.uid() by person_create_inline.
   const queryClient = useQueryClient();
 
   const form = useForm<FormValues>({
@@ -60,21 +61,29 @@ export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Prop
 
   const mutation = useMutation({
     mutationFn: async (values: FormValues) => {
-      const payload = {
-        name: values.name.trim(),
-        phone: values.phone?.trim() || null,
-        city: values.city?.trim() || null,
-        notes: values.notes?.trim() || null,
-        status: "pending" as const,
-        trust_level: "medium" as const,
-        created_by: user?.id ?? null,
-      };
-      const { error } = await supabase.from("suppliers").insert(payload as never);
+      // Phase 6.2 — referrals used to INSERT into suppliers directly, which is
+      // the most likely origin of the stray person_id=NULL rows. Routed through
+      // person_create_inline so a referred supplier always has a person.
+      const phone = values.phone?.trim() || null;
+      const { error } = await supabase.rpc("person_create_inline", {
+        p_display_name: values.name.trim(),
+        p_context_kind: "supplier",
+        p_kind: "organization",
+        p_identifiers: phone
+          ? [{ kind: "mobile_e164", value_raw: phone, is_primary: true, status: "provisional" }]
+          : [],
+        p_city: values.city?.trim() || null,
+        p_notes: values.notes?.trim() || null,
+        // A referral is unvetted by definition: it stays pending until reviewed.
+        p_legacy_fields: { status: "pending", trust_level: "medium" },
+      });
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success("تأمین‌کننده جدید معرفی شد و پس از بررسی فعال خواهد شد.");
       queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["purchase-form-suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["persons"] });
       form.reset();
       onOpenChange(false);
     },
@@ -163,6 +172,20 @@ export function SupplierReferralModal({ open, onOpenChange, defaultNotes }: Prop
               {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
             </div>
           </div>
+
+          {/* P1.2 — a referral for someone already on file should add the
+              supplier role, not collide with the identifier uniqueness rule. */}
+          <ExistingPersonPrompt
+            phone={form.watch("phone")}
+            targetRole="supplier"
+            onUseExisting={() => {
+              queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+              queryClient.invalidateQueries({ queryKey: ["purchase-form-suppliers"] });
+              queryClient.invalidateQueries({ queryKey: ["persons"] });
+              form.reset();
+              onOpenChange(false);
+            }}
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="sr-notes" className="flex items-center gap-1.5 text-sm">

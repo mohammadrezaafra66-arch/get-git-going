@@ -12,6 +12,7 @@ import {
   type PublicSaleList,
 } from "@/lib/public/get-public-sale-list";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 export const Route = createFileRoute("/public/sale-lists/$listId")({
   loader: async ({ params }) => {
@@ -20,15 +21,17 @@ export const Route = createFileRoute("/public/sale-lists/$listId")({
     return data;
   },
   head: ({ loaderData }) => {
-    const title = loaderData ? `${loaderData.name} — لیست فروش افراکالا` : "لیست فروش افراکالا";
+    const title = loaderData
+      ? getPageTitle(`${loaderData.name} — لیست فروش`)
+      : getPageTitle("لیست فروش");
     const description =
       loaderData?.description ??
       (loaderData
-        ? `لیست فروش «${loaderData.name}» شامل محصولات منتشرشده افراکالا با قیمت‌های به‌روز.`
-        : "لیست فروش منتشرشدهٔ افراکالا شامل محصولات و قیمت‌های به‌روز برای مشتریان.");
+        ? `لیست فروش «${loaderData.name}» شامل محصولات منتشرشده ${BRANDING.platformName} با قیمت‌های به‌روز.`
+        : `لیست فروش منتشرشدهٔ ${BRANDING.platformName} شامل محصولات و قیمت‌های به‌روز برای مشتریان.`);
     const url = loaderData
-      ? `https://get-git-going.lovable.app/public/sale-lists/${loaderData.id ?? ""}`
-      : "https://get-git-going.lovable.app/";
+      ? `${BRANDING.publicOrigin}/public/sale-lists/${loaderData.id ?? ""}`
+      : `${BRANDING.publicOrigin}/`;
     return {
       meta: [
         { title },
@@ -55,8 +58,8 @@ export const Route = createFileRoute("/public/sale-lists/$listId")({
                 inLanguage: "fa-IR",
                 isPartOf: {
                   "@type": "WebSite",
-                  name: "افراکالا",
-                  url: "https://get-git-going.lovable.app",
+                  name: BRANDING.platformName,
+                  url: BRANDING.publicOrigin,
                 },
               }),
             },
@@ -161,7 +164,7 @@ function PublicSaleListPage() {
             <div className="whitespace-pre-wrap leading-6">{data.terms_text}</div>
           ) : null}
           <div className="flex items-center justify-between border-t border-border pt-2 text-[11px]">
-            <span>افراکالا</span>
+            <span>{BRANDING.displayNameFa}</span>
             <span>نسخه {formatNumber(data.version_number)}</span>
           </div>
         </div>

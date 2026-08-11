@@ -62,8 +62,19 @@ export async function requireAdmin() {
   return { user, roles };
 }
 
-/** بررسی اینکه کاربر یکی از نقش‌های مجاز را داشته باشد. */
-export async function requireAnyRole(allowed: AppRole[]) {
+/**
+ * بررسی اینکه کاربر یکی از نقش‌های مجاز را داشته باشد.
+ *
+ * Phase 6.7 — use THIS, never a hand-rolled `ensureAuthReady()` guard. Three
+ * routes (/sales/quotes/new, /pricing/quick-price, /pricing/settlement-types)
+ * open-coded the check as `if (!auth.user) throw redirect({to:"/login"})` and
+ * bounced authenticated users to the login page on every server-rendered
+ * navigation: ensureAuthReady() deliberately returns an UNINITIALIZED snapshot
+ * during SSR, so `auth.user` is null on the server pass. resolveAuthWithRetry()
+ * below returns null in that situation so the guard defers to the client pass,
+ * and force-refreshes once when the session is still initializing.
+ */
+export async function requireAnyRole(allowed: readonly AppRole[]) {
   const auth = await resolveAuthWithRetry();
   if (!auth) return { user: null, roles: [] as AppRole[] };
 

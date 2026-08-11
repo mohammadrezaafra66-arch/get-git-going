@@ -25,6 +25,14 @@ import {
 } from "@/components/accounting/PaymentReceiptDocuments";
 import { extractReceiptFromBytes } from "@/lib/receipt-ocr-bytes.functions";
 import { parseReceiptText } from "@/lib/accounting/receipt-extraction";
+import { toHtmlTimeValue } from "@/lib/accounting/receipt-ocr-structured";
+import {
+  RECEIPT_TYPES,
+  RECEIPT_TYPE_FA,
+  RECEIPT_TYPE_HINT_FA,
+  requiresInvoiceLinks,
+  type ReceiptType,
+} from "@/lib/receipts/receipt-types";
 import { parseDateToGregorianIso, isoToJalaliDisplay } from "@/lib/i18n/jalali";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import {
@@ -158,6 +166,8 @@ const DOCUMENT_CHANNELS: { value: string; label: string }[] = [
   { value: "pol", label: "پل" },
   { value: "satna", label: "ساتنا" },
   { value: "cash", label: "نقدی" },
+  // Item 148 — cheque is a document channel on the receive side too (migration 205).
+  { value: "cheque", label: "چک" },
   { value: "other", label: "سایر" },
 ];
 
@@ -173,6 +183,7 @@ function evaluateFormWarnings(values: {
   payer_name_on_receipt?: string;
   has_perforation: boolean;
   is_typed_receipt: boolean;
+  is_mobile_bank_screenshot: boolean;
 }): ReceiptSecurityWarning[] {
   return evaluateReceiptSecurityWarnings({
     payment_date: values.payment_date,
@@ -182,13 +193,14 @@ function evaluateFormWarnings(values: {
     payer_name_on_receipt: values.payer_name_on_receipt,
     has_perforation: values.has_perforation,
     is_typed_receipt: values.is_typed_receipt,
+    is_mobile_bank_screenshot: values.is_mobile_bank_screenshot,
   });
 }
 
 const schema = z
   .object({
     customer_id: z.string().uuid("انتخاب مشتری الزامی است"),
-    receipt_type: z.enum(["payment", "prepayment"]),
+    receipt_type: z.enum(RECEIPT_TYPES),
     payer_name: z.string().trim().min(2, "حداقل ۲ کاراکتر").max(150, "حداکثر ۱۵۰ کاراکتر"),
     payer_phone: z.string().trim().max(30).optional().or(z.literal("")),
     payer_accounting_code: z.string().trim().max(50).optional().or(z.literal("")),
@@ -216,6 +228,7 @@ const schema = z
     payer_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
     receiver_name_on_receipt: z.string().trim().max(150).optional().or(z.literal("")),
     has_perforation: z.boolean(),
+    is_mobile_bank_screenshot: z.boolean(),
     receipt_time: z
       .string()
       .trim()
@@ -223,9 +236,11 @@ const schema = z
       .optional()
       .or(z.literal("")),
     document_channel: z.union([
-      z.enum(["card_to_card", "paya", "pol", "satna", "cash", "other"]),
+      z.enum(["card_to_card", "paya", "pol", "satna", "cash", "cheque", "other"]),
       z.literal(""),
     ]),
+    cheque_number: z.string().trim().max(50).optional().or(z.literal("")),
+    cheque_due_date: z.string().trim().optional().or(z.literal("")),
     is_typed_receipt: z.boolean(),
     receipt_image_url: z.string().trim().max(500).optional().or(z.literal("")),
     description: z.string().trim().max(1000).optional().or(z.literal("")),
@@ -236,6 +251,15 @@ const schema = z
   .refine((v) => Boolean(v.destination_bank_account_id) !== Boolean(v.receiver_party_id), {
     message: "گیرنده باید دقیقاً یکی باشد: «بانک ما» یا «طرف خارجی» (نه هر دو، نه هیچ‌کدام).",
     path: ["receiver_party_id"],
+  })
+  // Mirrors payment_receipts_cheque_fields_chk (migration 205).
+  .refine((v) => v.document_channel === "cheque" || (!v.cheque_number && !v.cheque_due_date), {
+    message: "شماره و سررسید چک فقط وقتی روش انتقال «چک» است قابل ثبت‌اند.",
+    path: ["cheque_number"],
+  })
+  .refine((v) => v.document_channel !== "cheque" || Boolean(v.cheque_number), {
+    message: "برای روش انتقال «چک»، شمارهٔ چک الزامی است.",
+    path: ["cheque_number"],
   });
 
 type FormValues = z.infer<typeof schema>;
@@ -251,7 +275,7 @@ type InvoiceOption = {
 };
 
 type InvoiceAllocation = {
-  invoice_id: string;
+  quote_id: string;
   number: string | null;
   total_amount: number;
   remaining: number;
@@ -287,13 +311,15 @@ export function PaymentReceiptForm() {
   const [customData, setCustomData] = useState<CustomData>({});
   const [customErrors, setCustomErrors] = useState<Record<string, string>>({});
   const [autoFilling, setAutoFilling] = useState(false);
+  const [ocrAssistNotice, setOcrAssistNotice] = useState(false);
+  const [ocrReviewWarnings, setOcrReviewWarnings] = useState<string[]>([]);
   const autoExtractedRef = useRef<Set<string>>(new Set());
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       customer_id: "",
-      receipt_type: "payment",
+      receipt_type: "invoice_payment",
       payer_name: "",
       payer_phone: "",
       payer_accounting_code: "",
@@ -302,8 +328,10 @@ export function PaymentReceiptForm() {
       receiver_accounting_code: "",
       beneficiary_accounting_code: "",
       amount: undefined as unknown as number,
-      payment_date: today,
-      payment_time: new Date().toTimeString().slice(0, 5),
+      // «تاریخ روی فیش» — empty until OCR or manual; never default to today.
+      payment_date: "",
+      // «ساعت واریز» — empty until OCR receipt_time or manual; never default to now.
+      payment_time: "",
       tracking_number: "",
       bank_name: "",
       source_bank: "",
@@ -311,8 +339,11 @@ export function PaymentReceiptForm() {
       payer_name_on_receipt: "",
       receiver_name_on_receipt: "",
       has_perforation: false,
+      is_mobile_bank_screenshot: false,
       receipt_time: "",
       document_channel: "",
+      cheque_number: "",
+      cheque_due_date: "",
       is_typed_receipt: false,
       receipt_image_url: "",
       description: "",
@@ -384,15 +415,34 @@ export function PaymentReceiptForm() {
             toast.info("OCR در دسترس نیست، لطفاً دستی وارد کنید.");
             continue;
           }
-          if (!ocr || !ocr.raw_text || !ocr.raw_text.trim()) {
+          if (!ocr || (!ocr.structured && !(ocr.raw_text || "").trim())) {
             const warnings = ocr?.warnings ?? [];
             if (warnings.length > 0) {
               toast.info(warnings[0]);
             }
             continue;
           }
-          const parsed = parseReceiptText(ocr.raw_text);
+          // Primary: structured JSON. Fallback: legacy free-text regex only.
+          let parsed;
+          if (ocr.structured) {
+            parsed = { ...ocr.structured, warnings: [...ocr.structured.warnings] };
+          } else {
+            toast.warning(
+              "استخراج ساختاریافته JSON ناموفق بود. تصویر حفظ شد؛ در صورت امکان استخراج متنی اعمال می‌شود.",
+            );
+            parsed = parseReceiptText(ocr.raw_text);
+            if (ocr.warnings?.length) {
+              parsed.warnings = [...ocr.warnings, ...parsed.warnings];
+            }
+          }
+          if (ocr.structured && ocr.warnings?.length) {
+            parsed.warnings = [...new Set([...ocr.warnings, ...parsed.warnings])];
+          }
           const filled: string[] = [];
+          setOcrAssistNotice(true);
+          if (parsed.warnings.length > 0 || parsed.structured?.needs_manual_review) {
+            setOcrReviewWarnings(parsed.warnings);
+          }
 
           // Only fill empty fields to avoid overriding manual edits.
           // گارد اضافی: مبالغ غیرمنطقی (مثل شماره کارت تشخیص داده‌شده اشتباه) را نادیده بگیر.
@@ -412,20 +462,27 @@ export function PaymentReceiptForm() {
             });
             filled.push("شماره پیگیری");
           }
-          if (parsed.receipt_date) {
+          // «تاریخ روی فیش واریزی» ← receipt_date only (never «تاریخ ثبت فیش» / today).
+          if (parsed.receipt_date && !form.getValues("payment_date")) {
             const iso = parseDateToGregorianIso(parsed.receipt_date);
-            if (iso && iso <= today && !form.getValues("payment_date")) {
+            if (iso && iso <= today) {
               form.setValue("payment_date", iso, { shouldValidate: true, shouldDirty: true });
-              filled.push("تاریخ واریز");
+              filled.push("تاریخ روی فیش");
             }
           }
-          if (parsed.receipt_time && !form.getValues("payment_time")) {
-            const tm = /^(\d{1,2}):(\d{2})/.exec(parsed.receipt_time);
+          // «ساعت روی فیش» ← receipt_time only. Never use upload/current time.
+          if (parsed.receipt_time) {
+            const tm = toHtmlTimeValue(parsed.receipt_time);
             if (tm) {
-              const hh = tm[1].padStart(2, "0");
-              form.setValue("payment_time", `${hh}:${tm[2]}`, { shouldDirty: true });
-              form.setValue("receipt_time", `${hh}:${tm[2]}`, { shouldDirty: true });
-              filled.push("ساعت");
+              if (!form.getValues("receipt_time")) {
+                form.setValue("receipt_time", tm, { shouldDirty: true, shouldValidate: true });
+                filled.push("ساعت روی فیش");
+              }
+              // Assistive fill for required «ساعت واریز» from receipt time (not clock-now).
+              if (!form.getValues("payment_time")) {
+                form.setValue("payment_time", tm, { shouldDirty: true, shouldValidate: true });
+                filled.push("ساعت واریز");
+              }
             }
           }
           if (parsed.source_bank && !form.getValues("source_bank")) {
@@ -440,11 +497,13 @@ export function PaymentReceiptForm() {
             form.setValue("payer_name_on_receipt", parsed.payer_name_on_receipt, {
               shouldDirty: true,
             });
+            filled.push("نام واریزکننده روی فیش");
           }
           if (parsed.receiver_name_on_receipt && !form.getValues("receiver_name_on_receipt")) {
             form.setValue("receiver_name_on_receipt", parsed.receiver_name_on_receipt, {
               shouldDirty: true,
             });
+            filled.push("نام گیرنده روی فیش");
           }
           if (
             parsed.document_channel &&
@@ -452,6 +511,20 @@ export function PaymentReceiptForm() {
             !form.getValues("document_channel")
           ) {
             form.setValue("document_channel", parsed.document_channel, { shouldDirty: true });
+            filled.push("روش انتقال");
+          }
+          // Keep transaction_number / status in description assistively when empty.
+          const structured = parsed.structured;
+          if (structured && !form.getValues("description")) {
+            const bits: string[] = [];
+            if (structured.transaction_number) bits.push(`شماره تراکنش: ${structured.transaction_number}`);
+            if (structured.status && structured.status !== "UNKNOWN") {
+              bits.push(`وضعیت تراکنش روی فیش: ${structured.status}`);
+            }
+            if (structured.description) bits.push(structured.description);
+            if (bits.length) {
+              form.setValue("description", bits.join(" | "), { shouldDirty: true });
+            }
           }
 
           if (filled.length > 0) {
@@ -623,55 +696,57 @@ export function PaymentReceiptForm() {
   // Open invoices for the selected customer
   const { data: customerInvoices = [] } = useQuery<InvoiceOption[]>({
     queryKey: ["receipt-form-invoices", watchedCustomerId],
-    enabled: !!watchedCustomerId && watchedReceiptType === "payment",
+    enabled: !!watchedCustomerId && requiresInvoiceLinks(watchedReceiptType),
     queryFn: async () => {
-      const { data: invs, error } = await supabase
-        .from("invoices")
-        .select("id, number, total_amount, status, issue_date, due_date")
-        .eq("customer_id", watchedCustomerId)
-        .eq("type", "pre_invoice")
-        .in("status", ["draft", "final", "partially_paid"])
+      const { data: qs, error } = await supabase
+        .from("sales_quotes")
+        .select("id, quote_number, final_amount, status, created_at, expires_at")
+        .eq("customer_id" as never, watchedCustomerId)
+        .eq("status", "accepted")
         .order("created_at", { ascending: false })
         .limit(50);
       if (error) throw error;
-      const list = (invs ?? []) as Array<{
+      const list = (qs ?? []) as Array<{
         id: string;
-        number: string | null;
-        total_amount: number;
+        quote_number: string | null;
+        final_amount: number;
         status: string;
-        issue_date: string | null;
-        due_date: string | null;
+        created_at: string | null;
+        expires_at: string | null;
       }>;
       if (list.length === 0) return [];
 
-      const ids = list.map((i) => i.id);
+      const ids = list.map((q) => q.id);
       const { data: links, error: linkErr } = await supabase
         .from("payment_receipt_links")
-        .select("invoice_id, amount, receipt:payment_receipts!inner(status)")
-        .in("invoice_id", ids);
+        .select("quote_id, amount, receipt:payment_receipts!inner(status)")
+        .in("quote_id" as never, ids);
       if (linkErr) throw linkErr;
       const paidMap = new Map<string, number>();
-      for (const l of (links ?? []) as Array<{
-        invoice_id: string;
+      for (const l of (links ?? []) as unknown as Array<{
+        quote_id: string;
         amount: number;
         receipt: { status: string } | null;
       }>) {
         if (l.receipt?.status === "approved") {
-          paidMap.set(l.invoice_id, (paidMap.get(l.invoice_id) ?? 0) + Number(l.amount));
+          paidMap.set(l.quote_id, (paidMap.get(l.quote_id) ?? 0) + Number(l.amount));
         }
       }
-      return list.map((i) => {
-        const paid = paidMap.get(i.id) ?? 0;
-        return {
-          id: i.id,
-          number: i.number,
-          total_amount: Number(i.total_amount),
-          paid_so_far: paid,
-          remaining: Math.max(0, Number(i.total_amount) - paid),
-          issue_date: i.issue_date ?? null,
-          due_date: i.due_date ?? null,
-        };
-      });
+      // Only accepted quotes with a remaining balance > 0 are allocatable.
+      return list
+        .map((q) => {
+          const paid = paidMap.get(q.id) ?? 0;
+          return {
+            id: q.id,
+            number: q.quote_number,
+            total_amount: Number(q.final_amount),
+            paid_so_far: paid,
+            remaining: Math.max(0, Number(q.final_amount) - paid),
+            issue_date: q.created_at ?? null,
+            due_date: q.expires_at ?? null,
+          };
+        })
+        .filter((o) => o.remaining > 0.001);
     },
     staleTime: 30_000,
   });
@@ -684,7 +759,7 @@ export function PaymentReceiptForm() {
     inv: InvoiceOption,
     opts?: { amount?: number; suggestion?: InvoiceAllocation["suggestion"] },
   ) => {
-    if (allocations.some((a) => a.invoice_id === inv.id)) return;
+    if (allocations.some((a) => a.quote_id === inv.id)) return;
     const remainingForReceipt = Math.max(0, watchedAmount - totalAllocated);
     const suggested =
       opts?.amount !== undefined
@@ -693,7 +768,7 @@ export function PaymentReceiptForm() {
     setAllocations((prev) => [
       ...prev,
       {
-        invoice_id: inv.id,
+        quote_id: inv.id,
         number: inv.number,
         total_amount: inv.total_amount,
         remaining: inv.remaining,
@@ -708,7 +783,7 @@ export function PaymentReceiptForm() {
   const watchedPaymentDate = form.watch("payment_date");
   const suggestions = useMemo(() => {
     if (
-      watchedReceiptType !== "payment" ||
+      !requiresInvoiceLinks(watchedReceiptType) ||
       !watchedCustomerId ||
       !watchedAmount ||
       watchedAmount <= 0 ||
@@ -768,11 +843,11 @@ export function PaymentReceiptForm() {
   }, [watchedReceiptType, watchedCustomerId, watchedAmount, customerInvoices, watchedPaymentDate]);
 
   const removeAllocation = (invoiceId: string) => {
-    setAllocations((prev) => prev.filter((a) => a.invoice_id !== invoiceId));
+    setAllocations((prev) => prev.filter((a) => a.quote_id !== invoiceId));
   };
 
   const setAllocationAmount = (invoiceId: string, amount: number) => {
-    setAllocations((prev) => prev.map((a) => (a.invoice_id === invoiceId ? { ...a, amount } : a)));
+    setAllocations((prev) => prev.map((a) => (a.quote_id === invoiceId ? { ...a, amount } : a)));
   };
 
   // Optional lookups for bank accounts and external parties (Phase 11.9B)
@@ -845,10 +920,14 @@ export function PaymentReceiptForm() {
       } = args;
       if (!user?.id) throw new Error("کاربر شناسایی نشد");
 
-      // Front-end allocation validation (server has no constraint)
-      if (values.receipt_type === "payment") {
+      // Front-end allocation validation. Since migration 152 the database
+      // enforces the same limits with triggers; this stays as the first line of
+      // defence so the accountant gets the error before a round trip.
+      // Only invoice_payment carries invoice links — the other three types are
+      // recorded without any allocation.
+      if (requiresInvoiceLinks(values.receipt_type)) {
         if (allocs.length === 0) {
-          throw new Error("حداقل یک پیش‌فاکتور برای اتصال انتخاب کنید");
+          throw new Error("برای پرداخت پیش‌فاکتور، حداقل یک پیش‌فاکتور انتخاب کنید");
         }
         const sum = allocs.reduce((s, a) => s + Number(a.amount), 0);
         if (sum <= 0) throw new Error("مبلغ تخصیص نامعتبر است");
@@ -918,8 +997,14 @@ export function PaymentReceiptForm() {
         payer_name_on_receipt: values.payer_name_on_receipt || null,
         receiver_name_on_receipt: values.receiver_name_on_receipt || null,
         has_perforation: values.has_perforation,
+        is_mobile_bank_screenshot: values.is_mobile_bank_screenshot,
         receipt_time: values.receipt_time || null,
         document_channel: values.document_channel || null,
+        // Cheque fields are only meaningful for the cheque channel; the DB CHECK
+        // (migration 205) rejects them otherwise, so null them out defensively.
+        cheque_number: values.document_channel === "cheque" ? values.cheque_number || null : null,
+        cheque_due_date:
+          values.document_channel === "cheque" ? values.cheque_due_date || null : null,
         is_typed_receipt: values.is_typed_receipt,
         receipt_image_url: values.receipt_image_url || null,
         description: values.description || null,
@@ -939,11 +1024,11 @@ export function PaymentReceiptForm() {
       if (error) throw error;
       const receiptId = (data as { id: string }).id;
 
-      // Insert links if payment type
-      if (values.receipt_type === "payment" && allocs.length > 0) {
+      // Insert links only for invoice_payment
+      if (requiresInvoiceLinks(values.receipt_type) && allocs.length > 0) {
         const linkRows = allocs.map((a) => ({
           receipt_id: receiptId,
-          invoice_id: a.invoice_id,
+          quote_id: a.quote_id,
           amount: Number(a.amount),
         }));
         const { error: linkErr } = await supabase
@@ -975,21 +1060,20 @@ export function PaymentReceiptForm() {
             accounting_code: values.receiver_accounting_code || null,
           },
           status: "pending_review",
-          linked_invoices:
-            values.receipt_type === "payment"
-              ? allocs.map((a) => ({
-                  invoice_id: a.invoice_id,
-                  amount: Number(a.amount),
-                  ...(a.suggestion
-                    ? {
-                        matched_invoice_id: a.invoice_id,
-                        suggested_confidence: a.suggestion.confidence,
-                        suggested_reason: a.suggestion.reason,
-                        allocated_amount: Number(a.amount),
-                      }
-                    : {}),
-                }))
-              : [],
+          linked_invoices: requiresInvoiceLinks(values.receipt_type)
+            ? allocs.map((a) => ({
+                quote_id: a.quote_id,
+                amount: Number(a.amount),
+                ...(a.suggestion
+                  ? {
+                      matched_quote_id: a.quote_id,
+                      suggested_confidence: a.suggestion.confidence,
+                      suggested_reason: a.suggestion.reason,
+                      allocated_amount: Number(a.amount),
+                    }
+                  : {}),
+              }))
+            : [],
         },
       } as never);
 
@@ -1045,7 +1129,23 @@ export function PaymentReceiptForm() {
             // Async path: evaluate validation_rules then security warnings
             (async () => {
               const validCodes = await buildValidCodesSet(v);
-              const allRules = [...receiptRules, ...journalRules];
+              // Item 207 — mode 2 (an external party such as a صراف) is not one
+              // of our own accounts, so it often has no کد آسان at all. The
+              // `journal_entry` rule that demands one is written for mode 1
+              // (our own bank account) and knows nothing about the two modes,
+              // so it blocks mode 2 unconditionally. Drop just that rule while
+              // mode 2 is selected; mode 1 keeps requiring the code, and the
+              // server-side guard in post_receipt_accounting is untouched.
+              const receiverIsExternalParty = Boolean(v.receiver_party_id);
+              const allRules = [...receiptRules, ...journalRules].filter(
+                (r) =>
+                  !(
+                    receiverIsExternalParty &&
+                    r.scope === "journal_entry" &&
+                    r.field_key === "receiver_accounting_code" &&
+                    r.rule_type === "required"
+                  ),
+              );
               const fieldValues: Record<string, unknown> = {
                 receiver_name: v.receiver_name,
                 payer_name: v.payer_name,
@@ -1067,6 +1167,7 @@ export function PaymentReceiptForm() {
                 payer_name_on_receipt: v.payer_name_on_receipt,
                 has_perforation: v.has_perforation,
                 is_typed_receipt: v.is_typed_receipt,
+                is_mobile_bank_screenshot: v.is_mobile_bank_screenshot,
               });
               if (warnings.length > 0 || ruleWarnings.length > 0) {
                 setPendingWarnings(warnings);
@@ -1180,7 +1281,7 @@ export function PaymentReceiptForm() {
               <Select
                 value={watchedReceiptType}
                 onValueChange={(v) =>
-                  form.setValue("receipt_type", v as "payment" | "prepayment", {
+                  form.setValue("receipt_type", v as ReceiptType, {
                     shouldValidate: true,
                   })
                 }
@@ -1189,19 +1290,38 @@ export function PaymentReceiptForm() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="payment">پرداخت بدهی / پیش‌فاکتور</SelectItem>
-                  <SelectItem value="prepayment">پیش واریز: اعتبار مثبت</SelectItem>
+                  {RECEIPT_TYPES.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {RECEIPT_TYPE_FA[t]}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                {watchedReceiptType === "payment"
-                  ? "این فیش به یک یا چند پیش‌فاکتور مشتری متصل می‌شود."
-                  : "برای پیش‌واریز، نیازی به انتخاب پیش‌فاکتور نیست. این مبلغ به‌عنوان اعتبار مثبت مشتری ثبت می‌شود."}
+                {RECEIPT_TYPE_HINT_FA[watchedReceiptType]}
               </p>
+              {/*
+                Item 148 — "دریافت بدون پیش‌فاکتور". Only invoice_payment demands
+                links; the other three types are already unlinked. Spell that out
+                so the accountant does not think the form is blocking them.
+              */}
+              {!requiresInvoiceLinks(watchedReceiptType) ? (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-2 text-xs leading-6">
+                  دریافت بدون پیش‌فاکتور: نیازی به انتخاب پیش‌فاکتور نیست. این مبلغ به‌عنوان
+                  اعتبار/طلب مشتری ثبت می‌شود، یعنی ما به او بدهکار می‌شویم و در خرید بعدی از همین
+                  اعتبار استفاده می‌کند. مانده اعتبار پس از «ثبت حسابداری» فیش تأییدشده به‌روز
+                  می‌شود.
+                </div>
+              ) : (
+                <div className="rounded-md border bg-muted/40 p-2 text-xs leading-6 text-muted-foreground">
+                  اگر مشتری بدون بدهی و بدون پیش‌فاکتور پول یا چک داده است، نوع فیش را روی «اعتبار
+                  مثبت مستقل» بگذارید تا بدون اتصال به پیش‌فاکتور ثبت شود.
+                </div>
+              )}
             </div>
 
-            {/* اتصال به پیش‌فاکتورها */}
-            {watchedReceiptType === "payment" && (
+            {/* اتصال به پیش‌فاکتورها — فقط برای پرداخت پیش‌فاکتور */}
+            {requiresInvoiceLinks(watchedReceiptType) && (
               <div className="space-y-3 rounded-md border bg-muted/30 p-3">
                 {suggestions.length > 0 && (
                   <div className="space-y-2 rounded-md border border-primary/30 bg-primary/5 p-3">
@@ -1215,7 +1335,7 @@ export function PaymentReceiptForm() {
                     </p>
                     <div className="space-y-2">
                       {suggestions.map((s) => {
-                        const already = allocations.some((a) => a.invoice_id === s.invoice.id);
+                        const already = allocations.some((a) => a.quote_id === s.invoice.id);
                         const confidenceLabel =
                           s.confidence === "high"
                             ? "اطمینان بالا"
@@ -1290,12 +1410,12 @@ export function PaymentReceiptForm() {
                     </PopoverTrigger>
                     <PopoverContent className="w-80 p-0" align="end">
                       <Command>
-                        <CommandInput placeholder="جستجو شماره فاکتور..." />
+                        <CommandInput placeholder="جستجو شماره پیش‌فاکتور..." />
                         <CommandList>
                           <CommandEmpty>پیش‌فاکتور بازی یافت نشد</CommandEmpty>
                           <CommandGroup>
                             {customerInvoices
-                              .filter((i) => !allocations.some((a) => a.invoice_id === i.id))
+                              .filter((i) => !allocations.some((a) => a.quote_id === i.id))
                               .map((inv) => (
                                 <CommandItem
                                   key={inv.id}
@@ -1323,7 +1443,15 @@ export function PaymentReceiptForm() {
                   <p className="text-xs text-muted-foreground">ابتدا مشتری را انتخاب کنید.</p>
                 )}
 
-                {watchedCustomerId && allocations.length === 0 && (
+                {watchedCustomerId &&
+                  requiresInvoiceLinks(watchedReceiptType) &&
+                  customerInvoices.length === 0 && (
+                    <p className="text-xs text-amber-600">
+                      این مشتری پیش‌فاکتور پذیرفته‌شده با ماندهٔ باز ندارد؛ امکان اتصال وجود ندارد.
+                    </p>
+                  )}
+
+                {watchedCustomerId && customerInvoices.length > 0 && allocations.length === 0 && (
                   <p className="text-xs text-muted-foreground">هنوز پیش‌فاکتوری انتخاب نشده است.</p>
                 )}
 
@@ -1331,12 +1459,12 @@ export function PaymentReceiptForm() {
                   <div className="space-y-2">
                     {allocations.map((a) => (
                       <div
-                        key={a.invoice_id}
+                        key={a.quote_id}
                         className="flex flex-col gap-2 rounded-md border bg-background p-2 sm:flex-row sm:items-center"
                       >
                         <div className="flex-1 space-y-0.5">
                           <div className="text-sm font-medium" dir="ltr">
-                            {toFaDigits(a.number ?? a.invoice_id.slice(0, 8))}
+                            {toFaDigits(a.number ?? a.quote_id.slice(0, 8))}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             مبلغ کل: {formatNumber(a.total_amount)} • مانده:{" "}
@@ -1351,7 +1479,7 @@ export function PaymentReceiptForm() {
                             max={a.remaining}
                             value={a.amount || ""}
                             onChange={(e) =>
-                              setAllocationAmount(a.invoice_id, Number(e.target.value) || 0)
+                              setAllocationAmount(a.quote_id, Number(e.target.value) || 0)
                             }
                             className="w-36"
                           />
@@ -1359,7 +1487,7 @@ export function PaymentReceiptForm() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => removeAllocation(a.invoice_id)}
+                            onClick={() => removeAllocation(a.quote_id)}
                             aria-label="حذف"
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
@@ -1707,15 +1835,18 @@ export function PaymentReceiptForm() {
                 </p>
               </div>
 
-              <div className="space-y-1">
-                <Label>
-                  ساعت واریز <span className="text-destructive">*</span>
-                </Label>
-                <Input type="time" {...form.register("payment_time")} />
-                {errors.payment_time && (
-                  <p className="text-xs text-destructive">{errors.payment_time.message}</p>
-                )}
-              </div>
+                <div className="space-y-1">
+                  <Label>
+                    ساعت واریز <span className="text-destructive">*</span>
+                  </Label>
+                  <Input type="time" {...form.register("payment_time")} />
+                  {errors.payment_time && (
+                    <p className="text-xs text-destructive">{errors.payment_time.message}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    در صورت OCR، از «ساعت روی فیش» پر می‌شود — نه از ساعت آپلود/سیستم.
+                  </p>
+                </div>
             </div>
 
             <div className="space-y-1">
@@ -1731,6 +1862,19 @@ export function PaymentReceiptForm() {
                   در صورت آپلود تصویر فیش، این فیلدها به‌صورت خودکار از روی فیش پر می‌شوند. در صورت
                   نیاز قابل ویرایش دستی هستند.
                 </p>
+                {ocrAssistNotice && (
+                  <p className="text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/40 border border-amber-200/60 rounded-md px-2 py-1.5 mt-1">
+                    اطلاعات زیر به‌صورت خودکار از روی تصویر فیش استخراج شده‌اند. لطفاً پیش از ثبت،
+                    آن‌ها را بررسی کنید.
+                  </p>
+                )}
+                {ocrReviewWarnings.length > 0 && (
+                  <ul className="text-xs text-amber-900 dark:text-amber-100 list-disc pr-4 space-y-0.5 mt-1">
+                    {ocrReviewWarnings.slice(0, 6).map((w) => (
+                      <li key={w}>{w}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1786,13 +1930,26 @@ export function PaymentReceiptForm() {
                   <Label>روش انتقال</Label>
                   <Select
                     value={form.watch("document_channel") || undefined}
-                    onValueChange={(v) =>
+                    onValueChange={(v) => {
                       form.setValue(
                         "document_channel",
-                        v as "card_to_card" | "paya" | "pol" | "satna" | "cash" | "other",
-                        { shouldDirty: true },
-                      )
-                    }
+                        v as
+                          | "card_to_card"
+                          | "paya"
+                          | "pol"
+                          | "satna"
+                          | "cash"
+                          | "cheque"
+                          | "other",
+                        { shouldDirty: true, shouldValidate: true },
+                      );
+                      // Leaving the cheque channel must clear the cheque fields,
+                      // otherwise the DB CHECK rejects the insert.
+                      if (v !== "cheque") {
+                        form.setValue("cheque_number", "", { shouldValidate: true });
+                        form.setValue("cheque_due_date", "", { shouldValidate: true });
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="انتخاب کنید" />
@@ -1806,6 +1963,31 @@ export function PaymentReceiptForm() {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Item 148 — cheque details, only for the cheque channel */}
+                {form.watch("document_channel") === "cheque" && (
+                  <>
+                    <div className="space-y-1">
+                      <Label>
+                        شمارهٔ چک <span className="text-destructive">*</span>
+                      </Label>
+                      <Input dir="ltr" className="text-left" {...form.register("cheque_number")} />
+                      {errors.cheque_number && (
+                        <p className="text-xs text-destructive">{errors.cheque_number.message}</p>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <Label>تاریخ سررسید چک</Label>
+                      <JalaliDateInput
+                        value={form.watch("cheque_due_date") || ""}
+                        onChange={(v) => form.setValue("cheque_due_date", v, { shouldDirty: true })}
+                      />
+                      {errors.cheque_due_date && (
+                        <p className="text-xs text-destructive">{errors.cheque_due_date.message}</p>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 <div className="space-y-1">
                   <Label>نام واریزکننده روی فیش</Label>
@@ -1835,6 +2017,17 @@ export function PaymentReceiptForm() {
                       }
                     />
                     فیش تایپی است؟
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <Checkbox
+                      checked={form.watch("is_mobile_bank_screenshot")}
+                      onCheckedChange={(c) =>
+                        form.setValue("is_mobile_bank_screenshot", c === true, {
+                          shouldDirty: true,
+                        })
+                      }
+                    />
+                    رسید اسکرین‌شات از همراه بانک است؟
                   </label>
                 </div>
               </div>
@@ -1879,20 +2072,23 @@ export function PaymentReceiptForm() {
               type="submit"
               disabled={
                 mutation.isPending ||
-                (watchedReceiptType === "payment" && (allocations.length === 0 || overAllocated))
+                (requiresInvoiceLinks(watchedReceiptType) &&
+                  (allocations.length === 0 || overAllocated))
               }
             >
               {mutation.isPending && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
               ثبت فیش
             </Button>
-            {watchedReceiptType === "payment" && allocations.length === 0 && (
+            {requiresInvoiceLinks(watchedReceiptType) && allocations.length === 0 && (
               <p className="text-xs text-destructive">
-                برای ثبت، حداقل یک پیش‌فاکتور را در بخش «تخصیص به پیش‌فاکتور» انتخاب کنید.
+                برای پرداخت پیش‌فاکتور، حداقل یک پیش‌فاکتور انتخاب کنید.
               </p>
             )}
-            {watchedReceiptType === "payment" && allocations.length > 0 && overAllocated && (
-              <p className="text-xs text-destructive">مجموع تخصیص بیشتر از مبلغ فیش است.</p>
-            )}
+            {requiresInvoiceLinks(watchedReceiptType) &&
+              allocations.length > 0 &&
+              overAllocated && (
+                <p className="text-xs text-destructive">مجموع تخصیص بیشتر از مبلغ فیش است.</p>
+              )}
           </div>
         </div>
       </form>

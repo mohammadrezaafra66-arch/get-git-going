@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
-import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -10,6 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/integrations/supabase/client";
 import { MarketingActiveChannelsCard } from "@/components/reports/MarketingActiveChannelsCard";
 import { MarketingTrendingCard } from "@/components/reports/MarketingTrendingCard";
 import { MarketingTopCheckedTodayCard } from "@/components/reports/MarketingTopCheckedTodayCard";
@@ -30,28 +33,30 @@ function ReportsPage() {
     <div className="space-y-6">
       <PageHeader title="گزارش‌ها" description="گزارش‌های فروش، مالی و عملیاتی" />
 
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-sm text-muted-foreground">بازه زمانی</span>
+        <Select value={String(range)} onValueChange={(v) => setRange(Number(v) as RangeDays)}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {RANGE_OPTIONS.map((o) => (
+              <SelectItem key={o.value} value={String(o.value)}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <Tabs defaultValue="marketing" dir="rtl" className="space-y-4">
         <TabsList>
           <TabsTrigger value="marketing">بازاریابی</TabsTrigger>
+          <TabsTrigger value="sales">فروش</TabsTrigger>
+          <TabsTrigger value="finance">مالی</TabsTrigger>
         </TabsList>
 
         <TabsContent value="marketing" className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm text-muted-foreground">بازه زمانی</span>
-            <Select value={String(range)} onValueChange={(v) => setRange(Number(v) as RangeDays)}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {RANGE_OPTIONS.map((o) => (
-                  <SelectItem key={o.value} value={String(o.value)}>
-                    {o.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             <MarketingTrendingCard range={range} />
             <MarketingTopCheckedTodayCard />
@@ -60,7 +65,279 @@ function ReportsPage() {
             <MarketingActiveChannelsCard />
           </div>
         </TabsContent>
+
+        <TabsContent value="sales" className="space-y-4">
+          <SalesReportTab range={range} />
+        </TabsContent>
+
+        <TabsContent value="finance" className="space-y-4">
+          <FinanceReportTab range={range} />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function SalesReportTab({ range }: { range: number }) {
+  const since = new Date(Date.now() - range * 24 * 60 * 60 * 1000).toISOString();
+
+  // Total invoices and revenue
+  const invoicesQ = useQuery({
+    queryKey: ["report-sales-invoices", range],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("invoices")
+        .select("id, total_amount, status, created_at, customers!inner(full_name)")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      const rows = data ?? [];
+      const total = rows.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
+      const byStatus: Record<string, number> = {};
+      for (const r of rows) {
+        byStatus[r.status] = (byStatus[r.status] ?? 0) + 1;
+      }
+      // Top 5 customers by total
+      const byCustomer: Record<string, { name: string; total: number }> = {};
+      for (const r of rows) {
+        const name = (r.customers as unknown as { full_name: string })?.full_name ?? "—";
+        byCustomer[name] = {
+          name,
+          total: (byCustomer[name]?.total ?? 0) + Number(r.total_amount ?? 0),
+        };
+      }
+      const topCustomers = Object.values(byCustomer)
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 5);
+      // Daily revenue for simple chart
+      const daily: Record<string, number> = {};
+      for (const r of rows) {
+        const day = r.created_at.slice(0, 10);
+        daily[day] = (daily[day] ?? 0) + Number(r.total_amount ?? 0);
+      }
+      const chartData = Object.entries(daily)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, amount]) => ({ date: date.slice(5), amount }));
+      return { count: rows.length, total, byStatus, topCustomers, chartData };
+    },
+  });
+
+  const STATUS_FA: Record<string, string> = {
+    draft: "پیش‌نویس",
+    pending_approval: "در انتظار تأیید",
+    approved: "تأییدشده",
+    paid: "پرداخت‌شده",
+    cancelled: "لغوشده",
+    overdue: "معوق",
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* KPI cards */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-3xl font-bold text-primary">
+              {invoicesQ.isLoading ? "…" : (invoicesQ.data?.count ?? 0).toLocaleString("fa-IR")}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">تعداد فاکتور</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-3xl font-bold text-emerald-600">
+              {invoicesQ.isLoading
+                ? "…"
+                : Math.round((invoicesQ.data?.total ?? 0) / 1_000_000).toLocaleString("fa-IR")}
+              <span className="text-base font-normal text-muted-foreground"> م.ت</span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">جمع کل (میلیون تومان)</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-3xl font-bold text-blue-600">
+              {invoicesQ.isLoading
+                ? "…"
+                : (invoicesQ.data?.byStatus?.["paid"] ?? 0).toLocaleString("fa-IR")}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">پرداخت‌شده</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Status breakdown */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">وضعیت فاکتورها</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {invoicesQ.isLoading ? (
+            <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(invoicesQ.data?.byStatus ?? {}).map(([status, count]) => (
+                <div key={status} className="flex items-center justify-between text-sm">
+                  <span>{STATUS_FA[status] ?? status}</span>
+                  <span className="font-bold">{count.toLocaleString("fa-IR")}</span>
+                </div>
+              ))}
+              {Object.keys(invoicesQ.data?.byStatus ?? {}).length === 0 && (
+                <p className="text-sm text-muted-foreground">فاکتوری در این بازه ثبت نشده</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Top customers */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">۵ مشتری برتر</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {invoicesQ.isLoading ? (
+            <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
+          ) : (invoicesQ.data?.topCustomers ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">داده‌ای موجود نیست</p>
+          ) : (
+            <ul className="space-y-2">
+              {invoicesQ.data?.topCustomers.map((c) => (
+                <li key={c.name} className="flex items-center justify-between text-sm">
+                  <span className="truncate">{c.name}</span>
+                  <span className="shrink-0 font-bold text-emerald-700">
+                    {Math.round(c.total / 1_000).toLocaleString("fa-IR")} هزار ت
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function FinanceReportTab({ range }: { range: number }) {
+  const since = new Date(Date.now() - range * 24 * 60 * 60 * 1000).toISOString();
+
+  const receivablesQ = useQuery({
+    queryKey: ["report-finance-receivables", range],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      // Use the shared summary RPC (same one the receivables page uses) instead of
+      // selecting columns that do not exist on vw_customer_receivables.
+      const { data, error } = await supabase.rpc("get_receivables_summary", {
+        p_from_date: undefined,
+        p_to_date: undefined,
+        p_customer_id: undefined,
+      });
+      if (error) throw error;
+      const row = (data as Array<{
+        total_outstanding: number | null;
+        overdue_outstanding: number | null;
+        due_today: number | null;
+      }> | null)?.[0];
+      return {
+        totalReceivables: Number(row?.total_outstanding ?? 0),
+        overdueReceivables: Number(row?.overdue_outstanding ?? 0),
+        dueTodayReceivables: Number(row?.due_today ?? 0),
+      };
+    },
+  });
+
+  const paymentsQ = useQuery({
+    queryKey: ["report-finance-payments", range],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_receipts")
+        .select("id, amount, created_at")
+        .gte("created_at", since)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      const rows = data ?? [];
+      const totalPayments = rows.reduce((s, r) => s + Number(r.amount ?? 0), 0);
+      return { count: rows.length, totalPayments };
+    },
+  });
+
+  const fmt = (n: number) => Math.round(n / 1_000_000).toLocaleString("fa-IR");
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-600">
+              {receivablesQ.isLoading ? "…" : fmt(receivablesQ.data?.totalReceivables ?? 0)}
+              <span className="text-sm font-normal text-muted-foreground"> م.ت</span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">جمع مطالبات</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-rose-600">
+              {receivablesQ.isLoading ? "…" : fmt(receivablesQ.data?.overdueReceivables ?? 0)}
+              <span className="text-sm font-normal text-muted-foreground"> م.ت</span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">معوقات</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-amber-600">
+              {receivablesQ.isLoading ? "…" : fmt(receivablesQ.data?.dueTodayReceivables ?? 0)}
+              <span className="text-sm font-normal text-muted-foreground"> م.ت</span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">سررسید امروز</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-emerald-600">
+              {paymentsQ.isLoading ? "…" : fmt(paymentsQ.data?.totalPayments ?? 0)}
+              <span className="text-sm font-normal text-muted-foreground"> م.ت</span>
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">وصولی {range} روز اخیر</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">خلاصه دریافت‌ها ({range} روز اخیر)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {paymentsQ.isLoading ? (
+            <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
+          ) : (
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">تعداد رسید پرداخت</span>
+                <span className="font-bold">
+                  {(paymentsQ.data?.count ?? 0).toLocaleString("fa-IR")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">میانگین هر رسید</span>
+                <span className="font-bold">
+                  {paymentsQ.data && paymentsQ.data.count > 0
+                    ? Math.round(
+                        paymentsQ.data.totalPayments / paymentsQ.data.count / 1_000,
+                      ).toLocaleString("fa-IR")
+                    : "—"}{" "}
+                  هزار ت
+                </span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -15,6 +15,7 @@ import {
   Eye,
   Search,
   FileText,
+  FileSpreadsheet,
   Download,
   Send,
   Link2,
@@ -23,8 +24,13 @@ import {
   ArrowUpDown,
   AlertTriangle,
   RefreshCw,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  exportSalePriceListToExcel,
+  type SalePriceListExportRow,
+} from "@/lib/export/sale-price-list-excel";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -69,7 +75,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
 import { formatNumber, formatCurrency, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { fetchBrandsLite, fetchCategoriesLite } from "@/lib/products/queries";
-import { fetchSettlementTypes } from "@/lib/pricing/queries";
+import { fetchSalePriceTypes, fetchSettlementTypes } from "@/lib/pricing/queries";
 import {
   STOCK_STATUS_LABELS,
   STOCK_STATUS_VARIANTS,
@@ -84,6 +90,7 @@ import {
   downloadSaleListPdf,
   type SaleListPdfInput,
   type SaleListPdfColumn,
+  COLUMN_LABELS as PDF_COLUMN_LABELS,
   NO_BRAND_KEY,
   brandKey as toBrandKey,
   brandLabel as toBrandLabel,
@@ -94,6 +101,11 @@ import {
   fetchObservatoryPdfHintsForProducts,
   type ObservatoryPdfHintMap,
 } from "@/lib/sales/observatory-snippets";
+import { buildFromSaleList } from "@/lib/price-list/builders";
+import { formatForPlainText } from "@/lib/price-list/formatters/plain-text";
+import { formatForTelegram } from "@/lib/price-list/formatters/telegram";
+import { formatForWhatsApp } from "@/lib/price-list/formatters/whatsapp";
+import { formatForRubika } from "@/lib/price-list/formatters/rubika";
 
 const PAGE_SIZE = 20;
 
@@ -150,6 +162,10 @@ interface SaleListDetail {
   settlement_type: { id: string; title: string } | null;
   pdf_brand_order: string[] | null;
   pdf_product_order_by_brand: Record<string, string[]> | null;
+  pdf_font_size: number | null;
+  pdf_row_padding_y: number | null;
+  pdf_cell_padding_x: number | null;
+  pdf_column_widths: Record<string, number> | null;
 }
 
 interface SaleListItemRow {
@@ -192,7 +208,7 @@ function SaleListDetailPage() {
       const { data, error } = await supabase
         .from("sale_lists")
         .select(
-          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
+          "id, name, description, terms_text, seller_info, status, version_number, sale_price_type_id, settlement_type_id, selected_columns, created_at, pdf_brand_order, pdf_product_order_by_brand, pdf_font_size, pdf_row_padding_y, pdf_cell_padding_x, pdf_column_widths, sale_price_type:sale_price_types(id, title), settlement_type:settlement_types(id, title)",
         )
         .eq("id", listId)
         .single();
@@ -237,7 +253,18 @@ function SaleListDetailPage() {
     staleTime: 300_000,
   });
 
+  const discountSalePriceTypesQ = useQuery({
+    queryKey: ["sale-price-types-active-for-discount"],
+    queryFn: () => fetchSalePriceTypes(true),
+  });
+  const [discountPdfTermId, setDiscountPdfTermId] = useState<string>("");
+  const [discountBaseTermId, setDiscountBaseTermId] = useState<string>("");
+  const [discountSelectedIds, setDiscountSelectedIds] = useState<string[]>([]);
+  const [discountText, setDiscountText] = useState<string>("");
+  const [discountBusy, setDiscountBusy] = useState(false);
+
   // Category-specific product attributes for items, used only inside PDF "description" column.
+
   const productIdsForAttrs = useMemo(() => {
     const ids = new Set<string>();
     for (const it of itemsQ.data ?? []) {
@@ -284,7 +311,7 @@ function SaleListDetailPage() {
       const formatted: Record<string, string> = {};
       for (const [pid, arr] of byProduct) {
         arr.sort((a, b) => a.sort - b.sort || a.label.localeCompare(b.label, "fa"));
-        formatted[pid] = arr.map((a) => `${a.label}: ${a.value}`).join(" | ");
+        formatted[pid] = arr.map((a) => a.value).join(" - ");
       }
       return formatted;
     },
@@ -294,6 +321,23 @@ function SaleListDetailPage() {
   const [pdfFontSize, setPdfFontSize] = useState<number>(10);
   const [pdfRowPadY, setPdfRowPadY] = useState<number>(2);
   const [pdfCellPadX, setPdfCellPadX] = useState<number>(4);
+  const [pdfColumnWidths, setPdfColumnWidths] = useState<Record<string, number> | null>(null);
+
+  // Sync PDF appearance state from DB when listQ.data loads/changes.
+  useEffect(() => {
+    const d = listQ.data;
+    if (!d) return;
+    setPdfFontSize(d.pdf_font_size ?? 10);
+    setPdfRowPadY(d.pdf_row_padding_y ?? 2);
+    setPdfCellPadX(d.pdf_cell_padding_x ?? 4);
+    setPdfColumnWidths((d.pdf_column_widths as Record<string, number> | null) ?? null);
+  }, [
+    listQ.data?.id,
+    listQ.data?.pdf_font_size,
+    listQ.data?.pdf_row_padding_y,
+    listQ.data?.pdf_cell_padding_x,
+    listQ.data?.pdf_column_widths,
+  ]);
 
   // PDF order settings dialog state (brand keys + per-brand product UUIDs).
   // Brand keys use the same convention as the PDF (NO_BRAND_KEY for no-brand).
@@ -390,6 +434,7 @@ function SaleListDetailPage() {
     overrideProductOrder?: Record<string, string[]>,
     livePrices?: Map<string, number>,
     observatoryHints?: ObservatoryPdfHintMap,
+    usdRate?: number | null,
   ): SaleListPdfInput => {
     // Default-on column set for legacy lists with NULL selected_columns.
     // `observatory_price_advantage` is intentionally excluded so existing
@@ -411,9 +456,9 @@ function SaleListDetailPage() {
     ): string | null => {
       const d = (desc ?? "").trim();
       const a = (attrs ?? "").trim();
-      if (d && a) return `${d}\nویژگی‌ها: ${a}`;
+      if (d && a) return `${d}\n${a}`;
       if (d) return d;
-      if (a) return `ویژگی‌ها: ${a}`;
+      if (a) return a;
       return null;
     };
     return {
@@ -424,6 +469,7 @@ function SaleListDetailPage() {
       // Metadata only — never feeds into price calculation.
       settlementTypeTitle: list.settlement_type?.title ?? null,
       termsText: list.terms_text,
+      usdRate: usdRate ?? null,
       sellerInfo: list.seller_info ?? null,
       shopInfo: shop
         ? {
@@ -482,6 +528,7 @@ function SaleListDetailPage() {
         fontSize: pdfFontSize,
         rowPaddingY: pdfRowPadY,
         cellPaddingX: pdfCellPadX,
+        columnWidths: pdfColumnWidths,
       },
     };
   };
@@ -560,6 +607,31 @@ function SaleListDetailPage() {
     }
   };
 
+  const persistPdfAppearance = async (
+    fontSize: number = pdfFontSize,
+    rowPadY: number = pdfRowPadY,
+    cellPadX: number = pdfCellPadX,
+    columnWidths: Record<string, number> | null = pdfColumnWidths,
+  ): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from("sale_lists")
+        .update({
+          pdf_font_size: fontSize,
+          pdf_row_padding_y: rowPadY,
+          pdf_cell_padding_x: cellPadX,
+          pdf_column_widths: columnWidths,
+        })
+        .eq("id", listId);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ["sale-list", listId] });
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ذخیره تنظیمات ظاهر PDF ناموفق بود.");
+      return false;
+    }
+  };
+
   const handleSaveOrder = async () => {
     setSavingOrder(true);
     try {
@@ -578,8 +650,11 @@ function SaleListDetailPage() {
     try {
       // Save the current ordering first (best-effort; do not block PDF on failure).
       if (canSavePdfOrder) {
-        await persistPdfOrder();
+        const orderOk = await persistPdfOrder();
+        if (!orderOk) return;
       }
+      const appearanceOk = await persistPdfAppearance();
+      if (!appearanceOk) return;
       // Ensure category-specific product attributes are loaded if "description"
       // column will be rendered (PDF combines product.description + attributes).
       const selectedCols = (list.selected_columns as SaleListPdfColumn[] | null) ?? [];
@@ -640,7 +715,29 @@ function SaleListDetailPage() {
           );
         }
       }
-      const input = buildPdfInput(brandOrder, productOrderByBrand, livePrices, observatoryHints);
+      // نرخ دلار مؤثر در لحظهٔ صدور PDF (best-effort؛ در صورت خطا PDF بدون نرخ تولید می‌شود).
+      let usdRateForPdf: number | null = null;
+      try {
+        const { data: rateRow } = await (supabase as any)
+          .from("currency_rates")
+          .select("rate_to_toman, effective_at")
+          .eq("currency", "usd")
+          .eq("is_active", true)
+          .lte("effective_at", new Date().toISOString())
+          .order("effective_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        usdRateForPdf = rateRow ? Number(rateRow.rate_to_toman) : null;
+      } catch (err) {
+        console.warn("fetch USD rate for PDF failed; PDF will omit rate", err);
+      }
+      const input = buildPdfInput(
+        brandOrder,
+        productOrderByBrand,
+        livePrices,
+        observatoryHints,
+        usdRateForPdf,
+      );
       if (action === "preview") await previewSaleListPdf(input);
       else await downloadSaleListPdf(input);
       setPdfOrderOpen(false);
@@ -652,7 +749,154 @@ function SaleListDetailPage() {
     }
   };
   const handlePreview = () => openPdfOrderDialog();
+
+  // مورد ۱۳۶ — خروجی اکسل از ردیف‌های ذخیره‌شدهٔ همین لیست.
+  const [exportingExcel, setExportingExcel] = useState(false);
+  const handleExportExcel = async () => {
+    setExportingExcel(true);
+    try {
+      const exportRows: SalePriceListExportRow[] = (itemsQ.data ?? []).map((it) => ({
+        sku: it.product?.sku ?? null,
+        name: it.product?.name ?? "—",
+        salePrice: it.current_price ?? null,
+        brand: it.product?.brand?.name ?? null,
+        category: it.product?.category?.name ?? null,
+        stockStatus: it.stock_status,
+        description: it.product?.description ?? null,
+      }));
+      await exportSalePriceListToExcel(exportRows, {
+        salePriceTypeTitle: list?.sale_price_type?.title ?? null,
+      });
+      toast.success("خروجی اکسل آماده شد.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      toast.error(msg || "خطا در ساخت خروجی اکسل.");
+    } finally {
+      setExportingExcel(false);
+    }
+  };
   const handleDownload = () => openPdfOrderDialog();
+
+  const copyShareText = async (
+    channel: "plain" | "telegram" | "whatsapp" | "rubika",
+    label: string,
+  ) => {
+    if (items.length === 0) {
+      toast.error("لیست خالی است.");
+      return;
+    }
+    try {
+      const model = buildFromSaleList({
+        list,
+        items,
+        shop: shopSettingsQ.data ?? null,
+      });
+      let text = "";
+      if (channel === "plain") text = formatForPlainText(model);
+      else if (channel === "telegram") text = formatForTelegram(model)[0] ?? "";
+      else if (channel === "whatsapp") text = formatForWhatsApp(model);
+      else text = formatForRubika(model);
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} در کلیپ‌بورد کپی شد.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "کپی ناموفق بود.");
+    }
+  };
+
+  const buildDiscountText = async () => {
+    const pdfTermId = discountPdfTermId || list.sale_price_type_id;
+    const baseTermId = discountBaseTermId;
+    if (!baseTermId) {
+      toast.error("ترمِ مبنا برای مقایسه را انتخاب کنید.");
+      return;
+    }
+    if (pdfTermId === baseTermId) {
+      toast.error("ترمِ PDF و ترمِ مبنا نباید یکسان باشند.");
+      return;
+    }
+    if (discountSelectedIds.length === 0) {
+      toast.error("حداقل یک محصول انتخاب کنید.");
+      return;
+    }
+    setDiscountBusy(true);
+    try {
+      const fetchTermPrices = async (typeId: string): Promise<Map<string, number>> => {
+        const map = new Map<string, number>();
+        const CHUNK = 200;
+        for (let i = 0; i < discountSelectedIds.length; i += CHUNK) {
+          const chunk = discountSelectedIds.slice(i, i + CHUNK);
+          const { data, error } = await (supabase as any)
+            .from("product_computed_prices")
+            .select("product_id, rounded_sale_price, computed_at")
+            .eq("sale_price_type_id", typeId)
+            // Baseline rows only — preserve exact pre-settlement behavior.
+            .is("settlement_type_id", null)
+            .in("product_id", chunk)
+            .order("computed_at", { ascending: false });
+          if (error) throw error;
+          for (const row of (data ?? []) as Array<{
+            product_id: string;
+            rounded_sale_price: number | string | null;
+          }>) {
+            if (!map.has(row.product_id)) {
+              map.set(row.product_id, Number(row.rounded_sale_price ?? 0) || 0);
+            }
+          }
+        }
+        return map;
+      };
+      const [pdfPrices, basePrices] = await Promise.all([
+        fetchTermPrices(pdfTermId),
+        fetchTermPrices(baseTermId),
+      ]);
+      const lines: string[] = [];
+      let missing = 0;
+      for (const it of items) {
+        const pid = it.product?.id;
+        if (!pid || !discountSelectedIds.includes(pid)) continue;
+        const pPdf = pdfPrices.get(pid);
+        const pBase = basePrices.get(pid);
+        if (!pPdf || !pBase) {
+          missing++;
+          continue;
+        }
+        const diff = Math.abs(pPdf - pBase);
+        lines.push(`${it.product?.name ?? "—"} ${formatNumber(diff)} تومان`);
+      }
+      if (lines.length === 0) {
+        setDiscountText("");
+        const termTitle = (tid: string) =>
+          discountSalePriceTypesQ.data?.find((t: { id: string; title: string }) => t.id === tid)
+            ?.title ?? tid;
+        const pdfMissing = discountSelectedIds.filter((id) => !pdfPrices.has(id)).length;
+        const baseMissing = discountSelectedIds.filter((id) => !basePrices.has(id)).length;
+        toast.error(
+          `قیمتی برای محاسبه پیدا نشد. از ${discountSelectedIds.length} محصول، برای ترمِ «${termTitle(pdfTermId)}» ${pdfMissing} مورد و برای ترمِ «${termTitle(baseTermId)}» ${baseMissing} مورد قیمت ندارند.`,
+        );
+        return;
+      }
+      let text = `تفاوت قیمت — ${formatDateTimeFa(new Date())}\n\n${lines.join("\n")}`;
+      if (missing > 0) {
+        text += `\n\n(${formatNumber(missing)} محصول به‌دلیل نبودِ قیمت محاسبه نشد)`;
+      }
+      setDiscountText(text);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در محاسبهٔ تفاوت.");
+      console.error(e);
+    } finally {
+      setDiscountBusy(false);
+    }
+  };
+
+  const copyDiscountText = async () => {
+    if (!discountText) return;
+    try {
+      await navigator.clipboard.writeText(discountText);
+      toast.success("متن تفاوت کپی شد.");
+    } catch {
+      toast.error("کپی ناموفق بود.");
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -664,11 +908,58 @@ function SaleListDetailPage() {
             <Badge variant={list.status === "published" ? "default" : "secondary"}>
               {list.status === "published" ? "منتشرشده" : "پیش‌نویس"}
             </Badge>
+            {/* مورد ۱۳۶ — همان helper خروجی اکسل، اینجا با توضیحات محصول */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={handleExportExcel}
+              disabled={exportingExcel || (itemsQ.data ?? []).length === 0}
+            >
+              {exportingExcel ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4" />
+              )}
+              خروجی اکسل
+            </Button>
             <Button variant="outline" size="sm" className="gap-1" onClick={handlePreview}>
               <FileText className="h-4 w-4" /> پیش‌نمایش PDF
             </Button>
             <Button variant="outline" size="sm" className="gap-1" onClick={handleDownload}>
               <Download className="h-4 w-4" /> دانلود PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("plain", "متن ساده")}
+            >
+              <Copy className="h-4 w-4" /> کپی متن ساده
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("telegram", "متن تلگرام")}
+            >
+              <Copy className="h-4 w-4" /> تلگرام
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("whatsapp", "متن واتساپ")}
+            >
+              <Copy className="h-4 w-4" /> واتساپ
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1"
+              onClick={() => copyShareText("rubika", "متن روبیکا")}
+            >
+              <Copy className="h-4 w-4" /> روبیکا
             </Button>
             {canPublish && (
               <Button asChild size="sm" className="gap-1">
@@ -756,14 +1047,101 @@ function SaleListDetailPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              setPdfFontSize(10);
-              setPdfRowPadY(2);
-              setPdfCellPadX(4);
+            onClick={async () => {
+              const nextFontSize = 10;
+              const nextRowPadY = 2;
+              const nextCellPadX = 4;
+              setPdfFontSize(nextFontSize);
+              setPdfRowPadY(nextRowPadY);
+              setPdfCellPadX(nextCellPadX);
+              const ok = await persistPdfAppearance(nextFontSize, nextRowPadY, nextCellPadX);
+              if (ok) toast.success("تنظیمات ظاهر PDF بازنشانی شد.");
             }}
           >
             بازنشانی
           </Button>
+
+          {(() => {
+            const defaultCols: SaleListPdfColumn[] = [
+              "name",
+              "brand",
+              "category",
+              "sale_price",
+              "previous_price",
+              "change",
+              "stock_status",
+            ];
+            const sel = (listQ.data?.selected_columns as SaleListPdfColumn[] | null) ?? defaultCols;
+            const pdfCols: SaleListPdfColumn[] = ["name", ...sel.filter((c) => c !== "name")];
+            const cw = pdfColumnWidths ?? {};
+            const setColW = (key: string, raw: string) => {
+              const next: Record<string, number> = { ...(pdfColumnWidths ?? {}) };
+              const n = Number(raw);
+              if (raw === "" || !Number.isFinite(n)) delete next[key];
+              else next[key] = n;
+              setPdfColumnWidths(Object.keys(next).length ? next : null);
+            };
+            const sumPct = pdfCols.reduce((s, c) => s + (Number(cw[c]) || 0), 0);
+            const hasAnyPct = Object.keys(cw).some((k) => k !== "row");
+            const sumOff = hasAnyPct && Math.round(sumPct) !== 100;
+            return (
+              <div className="w-full border-t pt-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="font-medium text-muted-foreground">
+                    عرض ستون‌ها (درصد؛ خالی = خودکار):
+                  </span>
+                  <span className={sumOff ? "text-amber-600" : "text-muted-foreground"}>
+                    مجموع: {Math.round(sumPct).toLocaleString("fa-IR")}٪
+                    {sumOff ? " — توصیه ۱۰۰٪" : ""}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <Label className="text-xs">ردیف (px)</Label>
+                    <Input
+                      type="number"
+                      min={24}
+                      max={200}
+                      className="h-7 w-16 text-xs"
+                      placeholder="۴۸"
+                      value={cw.row ?? ""}
+                      onChange={(e) => setColW("row", e.target.value)}
+                    />
+                  </div>
+                  {pdfCols.map((c) => (
+                    <div key={c} className="flex items-center gap-1">
+                      <Label className="text-xs">{PDF_COLUMN_LABELS[c]}</Label>
+                      <Input
+                        type="number"
+                        min={3}
+                        max={60}
+                        className="h-7 w-16 text-xs"
+                        placeholder="خودکار"
+                        value={cw[c] ?? ""}
+                        onChange={(e) => setColW(c, e.target.value)}
+                      />
+                    </div>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      setPdfColumnWidths(null);
+                      const ok = await persistPdfAppearance(
+                        pdfFontSize,
+                        pdfRowPadY,
+                        pdfCellPadX,
+                        null,
+                      );
+                      if (ok) toast.success("عرض ستون‌ها بازنشانی شد.");
+                    }}
+                  >
+                    بازنشانی عرض‌ها
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </CardContent>
       </Card>
 
@@ -792,6 +1170,7 @@ function SaleListDetailPage() {
           <TabsTrigger value="items">اقلام لیست</TabsTrigger>
           <TabsTrigger value="versions">نسخه‌ها و تاریخچه</TabsTrigger>
           <TabsTrigger value="settings">تنظیمات و ویرایش</TabsTrigger>
+          <TabsTrigger value="discount">تفاوت تسویه</TabsTrigger>
         </TabsList>
 
         <TabsContent value="items" className="pt-4">
@@ -827,6 +1206,154 @@ function SaleListDetailPage() {
             }}
             onDeleted={() => navigate({ to: "/pricing/sale-lists" })}
           />
+        </TabsContent>
+
+        <TabsContent value="discount" className="pt-4">
+          <div className="rounded-lg border p-4 space-y-4">
+            <div>
+              <div className="text-sm font-semibold">تفاوت تسویه (برای ارسال به مشتری)</div>
+              <div className="text-xs text-muted-foreground">
+                مبلغ تفاوت بین ترمِ تسویهٔ PDF و ترمِ مبنا را برای محصولات انتخابی محاسبه و به‌صورت
+                متنِ قابل‌کپی تولید می‌کند. این اطلاعات فقط در همین صفحه نمایش داده می‌شود و هرگز
+                وارد PDF نمی‌شود.
+              </div>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Label>ترمِ تسویهٔ نمایش‌داده‌شده در PDF</Label>
+                <Select
+                  value={discountPdfTermId || list.sale_price_type_id}
+                  onValueChange={setDiscountPdfTermId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب ترم" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(discountSalePriceTypesQ.data ?? []).map(
+                      (t: { id: string; title: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>ترمِ مبنا برای مقایسه (مثلاً پیش‌واریز)</Label>
+                <Select value={discountBaseTermId} onValueChange={setDiscountBaseTermId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="انتخاب ترم مبنا" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(discountSalePriceTypesQ.data ?? []).map(
+                      (t: { id: string; title: string }) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.title}
+                        </SelectItem>
+                      ),
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>محصولات موردنظر برای محاسبهٔ تفاوت</Label>
+                <div className="flex items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() =>
+                      setDiscountSelectedIds(
+                        items.map((it) => it.product?.id).filter((x): x is string => !!x),
+                      )
+                    }
+                  >
+                    انتخاب همه
+                  </button>
+                  <span className="text-muted-foreground">·</span>
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setDiscountSelectedIds([])}
+                  >
+                    حذف همه
+                  </button>
+                </div>
+              </div>
+              <div className="max-h-72 space-y-1 overflow-y-auto rounded-md border p-2">
+                {items.length === 0 ? (
+                  <div className="p-2 text-sm text-muted-foreground">این لیست محصولی ندارد.</div>
+                ) : (
+                  items.map((it) => {
+                    const pid = it.product?.id;
+                    if (!pid) return null;
+                    const checked = discountSelectedIds.includes(pid);
+                    return (
+                      <label
+                        key={pid}
+                        className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted/50"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setDiscountSelectedIds((prev) =>
+                              v === true ? [...prev, pid] : prev.filter((id) => id !== pid),
+                            )
+                          }
+                        />
+                        <span className="text-sm">
+                          {it.product?.name ?? "—"}
+                          {it.product?.sku ? (
+                            <span className="ms-2 text-xs text-muted-foreground">
+                              {it.product.sku}
+                            </span>
+                          ) : null}
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {discountSelectedIds.length.toLocaleString("fa-IR")} محصول انتخاب شده
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={buildDiscountText}
+                disabled={discountBusy || discountSelectedIds.length === 0}
+                className="gap-1"
+              >
+                {discountBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                محاسبه و تولید متن
+              </Button>
+              {discountText ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={discountText}
+                    readOnly
+                    rows={Math.min(20, discountText.split("\n").length + 1)}
+                    className="font-mono text-sm"
+                    dir="rtl"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={copyDiscountText}
+                    className="gap-1"
+                  >
+                    <Copy className="h-4 w-4" />
+                    کپی متن
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

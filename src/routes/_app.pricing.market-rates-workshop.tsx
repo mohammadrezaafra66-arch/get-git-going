@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { ResponsiveContainer, LineChart, Line } from "recharts";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
 import {
@@ -118,6 +119,12 @@ function MarketRatesWorkshopPage() {
   const [filterIndicator, setFilterIndicator] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [filterSource, setFilterSource] = useState<string>("all");
+  const HIST_SIZE = 20;
+  const [historyPage, setHistoryPage] = useState(0);
+
+  useEffect(() => {
+    setHistoryPage(0);
+  }, [filterIndicator, filterStatus, filterSource]);
 
   const indicatorsQ = useQuery({
     queryKey: ["market-indicators"],
@@ -130,6 +137,33 @@ function MarketRatesWorkshopPage() {
         .limit(200);
       if (error) throw error;
       return (data ?? []) as Indicator[];
+    },
+  });
+
+  // اسپارک‌لاین ۷ روز اخیر برای همه شاخص‌ها (یک کوئری)
+  const sparklineQ = useQuery({
+    queryKey: ["market-ticks-sparkline", isPrivileged],
+    enabled: !!indicatorsQ.data?.length,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("market_rate_ticks")
+        .select("indicator_id, value, observed_at")
+        .eq("status", "accepted")
+        .gte("observed_at", since)
+        .order("observed_at", { ascending: true })
+        .limit(500);
+      if (error) throw error;
+      const map: Record<string, Array<{ value: number; observed_at: string }>> = {};
+      for (const row of data ?? []) {
+        if (!map[row.indicator_id]) map[row.indicator_id] = [];
+        map[row.indicator_id].push({
+          value: Number(row.value),
+          observed_at: row.observed_at,
+        });
+      }
+      return map;
     },
   });
 
@@ -184,7 +218,14 @@ function MarketRatesWorkshopPage() {
 
   // تاریخچه با فیلتر
   const historyQ = useQuery({
-    queryKey: ["market-ticks-history", filterIndicator, filterStatus, filterSource, isPrivileged],
+    queryKey: [
+      "market-ticks-history",
+      filterIndicator,
+      filterStatus,
+      filterSource,
+      isPrivileged,
+      historyPage,
+    ],
     queryFn: async () => {
       if (isPrivileged) {
         let q = supabase
@@ -193,7 +234,7 @@ function MarketRatesWorkshopPage() {
             "id,indicator_id,source_id,value,unit,observed_at,change_amount,change_percent,status,note,created_at",
           )
           .order("observed_at", { ascending: false })
-          .limit(15);
+          .range(historyPage * HIST_SIZE, historyPage * HIST_SIZE + HIST_SIZE - 1);
         if (filterIndicator !== "all") q = q.eq("indicator_id", filterIndicator);
         if (filterStatus !== "all") q = q.eq("status", filterStatus);
         if (filterSource !== "all") q = q.eq("source_id", filterSource);
@@ -203,7 +244,7 @@ function MarketRatesWorkshopPage() {
       } else {
         const { data, error } = await supabase.rpc("list_market_rate_ticks_public", {
           p_indicator_id: filterIndicator === "all" ? undefined : filterIndicator,
-          p_limit: 15,
+          p_limit: HIST_SIZE,
         });
         if (error) throw error;
         return (data ?? []).map((r: any) => ({
@@ -263,11 +304,27 @@ function MarketRatesWorkshopPage() {
             شاخصی تعریف نشده است.
           </div>
         ) : (
+          <>
+          {!latestQ.isLoading &&
+            Object.keys(latestQ.data ?? {}).length === 0 &&
+            (indicatorsQ.data?.length ?? 0) > 0 && (
+              <div className="mb-3 space-y-2 rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+                <p className="font-semibold text-foreground">هنوز نرخی ثبت نشده است</p>
+                <p>
+                  برای شروع، از دکمه «ثبت نرخ جدید» در بالای صفحه استفاده کنید تا نرخ ارز یا طلا را
+                  به صورت دستی وارد کنید.
+                </p>
+                {!canWrite && (
+                  <p>شما دسترسی مشاهده دارید. برای ثبت نرخ با مدیر سیستم تماس بگیرید.</p>
+                )}
+              </div>
+            )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {indicatorsQ.data?.map((ind) => {
               const t = latestQ.data?.[ind.id];
               const isUp = (t?.change_amount ?? 0) > 0;
               const isDown = (t?.change_amount ?? 0) < 0;
+              const sparklineData = sparklineQ.data?.[ind.id] ?? [];
               return (
                 <Card key={ind.id}>
                   <CardHeader className="pb-2">
@@ -308,6 +365,21 @@ function MarketRatesWorkshopPage() {
                         <Badge variant={STATUS_VARIANT[t.status] ?? "default"} className="text-xs">
                           {STATUS_LABEL[t.status] ?? t.status}
                         </Badge>
+                        {sparklineData.length > 1 && (
+                          <div className="mt-2 h-10 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={sparklineData}>
+                                <Line
+                                  type="monotone"
+                                  dataKey="value"
+                                  stroke={isUp ? "#059669" : isDown ? "#dc2626" : "#94a3b8"}
+                                  strokeWidth={1.5}
+                                  dot={false}
+                                />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                        )}
                       </div>
                     )}
                   </CardContent>
@@ -315,6 +387,7 @@ function MarketRatesWorkshopPage() {
               );
             })}
           </div>
+          </>
         )}
       </section>
 
@@ -442,6 +515,26 @@ function MarketRatesWorkshopPage() {
               </table>
             </div>
           )}
+
+          <div className="flex items-center justify-between pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={historyPage === 0}
+              onClick={() => setHistoryPage((p) => p - 1)}
+            >
+              قبلی
+            </Button>
+            <span className="text-xs text-muted-foreground">صفحه {historyPage + 1}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={(historyQ.data?.length ?? 0) < HIST_SIZE}
+              onClick={() => setHistoryPage((p) => p + 1)}
+            >
+              بعدی
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

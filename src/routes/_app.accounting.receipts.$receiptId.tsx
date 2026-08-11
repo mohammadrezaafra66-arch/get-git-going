@@ -11,6 +11,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
+import { receiptTypeLabel, requiresInvoiceLinks } from "@/lib/receipts/receipt-types";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -74,6 +75,8 @@ const STATUS_VARIANT: Record<string, "secondary" | "default" | "destructive"> = 
 type ReceiptRow = {
   id: string;
   customer_id: string;
+  /** Item 236 (Phase 7.2) — the unified person behind the paying customer. */
+  customer_person_id: string | null;
   receipt_type: string;
   payer_name: string;
   payer_phone: string | null;
@@ -96,6 +99,7 @@ type ReceiptRow = {
   payer_name_on_receipt: string | null;
   has_perforation: boolean | null;
   is_typed_receipt: boolean | null;
+  is_mobile_bank_screenshot: boolean | null;
   security_warnings: unknown;
   customer: { id: string; name: string; phone: string | null } | null;
 };
@@ -224,7 +228,7 @@ function ReceiptDetailPage() {
       const { data, error } = await supabase
         .from("payment_receipts")
         .select(
-          "id, customer_id, receipt_type, payer_name, payer_phone, payer_accounting_code, receiver_name, receiver_phone, receiver_accounting_code, amount, payment_date, payment_time, receipt_time, tracking_number, bank_name, receipt_image_url, description, status, rejection_reason, created_at, document_channel, payer_name_on_receipt, has_perforation, is_typed_receipt, security_warnings, customer:customers(id, name, phone)",
+          "id, customer_id, customer_person_id, receipt_type, payer_name, payer_phone, payer_accounting_code, receiver_name, receiver_phone, receiver_accounting_code, amount, payment_date, payment_time, receipt_time, tracking_number, bank_name, receipt_image_url, description, status, rejection_reason, created_at, document_channel, payer_name_on_receipt, has_perforation, is_typed_receipt, is_mobile_bank_screenshot, security_warnings, customer:customers(id, name, phone)",
         )
         .eq("id", receiptId)
         .maybeSingle();
@@ -455,11 +459,7 @@ function ReceiptDetailPage() {
                   <Badge variant={STATUS_VARIANT[receipt.status] ?? "secondary"}>
                     {STATUS_LABEL[receipt.status] ?? receipt.status}
                   </Badge>
-                  <Badge variant="outline">
-                    {receipt.receipt_type === "prepayment"
-                      ? "پیش واریز: اعتبار مثبت"
-                      : "پرداخت بدهی"}
-                  </Badge>
+                  <Badge variant="outline">{receiptTypeLabel(receipt.receipt_type)}</Badge>
                   <span className="text-sm text-muted-foreground">
                     شماره پیگیری: <span dir="ltr">{toFaDigits(receipt.tracking_number)}</span>
                   </span>
@@ -510,6 +510,7 @@ function ReceiptDetailPage() {
                         payer_name_on_receipt: receipt.payer_name_on_receipt,
                         has_perforation: receipt.has_perforation,
                         is_typed_receipt: receipt.is_typed_receipt,
+                        is_mobile_bank_screenshot: receipt.is_mobile_bank_screenshot,
                       });
                 if (warnings.length === 0) {
                   return (
@@ -555,6 +556,9 @@ function ReceiptDetailPage() {
                   <Field label="ساعت فیش" dir="ltr">
                     {receipt.receipt_time ? toFaDigits(receipt.receipt_time) : ""}
                   </Field>
+                  <Field label="رسید اسکرین‌شات همراه بانک">
+                    {receipt.is_mobile_bank_screenshot ? "بله" : "خیر"}
+                  </Field>
                 </div>
 
                 <Separator />
@@ -599,7 +603,7 @@ function ReceiptDetailPage() {
                   </>
                 )}
 
-                {receipt.receipt_type === "payment" && (
+                {requiresInvoiceLinks(receipt.receipt_type) && (
                   <>
                     <Separator />
                     <h3 className="text-sm font-semibold">پیش‌فاکتورهای متصل</h3>
@@ -648,7 +652,22 @@ function ReceiptDetailPage() {
             <Card>
               <CardContent className="p-4 space-y-3">
                 <h3 className="text-sm font-semibold">مشتری</h3>
-                <Field label="نام مشتری">{receipt.customer?.name ?? "—"}</Field>
+                <Field label="نام مشتری">
+                  {/* Phase 7.5 — dual-read: the person link when the receipt has
+                      one, the legacy customer name as fallback. Same behaviour
+                      the quote detail page got in Phase 5. */}
+                  {receipt.customer_person_id ? (
+                    <Link
+                      to="/persons/$personId/edit"
+                      params={{ personId: receipt.customer_person_id }}
+                      className="text-primary hover:underline"
+                    >
+                      {receipt.customer?.name ?? "—"}
+                    </Link>
+                  ) : (
+                    (receipt.customer?.name ?? "—")
+                  )}
+                </Field>
                 <Field label="شماره تماس" dir="ltr">
                   {receipt.customer?.phone ? toFaDigits(receipt.customer.phone) : ""}
                 </Field>

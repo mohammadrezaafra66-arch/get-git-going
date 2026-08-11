@@ -20,6 +20,7 @@ import {
   type ShopSettingKey,
   type ShopSettingsMap,
 } from "@/lib/shop/settings";
+import { BRANDING } from "@/config/branding";
 
 export const Route = createFileRoute("/_app/admin/settings")({
   beforeLoad: async () => {
@@ -35,7 +36,7 @@ const TEXTAREA_KEYS: ShopSettingKey[] = [
 ];
 
 const PLACEHOLDERS: Record<ShopSettingKey, string> = {
-  shop_name: "مثلاً فروشگاه افراکالا",
+  shop_name: `مثلاً فروشگاه ${BRANDING.platformName}`,
   shop_address: "آدرس کامل فروشگاه",
   shop_phone: "مثلاً ۰۲۱-۱۲۳۴۵۶۷۸",
   shop_website: "https://example.com",
@@ -46,6 +47,13 @@ const PLACEHOLDERS: Record<ShopSettingKey, string> = {
   default_seller_info: "نام، شماره تماس و سمت پیش‌فرض فروشنده",
   alert_threshold_percent: "مثلاً 5",
   birthday_message_template: "🎂 تولدت مبارک! ...",
+  holding_tier1_days: "30",
+  holding_tier2_days: "60",
+  holding_tier3_days: "90",
+  holding_tier1_margin_add: "0",
+  holding_tier2_margin_add: "2",
+  holding_tier3_margin_add: "5",
+  holding_tier4_margin_add: "10",
 };
 
 function ShopSettingsPage() {

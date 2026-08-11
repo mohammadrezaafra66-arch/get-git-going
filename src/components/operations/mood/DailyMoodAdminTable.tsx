@@ -11,6 +11,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -132,13 +133,13 @@ export function DailyMoodAdminTable() {
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => {
+          <PersianDatePicker
+            value={date || null}
+            onChange={(v) => {
               setPage(1);
-              setDate(e.target.value);
+              setDate(v ?? "");
             }}
+            placeholder="انتخاب تاریخ"
           />
         </CardContent>
       </Card>

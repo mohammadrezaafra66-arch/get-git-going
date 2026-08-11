@@ -1,0 +1,19 @@
+-- Down script for migration 303 (P0.1 — delete unambiguous test-marker persons).
+-- Restores the two deleted persons, their suppliers mirrors, their context
+-- links, and the dismissed merge-candidate row.
+--
+-- NO BEGIN / COMMIT here — transaction control belongs to the caller
+-- (apply with psql --single-transaction -v ON_ERROR_STOP=1).
+SET client_encoding='UTF8';
+
+INSERT INTO public.persons (id,kind,display_name,legal_name,visibility_scope,is_active,notes,created_by,created_at,updated_at) VALUES ('19bb3abd-f6fb-4527-9844-09eb896f7d2d'::uuid,'organization','تست تامین کننده',NULL,'internal_general',true,NULL,'05098088-2849-43f4-8eb5-7c473c3832ec'::uuid,'2026-07-31 20:09:57.791881+00'::timestamptz,'2026-07-31 20:09:57.791881+00'::timestamptz);
+INSERT INTO public.persons (id,kind,display_name,legal_name,visibility_scope,is_active,notes,created_by,created_at,updated_at) VALUES ('6358926a-3938-4aca-8d7e-f7998fac233a'::uuid,'organization','تست دستی من',NULL,'internal_general',true,'ساخته‌شده در پرکردن فاز ۶ (۲۳۳) از رکورد تأمین‌کنندهٔ بدون شخص.','8ff55610-010f-4436-8f6e-1b20c42c93b2'::uuid,'2026-08-01 14:42:30.041673+00'::timestamptz,'2026-08-01 14:42:30.041673+00'::timestamptz);
+
+INSERT INTO public.suppliers (id,name,phone,email,address,created_at,updated_at,contact_name,city,notes,trust_level,is_active,status,created_by,person_id) VALUES ('aef4a80e-03ba-4ec3-aa55-baa76fe1b9fb'::uuid,'تست تامین کننده',NULL,NULL,NULL,'2026-07-28 10:28:04.713339+00'::timestamptz,'2026-07-31 20:09:57.791881+00'::timestamptz,NULL,NULL,NULL,'medium',true,'active','5afb2fe7-b509-4265-b982-239efaf61798'::uuid,'19bb3abd-f6fb-4527-9844-09eb896f7d2d'::uuid);
+INSERT INTO public.suppliers (id,name,phone,email,address,created_at,updated_at,contact_name,city,notes,trust_level,is_active,status,created_by,person_id) VALUES ('0fa0985d-aca3-4735-8739-13fc29b1e802'::uuid,'تست دستی من','09122270261',NULL,NULL,'2026-08-01 14:02:14.646056+00'::timestamptz,'2026-08-01 14:42:30.041673+00'::timestamptz,'09121112365','Helsinki',NULL,'medium',true,'active','8ff55610-010f-4436-8f6e-1b20c42c93b2'::uuid,'6358926a-3938-4aca-8d7e-f7998fac233a'::uuid);
+
+INSERT INTO public.person_context_links (id,person_id,context_kind,ref_table,ref_id,note,started_at,ended_at,created_by,created_at,updated_at) VALUES ('17b0559d-2cf4-458c-8845-b21dc9ec11ec'::uuid,'6358926a-3938-4aca-8d7e-f7998fac233a'::uuid,'supplier','suppliers','0fa0985d-aca3-4735-8739-13fc29b1e802'::uuid,NULL,'2026-08-01 14:42:30.041673+00'::timestamptz,NULL,'8ff55610-010f-4436-8f6e-1b20c42c93b2'::uuid,'2026-08-01 14:42:30.041673+00'::timestamptz,'2026-08-01 14:42:30.041673+00'::timestamptz);
+INSERT INTO public.person_context_links (id,person_id,context_kind,ref_table,ref_id,note,started_at,ended_at,created_by,created_at,updated_at) VALUES ('d439d73e-4d95-4a9b-b247-e05afca8daf4'::uuid,'19bb3abd-f6fb-4527-9844-09eb896f7d2d'::uuid,'supplier','suppliers','aef4a80e-03ba-4ec3-aa55-baa76fe1b9fb'::uuid,'backfill 230','2026-07-31 20:09:57.791881+00'::timestamptz,NULL,'05098088-2849-43f4-8eb5-7c473c3832ec'::uuid,'2026-07-31 20:09:57.791881+00'::timestamptz,'2026-07-31 20:09:57.791881+00'::timestamptz);
+
+INSERT INTO public.person_merge_candidates (id,person_id_a,person_id_b,reason,detail,status,reviewed_by,reviewed_at,created_at,updated_at) VALUES ('53311247-7ab5-485d-b32b-a1bc37348d0b'::uuid,'46f4be38-4cf2-4d40-bf25-bef9454f21d9'::uuid,'6358926a-3938-4aca-8d7e-f7998fac233a'::uuid,'shared_identifier','شناسهٔ مشترک: mobile_e164 = +989122270261
+دلیل رد: رکورد آزمایشی «تست دستی من» است و شخص واقعی نیست؛ شمارهٔ مشترک از رکورد آزمایشی حذف شد. ادغام انجام نشد تا سابقهٔ شخص واقعی آلوده نشود.','dismissed','05098088-2849-43f4-8eb5-7c473c3832ec'::uuid,'2026-08-01 18:24:16.968511+00'::timestamptz,'2026-08-01 15:19:13.265879+00'::timestamptz,'2026-08-01 18:24:16.968511+00'::timestamptz);

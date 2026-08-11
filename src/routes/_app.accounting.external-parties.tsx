@@ -245,16 +245,34 @@ function ExternalPartyForm({
           diff: payload,
         } as never);
       } else {
-        const { data, error } = await supabase
-          .from("external_parties")
-          .insert(payload as never)
-          .select("id")
-          .single();
+        // Phase 8.5 (Decision 3): creation goes through person_create_inline so
+        // the person, the external_parties row and the context link are written
+        // in ONE transaction. The previous direct .insert() produced rows with
+        // person_id NULL - the same hole Phase 6 closed for suppliers - and
+        // migration 242 makes person_id NOT NULL, so it would now simply fail.
+        //
+        // context_kind is 'accounting_party', which is what the existing data
+        // already uses for external parties; there is no separate
+        // 'external_party' kind.
+        const { data: rpcRes, error } = await supabase.rpc("person_create_inline", {
+          p_display_name: v.full_name,
+          p_context_kind: "accounting_party",
+          p_kind: "individual",
+          p_identifiers: v.phone ? [{ kind: "mobile_e164", value_raw: v.phone }] : [],
+          p_accounting_code: v.accounting_code || null,
+          p_notes: v.notes || null,
+          p_legacy_fields: {
+            national_id: v.national_id || null,
+            phone: v.phone || null,
+          },
+        });
         if (error) throw error;
+        const created = rpcRes as unknown as { legacy_id: string | null } | null;
+        if (!created?.legacy_id) throw new Error("ثبت طرف حساب ناموفق بود.");
         await supabase.from("audit_logs").insert({
           actor_id: actorId,
           entity_type: "external_party",
-          entity_id: (data as { id: string }).id,
+          entity_id: created.legacy_id,
           action: "external_party_created",
           diff: payload,
         } as never);
@@ -270,30 +288,34 @@ function ExternalPartyForm({
   return (
     <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
+        {/* Phase 8.5: labels wired to their inputs with htmlFor/id. They were
+            bare <Label> elements with no association, so a screen reader read
+            the fields as unlabelled and getByLabel could not reach them. Same
+            a11y lesson Phase 6.5 applied to PersonForm. */}
         <div className="space-y-1 col-span-2">
-          <Label>
+          <Label htmlFor="ep-full-name">
             نام و نام‌خانوادگی <span className="text-destructive">*</span>
           </Label>
-          <Input {...form.register("full_name")} />
+          <Input id="ep-full-name" {...form.register("full_name")} />
           {form.formState.errors.full_name && (
             <p className="text-xs text-destructive">{form.formState.errors.full_name.message}</p>
           )}
         </div>
         <div className="space-y-1">
-          <Label>کد ملی</Label>
-          <Input dir="ltr" {...form.register("national_id")} />
+          <Label htmlFor="ep-national-id">کد ملی</Label>
+          <Input id="ep-national-id" dir="ltr" {...form.register("national_id")} />
         </div>
         <div className="space-y-1">
-          <Label>شماره موبایل</Label>
-          <Input dir="ltr" {...form.register("phone")} />
+          <Label htmlFor="ep-phone">شماره موبایل</Label>
+          <Input id="ep-phone" dir="ltr" {...form.register("phone")} />
         </div>
         <div className="space-y-1 col-span-2">
-          <Label>کد حسابداری</Label>
-          <Input dir="ltr" {...form.register("accounting_code")} />
+          <Label htmlFor="ep-accounting-code">کد حسابداری</Label>
+          <Input id="ep-accounting-code" dir="ltr" {...form.register("accounting_code")} />
         </div>
         <div className="space-y-1 col-span-2">
-          <Label>توضیحات</Label>
-          <Textarea rows={2} {...form.register("notes")} />
+          <Label htmlFor="ep-notes">توضیحات</Label>
+          <Textarea id="ep-notes" rows={2} {...form.register("notes")} />
         </div>
       </div>
       <div className="flex justify-end gap-2 pt-2">

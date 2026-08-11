@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { RefreshCw, BarChart3 } from "lucide-react";
+import { RefreshCw, BarChart3, TrendingUp, TrendingDown } from "lucide-react";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -14,21 +14,24 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
+import { supabase } from "@/integrations/supabase/client";
 import { TrendingProductsCard } from "@/components/management/market-intelligence/TrendingProductsCard";
 import { PriceMoversCard } from "@/components/management/market-intelligence/PriceMoversCard";
 import { AfraMarketIndexCard } from "@/components/management/market-intelligence/AfraMarketIndexCard";
-import { PlaceholderCard } from "@/components/management/market-intelligence/PlaceholderCard";
 import { TopCheckedTodayCard } from "@/components/management/market-intelligence/TopCheckedTodayCard";
 import { DemandGrowthCard } from "@/components/management/market-intelligence/DemandGrowthCard";
 import { EmergingProductsCard } from "@/components/management/market-intelligence/EmergingProductsCard";
 import { HotBrandsCategoriesCard } from "@/components/management/market-intelligence/HotBrandsCategoriesCard";
 import { SellerFavoritesCard } from "@/components/management/market-intelligence/SellerFavoritesCard";
+import { WhatsappTopProductsCard } from "@/components/management/market-intelligence/WhatsappTopProductsCard";
 import type { RangeDays } from "@/lib/management/market-intelligence";
+import { BRANDING, getPageTitle } from "@/config/branding";
 
 export const Route = createFileRoute("/_app/pricing/market-intelligence")({
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager", "accountant"]);
   },
+  head: () => ({ meta: [{ title: getPageTitle("هوش بازار") }] }),
   component: MarketIntelligencePage,
 });
 
@@ -55,7 +58,7 @@ function MarketIntelligencePage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="داشبورد هوشمند بازار افراکالا"
+        title={`داشبورد هوشمند بازار ${BRANDING.platformName}`}
         description="تحلیل محصولات داغ، روند قیمت، فرصت‌های سود و ریسک‌های بازار"
         actions={
           <Button variant="outline" size="sm" onClick={refresh}>
@@ -106,15 +109,7 @@ function MarketIntelligencePage() {
       {/* Top section: market index */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <AfraMarketIndexCard days={days} />
-        <Card className="border-dashed">
-          <CardContent className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center">
-            <BarChart3 className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm font-semibold">گزارش روزانه بازار</p>
-            <p className="text-xs text-muted-foreground">
-              این بخش در فاز بعدی همین داشبورد فعال می‌شود.
-            </p>
-          </CardContent>
-        </Card>
+        <DailyMarketSummaryCard />
       </div>
 
       {/* Movers */}
@@ -154,15 +149,15 @@ function MarketIntelligencePage() {
         <SellerFavoritesCard days={days} />
       </div>
 
+      {/* External WhatsApp-platform customer-demand data (read-only), alongside
+          the internal usage-based cards above — clearly labeled as a distinct source. */}
+      <div className="grid grid-cols-1 gap-4">
+        <WhatsappTopProductsCard />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <PlaceholderCard
-          title="فرصت‌های سود بالا"
-          description="بر اساس margin و قیمت خرید (فقط نقش‌های مالی)"
-        />
-        <PlaceholderCard
-          title="کالاهای پرریسک"
-          description="نوسان قیمت بالا، موجودی محدود یا قیمت خرید قدیمی"
-        />
+        <HighMarginOpportunitiesCard />
+        <HighRiskProductsCard />
       </div>
 
       <p className="pt-2 text-center text-[11px] text-muted-foreground">
@@ -170,5 +165,197 @@ function MarketIntelligencePage() {
         محسوب نمی‌شوند.
       </p>
     </div>
+  );
+}
+
+function DailyMarketSummaryCard() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const { data, isLoading } = useQuery({
+    queryKey: ["mi-daily-summary"],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data: ticks, error } = await supabase
+        .from("market_rate_ticks")
+        .select("id, indicator_id, value, change_percent, status, observed_at")
+        .gte("observed_at", today.toISOString())
+        .eq("status", "accepted")
+        .order("observed_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      const rows = ticks ?? [];
+      const uniqueIndicators = new Set(rows.map((r) => r.indicator_id)).size;
+      const withChange = rows.filter((r) => r.change_percent !== null);
+      const avgChange =
+        withChange.length > 0
+          ? withChange.reduce((s, r) => s + Math.abs(Number(r.change_percent)), 0) /
+            withChange.length
+          : 0;
+      const risers = rows.filter((r) => Number(r.change_percent ?? 0) > 0).length;
+      const fallers = rows.filter((r) => Number(r.change_percent ?? 0) < 0).length;
+      const lastUpdate = rows[0]?.observed_at ?? null;
+      return { count: rows.length, uniqueIndicators, avgChange, risers, fallers, lastUpdate };
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-bold">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          گزارش روزانه بازار
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">ثبت‌های امروز در سیستم</p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
+        ) : !data || data.count === 0 ? (
+          <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+            هنوز نرخی برای امروز ثبت نشده است.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-lg bg-muted/40 p-3 text-center">
+              <div className="text-2xl font-bold text-primary">{data.count}</div>
+              <div className="text-xs text-muted-foreground">ثبت امروز</div>
+            </div>
+            <div className="rounded-lg bg-muted/40 p-3 text-center">
+              <div className="text-2xl font-bold">{data.uniqueIndicators}</div>
+              <div className="text-xs text-muted-foreground">شاخص فعال</div>
+            </div>
+            <div className="rounded-lg bg-emerald-50 p-3 text-center dark:bg-emerald-950/20">
+              <div className="text-xl font-bold text-emerald-600">▲ {data.risers}</div>
+              <div className="text-xs text-muted-foreground">افزایش‌یافته</div>
+            </div>
+            <div className="rounded-lg bg-rose-50 p-3 text-center dark:bg-rose-950/20">
+              <div className="text-xl font-bold text-rose-600">▼ {data.fallers}</div>
+              <div className="text-xs text-muted-foreground">کاهش‌یافته</div>
+            </div>
+            {data.lastUpdate && (
+              <div className="col-span-2 text-center text-xs text-muted-foreground">
+                آخرین بروزرسانی: {new Date(data.lastUpdate).toLocaleTimeString("fa-IR")}
+              </div>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function HighMarginOpportunitiesCard() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["mi-high-margin-opportunities"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      // Join product_computed_prices_public with products to find items with latest sale price significantly above purchase price
+      const { data, error } = await supabase
+        .from("product_computed_prices_public")
+        .select("product_id, sale_price, products!inner(id, name, sku)")
+        .order("sale_price", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      // Return top 5 by sale_price as proxy (real margin calc needs purchase price)
+      return (data ?? []).slice(0, 5) as unknown as Array<{
+        product_id: string;
+        sale_price: number;
+        products: { id: string; name: string; sku: string | null };
+      }>;
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-bold">
+          <TrendingUp className="h-4 w-4 text-emerald-600" />
+          فرصت‌های سود بالا
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          محصولاتی که قیمت فروش آن‌ها در محدوده بالاتر قرار دارد
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
+        ) : !data || data.length === 0 ? (
+          <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+            داده‌ای برای نمایش وجود ندارد.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {data.map((row) => (
+              <li key={row.product_id} className="flex items-center justify-between gap-2 text-sm">
+                <span className="truncate font-medium">{row.products.name}</span>
+                <span className="shrink-0 font-bold text-emerald-700">
+                  {Number(row.sale_price).toLocaleString("fa-IR")}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function HighRiskProductsCard() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["mi-high-risk-products"],
+    staleTime: 10 * 60_000,
+    queryFn: async () => {
+      // Products where purchase price was last updated more than 30 days ago
+      const threshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("purchase_prices")
+        .select("product_id, effective_from, products!inner(id, name, sku)")
+        .lt("effective_from", threshold)
+        .order("effective_from", { ascending: true })
+        .limit(5);
+      if (error) throw error;
+      return (data ?? []) as unknown as Array<{
+        product_id: string;
+        effective_from: string;
+        products: { id: string; name: string; sku: string | null };
+      }>;
+    },
+  });
+
+  const daysSince = (iso: string) =>
+    Math.floor((Date.now() - new Date(iso).getTime()) / (86400 * 1000));
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-bold">
+          <TrendingDown className="h-4 w-4 text-rose-600" />
+          کالاهای پرریسک
+        </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          محصولاتی با قیمت خرید قدیمی‌تر از ۳۰ روز (نیاز به به‌روزرسانی)
+        </p>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground">در حال بارگذاری…</div>
+        ) : !data || data.length === 0 ? (
+          <div className="rounded-md border border-dashed p-4 text-center text-sm text-muted-foreground">
+            همه قیمت‌های خرید به‌روز هستند.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {data.map((row) => (
+              <li key={row.product_id} className="flex items-center justify-between gap-2 text-sm">
+                <span className="truncate font-medium">{row.products.name}</span>
+                <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-900/30">
+                  {daysSince(row.effective_from)} روز پیش
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }

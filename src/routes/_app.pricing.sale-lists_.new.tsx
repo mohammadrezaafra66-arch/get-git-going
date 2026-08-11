@@ -9,6 +9,7 @@ import {
   ChevronLeft,
   Save,
   Loader2,
+  FileSpreadsheet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { requirePermission } from "@/lib/rbac/route-guards";
@@ -50,6 +51,10 @@ import {
   type StockStatus,
   type ProductType,
 } from "@/lib/products/constants";
+import {
+  exportSalePriceListToExcel,
+  type SalePriceListExportRow,
+} from "@/lib/export/sale-price-list-excel";
 
 const PAGE_SIZE = 20;
 
@@ -115,7 +120,10 @@ function NewSaleListPage() {
   const [stockStatus, setStockStatus] = useState<string>("__all");
   const [productType, setProductType] = useState<string>("__all");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(PAGE_SIZE);
+  const [pageSizeInput, setPageSizeInput] = useState<string>(String(PAGE_SIZE));
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectingAll, setSelectingAll] = useState(false);
 
   // Step 2 state
   const [selectedColumns, setSelectedColumns] = useState<ColumnKey[]>(
@@ -149,6 +157,32 @@ function NewSaleListPage() {
   // Reset page on filter changes
   const resetPage = () => setPage(1);
 
+  // Free numeric "per page" input, clamped to 5–500 on commit (blur/Enter).
+  const commitPageSize = () => {
+    const raw = Number(pageSizeInput);
+    if (pageSizeInput.trim() === "" || !Number.isFinite(raw)) {
+      setPageSizeInput(String(pageSize));
+      return;
+    }
+    let n = Math.round(raw);
+    let clamped = false;
+    if (n < 5) {
+      n = 5;
+      clamped = true;
+    } else if (n > 500) {
+      n = 500;
+      clamped = true;
+    }
+    setPageSizeInput(String(n));
+    if (n !== pageSize) {
+      setPageSize(n);
+      resetPage();
+    }
+    if (clamped) {
+      toast.info(`تعداد در هر صفحه بین ۵ تا ۵۰۰ است — به ${formatNumber(n)} تنظیم شد.`);
+    }
+  };
+
   const salePriceTypesQ = useQuery({
     queryKey: ["sale-price-types-active"],
     queryFn: () => fetchSalePriceTypes(true),
@@ -179,10 +213,11 @@ function NewSaleListPage() {
       stockStatus,
       productType,
       page,
+      pageSize,
     ],
     queryFn: async () => {
-      const from = (page - 1) * PAGE_SIZE;
-      const to = from + PAGE_SIZE - 1;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
       let q = supabase
         .from("products")
         .select(
@@ -241,7 +276,38 @@ function NewSaleListPage() {
 
   const total = productsQ.data?.total ?? 0;
   const rows = productsQ.data?.rows ?? [];
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  // مورد ۱۳۶ — خروجی اکسل. لیست هنوز ذخیره نشده، پس از همان ردیف‌های جدول
+  // جاری و نقشهٔ قیمت‌های بارگذاری‌شده خروجی می‌گیریم.
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    setExporting(true);
+    try {
+      const priceMap = visiblePricesQ.data;
+      const priceTypeTitle =
+        (salePriceTypesQ.data ?? []).find((t) => t.id === salePriceTypeId)?.title ?? null;
+
+      const exportRows: SalePriceListExportRow[] = rows.map((r) => ({
+        sku: r.sku,
+        name: r.name,
+        salePrice: priceMap?.get(r.id)?.current ?? null,
+        brand: r.brand?.name ?? null,
+        category: r.category?.name ?? null,
+        stockStatus: STOCK_STATUS_LABELS[r.stock_status] ?? r.stock_status,
+        productType: PRODUCT_TYPE_LABELS[r.product_type] ?? r.product_type,
+      }));
+
+      await exportSalePriceListToExcel(exportRows, { salePriceTypeTitle: priceTypeTitle });
+      toast.success("خروجی اکسل آماده شد.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "";
+      toast.error(msg || "خطا در ساخت خروجی اکسل.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const allVisibleSelected = rows.length > 0 && rows.every((r) => selectedIds.includes(r.id));
 
@@ -257,6 +323,53 @@ function NewSaleListPage() {
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
+
+  // Fetch ALL product ids matching the CURRENT filters (not just the visible
+  // page), in batches so a large catalog never issues one heavy query.
+  const fetchAllMatchingIds = async (): Promise<string[]> => {
+    const BATCH = 1000;
+    const ids: string[] = [];
+    let from = 0;
+    // guard: max 20 batches = 20,000 products
+    for (let guard = 0; guard < 20; guard++) {
+      let q = supabase
+        .from("products")
+        .select("id")
+        .eq("status", "active")
+        .order("updated_at", { ascending: false })
+        .range(from, from + BATCH - 1);
+      if (search) {
+        const safe = search.replace(/[%_]/g, "");
+        q = q.or(`name.ilike.%${safe}%,sku.ilike.%${safe}%`);
+      }
+      if (brandId !== "__all") q = q.eq("brand_id", brandId);
+      if (categoryId !== "__all") q = q.eq("category_id", categoryId);
+      if (stockStatus !== "__all") q = q.eq("stock_status", stockStatus as StockStatus);
+      if (productType !== "__all") q = q.eq("product_type", productType as ProductType);
+      const { data, error } = await q;
+      if (error) throw error;
+      const batch = (data ?? []).map((r) => r.id as string);
+      ids.push(...batch);
+      if (batch.length < BATCH) break;
+      from += BATCH;
+    }
+    return ids;
+  };
+
+  const handleSelectAllMatching = async () => {
+    setSelectingAll(true);
+    try {
+      const ids = await fetchAllMatchingIds();
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...ids])));
+      toast.success(`${formatNumber(ids.length)} محصول انتخاب شد.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "انتخاب همهٔ محصولات ناموفق بود.");
+    } finally {
+      setSelectingAll(false);
+    }
+  };
+
+  const clearSelection = () => setSelectedIds([]);
 
   const toggleColumn = (key: ColumnKey) => {
     const opt = COLUMN_OPTIONS.find((c) => c.key === key);
@@ -541,16 +654,54 @@ function NewSaleListPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between rounded-md bg-muted/50 px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-muted/50 px-3 py-2 text-sm">
               <span>
-                <strong>{formatNumber(selectedIds.length)}</strong> محصول انتخاب شده
+                <strong>{formatNumber(selectedIds.length)}</strong> از{" "}
+                <strong>{formatNumber(total)}</strong> محصول انتخاب شده
               </span>
-              {!salePriceTypeId && (
-                <span className="text-xs text-muted-foreground">
-                  برای مشاهده قیمت‌ها، نوع قیمت فروش را انتخاب کنید.
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAllMatching}
+                  disabled={selectingAll || total === 0}
+                  className="gap-1"
+                >
+                  {selectingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  انتخاب همهٔ {formatNumber(total)} محصول
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSelection}
+                  disabled={selectedIds.length === 0}
+                >
+                  حذف انتخاب‌ها
+                </Button>
+                {/* مورد ۱۳۶ — خروجی اکسل از همان ردیف‌های جدول جاری */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleExportExcel}
+                  disabled={exporting || rows.length === 0}
+                >
+                  {exporting ? (
+                    <Loader2 className="ms-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <FileSpreadsheet className="ms-1 h-4 w-4" />
+                  )}
+                  خروجی اکسل
+                </Button>
+              </div>
             </div>
+            {!salePriceTypeId && (
+              <div className="px-3 text-xs text-muted-foreground">
+                برای مشاهده قیمت‌ها، نوع قیمت فروش را انتخاب کنید.
+              </div>
+            )}
 
             {productsQ.isLoading ? (
               <div className="space-y-2">
@@ -573,7 +724,7 @@ function NewSaleListPage() {
                           <Checkbox
                             checked={allVisibleSelected}
                             onCheckedChange={toggleSelectAllVisible}
-                            aria-label="انتخاب همه"
+                            aria-label="انتخاب این صفحه"
                           />
                         </TableHead>
                         <TableHead className="text-right">نام محصول</TableHead>
@@ -665,6 +816,24 @@ function NewSaleListPage() {
                     {formatNumber(totalPages)}
                   </div>
                   <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <span className="whitespace-nowrap text-xs text-muted-foreground">
+                        تعداد در صفحه:
+                      </span>
+                      <Input
+                        type="number"
+                        min={5}
+                        max={500}
+                        inputMode="numeric"
+                        className="h-8 w-20 text-xs"
+                        value={pageSizeInput}
+                        onChange={(e) => setPageSizeInput(e.target.value)}
+                        onBlur={commitPageSize}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") e.currentTarget.blur();
+                        }}
+                      />
+                    </div>
                     <Button
                       variant="outline"
                       size="sm"

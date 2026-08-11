@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { BRANDING } from "@/config/branding";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -15,6 +16,7 @@ import {
   ChevronLeft,
   Sparkles,
   UserPlus,
+  Minus,
 } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -45,6 +47,16 @@ import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { formatProductDisplayNameWithFallback } from "@/lib/products/display-name";
 import { ProductPriceHistoryDrawer } from "@/components/pricing/price-history/ProductPriceHistoryDrawer";
 import { trackProductInteraction } from "@/lib/analytics/product-interactions";
+import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
+import { toast } from "sonner";
+import { Clipboard } from "lucide-react";
+import {
+  formatForPlainText,
+  formatForTelegram,
+  formatForWhatsApp,
+  type PriceListCanonicalModel,
+  type PriceListRow,
+} from "@/lib/price-list/canonical";
 
 export const Route = createFileRoute("/_app/pricing/live-price-list")({
   beforeLoad: async () => {
@@ -76,11 +88,16 @@ interface HistoryRow {
   product_id: string;
   sale_price_type_id: string | null;
   old_sale_price: number | null;
-  new_sale_price: number;
   change_amount: number | null;
   change_percent: number | null;
   created_at: string;
-  snapshot_id: string | null;
+}
+
+interface PriceRow {
+  product_id: string;
+  sale_price_type_id: string | null;
+  rounded_sale_price: number;
+  computed_at: string;
 }
 
 interface SnapshotLite {
@@ -234,15 +251,48 @@ function LivePriceListPage() {
     [productsQuery.data],
   );
 
-  // ---------- history (latest per product+sale_price_type) ----------
-  const historyQuery = useQuery({
+  // Thumbnails for visible products (shared pattern with /products admin list)
+  const { thumbnailFor } = useProductThumbnails(productIds);
+
+  // ---------- current prices (from product_computed_prices_public) ----------
+  const pricesQuery = useQuery({
     enabled: productIds.length > 0,
-    queryKey: ["live-price-history", productIds, salePriceTypeId],
+    queryKey: ["live-price-pcp", productIds, salePriceTypeId],
+    queryFn: async () => {
+      let q = supabase
+        .from("product_computed_prices_public")
+        .select(
+          "product_id, sale_price_type_id, rounded_sale_price, computed_at",
+        )
+        .in("product_id", productIds)
+        .order("computed_at", { ascending: false })
+        .limit(productIds.length * 50);
+      if (salePriceTypeId !== "__all") q = q.eq("sale_price_type_id", salePriceTypeId);
+      const { data, error } = await q;
+      if (error) throw error;
+      // dedupe latest by (product_id, sale_price_type_id)
+      const seen = new Set<string>();
+      const latest: PriceRow[] = [];
+      for (const r of (data ?? []) as PriceRow[]) {
+        const k = `${r.product_id}::${r.sale_price_type_id ?? "_"}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        latest.push(r);
+      }
+      return latest;
+    },
+    staleTime: 30_000,
+  });
+
+  // ---------- last change info (from product_sale_price_history) ----------
+  const changeQuery = useQuery({
+    enabled: productIds.length > 0,
+    queryKey: ["live-price-history-change", productIds, salePriceTypeId],
     queryFn: async () => {
       let q = supabase
         .from("product_sale_price_history")
         .select(
-          "id, product_id, sale_price_type_id, old_sale_price, new_sale_price, change_amount, change_percent, created_at, snapshot_id",
+          "product_id, sale_price_type_id, old_sale_price, change_amount, change_percent, created_at",
         )
         .in("product_id", productIds)
         .order("created_at", { ascending: false })
@@ -250,10 +300,9 @@ function LivePriceListPage() {
       if (salePriceTypeId !== "__all") q = q.eq("sale_price_type_id", salePriceTypeId);
       const { data, error } = await q;
       if (error) throw error;
-      // dedupe latest by (product_id, sale_price_type_id)
       const seen = new Set<string>();
-      const latest: HistoryRow[] = [];
-      for (const r of (data ?? []) as HistoryRow[]) {
+      const latest: Array<Omit<HistoryRow, "id">> = [];
+      for (const r of (data ?? []) as Array<Omit<HistoryRow, "id">>) {
         const k = `${r.product_id}::${r.sale_price_type_id ?? "_"}`;
         if (seen.has(k)) continue;
         seen.add(k);
@@ -265,17 +314,8 @@ function LivePriceListPage() {
   });
 
   // ---------- snapshots (only for privileged users) ----------
-  const snapshotIds = useMemo(
-    () =>
-      isPrivileged
-        ? Array.from(
-            new Set(
-              (historyQuery.data ?? []).map((h) => h.snapshot_id).filter((x): x is string => !!x),
-            ),
-          )
-        : [],
-    [historyQuery.data, isPrivileged],
-  );
+  // PCP rows don't carry snapshot_id; keep query disabled to preserve type-shape.
+  const snapshotIds: string[] = useMemo(() => [], []);
   const snapshotsQuery = useQuery({
     enabled: isPrivileged && snapshotIds.length > 0,
     queryKey: ["live-price-snapshots", snapshotIds],
@@ -291,26 +331,48 @@ function LivePriceListPage() {
   });
 
   // ---------- merge ----------
+  type MergedHistory = {
+    id: string;
+    product_id: string;
+    sale_price_type_id: string | null;
+    rounded_sale_price: number;
+    computed_at: string;
+    old_sale_price: number | null;
+    change_amount: number | null;
+    change_percent: number | null;
+    snapshot?: SnapshotLite | null;
+    sale_price_type_title?: string;
+  };
   type MergedRow = {
     product: ProductRow;
-    histories: Array<
-      HistoryRow & { snapshot?: SnapshotLite | null; sale_price_type_title?: string }
-    >;
+    histories: MergedHistory[];
     hasPrice: boolean;
   };
   const merged: MergedRow[] = useMemo(() => {
     const byProduct = new Map<string, MergedRow>();
     const products = productsQuery.data?.rows ?? [];
     for (const p of products) byProduct.set(p.id, { product: p, histories: [], hasPrice: false });
-    const snapMap = new Map((snapshotsQuery.data ?? []).map((s) => [s.id, s]));
     const typeMap = new Map(salePriceTypes.map((t: any) => [t.id, t.title as string]));
-    for (const h of historyQuery.data ?? []) {
-      const m = byProduct.get(h.product_id);
+    const changeMap = new Map<string, Omit<HistoryRow, "id">>();
+    for (const c of changeQuery.data ?? []) {
+      changeMap.set(`${c.product_id}::${c.sale_price_type_id ?? "_"}`, c);
+    }
+    for (const p of pricesQuery.data ?? []) {
+      const m = byProduct.get(p.product_id);
       if (!m) continue;
+      const key = `${p.product_id}::${p.sale_price_type_id ?? "_"}`;
+      const ch = changeMap.get(key);
       m.histories.push({
-        ...h,
-        snapshot: h.snapshot_id ? (snapMap.get(h.snapshot_id) ?? null) : null,
-        sale_price_type_title: h.sale_price_type_id ? typeMap.get(h.sale_price_type_id) : "—",
+        id: key,
+        product_id: p.product_id,
+        sale_price_type_id: p.sale_price_type_id,
+        rounded_sale_price: Number(p.rounded_sale_price),
+        computed_at: p.computed_at,
+        old_sale_price: ch?.old_sale_price ?? null,
+        change_amount: ch?.change_amount ?? null,
+        change_percent: ch?.change_percent ?? null,
+        snapshot: null,
+        sale_price_type_title: p.sale_price_type_id ? typeMap.get(p.sale_price_type_id) : "—",
       });
       m.hasPrice = true;
     }
@@ -323,7 +385,7 @@ function LivePriceListPage() {
       result = result.filter((r) => {
         if (!r.hasPrice) return false;
         return r.histories.some((h) => {
-          const v = Number(h.new_sale_price);
+          const v = Number(h.rounded_sale_price);
           if (minNum !== null && v < minNum) return false;
           if (maxNum !== null && v > maxNum) return false;
           return true;
@@ -333,8 +395,8 @@ function LivePriceListPage() {
     return result;
   }, [
     productsQuery.data,
-    historyQuery.data,
-    snapshotsQuery.data,
+    pricesQuery.data,
+    changeQuery.data,
     salePriceTypes,
     priceFilter,
     minNum,
@@ -344,7 +406,7 @@ function LivePriceListPage() {
 
   const total = productsQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const isLoading = productsQuery.isLoading || (productIds.length > 0 && historyQuery.isLoading);
+  const isLoading = productsQuery.isLoading || (productIds.length > 0 && pricesQuery.isLoading);
 
   // ---------- analytics: track price_checked for products whose price is shown ----------
   useEffect(() => {
@@ -417,6 +479,22 @@ function LivePriceListPage() {
           variant={(summaryQuery.data?.withoutPrice ?? 0) > 0 ? "warning" : "default"}
         />
       </div>
+
+      {/* share */}
+      <PriceListShareSection
+        rows={merged
+          .filter((m) => m.hasPrice && m.histories[0])
+          .map<PriceListRow>((m) => ({
+            productId: m.product.id,
+            productName: formatProductDisplayNameWithFallback(m.product as any),
+            productCode: m.product.sku ?? "",
+            basePrice: Number(m.histories[0]?.rounded_sale_price ?? 0),
+            priceMode: m.histories[0]?.sale_price_type_title ?? "—",
+            unit: "",
+            priority: 0,
+            categoryName: m.product.category?.name ?? "",
+          }))}
+      />
 
       {/* filters */}
       <Card>
@@ -541,7 +619,7 @@ function LivePriceListPage() {
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/40 text-xs text-muted-foreground">
+                    <thead className="sticky top-0 z-10 bg-background shadow-sm text-xs text-muted-foreground">
                       <tr>
                         <th className="p-3 text-right font-medium">محصول</th>
                         <th className="p-3 text-right font-medium">برند / دسته</th>
@@ -559,6 +637,7 @@ function LivePriceListPage() {
                         renderProductRows(row, {
                           isSalesOnly,
                           isPrivileged,
+                          thumbnailFor,
                           onOpenChart: (args) => {
                             trackProductInteraction({
                               productId: args.productId,
@@ -585,6 +664,7 @@ function LivePriceListPage() {
                 row={row}
                 isSalesOnly={isSalesOnly}
                 isPrivileged={isPrivileged}
+                thumbnailFor={thumbnailFor}
                 onOpenChart={(args) => {
                   trackProductInteraction({
                     productId: args.productId,
@@ -645,6 +725,7 @@ function renderProductRows(
   ctx: {
     isSalesOnly: boolean;
     isPrivileged: boolean;
+    thumbnailFor: (id: string) => string | undefined;
     onOpenChart: (args: {
       productId: string;
       productName: string;
@@ -659,7 +740,7 @@ function renderProductRows(
     return [
       <tr key={row.product.id} className="bg-muted/20">
         <td className="p-3 align-top">
-          <ProductCell product={row.product} />
+          <ProductCell product={row.product} thumbnailUrl={ctx.thumbnailFor(row.product.id)} />
         </td>
         <td className="p-3 align-top text-xs text-muted-foreground">
           {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
@@ -687,7 +768,7 @@ function renderProductRows(
     return [
       <tr key={row.product.id} className="bg-muted/20">
         <td className="p-3 align-top">
-          <ProductCell product={row.product} />
+          <ProductCell product={row.product} thumbnailUrl={ctx.thumbnailFor(row.product.id)} />
         </td>
         <td className="p-3 align-top text-xs text-muted-foreground">
           {row.product.brand?.name ?? "—"} / {row.product.category?.name ?? "—"}
@@ -721,7 +802,7 @@ function renderProductRows(
       {idx === 0 ? (
         <>
           <td className="p-3 align-top" rowSpan={row.histories.length}>
-            <ProductCell product={row.product} />
+            <ProductCell product={row.product} thumbnailUrl={ctx.thumbnailFor(row.product.id)} />
           </td>
           <td
             className="p-3 align-top text-xs text-muted-foreground"
@@ -745,12 +826,15 @@ function renderProductRows(
         </Badge>
       </td>
       <td className="p-3 align-top">
-        <div className="text-base font-bold text-foreground">
-          {formatNumber(Number(h.new_sale_price))}{" "}
+        <div
+          key={`price-${h.rounded_sale_price}`}
+          className="price-flash inline-block text-lg font-bold tabular-nums text-foreground"
+        >
+          {formatNumber(Number(h.rounded_sale_price))}{" "}
           <span className="text-xs font-normal text-muted-foreground">ت</span>
         </div>
         {h.old_sale_price !== null && h.old_sale_price !== undefined && (
-          <div className="text-[11px] text-muted-foreground line-through">
+          <div className="text-xs text-muted-foreground/60 line-through">
             {formatNumber(Number(h.old_sale_price))}
           </div>
         )}
@@ -759,7 +843,7 @@ function renderProductRows(
         <ChangeCell h={h} />
       </td>
       <td className="p-3 align-top text-[11px] text-muted-foreground">
-        {formatDateTimeFa(h.created_at)}
+        {formatDateTimeFa(h.computed_at)}
       </td>
       {idx === 0 && (
         <td className="p-3 align-top" rowSpan={row.histories.length}>
@@ -798,11 +882,13 @@ function MobileProductCard({
   row,
   isSalesOnly,
   isPrivileged,
+  thumbnailFor,
   onOpenChart,
 }: {
   row: { product: ProductRow; histories: any[]; hasPrice: boolean };
   isSalesOnly: boolean;
   isPrivileged: boolean;
+  thumbnailFor: (id: string) => string | undefined;
   onOpenChart: (args: {
     productId: string;
     productName: string;
@@ -815,7 +901,7 @@ function MobileProductCard({
     <Card>
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <ProductCell product={row.product} />
+          <ProductCell product={row.product} thumbnailUrl={thumbnailFor(row.product.id)} size="md" />
           <StockBadge s={row.product.stock_status} />
         </div>
         <div className="text-[11px] text-muted-foreground">
@@ -856,23 +942,26 @@ function MobileProductCard({
         ) : (
           <div className="space-y-2">
             {row.histories.map((h) => (
-              <div key={h.id} className="rounded-md border border-border p-2">
+              <div key={h.id} className="rounded-lg border bg-card p-2.5 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant="secondary" className="text-[10px] font-normal">
                     {h.sale_price_type_title ?? "—"}
                   </Badge>
                   <span className="text-[10px] text-muted-foreground">
-                    {formatDateTimeFa(h.created_at)}
+                    {formatDateTimeFa(h.computed_at)}
                   </span>
                 </div>
                 <div className="mt-1 flex items-end justify-between">
                   <div>
-                    <div className="text-base font-bold text-foreground">
-                      {formatNumber(Number(h.new_sale_price))}{" "}
+                    <div
+                      key={`mprice-${h.rounded_sale_price}`}
+                      className="price-flash inline-block text-xl font-bold tabular-nums text-foreground"
+                    >
+                      {formatNumber(Number(h.rounded_sale_price))}{" "}
                       <span className="text-xs font-normal text-muted-foreground">ت</span>
                     </div>
                     {h.old_sale_price !== null && h.old_sale_price !== undefined && (
-                      <div className="text-[11px] text-muted-foreground line-through">
+                      <div className="text-xs text-muted-foreground/60 line-through">
                         {formatNumber(Number(h.old_sale_price))}
                       </div>
                     )}
@@ -914,20 +1003,41 @@ function MobileProductCard({
   );
 }
 
-function ProductCell({ product }: { product: ProductRow }) {
+function ProductCell({
+  product,
+  thumbnailUrl,
+  size = "sm",
+}: {
+  product: ProductRow;
+  thumbnailUrl?: string;
+  size?: "sm" | "md";
+}) {
+  const thumbCls = size === "md" ? "h-14 w-14 rounded-lg" : "h-12 w-12 rounded-md";
   return (
-    <div className="min-w-0">
-      <div className="truncate text-sm font-medium text-foreground">
-        {formatProductDisplayNameWithFallback(product)}
-      </div>
-      <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
-      <div className="mt-1">
-        <StockAlertButton
-          productId={product.id}
-          productName={product.name}
-          productSku={product.sku}
-          stockStatus={product.stock_status}
+    <div className="flex min-w-0 items-start gap-2">
+      {thumbnailUrl ? (
+        <img
+          src={thumbnailUrl}
+          alt={product.name}
+          loading="lazy"
+          className={`${thumbCls} flex-shrink-0 border border-border object-cover bg-muted`}
         />
+      ) : (
+        <div className={`${thumbCls} flex-shrink-0 border border-dashed border-border bg-muted/40`} />
+      )}
+      <div className="min-w-0">
+        <div className="truncate text-sm font-medium text-foreground">
+          {formatProductDisplayNameWithFallback(product)}
+        </div>
+        <div className="text-[11px] text-muted-foreground">{product.sku ?? "—"}</div>
+        <div className="mt-1">
+          <StockAlertButton
+            productId={product.id}
+            productName={product.name}
+            productSku={product.sku}
+            stockStatus={product.stock_status}
+          />
+        </div>
       </div>
     </div>
   );
@@ -958,7 +1068,15 @@ function StockBadge({ s }: { s: string }) {
   );
 }
 
-function ChangeCell({ h }: { h: HistoryRow }) {
+function ChangeCell({
+  h,
+}: {
+  h: {
+    old_sale_price: number | null;
+    change_amount: number | null;
+    change_percent: number | null;
+  };
+}) {
   if (h.old_sale_price === null || h.old_sale_price === undefined) {
     return (
       <Badge variant="outline" className="border-primary/30 bg-primary/5 text-primary font-normal">
@@ -970,7 +1088,11 @@ function ChangeCell({ h }: { h: HistoryRow }) {
   const pct =
     h.change_percent === null || h.change_percent === undefined ? null : Number(h.change_percent);
   if (amt === 0) {
-    return <span className="text-[11px] text-muted-foreground">بدون تغییر</span>;
+    return (
+      <Badge variant="outline" className="border-border text-muted-foreground font-normal">
+        <Minus className="ml-1 h-3 w-3" /> بدون تغییر
+      </Badge>
+    );
   }
   const up = amt > 0;
   const Icon = up ? ArrowUpRight : ArrowDownRight;
@@ -1006,6 +1128,76 @@ function SummaryCard({
           <span>{label}</span>
         </div>
         <div className="mt-1 text-lg font-bold text-foreground">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PriceListShareSection({ rows }: { rows: PriceListRow[] }) {
+  const buildModel = (): PriceListCanonicalModel => ({
+    id: "live-price-list",
+    title: "لیست قیمت زنده",
+    generatedAt: new Date(),
+    rows,
+    currency: "تومان",
+    companyName: BRANDING.platformName,
+  });
+
+  const copy = async (text: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label} در کلیپ‌بورد کپی شد`);
+    } catch {
+      toast.error("کپی در کلیپ‌بورد ناموفق بود");
+    }
+  };
+
+  const disabled = rows.length === 0;
+
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+        <div className="text-sm font-medium text-foreground">
+          اشتراک‌گذاری
+          <span className="ms-2 text-xs text-muted-foreground">
+            ({toFaDigits(String(rows.length))} ردیف)
+          </span>
+          <span className="ms-2 text-xs text-muted-foreground">
+            • آخرین بروزرسانی: {formatDateTimeFa(new Date().toISOString())}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => copy(formatForPlainText(buildModel()), "متن لیست قیمت")}
+          >
+            <Clipboard className="ms-1 h-4 w-4" />
+            📋 کپی متن
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => {
+              const parts = formatForTelegram(buildModel());
+              copy(parts[0] ?? "", "متن تلگرام");
+            }}
+          >
+            <Clipboard className="ms-1 h-4 w-4" />
+            📱 تلگرام
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={disabled}
+            onClick={() => copy(formatForWhatsApp(buildModel()), "متن واتساپ")}
+          >
+            <Clipboard className="ms-1 h-4 w-4" />
+            💬 واتساپ
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

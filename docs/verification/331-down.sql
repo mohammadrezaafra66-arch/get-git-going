@@ -1,0 +1,34 @@
+SET client_encoding='UTF8';
+
+-- Down-script for migration 331 (the seven invoice readers).
+--
+-- 331 rewrote seven functions and wrote no data. Reverting is one step: re-apply the
+-- pre-331 definitions captured verbatim from the live database.
+--
+--   docker cp docs/verification/pre-331/pre-331-invoice-readers.sql \
+--     afrakala-lan-db:/tmp/down331.sql
+--   docker exec -e PGPASSWORD=... afrakala-lan-db psql -U supabase_admin -d afrakala \
+--     -v ON_ERROR_STOP=1 --single-transaction -f /tmp/down331.sql
+--   docker restart afrakala-lan-rest
+--
+-- Apply with docker cp + psql -f, never a PowerShell pipe (Persian strings).
+--
+-- ⚠️ ONLY MEANINGFUL IF THE INVOICES TABLE EXISTS. Migration 332 dropped it. The pre-331
+-- bodies all read that table, so on a database where 332 has been applied they will
+-- compile fine and then fail at RUNTIME — the exact failure this whole sequence was
+-- written to avoid. Revert 332 first (docs/verification/332-down.sql).
+--
+-- What reverting restores, and what it does not:
+--   • get_receivable_detail regains COALESCE(i.issue_date, v.created_at::date). With the
+--     LEFT JOIN never matching, that resolved to the second argument anyway — the output
+--     was and is identical.
+--   • calculate_salesperson_collected_sales regains its two CTEs. It returned one row of
+--     zeros before and after; note it also fails today on a PRE-EXISTING and unrelated
+--     defect, `type "public.text[]" does not exist`, in its role check. That defect is
+--     present in both versions and 331 neither caused nor fixed it.
+--   • recalculate_settlement_score, update_customer_overdue_status and
+--     recompute_all_employee_scores regain sources that contained zero rows, so their
+--     results do not change either way.
+--
+-- Equivalence evidence for the forward direction, old vs new with a real admin JWT and
+-- both sides rolled back: docs/verification/331-equivalence-test.sql

@@ -34,8 +34,23 @@ $lanIp   = Get-EnvValue $envFile "LAN_HOST_IP"       "LAN_HOST_IP"
 
 Push-Location $repoRoot
 try {
-    Write-Host "[1/5] git pull origin main ..." -ForegroundColor Cyan
-    git pull origin main
+    # Pull the branch this checkout is actually on. This used to be hardcoded to
+    # `main`, which on 2026-08-11 was 1646 commits behind the branch both servers
+    # run (feature/navigation-modernization). Running it would have merged a
+    # two-month-old branch into a live deployment.
+    $branch = (git rev-parse --abbrev-ref HEAD).Trim()
+    if (-not $branch -or $branch -eq "HEAD") {
+        Write-Host "Detached HEAD - check out a branch before updating." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host ("[1/5] git pull --ff-only origin {0} ..." -f $branch) -ForegroundColor Cyan
+    git pull --ff-only origin $branch
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "Pull was not a fast-forward. This checkout has local commits or has" -ForegroundColor Red
+        Write-Host "diverged from the remote. Resolve it by hand - do not force." -ForegroundColor Red
+        exit 1
+    }
 
     Write-Host ""
     Write-Host "[2/5] Latest commit:" -ForegroundColor Cyan

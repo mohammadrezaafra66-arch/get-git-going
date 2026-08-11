@@ -15,6 +15,47 @@ const InputSchema = z.object({
 const ALLOWED_ROLES = new Set(["admin", "accountant"]);
 const FETCH_TIMEOUT_MS = 15_000;
 
+/**
+ * SSRF guard: only allow http(s) URLs whose hostname is not a private,
+ * loopback, link-local, or cloud-metadata address. Hostnames are checked as
+ * strings (we cannot resolve DNS reliably in the Worker runtime); literal IP
+ * ranges and obvious internal names are rejected. This prevents a compromised
+ * privileged account from pointing a currency source at internal infra.
+ */
+const BLOCKED_HOST_PATTERNS: RegExp[] = [
+  /^localhost$/i,
+  /\.localhost$/i,
+  /^127(\.\d{1,3}){3}$/,
+  /^10(\.\d{1,3}){3}$/,
+  /^192\.168(\.\d{1,3}){2}$/,
+  /^172\.(1[6-9]|2\d|3[01])(\.\d{1,3}){2}$/,
+  /^169\.254(\.\d{1,3}){2}$/, // link-local incl. AWS/GCP metadata 169.254.169.254
+  /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])(\.\d{1,3}){2}$/, // CGNAT 100.64/10
+  /^0(\.\d{1,3}){3}$/,
+  /^\[?::1\]?$/,
+  /^\[?(fc|fd)[0-9a-f]{2}:/i, // IPv6 ULA
+  /^\[?fe80:/i, // IPv6 link-local
+  /^metadata\.google\.internal$/i,
+];
+
+function assertSafeExternalUrl(raw: string): URL {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    throw new Error("URL منبع نامعتبر است");
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") {
+    throw new Error("فقط آدرس‌های http/https مجاز هستند");
+  }
+  const host = u.hostname.replace(/^\[|\]$/g, "");
+  if (!host) throw new Error("هاست نامعتبر است");
+  for (const re of BLOCKED_HOST_PATTERNS) {
+    if (re.test(host)) throw new Error("آدرس داخلی/خصوصی مجاز نیست");
+  }
+  return u;
+}
+
 export interface AutoFetchRateResult {
   rate: number;
 }
@@ -47,13 +88,19 @@ export const autoFetchCurrencyRate = createServerFn({ method: "POST" })
     if (!src.is_active) throw new Error("منبع غیرفعال است");
     if (!src.url) throw new Error("URL منبع تعریف نشده است");
 
+    const safeUrl = assertSafeExternalUrl(src.url);
+
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
     let res: Response;
     try {
       const headers: Record<string, string> = { Accept: "application/json" };
       if (src.api_key) headers.Authorization = `Bearer ${src.api_key}`;
-      res = await fetch(src.url, { signal: ctrl.signal, headers });
+      res = await fetch(safeUrl.toString(), {
+        signal: ctrl.signal,
+        headers,
+        redirect: "error",
+      });
     } finally {
       clearTimeout(t);
     }

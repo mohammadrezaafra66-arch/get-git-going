@@ -20,9 +20,12 @@ dist-ssr
 .wrangler/
 .dev.vars
 
-# Editor directories and files
+# Editor and agent-tool directories
 .vscode/*
 !.vscode/extensions.json
+# Claude Code's per-machine settings and local session state. .cursor/ and
+# .lovable/ are deliberately NOT ignored — both are tracked and shared.
+.claude/
 .idea
 .DS_Store
 *.suo
@@ -92,3 +95,39 @@ deploy/lan/**/*.key
 deploy/lan/**/*.crt
 !deploy/lan/.env.lan.example
 #
+
+e2e/auth/*.storage.json
+# Local-only interactive helpers (must never be committed with secrets/output)
+e2e/auth/local-only/
+
+# Playwright runtime evidence (screenshots, videos, traces, reports)
+test-results/
+playwright-report/
+traces/
+screenshots/
+
+# Database dumps and backup output — rule 4: never commit backups or dumps.
+# Root-anchored on purpose. A bare `backups/` would also match deploy/backups/,
+# whose scripts/ and README.md ARE tracked; new files added there would then be
+# silently invisible to git status.
+/backups/
+*.dump
+*.sql.gz
+
+# Ad-hoc data exports downloaded into the repo (rule 4: no data dumps in git).
+# Owner instruction 2026-08-07: "my repo should contain zero xlsx files ever."
+# Supersedes the earlier carve-out that deliberately tracked the Asan layout
+# samples under docs/verification/.
+*.xlsx
+
+# Build artefact: release notes generated from git history by
+# scripts/generate-release-notes.mjs, baked into the image at build time.
+# Must stay ignored — deploy/lan/build.ps1 refuses to build a dirty tree, and a
+# tracked generated file would break every build that regenerates it.
+public/release-notes.json
+
+# Phase cleanup backups (rule 4). P0_CLEANUP.md phase 0.3 tells the agent to write
+# a pg_dump into docs/verification/, but that dump carries live business rows -
+# it is a restore artefact, not documentation. Kept on disk, never committed.
+# P0.5 exists precisely because a data export reached git history once already.
+docs/verification/P0.*-*-backup.sql

@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useServerFn } from "@tanstack/react-start";
+import { listAssignableUsers } from "@/lib/products/assignable-users.functions";
 
 interface Props {
   productId: string;
@@ -33,18 +35,13 @@ export function OwnerAssignDialog({
   const dq = useDebounce(q, 300);
   const [submitting, setSubmitting] = useState<string | null>(null);
 
+  const listUsersFn = useServerFn(listAssignableUsers);
   const { data, isLoading } = useQuery({
-    queryKey: ["profiles-search", dq],
+    queryKey: ["assignable-users", dq],
     enabled: open,
     queryFn: async () => {
-      let query = supabase.from("profiles").select("id, full_name, phone").limit(20);
-      if (dq.trim()) {
-        const term = dq.trim().replace(/[%_]/g, "");
-        query = query.or(`full_name.ilike.%${term}%,phone.ilike.%${term}%`);
-      }
-      const { data, error } = await query;
-      if (error) throw error;
-      return (data ?? []).filter((u) => !existingUserIds.includes(u.id));
+      const rows = await listUsersFn({ data: { search: dq.trim() || undefined } });
+      return rows.filter((u) => !existingUserIds.includes(u.id));
     },
   });
 
@@ -69,11 +66,7 @@ export function OwnerAssignDialog({
           <DialogTitle>انتساب مسئول محصول</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="جستجو در نام یا تلفن..."
-          />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجو در نام..." />
           <div className="max-h-72 overflow-y-auto rounded-md border border-border">
             {isLoading ? (
               <div className="p-4 text-center text-sm text-muted-foreground">در حال جستجو...</div>
@@ -88,9 +81,6 @@ export function OwnerAssignDialog({
                   >
                     <div>
                       <div className="text-sm font-medium">{u.full_name ?? "—"}</div>
-                      <div className="text-xs text-muted-foreground" dir="ltr">
-                        {u.phone ?? ""}
-                      </div>
                     </div>
                     <Button
                       size="sm"

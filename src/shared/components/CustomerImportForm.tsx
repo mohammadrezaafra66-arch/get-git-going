@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Upload, FileSpreadsheet, CheckCircle2, AlertTriangle } from "lucide-react";
-import * as XLSX from "xlsx";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -88,6 +87,7 @@ export function CustomerImportForm() {
     setResult(null);
     setParsing(true);
     try {
+      const XLSX = await import("xlsx");
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
       const sheetName = wb.SheetNames[0];
@@ -201,13 +201,48 @@ export function CustomerImportForm() {
             errors.push({ row: rowNum, reason: error || "نامشخص" });
             continue;
           }
-          const { error: insErr } = await supabase.from("customers").insert(payload as never);
+          // Item 230 — this used to INSERT straight into `customers`, creating
+          // rows with no person behind them and its own ad-hoc duplicate rules.
+          // It now goes through person_import_batch, which matches on
+          // normalized identifiers, reuses an existing person when one is
+          // found, and writes the customers row + provenance link atomically.
+          const p = payload as {
+            name: string;
+            phone?: string | null;
+            city?: string | null;
+            notes?: string | null;
+            accounting_code?: string | null;
+          };
+          const { data: batch, error: insErr } = await supabase.rpc("person_import_batch", {
+            p_rows: [
+              {
+                display_name: p.name,
+                kind: "individual",
+                context_kind: "customer",
+                identifiers: p.phone
+                  ? [{ kind: "mobile_e164", value_raw: p.phone, is_primary: true }]
+                  : [],
+                city: p.city ?? null,
+                notes: p.notes ?? null,
+                accounting_code: p.accounting_code ?? null,
+              },
+            ] as never,
+          });
+
+          const rowResult = (batch as { rows?: Array<{ action?: string; reason?: string }> } | null)
+            ?.rows?.[0];
+
           if (insErr) {
             failed += 1;
             const msg = /duplicate key|accounting_code/i.test(insErr.message)
               ? "کد حسابداری تکراری یا قالب نامعتبر"
               : insErr.message;
             errors.push({ row: rowNum, reason: msg });
+          } else if (rowResult?.action === "rejected") {
+            // Business-level rejection (ambiguous match, bad identifier). The
+            // RPC reports these per row instead of failing the whole call.
+            failed += 1;
+            errors.push({ row: rowNum, reason: rowResult.reason ?? "ردیف پذیرفته نشد" });
           } else {
             success += 1;
           }

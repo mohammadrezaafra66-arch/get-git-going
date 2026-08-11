@@ -232,6 +232,8 @@ export async function saveCurrencyRateAndRecompute(opts: {
           .select("product_id, sale_price_type_id, rounded_sale_price")
           .in("product_id", productIds)
           .in("sale_price_type_id", sptIds)
+          // Baseline rows only — currency recompute targets the settlement-NULL row.
+          .is("settlement_type_id", null)
       : Promise.resolve({ data: [], error: null } as any),
   ]);
   if (purchasesRes.error) throw purchasesRes.error;
@@ -353,6 +355,7 @@ export async function saveCurrencyRateAndRecompute(opts: {
         upsertRows.push({
           product_id: p.id,
           sale_price_type_id: spt.id,
+          settlement_type_id: null,
           purchase_price_id: purchase.id,
           pricing_rule_id: (matched as any).id,
           input_purchase_price: inputPrice,
@@ -399,7 +402,7 @@ export async function saveCurrencyRateAndRecompute(opts: {
     const chunk = upsertRows.slice(i, i + CHUNK);
     const { error: upErr } = await supabase
       .from("product_computed_prices")
-      .upsert(chunk, { onConflict: "product_id,sale_price_type_id" });
+      .upsert(chunk, { onConflict: "product_id,sale_price_type_id,settlement_type_id" });
     if (upErr) {
       // علامت‌گذاری خطا روی این chunk
       for (const row of chunk) {

@@ -1,6 +1,4 @@
-# syntax=docker/dockerfile:1.7
-
-# ====== Build stage ======
+﻿# ====== Build stage ======
 FROM oven/bun:1-debian AS builder
 WORKDIR /app
 
@@ -30,37 +28,56 @@ RUN rm -f .npmrc .yarnrc .yarnrc.yml .bunfig.toml bunfig.toml || true
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ARG VITE_SUPABASE_PROJECT_ID
+# Build identity. Also declared in the runtime stage below (a Dockerfile ARG is
+# scoped to one stage), but needed HERE too: vite.config.ts reads GIT_SHA and
+# BUILD_TIME at build time to derive the service worker's version, which is what
+# makes a deployed client notice a new build. Non-secret, already surfaced by
+# GET /api/version.
+ARG GIT_SHA=unknown
+ARG BUILD_TIME=unknown
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
     VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
+    GIT_SHA=$GIT_SHA \
+    BUILD_TIME=$BUILD_TIME \
     NODE_ENV=production \
-    SELF_HOST_NODE=1
+    SELF_HOST_NODE=1 \
+    NITRO_PRESET=node-server \
+    DISABLE_LOVABLE_MCP=1
 
 RUN bun run build
 
 # Security guard: ensure no server-only secrets leaked into the client bundle.
 RUN set -e; \
-    if [ -d "dist/client" ]; then \
+    if [ -d ".output/public" ]; then \
       if grep -REIn --binary-files=without-match \
           -e 'SERVICE_ROLE' -e 'SUPABASE_SERVICE_ROLE_KEY' \
           -e 'JWT_SECRET' -e 'POSTGRES_PASSWORD' -e 'LOVABLE_API_KEY' \
-          dist/client; then \
+          .output/public; then \
         echo "FATAL: secret-like token found in client bundle" >&2; exit 1; \
       fi; \
     fi
 
 # ====== Runtime stage (Node SSR) ======
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0
 
+# Build metadata (set via `docker build --build-arg ...`).
+# These are non-secret runtime values surfaced by GET /api/version.
+ARG GIT_SHA=unknown
+ARG BUILD_TIME=unknown
+ARG APP_ENV=unknown
+ENV APP_GIT_SHA=$GIT_SHA \
+    APP_BUILD_TIME=$BUILD_TIME \
+    APP_ENV=$APP_ENV
+
 RUN apk add --no-cache wget tini \
  && addgroup -S app && adduser -S app -G app
 
-COPY --from=builder --chown=app:app /app/dist ./dist
-COPY --from=builder --chown=app:app /app/server ./server
+COPY --from=builder --chown=app:app /app/.output ./.output
 COPY --from=builder --chown=app:app /app/package.json ./package.json
 # LAN/self-host: ship node_modules so the SSR bundle can resolve runtime
 # packages like `h3-v2` that are not pre-bundled by the Vite Node build.
@@ -74,4 +91,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:3000/api/healthz || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "server/node-entry.mjs"]
+CMD ["node", ".output/server/index.mjs"]

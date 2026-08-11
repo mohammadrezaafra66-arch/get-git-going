@@ -1,136 +1,142 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Trophy, ChevronRight, Crown } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { getLeaderboard, type LeaderboardPeriod } from "@/lib/operations/gamification";
-import { supabase } from "@/integrations/supabase/client";
-import { LeagueBadge, type LeagueTier } from "@/components/gamification/LeagueBadge";
+import type { LeaderboardPeriod } from "@/lib/operations/gamification";
+import { useLeaderboard, useMyRankNeighbors } from "@/hooks/gamification/useGamification";
+import { useRankTrends } from "@/hooks/gamification/useRankTrends";
+import { LeaderboardRow } from "@/components/gamification/LeaderboardRow";
 
 export const Route = createFileRoute("/_app/gamification/leaderboard")({
   component: LeaderboardPage,
 });
 
+const PERIOD_TABS: { value: LeaderboardPeriod; label: string }[] = [
+  { value: "daily", label: "امروز" },
+  { value: "weekly", label: "این هفته" },
+  { value: "monthly", label: "این ماه" },
+  { value: "all_time", label: "کل" },
+];
+
+function RowsSkeleton() {
+  return (
+    <div className="space-y-2">
+      {[0, 1, 2].map((i) => (
+        <Skeleton key={i} className="h-16 w-full rounded-lg" />
+      ))}
+    </div>
+  );
+}
+
 function LeaderboardPage() {
   const { user } = useAuth();
   const [period, setPeriod] = useState<LeaderboardPeriod>("monthly");
 
-  const q = useQuery({
-    queryKey: ["gam", "leaderboard", period],
-    queryFn: () => getLeaderboard(period, { limit: 100 }),
-    refetchInterval: 30_000,
-    staleTime: 60_000,
-  });
+  const leaderboard = useLeaderboard(period, 100);
+  const neighbors = useMyRankNeighbors(period);
 
-  // Fetch current league for each employee shown — single batched query
-  const employeeIds = (q.data ?? []).map((r) => r.employee_id);
-  const leagues = useQuery({
-    queryKey: ["gam", "leaderboard-leagues", employeeIds.sort().join(",")],
-    enabled: employeeIds.length > 0,
-    staleTime: 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("employee_leagues" as never)
-        .select("employee_id, league, season")
-        .in("employee_id", employeeIds);
-      if (error) throw error;
-      // pick most recent season per employee (lex sort fallback)
-      const map = new Map<string, LeagueTier>();
-      type Row = { employee_id: string; league: LeagueTier; season: string };
-      for (const row of (data ?? []) as unknown as Row[]) {
-        const existing = map.get(row.employee_id);
-        if (!existing) map.set(row.employee_id, row.league);
-      }
-      return map;
-    },
-  });
+  const rows = leaderboard.data ?? [];
+  const topScore = rows[0]?.score ?? 0;
+  const neighborRows = neighbors.data ?? [];
+  const neighborTop = neighborRows.reduce((m, r) => (r.score > m ? r.score : m), 0);
+
+  const trendIds = [
+    ...rows.map((r) => r.employee_id),
+    ...neighborRows.map((r) => r.employee_id),
+  ];
+  const trends = useRankTrends(trendIds);
+  const trendMap = trends.data ?? {};
 
   return (
-    <div className="space-y-6">
+    <div dir="rtl" className="space-y-6">
       <div className="flex items-center justify-between">
         <PageHeader
-          title="تابلوی برترین‌ها"
+          title="جدول رتبه‌بندی"
           description="رتبه‌بندی کارشناسان فروش بر اساس امتیاز."
         />
         <Button variant="ghost" size="sm" asChild>
           <Link to="/gamification">
-            <ChevronRight className="ml-1 h-4 w-4" /> بازگشت به داشبورد
+            <ChevronRight className="ml-1 h-4 w-4" /> بازگشت
           </Link>
         </Button>
       </div>
 
       <Tabs value={period} onValueChange={(v) => setPeriod(v as LeaderboardPeriod)} dir="rtl">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="daily">روزانه</TabsTrigger>
-          <TabsTrigger value="weekly">هفتگی</TabsTrigger>
-          <TabsTrigger value="monthly">ماهانه</TabsTrigger>
-          <TabsTrigger value="all_time">تمام دوران</TabsTrigger>
+          {PERIOD_TABS.map((t) => (
+            <TabsTrigger key={t.value} value={t.value}>
+              {t.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
       </Tabs>
 
+      {neighbors.isLoading ? (
+        <Card>
+          <CardHeader><CardTitle className="text-base">موقعیت شما</CardTitle></CardHeader>
+          <CardContent><RowsSkeleton /></CardContent>
+        </Card>
+      ) : neighborRows.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">موقعیت شما</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {neighborRows.map((n, i) => (
+              <LeaderboardRow
+                key={`n-${n.employee_id}`}
+                row={{
+                  employee_id: n.employee_id,
+                  full_name: n.full_name ?? "—",
+                  score: n.score,
+                  rank: n.rank,
+                }}
+                isCurrentUser={n.employee_id === user?.id}
+                period={period}
+                topScore={neighborTop}
+                index={i}
+                previousRank={trendMap[n.employee_id]?.previous_rank ?? null}
+              />
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
-        <CardContent className="p-0">
-          {q.isLoading ? (
+        <CardHeader>
+          <CardTitle className="text-base">جدول کامل</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {leaderboard.isLoading ? (
+            <RowsSkeleton />
+          ) : rows.length === 0 ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
-              در حال بارگذاری...
-            </div>
-          ) : !q.data?.length ? (
-            <div className="py-10 text-center text-sm text-muted-foreground">
-              داده‌ای موجود نیست.
+              هیچ امتیازی ثبت نشده است.
             </div>
           ) : (
-            <ul className="divide-y">
-              {q.data.map((row) => {
-                const isSelf = row.employee_id === user?.id;
-                const podium =
-                  row.rank === 1
-                    ? "bg-gradient-to-br from-yellow-400 to-amber-600 text-white shadow-yellow-500/40"
-                    : row.rank === 2
-                      ? "bg-gradient-to-br from-slate-300 to-slate-500 text-white shadow-slate-400/40"
-                      : row.rank === 3
-                        ? "bg-gradient-to-br from-amber-600 to-amber-800 text-white shadow-amber-700/40"
-                        : "bg-muted text-muted-foreground";
-                const initials = (row.full_name ?? "؟").trim().slice(0, 2);
-                const tier = leagues.data?.get(row.employee_id) ?? null;
-                return (
-                  <li
-                    key={row.employee_id}
-                    className={`group flex items-center gap-4 px-4 py-3 transition-all ${
-                      isSelf
-                        ? "bg-gradient-to-l from-primary/15 via-primary/5 to-transparent font-bold"
-                        : "hover:bg-muted/40 hover:shadow-[inset_4px_0_0_0_hsl(var(--primary))]"
-                    }`}
-                  >
-                    <span
-                      className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums shadow-md ${podium}`}
-                    >
-                      {row.rank <= 3 ? <Crown className="h-5 w-5" /> : row.rank}
-                    </span>
-                    <Avatar className="h-10 w-10 ring-2 ring-background shadow">
-                      <AvatarFallback className="bg-gradient-to-br from-primary/30 to-accent/30 text-xs font-bold">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="truncate text-sm">{row.full_name ?? "—"}</div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {row.team ?? "—"} · {row.department ?? "—"}
-                      </div>
-                    </div>
-                    <LeagueBadge tier={tier} size="sm" />
-                    <div className="flex items-center gap-1 w-24 justify-end text-sm font-bold tabular-nums">
-                      <Trophy className="h-4 w-4 text-amber-500" />
-                      {Math.floor(row.score)}
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="space-y-2">
+              {rows.map((row, i) => (
+                <LeaderboardRow
+                  key={row.employee_id}
+                  row={{
+                    employee_id: row.employee_id,
+                    full_name: row.full_name ?? "—",
+                    score: row.score,
+                    rank: row.rank,
+                  }}
+                  isCurrentUser={row.employee_id === user?.id}
+                  period={period}
+                  topScore={topScore}
+                  index={i}
+                  previousRank={trendMap[row.employee_id]?.previous_rank ?? null}
+                />
+              ))}
+            </div>
           )}
         </CardContent>
       </Card>

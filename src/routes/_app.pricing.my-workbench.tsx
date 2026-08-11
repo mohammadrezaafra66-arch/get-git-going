@@ -19,6 +19,7 @@ import {
   CircleDot,
   Tag,
   LifeBuoy,
+  FileText,
 } from "lucide-react";
 
 import { PageHeader } from "@/components/common/PageHeader";
@@ -45,7 +46,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasAnyRole, hasPermissionEx } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { fetchBrandsLite, fetchCategoriesLite, fetchLabelsLite } from "@/lib/products/queries";
@@ -326,6 +327,14 @@ function WorkbenchPage() {
         description="ویرایش سریع قیمت خرید و موجودی محصولات تحت مسئولیت شما — مانند اکسل."
       />
       <div className="flex justify-end">
+        {hasPermissionEx(roles, "pricing", "view") && (
+          <Button asChild variant="outline" size="sm" className="me-2">
+            <Link to="/pricing/sale-lists">
+              <FileText className="ms-1 h-4 w-4" />
+              لیست‌های قیمت فروش
+            </Link>
+          </Button>
+        )}
         <Button asChild variant="outline" size="sm" className="me-2">
           <Link to="/pricing/attention">
             <LifeBuoy className="ms-1 h-4 w-4" />
@@ -458,7 +467,7 @@ function WorkbenchPage() {
                       <TableHead className="text-right">دسته</TableHead>
                       <TableHead className="text-right">قیمت خرید</TableHead>
                       <TableHead className="text-right">ارز</TableHead>
-                      <TableHead className="text-right">قیمت فروش</TableHead>
+                      <TableHead className="text-right">قیمت فروش (نقدی)</TableHead>
                       <TableHead className="text-right">موجودی</TableHead>
                       <TableHead className="text-right">وضعیت</TableHead>
                       <TableHead className="text-right">مسئول / برچسب</TableHead>
@@ -901,7 +910,7 @@ function MobileCard({
           )}
           {hasValidSalePrice(row.sale_price) ? (
             <Badge variant="secondary" className="text-[10px]">
-              فروش: {formatNumber(row.sale_price as number)}
+              فروش نقدی: {formatNumber(row.sale_price as number)}
             </Badge>
           ) : (
             <Badge variant="destructive" className="text-[10px]">

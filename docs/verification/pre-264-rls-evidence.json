@@ -1,0 +1,23 @@
+{
+  "gate": "1.1 BEFORE fix",
+  "actor": "salesperson-a (ea9b35dd, role=sales)",
+  "target_person": "bf3dc235-26f2-4ea0-aec7-19135ded8d26",
+  "target_owner": "1a15e8c6 (a different salesperson)",
+  "persons": {
+    "http": 200,
+    "rows_returned": 1,
+    "display_name": "تست 2.1"
+  },
+  "person_identifiers": {
+    "http": 200,
+    "rows_returned": 1,
+    "kinds_leaked": [
+      "mobile_e164"
+    ]
+  },
+  "customers_control": {
+    "http": 200,
+    "rows_returned": 0,
+    "note": "customers RLS already enforces ownership; expect 0"
+  }
+}

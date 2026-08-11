@@ -63,6 +63,7 @@ interface PRule {
   priority: number;
   is_active: boolean;
   created_at: string;
+  is_system_default: boolean;
 }
 
 type Filters = {
@@ -121,7 +122,7 @@ function PricingRulesPage() {
       let q = supabase
         .from("pricing_rules")
         .select(
-          "id, rule_name, name, margin_type, margin_value, fixed_margin_value, settlement_type_id, sale_price_type_id, priority, is_active, created_at",
+          "id, rule_name, name, margin_type, margin_value, fixed_margin_value, settlement_type_id, sale_price_type_id, priority, is_active, created_at, is_system_default",
           { count: "exact" },
         )
         .order("priority", { ascending: true })
@@ -322,7 +323,17 @@ function PricingRulesPage() {
                   <li key={r.id} className="space-y-1.5 p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="truncate font-semibold">{r.rule_name ?? r.name}</div>
+                        <div className="flex flex-wrap items-center gap-1 truncate font-semibold">
+                          <span className="truncate">{r.rule_name ?? r.name}</span>
+                          {r.is_system_default && (
+                            <Badge
+                              variant="outline"
+                              className="border-amber-500/50 bg-amber-500/10 text-[10px] text-amber-700"
+                            >
+                              قانون پیش‌فرض سیستم
+                            </Badge>
+                          )}
+                        </div>
                         <div className="text-[11px] text-muted-foreground">
                           اولویت: {formatNumber(r.priority)}
                           {r.settlement_type_id && settlementMap[r.settlement_type_id]
@@ -397,7 +408,19 @@ function PricingRulesPage() {
                   <tbody>
                     {rows.map((r) => (
                       <tr key={r.id} className="border-b last:border-0">
-                        <td className="p-3 font-medium">{r.rule_name ?? r.name}</td>
+                        <td className="p-3 font-medium">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span>{r.rule_name ?? r.name}</span>
+                            {r.is_system_default && (
+                              <Badge
+                                variant="outline"
+                                className="border-amber-500/50 bg-amber-500/10 text-[10px] text-amber-700"
+                              >
+                                قانون پیش‌فرض سیستم
+                              </Badge>
+                            )}
+                          </div>
+                        </td>
                         <td className="p-3 text-xs text-muted-foreground">
                           {r.sale_price_type_id ? (saleTypeMap[r.sale_price_type_id] ?? "—") : "—"}
                         </td>

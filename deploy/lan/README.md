@@ -7,8 +7,11 @@
 > ⚠️ نکته Registry: اگر `docker compose build` با خطای **HTTP 403** از آدرس‌هایی مثل `europe-west1-npm.pkg.dev` یا `lovable-core-prod/sandbox-npm-cache` متوقف شد، یعنی build در حال تلاش برای استفاده از کش خصوصی Lovable است که برای self-host قابل دسترسی نیست. Dockerfile پروژه برای LAN/self-host عمداً registry را روی `https://registry.npmjs.org/` ثابت می‌کند و `bun.lock` را داخل image کپی نمی‌کند تا resolve از npm عمومی انجام شود. اگر این خطا برگشت، مطمئن شوید آخرین تغییرات repo را `git pull` کرده‌اید و سپس:
 >
 > ```powershell
-> docker compose -f deploy\lan\docker-compose.yml build --no-cache app
+> docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan build --no-cache app
 > ```
+>
+> (`--env-file` اینجا هم لازم است؛ بدون آن build-argها مثل `VITE_SUPABASE_URL` خالی می‌مانند
+> و image ساخته‌شده به هیچ backendی وصل نمی‌شود.)
 
 ## ۱. هدف LAN Pilot
 
@@ -42,7 +45,12 @@
    powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\show-ip.ps1
    ```
 
-6. آماده‌سازی `.env.lan` و kong و secretها (Enter بزنید تا IP پیش‌فرض `192.168.170.10` استفاده شود):
+6. آماده‌سازی `.env.lan` و kong و secretها.
+
+   > 🔴 **IP را با دقت وارد کنید.** Enter مقدار پیش‌فرض را می‌گیرد که **`192.168.170.8` (ماشین توسعه)** است.
+   > اگر `.env.lan` از قبل وجود داشته باشد، پیش‌فرض همان IP فعلی همان فایل است.
+   > برای **لپ‌تاپ تولید** باید `192.168.170.10` را صریح تایپ کنید و سپس عبارت تأیید
+   > `I-KNOW-THIS-IS-PRODUCTION` را هم وارد کنید — چون آن IP اپ را به دیتابیس واقعی کاربران وصل می‌کند.
 
    ```powershell
    powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\init-lan.ps1
@@ -156,6 +164,23 @@ Copy-Item deploy\supabase\kong.yml.example deploy\supabase\volumes\api\kong.yml
 
 سپس:
 
+> 🔴 **همیشه از اسکریپت `up.ps1` استفاده کنید، نه دستور خام.**
+> `docker-compose.yml` همه‌چیز را با `${VAR}` می‌خواند و فایل env اینجا `.env.lan` نام دارد (نه `.env`)،
+> پس Compose آن را **خودکار نمی‌خواند**. اجرای دستور خام بدون `--env-file` **بی‌سروصدا** خراب می‌کند:
+> `APP_PORT` به ۳۰۰۰ می‌افتد (اپ روی `:3100` بالا نمی‌آید)، `SUPABASE_URL` خالی می‌شود،
+> `db-role-fix` با کد ۱ می‌شکند و چون `auth`/`rest` به آن وابسته‌اند، هیچ سرویسی start نمی‌شود.
+> این دو بار stack را از کار انداخته است.
+
+```powershell
+.\deploy\lan\up.ps1            # بالا آوردن / به‌روزرسانی stack
+.\deploy\lan\up.ps1 --build    # آرگومان‌های اضافه مستقیم پاس داده می‌شوند
+```
+
+اسکریپت خودش `--env-file` و `-f` درست را می‌گذارد، دستور کامل را echo می‌کند، و در پایان
+وضعیت سرویس‌ها را نشان می‌دهد. اگر `.env.lan` نباشد، با پیام واضح متوقف می‌شود.
+
+معادل خام (فقط برای مرجع — ترجیحاً استفاده نکنید):
+
 ```powershell
 docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan build
 docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d
@@ -182,6 +207,8 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1
 ```
 http://<LAN_HOST_IP>:3000
 ```
+
+> ⚠️ محدودیت مرورگر برای ضبط صدا: دسترسی به میکروفون روی آدرس‌های `http://192.168.x.x` یا هر IP داخلیِ بدون HTTPS توسط Chrome/Edge/Firefox مسدود می‌شود. برای تست پیام صوتی باید برنامه از یک **secure context** باز شود: یا روی خود لپ‌تاپ میزبان با `http://localhost:3000`، یا از طریق HTTPS داخلی/production. این محدودیت سمت مرورگر است و با تغییر کد یا policy دیتابیس دور زده نمی‌شود.
 
 ## ۱۰. پورت‌هایی که در Windows Firewall باید باز شوند
 
@@ -210,13 +237,24 @@ New-NetFirewallRule -DisplayName "AfraKala LAN Supabase"  -Direction Inbound -Pr
 ## ۱۲. خاموش کردن
 
 ```powershell
-docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan down
+.\deploy\lan\down.ps1
 ```
+
+این دستور کانتینرها را متوقف می‌کند ولی **volumeها را نگه می‌دارد**، پس دیتای Postgres سالم می‌ماند.
 
 برای پاک کردن دیتا (⚠️ غیرقابل بازگشت):
 
 ```powershell
-docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan down -v
+.\deploy\lan\down.ps1 -v
+```
+
+> `down.ps1 -v` قبل از اجرا تأیید صریح می‌خواهد (تایپ `DELETE-LAN-DATA`)، چون volume دیتابیس
+> و همهٔ migrationهای اعمال‌شده روی این ماشین را برای همیشه پاک می‌کند.
+
+معادل خام (فقط برای مرجع):
+
+```powershell
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan down
 ```
 
 ## ۱۳. دیدن log
@@ -238,6 +276,16 @@ powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\update-lan.ps1
 ```powershell
 powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\check-lan.ps1
 ```
+
+### ۱۵.۱ عیب‌یابی ماژول پیام‌رسان و رسیدهای تحویل (read-only)
+
+ابزار تشخیصی `messenger-doctor.ps1` وضعیت runtime، envها، health endpointها، لاگ‌ها، schema، policyها، functionها و bucketهای مرتبط با `/messages` و رسیدهای تحویل را بررسی می‌کند. این ابزار **فقط خواندنی** است، هیچ داده‌ای تغییر نمی‌دهد و هیچ مقدار secretی چاپ نمی‌کند (فقط `SET` یا `MISSING`).
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\messenger-doctor.ps1
+```
+
+خروجی را کامل ذخیره کنید و برای گزارش باگ ضمیمه کنید. تا زمانی که خروجی این ابزار دیده نشود، هیچ migration جدیدی روی جداول messenger یا رسیدها نوشته/اجرا نخواهد شد.
 
 ## ۱۶. RBAC و کنترل دسترسی
 
@@ -317,7 +365,7 @@ docker exec afrakala-lan-db psql -U postgres -d postgres -c "select rolname, rol
 
 ```powershell
 cd C:\afrakala-lan\get-git-going
-git pull origin main
+git pull --ff-only origin (git rev-parse --abbrev-ref HEAD)
 Select-String -Path .\deploy\lan\scripts\*.sh,.\deploy\supabase\volumes\db\init\*.sh -Pattern "`r" -List
 powershell -ExecutionPolicy Bypass -File .\deploy\lan\scripts\init-lan.ps1 -RotateSecrets
 docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
@@ -344,11 +392,19 @@ docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan u
 
 فایل `.gitattributes` در ریشهٔ ریپو این مسیرها را به LF قفل می‌کند. روی لپ‌تاپ LAN یک بار این کارها را انجام دهید:
 
+> 🔴 **این دستورها فقط برای نصب تازه‌اند.** `git reset --hard` هر تغییر محلی را
+> دور می‌ریزد و `down -v` **volume دیتابیس را برای همیشه پاک می‌کند**. روی سروری
+> که داده دارد اجرا نکنید. اگر فقط مشکل CRLF دارید، تا خط `git checkout --` کافی
+> است و دو خط آخر لازم نیست.
+
 ```powershell
 cd C:\afrakala-lan\get-git-going
-git pull origin main
+$branch = (git rev-parse --abbrev-ref HEAD).Trim()
+git pull --ff-only origin $branch
 git rm --cached -r deploy/supabase/volumes/db/init
-git reset --hard origin/main
+git checkout -- deploy/supabase/volumes/db/init
+
+# فقط روی نصب تازه و بدون داده:
 docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
 docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan up -d
 ```

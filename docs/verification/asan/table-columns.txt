@@ -1,0 +1,234 @@
+academy_courses|r||
+academy_lessons|r||
+academy_quiz_attempts|r||
+academy_quiz_questions|r||
+academy_quiz_questions_public|v||
+academy_quizzes|r||
+academy_user_progress|r||
+achievements|r||
+ai_conversations|r||
+ai_generated_content|r||
+ai_provider_health|r|Last known result per (provider, capability). Written server-side by the shared AI client.|
+ai_providers|r|AI provider registry. Keys live in Supabase Vault (secret_id); this table stores only a display prefix. See migration 153 header for the threat model.|
+ai_usage_routes|r|Per-feature AI provider routing. Admins can force a provider, disable a feature, or keep automatic priority-based selection.|
+appeal_reviewers|r||
+audit_logs|r||
+automation_artifacts|r|Small structured outputs or storage references produced by a run. No binary blobs required in Phase-0.|
+automation_checkpoints|r|Durable progress checkpoints for long-running runs. Maps to CHECKPOINT_SAVED events and future PUT /jobs/{id}/checkpoint.|
+automation_driver_outputs|r|Standard structured output table for worker driver results. Stores mock/internal/read-only evidence, including approved Phase-3 evidence-table compatibility; this table does not authorize product, price, customer, supplier, sales, CRM, or commercial writeback.|
+automation_job_runs|r|Execution run for a claimed automation job. Run lifecycle aligns with PATCH /jobs/{jobId}/status (future implementation).|
+automation_jobs|r|Database-backed automation command queue. Maps to job.schema.json and POST /jobs/claim (automation/openapi/automation-v1.yaml). Phase-0 allows only dummy/generic job types.|
+automation_log_events|r|Append-only run event stream. Persisted for operator visibility and future worker event ingestion.|
+automation_modules|r|Phase-0 automation module registry. Only dummy_worker is enabled in seed data; real bots remain FUTURE/disabled.|
+automation_worker_heartbeats|r|Append-only heartbeat history per worker. Must not store secrets in metadata.|
+automation_workers|r|Registered external worker instances (Python runtime). Upserted via future /api/automation/v1/workers/heartbeat.|
+bank_accounts|r||bank_name,iban,account_no,opening_balance,accounting_code
+bot_api_key_audit_log|r||
+bot_api_key_label_access|r||
+bot_api_key_table_access|r||
+bot_api_keys|r||
+bot_api_usage_logs|r||
+brands|r||
+call_logs|r||
+capital_allocation_ledger|r||amount
+categories|r||base_margin_percent
+category_product_attributes|r||
+category_required_services|r|قاعدهٔ «این دسته این خدمت را اجباری دارد» (نیاز ۲۲۳). کلید بر categories.slug انتخاب می‌شود، نه بر نام فارسی.|
+credit_requests|r||requested_amount
+credit_score_snapshots|r||credit_limit
+credit_scoring_rules|r||
+currencies|r||
+currency_rate_fetches|r||
+currency_rates|r||
+currency_sources|r||
+custom_roles|r||
+customer_capital_allocations_dynamic|r||
+customer_credit_balance|r||available_credit,held_credit
+customer_credit_ledger|r||amount,balance_before,balance_after
+customer_credit_profile|r||total_purchases,total_paid,outstanding_balance,credit_score,credit_limit
+customers|r|جدول پروفایل مشتری — از فاز ۸ (تصمیم ۱) این جدول دیگر «هویت» نیست. هویت در جدول persons نگهداری می‌شود و این ردیف با کلید یکتای person_id به‌صورت یک‌به‌یک به آن وصل است. آنچه اینجا می‌ماند شرایط کسب‌وکاری نقش مشتری است (اعتبار، تسویه، مسئول فروش و…). برای یافتن یا تطبیق یک شخص هرگز از name/phone این جدول استفاده نکنید؛ مرجع، persons و person_identifiers است.|phone,address,tax_id,city,accounting_code
+daily_capital_inputs|r|Phase 19.1: manual daily inputs for "daily capital" computation. One row per capital_date.|bank_balance,cash_balance
+daily_capital_settings|r||total_capital
+daily_capital_snapshots|r|Phase 19.1: daily capital snapshots. Multiple per day (history). Latest per day = current truth.|total_receivables,total_payables
+daily_mood_entries|r||
+daily_mood_hafez_poems|r||
+daily_mood_questions|r||
+daily_mood_scenarios|r||
+dashboard_ticker_events|r||
+delivery_receipt_status_history|r||
+delivery_receipts|r||
+didar_activities|r||
+didar_import_log|r||
+document_status_history|r||
+documents|r||
+dynamic_entity_scores|r||
+dynamic_parameter_weights|r||
+dynamic_parameter_weights_backup_142|r||
+dynamic_parameter_weights_backup_20260722|r||
+dynamic_scoring_parameters|r||
+dynamic_table_cells|r||
+dynamic_table_columns|r||
+dynamic_table_row_counters|r||
+dynamic_table_rows|r||
+dynamic_tables|r||
+effective_currencies_view|v||
+employee_achievements|r||
+employee_leagues|r||
+employee_level_up_events|r||xp_total
+employee_mission_progress|r||
+employee_monthly_hours|v||total_minutes
+employee_profiles|r||
+employee_progress|r||xp_total
+employee_score_events|r||
+employee_scores|r||total_score
+employee_streaks|r||
+external_parties|r||national_id,phone,accounting_code
+feedback|r||
+feedback_items|r||
+gamification_kpi_rules|r||xp_amount
+gamification_kpis|r||
+gamification_rewards|r||
+inquiries|r||
+inquiry_price_cache|r||price
+inquiry_replies|r||price
+inquiry_status_history|r||
+inquiry_transfers|r||
+invoice_items|r||unit_price,discount,line_total
+invoice_workflow_stages|r||
+invoices|r||subtotal,tax_amount,discount_amount,total_amount,sale_price_type_id,deposit_amount,settled_amount
+journal_entries|r||payer_accounting_code,receiver_accounting_code
+journal_lines|r||debit,credit
+knowledge_articles|r||
+knowledge_confirmations|r||
+knowledge_document_chunks|r|Chunked + embedded knowledge documents for RAG. vector(1024) = bge-m3, measured not assumed. Model and dimension are stored per chunk so a model swap is detectable. RLS joins the parent document and reuses kd_role_can_view.|
+knowledge_documents|r||
+knowledge_documents_backup_20260722|r||
+league_seasons|r||
+league_settings|r||
+market_indicators|r||
+market_product_match_events|r|Audit log of market_product_matches lifecycle. Do not write secrets or PII into details.|
+market_product_matches|r|Mapping of market source products (Torob/Purchista/...) to AfraKala internal products. Production bot MAY ONLY consume rows where match_status=approved. Fuzzy title matching alone MUST NOT auto-approve.|
+market_rate_ingestion_runs|r||
+market_rate_source_mappings|r||
+market_rate_sources|r||
+market_rate_ticks|r||change_amount
+marketing_channels|r||
+marketing_task_templates|r|قالب وظایف بازاریابی تکرارشونده (۲۲۴). هر ردیف با job روزانه به وظیفه در جدول tasks تبدیل می‌شود؛ سامانهٔ وظیفهٔ دوم نیست.|
+message_embeddings|r||
+messages|r||
+messenger_attachments|r||
+messenger_group_members|r||
+messenger_groups|r||
+messenger_messages|r||
+messenger_read_receipts|r||
+missions|r||
+notification_events|r||
+notification_queue|r||
+payment_receipt_custom_fields|r||
+payment_receipt_documents|r||
+payment_receipt_links|r||amount
+payment_receipts|r||payer_phone,payer_accounting_code,receiver_phone,receiver_accounting_code,amount,bank_name,source_bank,destination_bank,source_bank_account_id,destination_bank_account_id,beneficiary_accounting_code,is_mobile_bank_screenshot
+payment_receipts_backup_20260722|r||payer_phone,payer_accounting_code,receiver_phone,receiver_accounting_code,amount,bank_name,source_bank,destination_bank,source_bank_account_id,destination_bank_account_id,beneficiary_accounting_code
+payment_terms|r||
+payment_vouchers|r|سند پرداخت / خروج پول (۱۸۰). منبع حقیقت خروج پول از خزانه؛ purchases.paid_at برای سازگاری می‌ماند.|amount,source_bank_account_id
+penalty_appeals|r||
+performance_penalties|r||
+person_aliases|r|Alternate names for a person (item 228). alias_normalized is generated via normalize_fa_text() and is NOT globally unique — distinct people may share a name. Used for duplicate detection and search, never for authorization.|
+person_context_links|r|Links a unified person to business contexts (AFRA-Persons S09). Identity stays in persons; this table only records role/context.|
+person_field_definitions|r|Admin-defined extra fields for persons. See the warning on is_required before marking any field mandatory.|
+person_field_values|r|S05: Per-person values for configurable fields. SELECT visibility inherits from public.persons RLS via EXISTS subquery.|
+person_identifiers|r|Person identifiers (phone, national id, email, iban, ...). Confirmed values are deduped via partial unique index. Created in S06.|
+person_merge_candidates|r|Phase 6.8 (234). Suspected duplicate person pairs awaiting human review. Nothing in this table mutates persons - it records suspicion only. Pairs are stored with person_id_a < person_id_b so a pair cannot be recorded twice in opposite order.|
+person_merge_log|r|Phase 8.1 (239). One row per executed person merge. The loser is never hard-deleted (its id may appear in audit_logs), so this table is the record of where its data went. ON DELETE RESTRICT on both FKs deliberately prevents a person that took part in a merge from being deleted.|
+persons|r|Unified person identity core (AFRA-Persons S04). Roles & context links live in separate tables.|
+presence_logs|r||total_minutes
+price_alert_notifications|r||sale_price_type_id,current_price,previous_price
+price_alert_rules|r||sale_price_type_id,baseline_price
+price_calculation_snapshots|r||purchase_price_id,input_purchase_price,purchase_price_toman,shipping_cost,margin_amount,final_sale_price,rounded_sale_price,sale_price_type_id
+price_change_reasons|r||
+price_list_items|r||price_list_id,unit_price
+price_lists|r||
+pricing_board_access_requests|r||
+pricing_board_settings|r||sale_price_type_id
+pricing_board_viewer_sessions|r||sale_price_type_id
+pricing_recompute_queue|r|PRICE-RT: Queue of products needing price recomputation. Triggers only enqueue; a worker (next phase) drains and calls publishProductPrices. Manual recompute UI remains for maintenance/import/recovery.|sale_price_type_id
+pricing_rules|r||min_purchase_price_toman,max_purchase_price_toman,margin_type,margin_value,fixed_margin_value,sale_price_type_id
+product_attribute_groups|r||
+product_attributes|r||
+product_category_attribute_values|r||
+product_computed_prices|r||sale_price_type_id,purchase_price_id,input_purchase_price,purchase_price_toman,shipping_cost,margin_amount,final_sale_price,rounded_sale_price
+product_computed_prices_public|v||sale_price_type_id,final_sale_price,rounded_sale_price
+product_images|r||
+product_interaction_events|r||sale_price_type_id
+product_label_links|r||
+product_labels|r||
+product_owner_assignments|r||
+product_recommendation_overrides|r||
+product_sale_price_history|r||old_sale_price,new_sale_price,change_amount,sale_price_type_id
+product_service_types|r|کاتالوگ خدمات کالا (نیاز ۲۲۳). فاز خدمات بعدی فقط ردیف اضافه می‌کند، نه ستون.|
+product_sku_counters|r||
+product_suppliers|r||
+products|r||capacity
+profile_field_definitions|r||
+profile_field_values|r||
+profiles|r||phone
+promotion_nomination_policy|r||
+promotion_nominations|r||
+publish_recipients_view|v||
+purchase_idempotency|r|مورد ۲۱۹: رزرو کلید یکتای عملیات ثبت خرید. کلید در سمت کلاینت هنگام باز شدن فرم ساخته می‌شود و تا موفقیت نگه داشته می‌شود، پس رفرش، قطع شبکه یا دوبار ثبت به سند دوم منجر نمی‌شود. hash ورودی‌های معنادار ذخیره می‌شود تا «همان کلید با اطلاعات متفاوت» به‌عنوان تعارض رد شود و «همان کلید با همان اطلاعات» نتیجهٔ قبلی را برگرداند. الگو از automation_jobs گرفته شده است.|
+purchase_items|r||unit_price,line_total
+purchase_prices|r||purchase_price
+purchase_receipts|r||
+purchase_request_fulfillments|r|مورد ۲۱۹: پیوند میان درخواست خرید و قلم سند خرید. هر ردیف یعنی «این مقدار از این درخواست، توسط این قلم خرید تأمین شد». گرین در سطح قلم است تا خرید جزئی، چندمرحله‌ای، چند تأمین‌کننده و پوشش چند درخواست توسط یک سند همگی قابل ثبت باشند. allocated_quantity عمداً با مقدار واقعی خرید یکی نیست: مقدار واقعی وارد موجودی می‌شود، مقدار تخصیص‌یافته وضعیت درخواست را تعیین می‌کند. مجوزها (۲۵۰): نقش authenticated فقط SELECT دارد؛ همهٔ نوشتن‌ها باید از RPC اختصاصی عبور کنند.|
+purchase_request_status_history|r||
+purchase_requests|r||expected_price,final_price
+purchases|r||total_amount,purchase_price,cash_price,cash_price_currency
+recent_purchase_settings|r||
+role_permissions|r|Module-level capability matrix consulted by the frontend route guards. For module=purchases only admin and manager may create: RLS on purchases and the in-function check in create_purchase are the enforcement, and this table must not advertise more than they honour (Issue 219 C5).|
+sale_list_items|r||current_price,previous_price,change_amount
+sale_list_versions|r||
+sale_lists|r||sale_price_type_id
+sale_price_types|r||
+sales_quote_counters|r||
+sales_quote_item_services|r|خدمات هر ردیف پیش‌فاکتور. ردیف اجباری (is_mandatory) با تریگر محافظت می‌شود و فروشنده نمی‌تواند حذفش کند (نیاز ۲۲۳).|
+sales_quote_items|r||sale_price_type_id,unit_price,discount_amount,line_total
+sales_quote_send_queue|r||
+sales_quote_share_logs|r||
+sales_quotes|r||customer_phone,subtotal_amount,discount_amount,final_amount,below_list_price_ack,below_list_price_ack_at,below_list_price_ack_by,list_price_snapshot,deposit_amount,credit_check_snapshot,quote_exception_amount
+sales_reminders|r||
+salesperson_capital_allocations_dynamic|r||
+score_level_thresholds|r|D8-4 (migration 272): versioned score bands. Modelled on dynamic_parameter_weights -- same valid_from/valid_to discipline, same no-overlap EXCLUDE, same admin-write/authenticated-read policies. score_range is on the 0-100 presentation scale, which is what the UI already shows (weighted_score * 100).|
+score_snapshots|r||total_score
+settlement_types|r||
+shipping_cost_rules|r||cost_type,cost_value,min_purchase_price,max_purchase_price,cost_currency
+shop_settings|r||
+staff_daily_performance_metrics|r||sales_amount,profit_amount
+stock_alert_requests|r||customer_phone
+stock_movements|r|کاردکس: هر تغییر موجودی یک ردیف اینجا می‌سازد (۱۸۳). quantity همیشه مثبت است؛ جهت از movement_type می‌آید.|
+stock_transfer_items|r||
+stock_transfers|r|سند انتقال بین‌انباری (۱۷۷). اثر موجودی فقط هنگام confirmed اعمال می‌شود.|
+suppliers|r|جدول پروفایل تأمین‌کننده — از فاز ۸ (تصمیم ۱) این جدول دیگر «هویت» نیست. هویت در جدول persons نگهداری می‌شود و این ردیف با کلید یکتای person_id به‌صورت یک‌به‌یک به آن وصل است. آنچه اینجا می‌ماند شرایط کسب‌وکاری نقش تأمین‌کننده است (سطح اعتماد، وضعیت تأیید، شخص رابط و…). برای یافتن یا تطبیق یک شخص هرگز از name/phone این جدول استفاده نکنید؛ مرجع، persons و person_identifiers است.|phone,address,city
+tasks|r||
+user_roles|r||
+v_dynamic_customer_capital_balances|v|Item 141.3. Per-customer dynamic capital allocation with held/consumed/remaining folded from capital_allocation_ledger via _capital_alloc_used. Matches the availability arithmetic in hold_capital_allocation.|held_amount,consumed_amount,remaining_amount
+v_dynamic_salesperson_capital_balances|v|Item 141.3. Per-salesperson dynamic capital allocation with held/consumed/remaining folded from capital_allocation_ledger via _capital_alloc_used.|held_amount,consumed_amount,remaining_amount
+v_latest_active_purchase_prices|v|PRICE-RT: Latest active purchase price per product (used to map currency changes to affected products).|purchase_price_id,purchase_price
+v_league_tiers_public|v||
+v_pricing_recompute_queue_summary|v|PRICE-RT: Lightweight monitoring view for the recompute queue.|
+v_promotion_suggestions|v||
+v_purchase_item_allocation|v|مورد ۲۱۹: تخصیص در سطح قلم خرید. «مازاد خرید» فقط اینجا معنا دارد و فقط یک‌بار محاسبه می‌شود: قلمی به مقدار ۱۲ که ۶ به یک درخواست و ۶ به درخواست دیگر تخصیص یافته، مازادش صفر است. محاسبهٔ مازاد در سطح درخواست، همان مقدار را به ازای هر درخواست دوباره می‌شمرد.|
+v_purchase_request_fulfillment|v|مورد ۲۱۹: وضعیت تأمین در سطح درخواست. عمداً ستون «مازاد» ندارد — مازاد فقط در سطح قلم معنا دارد (v_purchase_item_allocation). برای درخواست‌های قدیمیِ بدون سند، مقادیر NULL برمی‌گردد نه صفر: مقدار تأمین‌شده «نامعلوم» است نه «هیچ». effective_supplied همان چیزی است که وضعیت درخواست را تعیین می‌کند و سقفش مقدار درخواست‌شده است، پس بیش‌تخصیص وضعیت را از حالت «کامل» فراتر نمی‌برد.|
+v_purchase_requests_legacy_unknown|v|مورد ۲۱۹: فهرست درخواست‌هایی که پیش از وجود پیوند سند خرید به وضعیت خرید/تحویل رسیده‌اند و سند مرتبط ندارند، برای تعیین تکلیف دستی مدیر.|
+validation_rules|r||
+visitors|r|ویزیتورها (نیازمندی ۲۰۳). جدا از فروشندهٔ صادرکنندهٔ پیش‌فاکتور.|phone
+vw_account_balances|v|ماندهٔ جاری هر حساب/صندوق (۱۸۱). فقط اسناد approved در مانده اثر دارند.|bank_name,opening_balance,total_in,total_out,current_balance
+vw_customer_receivables|v|Phase 18.1 — read-only receivables. Direct SELECT restricted (Phase 18.1B). Use get_receivables_summary RPC; list/detail RPCs in Phase 18.2.|total_amount,deposit_amount,confirmed_paid_amount,outstanding_amount
+vw_purchase_float|v||purchase_price,cash_price,implied_daily_cost
+vw_supplier_payables|v|Phase 18.1 — read-only payables. Direct SELECT restricted (Phase 18.1B). Use get_payables_summary RPC; list/detail RPCs in Phase 18.2. Partial purchase payments not modeled; multi-currency preserved without FX conversion.|purchase_total_amount,cash_price,outstanding_amount
+warehouse_stock|r|موجودی عددی هر محصول در هر انبار (۱۷۶).|
+warehouses|r|انبارها (۱۷۶). حداقل ۳۰ انبار پشتیبانی می‌شود.|
+waybill_custom_fields|r||
+waybill_items|r||
+waybill_number_counter|r||
+waybills|r||sender_phone,receiver_phone,customer_accounting_code,destination_city,destination_address
+workflow_settings|r||

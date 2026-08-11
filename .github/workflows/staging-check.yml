@@ -1,11 +1,23 @@
 name: Staging Check
 
+# Phase 3.9 / WPC Staging Check
+
 on:
   pull_request:
     branches:
       - staging
       - main
-    types: [opened, synchronize, reopened, ready_for_review]
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+
+  push:
+    branches:
+      - staging
+      - main
+
   workflow_dispatch:
 
 permissions:
@@ -16,23 +28,105 @@ jobs:
     name: Staging Check
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Validate required WPC governance files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          required_files=(
+            "docs/process/path-ownership-matrix.md"
+            "docs/process/lovable-cursor-boundary.md"
+            "docs/process/branch-policy.md"
+            "docs/process/two-pr-policy.md"
+            "docs/process/handoff-policy.md"
+            "docs/process/evidence-policy.md"
+            "docs/process/definition-of-ready.md"
+            "docs/process/definition-of-done.md"
+            "docs/process/definition-of-success.md"
+            "docs/process/stop-the-line.md"
+            "docs/process/local-test-checklist.md"
+            "docs/process/server-deployment-checklist.md"
+            "docs/process/ali-implementation-handoff.md"
+            "docs/handoffs/_template.md"
+            "docs/evidence/_template.md"
+            "docs/evidence/WPC-3.9-enforcement.md"
+            "docs/evidence/WPC-0-006-branch-protection-evidence.md"
+            "docs/evidence/WPC-0-007-labels-evidence.md"
+            ".github/pull_request_template.md"
+            ".github/CODEOWNERS"
+            ".github/workflows/boundary-guard.yml"
+            ".github/workflows/staging-check.yml"
+            ".env.example"
+            ".env.staging.example"
+            ".env.production.example"
+          )
+
+          missing=0
+
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$file" ]; then
+              echo "Missing required WPC file: $file"
+              missing=1
+            else
+              echo "OK: $file"
+            fi
+          done
+
+          if [ "$missing" -ne 0 ]; then
+            echo "Required WPC governance/enforcement files are missing."
+            exit 1
+          fi
+
+      - name: Check forbidden environment files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          forbidden_files="$(find . -type f \
+            \( -name '.env' -o -name '.env.*' \) \
+            ! -name '.env*.example' \
+            -print)"
+
+          if [ -n "$forbidden_files" ]; then
+            echo "Forbidden environment files found:"
+            echo "$forbidden_files"
+            exit 1
+          fi
+
+          echo "No forbidden environment files found."
+
       - name: Setup Node.js
+        if: ${{ hashFiles('package.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --no-audit --no-fund
+
+      - name: Typecheck
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
+        run: npm run typecheck
 
       - name: Lint legacy baseline
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
         run: |
-          npm run lint || echo "::warning::Lint currently fails on the legacy baseline during phase6a staging realignment; build remains required."
+          npm run lint || echo "::warning::Lint currently fails on the legacy baseline; typecheck and build remain required."
 
       - name: Build
+        if: ${{ hashFiles('package.json') != '' }}
+        shell: bash
         run: npm run build
         env:
           NODE_OPTIONS: --max-old-space-size=8192

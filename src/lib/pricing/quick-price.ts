@@ -19,6 +19,7 @@ export interface QuickPriceBreakdown {
   input_purchase_price: number;
   input_currency: CurrencyCode;
   currency_rate: number;
+  currency_rate_source: string | null;
   purchase_price_toman: number;
   product_type: "iranian" | "foreign";
   category_id: string | null;
@@ -62,11 +63,13 @@ export async function calculateQuickSalePrice(
 
   // 1) نرخ ارز
   let currency_rate = 1;
+  let currency_rate_source: string | null = null;
   if (input.currency !== "toman") {
     const rate = await fetchLatestCurrencyRate(input.currency);
     if (!rate)
       throw new PricingError("NO_CURRENCY_RATE", "نرخ ارز معتبر برای محاسبه قیمت موجود نیست.");
     currency_rate = Number(rate.rate_to_toman);
+    currency_rate_source = (rate as { source_name?: string | null }).source_name ?? null;
   }
   const input_purchase_price = Number(input.purchase_price);
   const purchase_price_toman = Math.round(input_purchase_price * currency_rate);
@@ -208,6 +211,7 @@ export async function calculateQuickSalePrice(
     input_purchase_price,
     input_currency: input.currency,
     currency_rate,
+    currency_rate_source,
     purchase_price_toman,
     product_type: input.product_type,
     category_id: input.category_id ?? null,

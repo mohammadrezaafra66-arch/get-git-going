@@ -1,0 +1,1 @@
+ALTER VIEW public.publish_recipients_view SET (security_invoker = true);

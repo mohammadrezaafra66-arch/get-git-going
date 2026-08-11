@@ -21,15 +21,18 @@ export function SalesReminderPopup() {
   const { data: reminders } = useQuery({
     queryKey: ["sales-reminders-active"],
     queryFn: async (): Promise<string[]> => {
-      const { data, error } = await supabase
+      // NOTE: `sales_reminders` (migration 128) is not yet in the generated
+      // supabase types.ts. Per project guidance we do NOT regenerate types here;
+      // a minimal local cast keeps this one query type-safe-enough without
+      // touching the shared client typings.
+      const { data, error } = await (supabase as any)
         .from("sales_reminders")
         .select("text, sort_order")
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
       if (error) throw error;
-      return (data ?? [])
-        .map((r) => (r as { text: string }).text)
-        .filter((t) => typeof t === "string" && t.trim().length > 0);
+      const rows = (data ?? []) as Array<{ text: string }>;
+      return rows.map((r) => r.text).filter((t) => typeof t === "string" && t.trim().length > 0);
     },
     staleTime: 5 * 60_000,
     retry: 0,

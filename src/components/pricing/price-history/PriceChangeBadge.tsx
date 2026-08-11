@@ -46,10 +46,13 @@ export function PriceChangeBadge({ info, showAmount = false, size = "sm", classN
 
   const padding = size === "md" ? "px-2 py-1 text-sm" : "text-xs";
 
+  const pctLabel =
+    pct !== null ? (pct > 999 ? `۹۹۹٪+ ${text}` : `${formatNumber(pct)}٪ ${text}`) : null;
+
   return (
     <Badge variant="outline" className={cn("gap-1 font-medium", colorCls, padding, className)}>
       <Icon className="h-3 w-3" />
-      {pct !== null ? `${formatNumber(pct)}٪ ${text}` : `${formatNumber(amt!)} ت ${text}`}
+      {pctLabel !== null ? pctLabel : `${formatNumber(amt!)} ت ${text}`}
       {showAmount && pct !== null && amt !== null && (
         <span className="opacity-80">({formatNumber(amt)} ت)</span>
       )}

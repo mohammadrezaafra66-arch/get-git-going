@@ -4,9 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ROLE_LABELS, ALL_ROLES, type AppRole } from "@/lib/rbac/roles";
+import { useAllRoles } from "@/lib/rbac/roles";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { toast } from "sonner";
+import { OnlineDot } from "@/components/presence/OnlineDot";
 
 export const Route = createFileRoute("/_app/roles")({
   beforeLoad: async () => {
@@ -18,11 +19,12 @@ export const Route = createFileRoute("/_app/roles")({
 interface UserWithRoles {
   id: string;
   full_name: string | null;
-  roles: AppRole[];
+  roles: string[];
 }
 
 function RolesPage() {
   const qc = useQueryClient();
+  const { data: allRoles, isLoading: rolesLoading } = useAllRoles();
 
   const { data, isLoading } = useQuery({
     queryKey: ["roles-matrix"],
@@ -32,10 +34,10 @@ function RolesPage() {
         .select("id, full_name")
         .order("full_name");
       const { data: roles } = await supabase.from("user_roles").select("user_id, role");
-      const map = new Map<string, AppRole[]>();
+      const map = new Map<string, string[]>();
       for (const r of roles ?? []) {
         const arr = map.get(r.user_id) ?? [];
-        arr.push(r.role as AppRole);
+        arr.push(r.role as string);
         map.set(r.user_id, arr);
       }
       return (profiles ?? []).map((p) => ({ ...p, roles: map.get(p.id) ?? [] }));
@@ -49,17 +51,17 @@ function RolesPage() {
       enabled,
     }: {
       userId: string;
-      role: AppRole;
+      role: string;
       enabled: boolean;
     }) => {
       if (enabled) {
-        const { error } = await supabase.rpc("assign_user_role", {
+        const { error } = await supabase.rpc("assign_user_role_txt", {
           _target_user: userId,
           _role: role,
         });
         if (error) throw error;
       } else {
-        const { error } = await supabase.rpc("revoke_user_role", {
+        const { error } = await supabase.rpc("revoke_user_role_txt", {
           _target_user: userId,
           _role: role,
         });
@@ -82,7 +84,7 @@ function RolesPage() {
       />
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
+          {isLoading || rolesLoading ? (
             <div className="py-10 text-center text-sm text-muted-foreground">
               در حال بارگذاری...
             </div>
@@ -99,9 +101,9 @@ function RolesPage() {
                 <thead className="border-b bg-muted/50 text-right text-xs text-muted-foreground">
                   <tr>
                     <th className="p-3 font-medium">کاربر</th>
-                    {ALL_ROLES.map((r) => (
-                      <th key={r} className="p-3 text-center font-medium">
-                        {ROLE_LABELS[r]}
+                    {allRoles.map((r) => (
+                      <th key={r.name} className="p-3 text-center font-medium">
+                        {r.label}
                       </th>
                     ))}
                   </tr>
@@ -109,16 +111,23 @@ function RolesPage() {
                 <tbody>
                   {data.map((u) => (
                     <tr key={u.id} className="border-b last:border-0 hover:bg-muted/30">
-                      <td className="p-3 font-medium">{u.full_name ?? "—"}</td>
-                      {ALL_ROLES.map((r) => {
-                        const checked = u.roles.includes(r);
+                      <td className="p-3 font-medium">
+                        <span className="inline-flex items-center gap-2">
+                          <span className="relative inline-block h-2.5 w-2.5">
+                            <OnlineDot userId={u.id} />
+                          </span>
+                          {u.full_name ?? "—"}
+                        </span>
+                      </td>
+                      {allRoles.map((r) => {
+                        const checked = u.roles.includes(r.name);
                         return (
-                          <td key={r} className="p-3 text-center">
+                          <td key={r.name} className="p-3 text-center">
                             <Checkbox
                               checked={checked}
                               disabled={toggle.isPending}
                               onCheckedChange={(v) =>
-                                toggle.mutate({ userId: u.id, role: r, enabled: Boolean(v) })
+                                toggle.mutate({ userId: u.id, role: r.name, enabled: Boolean(v) })
                               }
                             />
                           </td>

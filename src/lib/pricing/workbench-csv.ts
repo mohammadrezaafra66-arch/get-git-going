@@ -53,10 +53,10 @@ export function exportIncompleteCsv(rows: WorkbenchRowV2[]) {
     "ارز",
     "وضعیت موجودی",
     "وضعیت فعال بودن",
-    "قیمت فروش",
+    "قیمت فروش (نقدی)",
     "مسئول محصول",
     "علت مشکل",
-    "آخرین بروزرسانی قیمت فروش",
+    "آخرین بروزرسانی قیمت فروش (نقدی)",
   ];
   const lines = [headers.map(esc).join(",")];
   for (const r of rows) {
@@ -95,11 +95,11 @@ export function exportTaggedRiskCsv(rows: WorkbenchRowV2[]) {
     "برچسب‌ها",
     "وضعیت موجودی",
     "وضعیت فعال بودن",
-    "قیمت فروش",
+    "قیمت فروش (نقدی)",
     "مسئول محصول",
     "علت مشکل",
     "اولویت اصلاح",
-    "آخرین بروزرسانی قیمت فروش",
+    "آخرین بروزرسانی قیمت فروش (نقدی)",
   ];
   const lines = [headers.map(esc).join(",")];
   for (const r of rows) {

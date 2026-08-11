@@ -1,470 +1,361 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Crown, Flame, Target, Medal, Zap, ChevronLeft, Lock } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { toast } from "sonner";
+import { Trophy, Target, Settings } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import {
-  getEmployeeProgress,
-  getEmployeeRank,
-  getCurrentLeague,
-  getRankNeighbors,
-  getLeaderboard,
-  listEmployeeAchievements,
-  listTodayMissions,
-  listEmployeeStreaks,
-} from "@/lib/operations/gamification";
-import {
-  LeagueBadge,
-  getLeagueLabel,
-  type LeagueTier,
-} from "@/components/gamification/LeagueBadge";
-import { LevelUpOverlay } from "@/components/gamification/LevelUpOverlay";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toPersianDigits } from "@/lib/dashboard/utils";
+import { LevelBadge } from "@/components/gamification/LevelBadge";
+import { XpProgressBar } from "@/components/gamification/XpProgressBar";
+import { ScoreChart } from "@/components/gamification/ScoreChart";
+import { AchievementCard } from "@/components/gamification/AchievementCard";
+import { useMyProgress, useMyRank, useMyAchievements } from "@/hooks/gamification/useGamification";
+import { listKpis, type EmployeeScore } from "@/lib/operations/gamification";
+import { hasAnyRole } from "@/lib/rbac/roles";
 
 export const Route = createFileRoute("/_app/gamification")({
   component: GamificationRoutePage,
 });
 
-const REFETCH_MS = 30_000;
-const LEADERBOARD_STALE = 60_000;
-
 function GamificationRoutePage() {
   const location = useLocation();
   const normalizedPath = location.pathname.replace(/\/+$/, "") || "/";
-
   if (normalizedPath !== "/gamification") {
     return <Outlet />;
   }
-
-  return <GamificationDashboard />;
+  return <GamificationProfile />;
 }
 
-function GamificationDashboard() {
-  const { user, profile } = useAuth();
-  const employeeId = user?.id ?? "";
+interface ScoreEvent {
+  daily_score: number;
+  captured_at: string;
+}
 
-  const progress = useQuery({
-    queryKey: ["gam", "progress", employeeId],
-    queryFn: () => getEmployeeProgress(employeeId),
+function useWeeklyScoreSeries(employeeId: string) {
+  return useQuery({
     enabled: !!employeeId,
-    refetchInterval: REFETCH_MS,
-  });
-  const rank = useQuery({
-    queryKey: ["gam", "rank", employeeId],
-    queryFn: () => getEmployeeRank(employeeId),
-    enabled: !!employeeId,
-    refetchInterval: REFETCH_MS,
-  });
-  const league = useQuery({
-    queryKey: ["gam", "league", employeeId],
-    queryFn: () => getCurrentLeague(employeeId),
-    enabled: !!employeeId,
-    refetchInterval: REFETCH_MS,
-  });
-  const neighbors = useQuery({
-    queryKey: ["gam", "neighbors", employeeId],
-    queryFn: () => getRankNeighbors(employeeId, "monthly", 3),
-    enabled: !!employeeId,
-    refetchInterval: REFETCH_MS,
-  });
-  const top5 = useQuery({
-    queryKey: ["gam", "leaderboard-top5"],
-    queryFn: () => getLeaderboard("monthly", { limit: 5 }),
-    refetchInterval: REFETCH_MS,
-    staleTime: LEADERBOARD_STALE,
-  });
-  const achievements = useQuery({
-    queryKey: ["gam", "achievements", employeeId],
-    queryFn: () => listEmployeeAchievements(employeeId),
-    enabled: !!employeeId,
-    refetchInterval: REFETCH_MS,
-  });
-  const missions = useQuery({
-    queryKey: ["gam", "missions", employeeId],
-    queryFn: () => listTodayMissions(employeeId),
-    enabled: !!employeeId,
-    refetchInterval: REFETCH_MS,
-  });
-  const streaks = useQuery({
-    queryKey: ["gam", "streaks", employeeId],
-    queryFn: () => listEmployeeStreaks(employeeId),
-    enabled: !!employeeId,
-    refetchInterval: REFETCH_MS,
-  });
+    queryKey: ["my-score-series-7d", employeeId],
+    queryFn: async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 6);
+      since.setHours(0, 0, 0, 0);
+      const { data, error } = await supabase
+        .from("score_snapshots")
+        .select("daily_score, captured_at")
+        .eq("employee_id", employeeId)
+        .gte("captured_at", since.toISOString());
+      if (error) throw error;
+      const rows = (data ?? []) as ScoreEvent[];
 
-  const initials = (profile?.full_name ?? "؟").trim().slice(0, 2);
-  const xpPct = progress.data?.progress_percent ?? 0;
-  const tier = (league.data?.league as LeagueTier | null) ?? null;
-
-  // Level-up celebration: full-screen overlay (replaces previous toast)
-  const prevLevel = useRef<number | null>(null);
-  const [celebrateLevel, setCelebrateLevel] = useState<number | null>(null);
-
-  useEffect(() => {
-    const lvl = progress.data?.level;
-    if (lvl == null) return;
-    if (prevLevel.current != null && lvl > prevLevel.current) {
-      setCelebrateLevel(lvl);
-    }
-    prevLevel.current = lvl;
-  }, [progress.data?.level]);
-
-  // Achievement-unlock toast (kept from previous phase)
-  const prevAchievementIds = useRef<Set<string> | null>(null);
-
-  useEffect(() => {
-    const list = achievements.data;
-    if (!list) return;
-    const ids = new Set(list.map((a) => a.id));
-    if (prevAchievementIds.current) {
-      for (const a of list) {
-        if (!prevAchievementIds.current.has(a.id)) {
-          toast(`🏅 نشان جدید: ${a.title_fa}`, {
-            description: a.description ?? "نشان تازه‌ای باز شد!",
-            duration: 6000,
-          });
+      const buckets = new Map<string, number>();
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        d.setHours(0, 0, 0, 0);
+        buckets.set(d.toISOString().slice(0, 10), 0);
+      }
+      for (const r of rows) {
+        const key = r.captured_at.slice(0, 10);
+        if (buckets.has(key)) {
+          buckets.set(key, Math.max(buckets.get(key) ?? 0, Number(r.daily_score || 0)));
         }
       }
-    }
-    prevAchievementIds.current = ids;
-  }, [achievements.data]);
+      return Array.from(buckets.entries()).map(([date, score]) => ({
+        date,
+        score,
+      }));
+    },
+    staleTime: 60_000,
+  });
+}
+
+function GamificationProfile() {
+  const { user, profile } = useAuth();
+  const { roles } = useAuth();
+  // KPI-weights page is admin-only (matches its route guard); align the hub link.
+  const isAdmin = hasAnyRole(roles, ["admin"]);
+  const employeeId = user?.id ?? "";
+  const fullName = profile?.full_name ?? "کاربر";
+
+  const progressQ = useMyProgress();
+  const rankQ = useMyRank();
+  const achievementsQ = useMyAchievements();
+  const seriesQ = useWeeklyScoreSeries(employeeId);
 
   return (
-    <div className="space-y-6 pb-10">
-      <LevelUpOverlay level={celebrateLevel} onDone={() => setCelebrateLevel(null)} />
-      {/* HERO / Player Card */}
-      <Card className="relative overflow-hidden border-0 bg-gradient-to-bl from-primary/20 via-background to-accent/20 shadow-xl">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/30 via-transparent to-transparent" />
-        <CardContent className="relative flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-5">
-            <div className="relative">
-              <Avatar className="h-20 w-20 ring-4 ring-primary/30 shadow-lg">
-                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-2xl font-bold text-primary-foreground">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="absolute -bottom-1 -left-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 text-sm font-bold text-white shadow-md ring-2 ring-background">
-                {progress.data?.level ?? 1}
-              </div>
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold">{profile?.full_name ?? "بازیکن"}</h1>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                <Badge variant="secondary" className="gap-1">
-                  <Zap className="h-3 w-3" /> سطح {progress.data?.level ?? 1}
-                </Badge>
-                {tier ? (
-                  <Badge variant="outline" className="gap-1 border-amber-500/40">
-                    <Crown className="h-3 w-3 text-amber-500" /> لیگ {getLeagueLabel(tier)}
-                  </Badge>
-                ) : null}
-                {rank.data?.monthly_rank ? (
-                  <Badge variant="outline" className="gap-1">
-                    <Trophy className="h-3 w-3" /> رتبه {rank.data.monthly_rank}
-                  </Badge>
-                ) : null}
-              </div>
-            </div>
-          </div>
-          <LeagueBadge tier={tier} size="xl" animated />
-        </CardContent>
-      </Card>
-
-      {/* XP + League grid */}
-      <div className="grid gap-4 md:grid-cols-3">
-        {/* XP Progress */}
-        <Card className="md:col-span-2 overflow-hidden">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Zap className="h-5 w-5 text-yellow-500" />
-              پیشرفت تجربه (XP)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-bold tabular-nums">
-                {Math.floor(progress.data?.xp_current ?? 0)}
-              </span>
-              <span className="text-sm text-muted-foreground tabular-nums">
-                / {Math.floor(progress.data?.xp_next_level ?? 0)} XP
-              </span>
-            </div>
-            <div className="relative h-4 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-500 shadow-[0_0_12px_rgba(251,191,36,0.6)] transition-all duration-700 ease-out"
-                style={{ width: `${xpPct}%` }}
-              />
-              <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span>سطح {progress.data?.level ?? 1}</span>
-              <span className="tabular-nums">{xpPct.toFixed(1)}%</span>
-              <span>سطح {(progress.data?.level ?? 1) + 1}</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* League Card */}
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Crown className="h-5 w-5 text-amber-500" />
-              لیگ فصل
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center gap-3 text-center">
-            <LeagueBadge tier={tier} size="lg" />
-            <div>
-              <div className="text-lg font-bold">{getLeagueLabel(tier)}</div>
-              <div className="text-xs text-muted-foreground">
-                فصل {league.data?.season_name ?? "—"}
-              </div>
-            </div>
-            <div className="flex w-full justify-around border-t pt-3 text-center">
-              <div>
-                <div className="text-lg font-bold tabular-nums">{league.data?.rank ?? "—"}</div>
-                <div className="text-[10px] text-muted-foreground">رتبه لیگ</div>
-              </div>
-              <div>
-                <div className="text-lg font-bold tabular-nums">
-                  {Math.floor(league.data?.score ?? 0)}
-                </div>
-                <div className="text-[10px] text-muted-foreground">امتیاز فصل</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Rank Context + Leaderboard */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Target className="h-5 w-5 text-primary" />
-              همسایگان رتبه
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            {neighbors.isLoading ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </div>
-            ) : !neighbors.data?.length ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                داده‌ای وجود ندارد.
-              </div>
-            ) : (
-              <ul className="divide-y">
-                {neighbors.data.map((n) => {
-                  const isSelf = n.relative_position === "self";
-                  return (
-                    <li
-                      key={n.employee_id}
-                      className={`flex items-center gap-3 px-4 py-2.5 ${isSelf ? "bg-primary/10 font-bold" : ""}`}
-                    >
-                      <span
-                        className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums ${isSelf ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-                      >
-                        {n.rank}
-                      </span>
-                      <span className="flex-1 truncate text-sm">{n.full_name ?? "—"}</span>
-                      <span className="text-xs tabular-nums text-muted-foreground">
-                        {Math.floor(n.score)}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Trophy className="h-5 w-5 text-amber-500" />
-              برترین‌های ماه
-            </CardTitle>
-            <Button size="sm" variant="ghost" asChild>
-              <Link to="/gamification/leaderboard">
-                نمایش کامل <ChevronLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            {top5.isLoading ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </div>
-            ) : !top5.data?.length ? (
-              <div className="p-6 text-center text-sm text-muted-foreground">
-                رتبه‌بندی‌ای موجود نیست.
-              </div>
-            ) : (
-              <ul className="divide-y">
-                {top5.data.map((row) => (
-                  <li key={row.employee_id} className="flex items-center gap-3 px-4 py-2.5">
-                    <span
-                      className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs tabular-nums ${row.rank === 1 ? "bg-yellow-500 text-white" : row.rank === 2 ? "bg-slate-400 text-white" : row.rank === 3 ? "bg-amber-700 text-white" : "bg-muted"}`}
-                    >
-                      {row.rank}
-                    </span>
-                    <span className="flex-1 truncate text-sm">{row.full_name ?? "—"}</span>
-                    <span className="text-xs tabular-nums text-muted-foreground">
-                      {Math.floor(row.score)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Achievements + Streaks */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Medal className="h-5 w-5 text-fuchsia-500" />
-              نشان‌های باز شده
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {achievements.isLoading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </div>
-            ) : !achievements.data?.length ? (
-              <div className="flex flex-col items-center gap-2 py-6 text-center text-sm text-muted-foreground">
-                <Lock className="h-8 w-8 opacity-30" />
-                هنوز هیچ نشانی باز نشده است.
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                {achievements.data.slice(0, 8).map((a) => (
-                  <div
-                    key={a.id}
-                    className="group flex flex-col items-center gap-1 rounded-lg border bg-card p-3 text-center transition-all hover:scale-105 hover:shadow-md hover:shadow-primary/20"
-                  >
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-purple-600 text-white shadow">
-                      <Medal className="h-6 w-6" />
-                    </div>
-                    <div className="line-clamp-1 text-xs font-medium">{a.title_fa}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Flame className="h-5 w-5 text-orange-500" />
-              زنجیره‌ها (Streaks)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {streaks.isLoading ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                در حال بارگذاری...
-              </div>
-            ) : !streaks.data?.length ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                هیچ زنجیره‌ای ثبت نشده.
-              </div>
-            ) : (
-              <div className="grid grid-cols-3 gap-3">
-                {streaks.data.map((s) => (
-                  <div
-                    key={s.streak_type}
-                    className="flex flex-col items-center rounded-lg border bg-gradient-to-b from-orange-500/10 to-transparent p-3 text-center"
-                  >
-                    <Flame className="h-6 w-6 text-orange-500" />
-                    <div className="mt-1 text-2xl font-bold tabular-nums">{s.current_count}</div>
-                    <div className="text-[10px] text-muted-foreground">
-                      {s.streak_type === "login"
-                        ? "ورود"
-                        : s.streak_type === "sales"
-                          ? "فروش"
-                          : s.streak_type === "calls"
-                            ? "تماس"
-                            : s.streak_type}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Daily Missions */}
+    <div dir="rtl" className="container mx-auto space-y-6 p-4 md:p-6">
+      {/* بخش ۱: هدر پروفایل */}
       <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Target className="h-5 w-5 text-emerald-500" />
-            مأموریت‌های امروز
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {missions.isLoading ? (
-            <div className="py-6 text-center text-sm text-muted-foreground">در حال بارگذاری...</div>
-          ) : !missions.data?.length ? (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              مأموریتی برای امروز تعریف نشده است.
+        <CardContent className="p-4 md:p-6">
+          {progressQ.isLoading ? (
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-16 w-16 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-3 w-full" />
+              </div>
+            </div>
+          ) : progressQ.data ? (
+            <div className="flex flex-col items-center gap-4 md:flex-row md:items-start">
+              <LevelBadge level={progressQ.data.level} size="lg" />
+              <div className="flex-1 space-y-3 text-center md:text-right">
+                <h1 className="text-lg font-bold md:text-xl">{fullName}</h1>
+                <XpProgressBar
+                  current={progressQ.data.xp_current}
+                  nextLevel={progressQ.data.xp_next_level}
+                  percent={progressQ.data.progress_percent}
+                  level={progressQ.data.level}
+                />
+                {rankQ.isLoading ? (
+                  <Skeleton className="h-4 w-full" />
+                ) : rankQ.data ? (
+                  <div className="grid grid-cols-2 gap-2 text-xs md:grid-cols-4 md:text-sm">
+                    <RankStat label="رتبه امروز" value={rankQ.data.daily_rank} />
+                    <RankStat label="این هفته" value={rankQ.data.weekly_rank} />
+                    <RankStat label="این ماه" value={rankQ.data.monthly_rank} />
+                    <RankStat label="کل" value={rankQ.data.all_time_rank} />
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">رتبه‌ای ثبت نشده</p>
+                )}
+              </div>
             </div>
           ) : (
-            <ul className="space-y-3">
-              {missions.data.map((m) => {
-                const pct =
-                  m.target_value > 0 ? Math.min(100, (m.progress / m.target_value) * 100) : 0;
-                return (
-                  <li
-                    key={m.id}
-                    className={`rounded-lg border p-3 ${m.completed ? "bg-emerald-500/5 border-emerald-500/30" : ""}`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 text-sm font-medium">
-                          {m.completed ? (
-                            <Trophy className="h-4 w-4 text-emerald-500" />
-                          ) : (
-                            <Target className="h-4 w-4 text-muted-foreground" />
-                          )}
-                          {m.title_fa}
-                        </div>
-                        {m.description ? (
-                          <p className="mt-0.5 text-xs text-muted-foreground">{m.description}</p>
-                        ) : null}
-                      </div>
-                      <Badge variant="secondary" className="gap-1 shrink-0">
-                        <Zap className="h-3 w-3" /> {m.xp_reward} XP
-                      </Badge>
-                    </div>
-                    <div className="mt-2">
-                      <Progress value={pct} className="h-2" />
-                      <div className="mt-1 flex justify-between text-[10px] text-muted-foreground tabular-nums">
-                        <span>
-                          {m.progress} / {m.target_value}
-                        </span>
-                        <span>{pct.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
+            <EmptyEncouragement />
           )}
         </CardContent>
       </Card>
+
+      {/* بخش ۲: نمودار ۷ روزه */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">امتیاز ۷ روز گذشته</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {seriesQ.isLoading ? (
+            <Skeleton className="h-[200px] w-full" />
+          ) : (
+            <ScoreChart data={seriesQ.data ?? []} />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* تفکیک امتیاز */}
+      <ScoreBreakdownCard employeeId={employeeId} />
+
+      {/* بخش ۳: نشان‌های اخیر */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0">
+          <CardTitle className="text-base">نشان‌های من</CardTitle>
+          <Button asChild variant="ghost" size="sm">
+            <Link to="/gamification/leaderboard">مشاهده همه</Link>
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {achievementsQ.isLoading ? (
+            <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-32 w-full" />
+              ))}
+            </div>
+          ) : (achievementsQ.data ?? []).length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              هنوز نشانی کسب نکرده‌اید — تلاش کن!
+            </p>
+          ) : (
+            <div className="grid grid-cols-3 gap-3 md:grid-cols-4">
+              {(achievementsQ.data ?? []).slice(0, 6).map((row) => {
+                const ach = (
+                  row as unknown as {
+                    id: string;
+                    unlocked_at: string;
+                    achievements: {
+                      id: string;
+                      key: string;
+                      title_fa: string;
+                      description: string | null;
+                      icon: string | null;
+                      xp_reward: number;
+                    };
+                  }
+                ).achievements;
+                return (
+                  <AchievementCard
+                    key={row.id}
+                    achievement={ach}
+                    unlocked={true}
+                    unlockedAt={row.unlocked_at}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* بخش ۴: لینک‌های سریع */}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <Button asChild size="lg" className="h-16 gap-2 text-base">
+          <Link to="/gamification/leaderboard">
+            <Trophy className="h-5 w-5" />
+            جدول رتبه‌بندی
+          </Link>
+        </Button>
+        <Button asChild size="lg" variant="outline" className="h-16 gap-2 text-base">
+          <Link to="/gamification/leaderboard">
+            <Target className="h-5 w-5" />
+            همه نشان‌ها
+          </Link>
+        </Button>
+        {isAdmin && (
+          <Button
+            asChild
+            size="lg"
+            variant="secondary"
+            className="h-16 gap-2 text-base md:col-span-2"
+          >
+            <Link to="/gamification/settings">
+              <Settings className="h-5 w-5" />
+              تنظیمات وزن KPIها (مدیر)
+            </Link>
+          </Button>
+        )}
+      </div>
     </div>
+  );
+}
+
+function RankStat({ label, value }: { label: string; value: number | null | undefined }) {
+  return (
+    <div className="rounded-md border bg-muted/30 p-2 text-center">
+      <div className="text-[10px] text-muted-foreground">{label}</div>
+      <div className="font-bold">{value && value > 0 ? `#${toPersianDigits(value)}` : "—"}</div>
+    </div>
+  );
+}
+
+function EmptyEncouragement() {
+  return (
+    <div className="py-6 text-center">
+      <div className="mb-2 text-3xl">🚀</div>
+      <p className="font-semibold">هنوز امتیازی ثبت نشده — شروع کن!</p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        با پاسخ سریع به استعلام‌ها و انجام مأموریت‌ها، امتیاز و نشان کسب کن.
+      </p>
+    </div>
+  );
+}
+
+function periodLabel(p?: string) {
+  if (p === "daily") return "روز";
+  if (p === "weekly") return "هفته";
+  if (p === "monthly") return "ماه";
+  return "کل";
+}
+
+function ScoreBreakdownCard({ employeeId }: { employeeId: string }) {
+  const scoreQ = useQuery({
+    enabled: !!employeeId,
+    queryKey: ["my-score-breakdown", employeeId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("employee_scores")
+        .select("breakdown, total_score, monthly_score")
+        .eq("employee_id", employeeId)
+        .maybeSingle();
+      if (error) throw error;
+      return data as unknown as Pick<
+        EmployeeScore,
+        "breakdown" | "total_score" | "monthly_score"
+      > | null;
+    },
+    staleTime: 60_000,
+  });
+
+  const kpisQ = useQuery({
+    queryKey: ["gamification-kpis-labels"],
+    queryFn: listKpis,
+    staleTime: 5 * 60_000,
+  });
+
+  const labelMap = new Map((kpisQ.data ?? []).map((k) => [k.key, k.label_fa]));
+
+  const breakdown = scoreQ.data?.breakdown ?? {};
+  const entries = Object.entries(breakdown).sort(
+    (a, b) => Math.abs(b[1]?.contribution ?? 0) - Math.abs(a[1]?.contribution ?? 0),
+  );
+  const totalAbs = entries.reduce((s, [, v]) => s + Math.abs(v?.contribution ?? 0), 0);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">این امتیاز از کجا آمد؟</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {scoreQ.isLoading || kpisQ.isLoading ? (
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            هنوز امتیازی برای نمایش وجود ندارد
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {entries.map(([key, v]) => {
+              const contribution = Number(v?.contribution ?? 0);
+              const share = totalAbs > 0 ? (Math.abs(contribution) / totalAbs) * 100 : 0;
+              const isManual = key === "manual_adjustment";
+              // D8-5: a manual entry has to explain itself afterwards — how much
+              // of today's score it accounts for, and how long it still applies.
+              const activeManualEntries = isManual
+                ? (v?.entries ?? []).filter((e) => Number(e.factor) > 0)
+                : [];
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">
+                        {isManual ? "تعدیل دستی" : (labelMap.get(key) ?? key)}
+                      </span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {periodLabel(v?.period)}
+                      </Badge>
+                    </div>
+                    <span className="tabular-nums text-muted-foreground">
+                      {toPersianDigits(contribution.toFixed(2))}
+                    </span>
+                  </div>
+                  <Progress value={share} className="h-2" />
+                  {isManual && activeManualEntries.length > 0 && (
+                    <ul className="mt-1 space-y-1 pr-3 text-xs text-muted-foreground">
+                      {activeManualEntries.map((e) => (
+                        <li key={e.event_id} className="flex items-start justify-between gap-2">
+                          <span className="flex-1">
+                            {e.reason || "بدون توضیح"}
+                            {" — "}
+                            {toPersianDigits(e.months_remaining)} ماه باقی‌مانده از{" "}
+                            {toPersianDigits(e.effect_months)} ماه
+                          </span>
+                          <span className="tabular-nums" dir="ltr">
+                            {toPersianDigits(Number(e.effective_amount).toFixed(2))}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

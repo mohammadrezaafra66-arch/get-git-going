@@ -90,7 +90,8 @@ export const trackProductInteractionFn = createServerFn({ method: "POST" })
     // Load the service-role admin client INSIDE the handler so it never
     // leaks into the client bundle graph (see tanstack-supabase-import-graph).
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error: insErr } = await supabaseAdmin.from("product_interaction_events").insert({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: insErr } = await (supabaseAdmin as any).from("product_interaction_events").insert({
       user_id: userId, // server-set from authenticated context; never trust client
       product_id: data.product_id,
       event_type: data.event_type,
@@ -98,10 +99,11 @@ export const trackProductInteractionFn = createServerFn({ method: "POST" })
       sale_price_type_id: data.sale_price_type_id ?? null,
       search_session_id: data.search_session_id ?? null,
     });
-    // DB-A1 adds a per-session dedup unique index. A duplicate insert raises
-    // 23505 (unique_violation); that means the event is already recorded, so
-    // treat it as success rather than surfacing an error to the caller.
-    if (insErr && (insErr as { code?: string }).code !== "23505") {
+    if (insErr) {
+      // Session-based dedup: a duplicate (same user/product/session/event) is a no-op success.
+      if ((insErr as { code?: string }).code === "23505") {
+        return { ok: true };
+      }
       throw new Error("خطا در ثبت رویداد تعامل");
     }
 

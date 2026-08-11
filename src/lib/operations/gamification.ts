@@ -16,6 +16,37 @@ export interface GamificationKpi {
   updated_at: string;
 }
 
+/**
+ * One manual score entry as it appears inside the score breakdown
+ * (migration 273 / D8-5). `months_remaining` is what lets the breakdown answer
+ * "how long does this keep affecting me?" rather than just "it did".
+ */
+export interface ManualScoreBreakdownEntry {
+  event_id: string;
+  amount: number;
+  effect_months: number;
+  months_elapsed: number;
+  months_remaining: number;
+  factor: number;
+  effective_amount: number;
+  triggered_at: string;
+  reason: string;
+  migrated: boolean;
+}
+
+export interface ScoreBreakdownItem {
+  value: number;
+  weight: number;
+  contribution: number;
+  period?: "daily" | "weekly" | "monthly" | "total";
+  scaled?: boolean;
+  /** Present only on the `manual_adjustment` key. */
+  decay_shape?: "linear";
+  entries?: ManualScoreBreakdownEntry[];
+  entry_count?: number;
+  active_count?: number;
+}
+
 export interface EmployeeScore {
   employee_id: string;
   daily_score: number;
@@ -24,16 +55,7 @@ export interface EmployeeScore {
   total_score: number;
   normalized_score: number;
   active_work_minutes: number;
-  breakdown: Record<
-    string,
-    {
-      value: number;
-      weight: number;
-      contribution: number;
-      period?: "daily" | "weekly" | "monthly" | "total";
-      scaled?: boolean;
-    }
-  >;
+  breakdown: Record<string, ScoreBreakdownItem>;
   last_calculated_at: string;
 }
 

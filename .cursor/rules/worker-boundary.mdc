@@ -1,0 +1,33 @@
+---
+description: Worker and multi-robot boundary rule for AfraKala.
+alwaysApply: true
+---
+
+# Worker Boundary Rule
+
+Worker and multi-robot work must stay in Cursor-controlled branches.
+
+Allowed worker areas:
+
+- `automation/**`
+- `automation/worker-runtime/**`
+- `docs/automation/**`
+- worker tests
+- driver SDK
+- job queue contracts
+- checkpoint logic
+- output persistence
+- safety gates
+
+Forbidden without explicit approval:
+
+- Real bot execution
+- Production scraping
+- Production messaging
+- Direct production database access from test code
+- Unsafe UI trigger for worker execution
+- Lovable edits to worker runtime
+
+Lovable may only display worker status if an approved API contract already exists.
+
+Cursor must not expose unsafe worker execution to UI without a reviewed API and safety gate.

@@ -10,13 +10,15 @@ import {
   XCircle,
   Ban,
   FileDown,
+  FileSpreadsheet,
   MessageCircle,
   Eye,
+  UserRound,
 } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,6 +32,7 @@ import {
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { formatNumber, formatDateTimeFa, formatDateFa } from "@/lib/i18n/formatters";
+import { toPersianAmountWords } from "@/lib/i18n/number-to-words";
 import { QuoteStatusBadge } from "@/components/sales/quotes/QuoteStatusBadge";
 import {
   SALES_QUOTE_SOURCE_LABELS,
@@ -37,9 +40,23 @@ import {
   type SalesQuoteItemSource,
 } from "@/lib/sales/quotes";
 import { downloadQuotePdf } from "@/lib/sales/quote-pdf";
+import { downloadSingleQuoteExport } from "@/lib/asan/export-single-quote";
 import { ShareQuoteDialog } from "@/components/sales/quotes/ShareQuoteDialog";
 import { useServerFn } from "@tanstack/react-start";
 import { updateQuoteStatus } from "@/lib/sales/quote-status.functions";
+import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
+import {
+  useQuoteStockAvailability,
+  QuoteStockAdvisoryPanel,
+  QuoteStockShortageList,
+  QuoteStockBreakdown,
+} from "@/components/sales/quotes/QuoteStockAvailability";
+import {
+  useQuoteLineServices,
+  fetchQuoteLineServices,
+  type QuoteLineService,
+} from "@/lib/sales/line-services";
+import { MandatoryServiceBadge } from "@/components/sales/quotes/MandatoryServiceBadge";
 
 const STATUS_LABELS_FA: Record<SalesQuoteStatus, string> = {
   draft: "پیش‌نویس",
@@ -59,14 +76,23 @@ interface QuoteDetail {
   customer_name: string;
   customer_phone: string;
   customer_note: string | null;
+  /** Item 231 — the unified person behind this quote's customer, if linked. */
+  customer_person_id: string | null;
   salesperson_id: string | null;
   salesperson_name: string | null;
+  visitor_id: string | null;
+  visitor_name: string | null;
   status: SalesQuoteStatus;
   subtotal_amount: number;
   discount_amount: number;
   final_amount: number;
   expires_at: string | null;
   cancel_reason: string | null;
+  reject_reason: string | null;
+  below_list_price_ack: boolean | null;
+  list_price_snapshot: number | null;
+  deposit_amount: number | null;
+  commitment_confirmed: boolean | null;
   created_at: string;
 }
 
@@ -87,6 +113,11 @@ function QuoteDetailPage() {
   const { quoteId } = Route.useParams();
   const { user, roles } = useAuth();
   const isManagerial = roles.includes("admin") || roles.includes("manager");
+  const isAccountant = roles.includes("accountant");
+  // ASAN M4.8 — the Asan export set is admin + accountant, deliberately NOT `isManagerial`:
+  // that means "admin or manager", and the backend refuses a manager (migration 291/292).
+  // Offering a control the backend rejects teaches the user to distrust the page.
+  const canAsanExport = roles.includes("admin") || roles.includes("accountant");
 
   const quoteQuery = useQuery({
     queryKey: ["sales-quote-detail", quoteId],
@@ -96,7 +127,7 @@ function QuoteDetailPage() {
       const { data, error } = await supabase
         .from("sales_quotes")
         .select(
-          "id, quote_number, customer_name, customer_phone, customer_note, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, created_at",
+          "id, quote_number, customer_name, customer_phone, customer_note, customer_person_id, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, visitor_id, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at",
         )
         .eq("id", quoteId)
         .maybeSingle();
@@ -111,7 +142,22 @@ function QuoteDetailPage() {
           .maybeSingle();
         salesperson_name = (sr.data?.full_name as string | null) ?? null;
       }
-      return { ...(data as Omit<QuoteDetail, "salesperson_name">), salesperson_name };
+      // Item 203 — resolve the visitor's name for display and the PDF.
+      let visitor_name: string | null = null;
+      const visitorId = (data as { visitor_id?: string | null }).visitor_id ?? null;
+      if (visitorId) {
+        const vr = await supabase
+          .from("visitors")
+          .select("full_name")
+          .eq("id", visitorId)
+          .maybeSingle();
+        visitor_name = ((vr.data as { full_name?: string } | null)?.full_name as string) ?? null;
+      }
+      return {
+        ...(data as Omit<QuoteDetail, "salesperson_name" | "visitor_name">),
+        salesperson_name,
+        visitor_name,
+      };
     },
   });
 
@@ -131,6 +177,17 @@ function QuoteDetailPage() {
       return (data ?? []) as QuoteItem[];
     },
   });
+
+  const lineServicesQuery = useQuoteLineServices(quoteId, !!user && !!quoteQuery.data);
+
+  // Stock advisory for the accountant/salesperson, shown on the page itself.
+  // Declared here — above the early returns below — so the hook order stays
+  // stable. Only enabled while the proforma is still open for a decision:
+  // after `accepted` the stock is already deducted and on canceled/rejected
+  // the numbers are noise.
+  const quoteStatus = quoteQuery.data?.status;
+  const showStockAdvisory = quoteStatus === "draft" || quoteStatus === "sent";
+  const pageStockCheck = useQuoteStockAvailability(quoteId, null, showStockAdvisory);
 
   if (quoteQuery.isLoading) {
     return (
@@ -163,6 +220,8 @@ function QuoteDetailPage() {
 
   const isOwner = quote.salesperson_id === user?.id;
   const items = itemsQuery.data ?? [];
+  // Requirement 223 — mandatory services per line (migration 276).
+  const lineServices: Map<string, QuoteLineService[]> = lineServicesQuery.data ?? new Map();
 
   return (
     <div className="space-y-5">
@@ -176,7 +235,13 @@ function QuoteDetailPage() {
                 <ArrowRight className="ml-1 h-4 w-4" /> بازگشت به لیست
               </Link>
             </Button>
-            <QuoteActionButtons quote={quote} isManagerial={isManagerial} isOwner={isOwner} />
+            <QuoteActionButtons
+              quote={quote}
+              isManagerial={isManagerial}
+              isAccountant={isAccountant}
+              isOwner={isOwner}
+              canAsanExport={canAsanExport}
+            />
           </div>
         }
       />
@@ -189,9 +254,28 @@ function QuoteDetailPage() {
               <QuoteStatusBadge status={quote.status} />
             </div>
             <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-              <Field label="نام مشتری" value={quote.customer_name} />
+              <Field
+                label="نام مشتری"
+                value={
+                  /* Item 231 — quotes now carry the unified person behind the
+                     customer, so the identity record is one click away. */
+                  quote.customer_person_id ? (
+                    <Link
+                      to="/persons/$personId/edit"
+                      params={{ personId: quote.customer_person_id }}
+                      className="inline-flex items-center gap-1 text-primary hover:underline"
+                    >
+                      <UserRound className="h-3.5 w-3.5" />
+                      {quote.customer_name}
+                    </Link>
+                  ) : (
+                    quote.customer_name
+                  )
+                }
+              />
               <Field label="شماره تماس" value={<span dir="ltr">{quote.customer_phone}</span>} />
               <Field label="فروشنده" value={quote.salesperson_name ?? "—"} />
+              {quote.visitor_name && <Field label="ویزیتور" value={quote.visitor_name} />}
               <Field label="تاریخ ایجاد" value={formatDateTimeFa(quote.created_at)} />
               <Field
                 label="اعتبار تا"
@@ -208,6 +292,38 @@ function QuoteDetailPage() {
               <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs">
                 <div className="mb-1 text-destructive">دلیل لغو</div>
                 <div className="whitespace-pre-wrap">{quote.cancel_reason}</div>
+              </div>
+            )}
+            {/* Item 195 */}
+            {quote.status === "rejected" && quote.reject_reason && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs">
+                <div className="mb-1 text-destructive">دلیل رد</div>
+                <div className="whitespace-pre-wrap">{quote.reject_reason}</div>
+              </div>
+            )}
+            {/* Items 194/196 — a quote issued under the floor must say so on
+                its face, with the floor it was measured against. */}
+            {quote.below_list_price_ack && (
+              <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                <div className="mb-1 font-medium text-amber-700 dark:text-amber-400">
+                  زیر قیمت لیست — با مسئولیت صادرکننده
+                </div>
+                <div>
+                  کف مجاز در زمان صدور:{" "}
+                  {quote.list_price_snapshot != null
+                    ? `${formatNumber(quote.list_price_snapshot)} تومان`
+                    : "—"}
+                </div>
+              </div>
+            )}
+            {/* Items 197/198 — the deposit that made issuing possible. */}
+            {quote.deposit_amount != null && quote.deposit_amount > 0 && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs">
+                <div className="mb-1 font-medium">بیعانه دریافتی</div>
+                <div>
+                  {formatNumber(quote.deposit_amount)} تومان
+                  {quote.commitment_confirmed ? " — تعهد فروشنده تأیید شده است." : ""}
+                </div>
               </div>
             )}
           </CardContent>
@@ -230,9 +346,24 @@ function QuoteDetailPage() {
                 <span className="text-xs font-normal text-muted-foreground">تومان</span>
               </span>
             </div>
+            {/* Item 203 — the amount in Persian letters, the way a financial
+                document spells it out to remove any doubt about the figure. */}
+            <div className="rounded-md border bg-muted/30 p-2">
+              <div className="text-[11px] text-muted-foreground">مبلغ به حروف</div>
+              <div className="text-xs leading-6">
+                {toPersianAmountWords(quote.final_amount) || "—"}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Stock reality, on the page itself rather than only inside the accept
+          dialog. The accountant decides here — `update_sales_quote_status`
+          lets them reject but never accept, so they can never open the dialog
+          that used to be the only place these numbers appeared. Advisory only:
+          it does not disable any action. */}
+      {showStockAdvisory && <QuoteStockAdvisoryPanel {...pageStockCheck} />}
 
       <div>
         <h2 className="mb-2 text-sm font-medium">آیتم‌های پیش‌فاکتور</h2>
@@ -268,7 +399,18 @@ function QuoteDetailPage() {
                         {items.map((it) => (
                           <tr key={it.id} className="hover:bg-muted/30">
                             <td className="p-3 align-top font-medium">
-                              {it.title_snapshot ?? it.free_item_name ?? "—"}
+                              <div>{it.title_snapshot ?? it.free_item_name ?? "—"}</div>
+                              {/* Requirement 223 — the obligation the database
+                                  attached to this line, shown as fact. */}
+                              {(lineServices.get(it.id) ?? [])
+                                .filter((s) => s.is_mandatory)
+                                .map((s) => (
+                                  <MandatoryServiceBadge
+                                    key={s.id}
+                                    className="mt-1"
+                                    text={s.display_text ?? s.service_name}
+                                  />
+                                ))}
                             </td>
                             <td className="p-3 align-top font-mono text-xs text-muted-foreground">
                               {it.sku_snapshot ?? "—"}
@@ -304,6 +446,16 @@ function QuoteDetailPage() {
                             {it.sku_snapshot}
                           </div>
                         )}
+                        {(lineServices.get(it.id) ?? [])
+                          .filter((s) => s.is_mandatory)
+                          .map((s) => (
+                            <MandatoryServiceBadge
+                              key={s.id}
+                              compact
+                              className="mt-1"
+                              text={s.display_text ?? s.service_name}
+                            />
+                          ))}
                       </div>
                       <span className="text-[11px] text-muted-foreground">
                         {SALES_QUOTE_SOURCE_LABELS[it.source]}
@@ -334,7 +486,13 @@ function QuoteDetailPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 md:hidden">
-        <QuoteActionButtons quote={quote} isManagerial={isManagerial} isOwner={isOwner} />
+        <QuoteActionButtons
+          quote={quote}
+          isManagerial={isManagerial}
+          isAccountant={isAccountant}
+          isOwner={isOwner}
+          canAsanExport={canAsanExport}
+        />
       </div>
     </div>
   );
@@ -352,11 +510,15 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 function QuoteActionButtons({
   quote,
   isManagerial,
+  isAccountant,
   isOwner,
+  canAsanExport,
 }: {
   quote: QuoteDetail;
   isManagerial: boolean;
+  isAccountant: boolean;
   isOwner: boolean;
+  canAsanExport: boolean;
 }) {
   const qc = useQueryClient();
   const [confirm, setConfirm] = useState<null | {
@@ -366,11 +528,33 @@ function QuoteActionButtons({
   }>(null);
   const [reason, setReason] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
+  const [asanLoading, setAsanLoading] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  // Items 175/179 — at confirm time the operator may switch warehouse, and sees
+  // the availability check for whichever warehouse is selected.
+  const [confirmWarehouseId, setConfirmWarehouseId] = useState<string | null>(null);
+
+  const isAccepting = confirm?.next === "accepted";
+
+  const stockCheck = useQuoteStockAvailability(quote.id, confirmWarehouseId, isAccepting);
+  const shortages = stockCheck.shortages;
 
   const updateQuoteStatusFn = useServerFn(updateQuoteStatus);
   const mutation = useMutation({
-    mutationFn: async (payload: { next: SalesQuoteStatus; reason?: string }) => {
+    mutationFn: async (payload: {
+      next: SalesQuoteStatus;
+      reason?: string;
+      warehouseId?: string | null;
+    }) => {
+      // 179 — persist the warehouse override BEFORE the status change, because
+      // the deduction trigger reads sales_quotes.warehouse_id at that moment.
+      if (payload.next === "accepted" && payload.warehouseId) {
+        const { error } = await supabase
+          .from("sales_quotes")
+          .update({ warehouse_id: payload.warehouseId } as never)
+          .eq("id", quote.id);
+        if (error) throw new Error(error.message);
+      }
       await updateQuoteStatusFn({
         data: { id: quote.id, next: payload.next, reason: payload.reason },
       });
@@ -385,7 +569,7 @@ function QuoteActionButtons({
 
   const canSend = (isManagerial || isOwner) && quote.status === "draft";
   const canAccept = isManagerial && quote.status === "sent";
-  const canReject = (isManagerial || isOwner) && quote.status === "sent";
+  const canReject = (isManagerial || isAccountant || isOwner) && quote.status === "sent";
   const canCancel =
     (isManagerial || isOwner) && (quote.status === "draft" || quote.status === "sent");
 
@@ -395,12 +579,17 @@ function QuoteActionButtons({
       const { data: itemRows, error } = await supabase
         .from("sales_quote_items")
         .select(
-          "title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at",
+          "id, title_snapshot, free_item_name, sku_snapshot, quantity, unit_price, discount_amount, line_total, created_at",
         )
         .eq("quote_id", quote.id)
         .order("created_at", { ascending: true });
       if (error) throw error;
+      // Requirement 223 — the printed document must carry the obligation.
+      const svcByLine = await fetchQuoteLineServices(quote.id);
       const items = (itemRows ?? []).map((it) => ({
+        mandatory_services: (svcByLine.get(it.id as string) ?? [])
+          .filter((s) => s.is_mandatory)
+          .map((s) => s.display_text ?? s.service_name),
         title: (it.title_snapshot as string | null) ?? (it.free_item_name as string | null) ?? "—",
         sku: (it.sku_snapshot as string | null) ?? null,
         quantity: Number(it.quantity ?? 0),
@@ -413,6 +602,7 @@ function QuoteActionButtons({
         customer_name: quote.customer_name,
         customer_phone: quote.customer_phone,
         salesperson_name: quote.salesperson_name,
+        visitor_name: quote.visitor_name,
         created_at: quote.created_at,
         expires_at: quote.expires_at,
         status_label: STATUS_LABELS_FA[quote.status] ?? quote.status,
@@ -426,6 +616,34 @@ function QuoteActionButtons({
       toast.error(e instanceof Error ? e.message : "خطا در ساخت PDF پیش‌فاکتور");
     } finally {
       setPdfLoading(false);
+    }
+  };
+
+  /**
+   * ASAN M4.8 — the same quote, in the sales layout, from this page.
+   *
+   * The date is the quote's Tehran calendar day, because that is what
+   * `asan_list_sales_export` filters on. Building it with `Intl` rather than a fixed offset
+   * keeps it correct across DST and matches how the rest of the app derives a Tehran day.
+   *
+   * A quote that is not exportable raises with the same Persian reason the range preview would
+   * show, rather than producing a partial file.
+   */
+  const handleAsanExport = async () => {
+    setAsanLoading(true);
+    try {
+      const dateIso = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Tehran",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(quote.created_at));
+      const rows = await downloadSingleQuoteExport(quote.id, quote.quote_number, dateIso);
+      toast.success(`فایل آسان ساخته شد: ${rows} سطر (مبلغ‌ها به ریال)`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "خطا در ساخت خروجی آسان");
+    } finally {
+      setAsanLoading(false);
     }
   };
 
@@ -454,7 +672,10 @@ function QuoteActionButtons({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => setConfirm({ next: "rejected", label: "رد پیش‌فاکتور" })}
+          onClick={() => {
+            setReason("");
+            setConfirm({ next: "rejected", label: "رد پیش‌فاکتور", needsReason: true });
+          }}
           disabled={mutation.isPending}
         >
           <XCircle className="ml-1 h-3.5 w-3.5" /> رد
@@ -471,6 +692,16 @@ function QuoteActionButtons({
           disabled={mutation.isPending}
         >
           <Ban className="ml-1 h-3.5 w-3.5" /> لغو
+        </Button>
+      )}
+      {canAsanExport && (
+        <Button size="sm" variant="outline" onClick={handleAsanExport} disabled={asanLoading}>
+          {asanLoading ? (
+            <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <FileSpreadsheet className="ml-1 h-3.5 w-3.5" />
+          )}
+          خروجی اکسل آسان
         </Button>
       )}
       <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={pdfLoading}>
@@ -507,22 +738,80 @@ function QuoteActionButtons({
           </AlertDialogHeader>
           {confirm?.needsReason && (
             <div className="space-y-2 py-2">
-              <label className="text-xs text-muted-foreground">دلیل لغو (اختیاری)</label>
-              <Input
+              <label className="text-xs text-muted-foreground">
+                {confirm.next === "rejected" ? "دلیل رد *" : "دلیل لغو *"}
+              </label>
+              <Textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="دلیل لغو"
+                placeholder={
+                  confirm.next === "rejected"
+                    ? "دلیل کامل رد را بنویسید؛ این متن برای کارشناس فروش نمایش داده می‌شود."
+                    : "دلیل لغو"
+                }
+                rows={5}
+                maxLength={2000}
               />
+              <div className="text-[11px] text-muted-foreground">
+                این توضیح در جزئیات پیش‌فاکتور ذخیره می‌شود.
+              </div>
             </div>
           )}
+
+          {/* Items 175/179 — warehouse override + availability check before confirming. */}
+          {isAccepting && (
+            <div className="space-y-3 py-2">
+              <WarehouseSelect
+                label="انبار پیش‌فرض کسر موجودی"
+                value={confirmWarehouseId}
+                onChange={setConfirmWarehouseId}
+                hint="فقط روی ردیف‌هایی اثر دارد که انبار مخصوص خودشان را ندارند؛ ردیفی که انبارش مشخص شده جابه‌جا نمی‌شود."
+              />
+
+              {stockCheck.isLoading ? (
+                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> بررسی موجودی…
+                </p>
+              ) : stockCheck.rows.length === 0 ? null : shortages.length === 0 ? (
+                <p className="rounded-md border border-emerald-500/40 bg-emerald-50 p-2 text-xs leading-6 dark:bg-emerald-950/20">
+                  موجودی همهٔ کالاهای این پیش‌فاکتور در انبارهای مربوطه کافی است.
+                </p>
+              ) : (
+                <div className="space-y-1 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-xs leading-6">
+                  <div className="font-medium text-destructive">
+                    موجودی کافی نیست — قطعی‌کردن انجام نمی‌شود:
+                  </div>
+                  {/* D8-8: a generic "insufficient stock" is not acceptable here —
+                      the message must say WHICH product in WHICH warehouse.
+                      Rendered by the shared component so this dialog and the
+                      accountant's advisory panel can never drift apart. */}
+                  <QuoteStockShortageList shortages={shortages} />
+                </div>
+              )}
+
+              {/* Per-warehouse availability for every line, not just shortages, so
+                  the accountant can see the split before confirming it. */}
+              {!stockCheck.isLoading && stockCheck.rows.length > 0 && (
+                <QuoteStockBreakdown rows={stockCheck.rows} />
+              )}
+            </div>
+          )}
+
           <AlertDialogFooter>
             <AlertDialogCancel>انصراف</AlertDialogCancel>
             <AlertDialogAction
+              disabled={
+                (isAccepting && shortages.length > 0) ||
+                // Items 195 — both cancelling and rejecting now require a
+                // reason, and the RPC refuses without one.
+                Boolean(confirm?.needsReason && !reason.trim())
+              }
               onClick={() => {
                 if (!confirm) return;
                 mutation.mutate({
                   next: confirm.next,
                   reason: confirm.needsReason ? reason.trim() || undefined : undefined,
+                  warehouseId: confirm.next === "accepted" ? confirmWarehouseId : null,
                 });
                 setConfirm(null);
               }}

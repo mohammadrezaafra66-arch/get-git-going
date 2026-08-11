@@ -17,6 +17,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { RECEIPT_OCR_PROMPT } from "@/lib/accounting/receipt-ocr-prompt";
+import { tryStructuredExtraction } from "@/lib/accounting/receipt-ocr-structured";
+import type { ReceiptExtractionResult } from "@/lib/accounting/receipt-extraction";
+import { aiVision } from "@/lib/ai/client.server";
 
 export type OcrMethod = "text" | "image_ocr" | "pdf_text" | "pdf_image_ocr" | "unsupported";
 
@@ -26,6 +30,8 @@ export interface OcrResult {
   warnings: string[];
   /** Optional engine-supplied confidence in [0,1]; null if not provided. */
   engine_confidence: number | null;
+  /** Mapped form fields when structured JSON OCR succeeded. */
+  structured?: ReceiptExtractionResult | null;
   /** SH-RA.2B: explicit disabled discriminator for self-host operators. */
   ok?: boolean;
   disabled?: boolean;
@@ -52,16 +58,6 @@ function externalApiTimeoutMs(): number {
   if (!Number.isFinite(raw) || raw < 15000) return 15000;
   return Math.floor(raw);
 }
-
-const OCR_PROMPT = [
-  "Extract only visible text from this payment receipt.",
-  "Do not guess values.",
-  "Return raw text only.",
-  "Do not invent bank names, amounts, dates, or tracking numbers.",
-  "If text is unclear, leave it unclear in raw text.",
-  "Preserve original line breaks and Persian/Arabic digits as-is.",
-  "Do not add explanations or commentary.",
-].join(" ");
 
 const InputSchema = z.object({
   document_id: z.string().uuid(),
@@ -188,115 +184,71 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
         } satisfies OcrResult;
       }
 
-      const apiKey = process.env.LOVABLE_API_KEY;
-      if (!apiKey) {
-        return {
-          raw_text: "",
-          method: "unsupported" as const,
-          warnings: ["موتور OCR تصویری در این محیط فعال نیست (LOVABLE_API_KEY تنظیم نشده)."],
-          engine_confidence: null,
-          ok: false,
-          disabled: true,
-          reason: "ocr_disabled",
-        } satisfies OcrResult;
-      }
-
-      // Encode the image as a data URL for the multimodal request.
+      // Encode the image for the vision call.
       const buf = new Uint8Array(await fileResp.arrayBuffer());
-      // Bound the size to keep payload reasonable (10MB upload cap exists).
       let bin = "";
       for (let i = 0; i < buf.length; i++) bin += String.fromCharCode(buf[i]);
       const b64 = btoa(bin);
-      const dataUrl = `data:${fileType};base64,${b64}`;
 
-      // SH-RA.2B: bound external call with AbortController + EXTERNAL_API_TIMEOUT_MS.
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), externalApiTimeoutMs());
-      let aiResp: Response;
-      try {
-        aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            temperature: 0,
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are an OCR engine. Output only the raw visible text from the image. No commentary.",
-              },
-              {
-                role: "user",
-                content: [
-                  { type: "text", text: OCR_PROMPT },
-                  { type: "image_url", image_url: { url: dataUrl } },
-                ],
-              },
-            ],
-          }),
-          signal: ctrl.signal,
-        });
-      } catch (err) {
-        const isAbort = (err as { name?: string } | null)?.name === "AbortError";
-        if (isAbort) {
+      // Goes through the shared client, which picks a provider that DECLARES
+      // the vision capability. The LAN Ollama deliberately does not declare it:
+      // the 2026-07-24 probe showed qwen3.6 reads Persian prose perfectly but
+      // misreads Persian digits reproducibly (it read 45,000,000 as
+      // 25,000,000). So receipt OCR stays on a keyed provider, and that is
+      // enforced by the provider registry rather than by a branch here.
+      const vision = await aiVision({
+        usageKey: "receipt_ocr.vision",
+        prompt: RECEIPT_OCR_PROMPT,
+        imageBase64: b64,
+        mimeType: fileType,
+        timeoutMs: externalApiTimeoutMs(),
+      });
+
+      if (!vision.ok) {
+        // No provider configured for vision is a "disabled" state, not an
+        // error: the accountant should be told to type the fields in.
+        if (vision.reason === "no_provider") {
           return {
             raw_text: "",
-            method: "image_ocr" as const,
-            warnings: ["موتور OCR در زمان مقرر پاسخ نداد (timeout)."],
+            method: "unsupported" as const,
+            warnings: ["موتور OCR تصویری در این محیط فعال نیست."],
             engine_confidence: null,
             ok: false,
-            reason: "ocr_timeout",
+            disabled: true,
+            reason: "ocr_disabled",
           } satisfies OcrResult;
         }
-        const msg = err instanceof Error ? err.message : String(err);
-        console.error("[ocr] external fetch failed:", msg);
         return {
           raw_text: "",
           method: "image_ocr" as const,
-          warnings: ["خطا در ارتباط با موتور OCR خارجی."],
+          warnings: [vision.messageFa],
           engine_confidence: null,
           ok: false,
-          reason: "ocr_network_error",
+          reason: vision.reason === "timeout" ? "ocr_timeout" : "ocr_network_error",
         } satisfies OcrResult;
-      } finally {
-        clearTimeout(timer);
       }
 
-      if (aiResp.status === 429) {
+      const structured = tryStructuredExtraction(vision.value);
+      if (structured) {
+        const confPct = structured.structured?.confidence ?? 0;
         return {
-          raw_text: "",
+          raw_text: structured.raw_text,
           method: "image_ocr" as const,
-          warnings: ["محدودیت نرخ موتور OCR؛ کمی بعد دوباره تلاش کنید."],
-          engine_confidence: null,
+          warnings: structured.warnings,
+          engine_confidence: confPct > 0 ? confPct / 100 : null,
+          structured,
         } satisfies OcrResult;
-      }
-      if (aiResp.status === 402) {
-        return {
-          raw_text: "",
-          method: "image_ocr" as const,
-          warnings: ["اعتبار موتور OCR کافی نیست؛ با مدیر تماس بگیرید."],
-          engine_confidence: null,
-        } satisfies OcrResult;
-      }
-      if (!aiResp.ok) {
-        const errBody = await aiResp.text().catch(() => "");
-        console.error(`[ocr] AI gateway error ${aiResp.status}:`, errBody.slice(0, 500));
-        throw new Response("OCR engine unavailable", { status: 502 });
       }
 
-      const ai = (await aiResp.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const text = ai.choices?.[0]?.message?.content ?? "";
       return {
-        raw_text: typeof text === "string" ? text : "",
+        raw_text: vision.value,
         method: "image_ocr" as const,
-        warnings: [],
+        warnings: [
+          "استخراج خودکار JSON ناموفق بود. تصویر حفظ شد؛ لطفاً فیلدها را دستی وارد کنید.",
+          "پاسخ مدل JSON معتبر نبود؛ در صورت امکان استخراج متنی/regex اعمال می‌شود.",
+        ],
         engine_confidence: null,
+        structured: null,
       } satisfies OcrResult;
     }
 

@@ -1,10 +1,20 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Filter, X, Check, ChevronsUpDown, ShieldCheck, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  ChevronsUpDown,
+  Filter,
+  Loader2,
+  Search,
+  ShieldCheck,
+  X,
+} from "lucide-react";
 
-import { requireAnyRole } from "@/lib/rbac/route-guards";
+import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasAnyRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { cn } from "@/lib/utils";
@@ -25,39 +35,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/_app/sales/credit-customers")({
   beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager", "accountant"]);
+    await requirePermission("sales", "view");
   },
   component: CreditCustomersPage,
 });
 
 const PAGE_SIZE = 20;
 
-interface Row {
-  id: string;
-  name: string;
+interface TrustedCreditCustomerRow {
+  customer_id: string;
+  customer_name: string;
   phone: string | null;
+  easy_code: string | null;
   responsible_id: string | null;
-  responsible: { id: string; full_name: string | null } | null;
-  customer_credit_profile: {
-    total_purchases: number;
-    credit_limit: number;
-    outstanding_balance: number;
-    credit_score: number;
-  } | null;
+  responsible_name: string | null;
+  total_purchases: number;
+  credit_score: number;
+  credit_limit: number;
+  available_credit: number;
+  held_credit: number;
+  outstanding_balance: number;
+  computed_allowed_credit: number;
+  has_active_overdue: boolean;
+  overdue_amount: number;
+  overdue_count: number;
+  oldest_due_date: string | null;
+  is_trusted: boolean;
+  status_code: "trusted" | "overdue" | "no_credit" | "inactive" | string;
+  status_reason: string;
+  total_count: number;
 }
 
 interface NumRange {
@@ -65,31 +76,47 @@ interface NumRange {
   to: string;
 }
 
+type RpcError = { message?: string } | null;
+type RpcResult<T> = Promise<{ data: T | null; error: RpcError }>;
+type TrustedCustomersRpc = (
+  fn: "list_trusted_credit_customers",
+  args: Record<string, unknown>,
+) => RpcResult<TrustedCreditCustomerRow[]>;
+
 const EMPTY_RANGE: NumRange = { from: "", to: "" };
 
 function rangeError(r: NumRange): string | null {
   const f = r.from === "" ? null : Number(r.from);
   const t = r.to === "" ? null : Number(r.to);
-  if (f !== null && (isNaN(f) || f < 0)) return "مقدار از باید عدد ≥ ۰ باشد";
-  if (t !== null && (isNaN(t) || t < 0)) return "مقدار تا باید عدد ≥ ۰ باشد";
+  if (f !== null && (Number.isNaN(f) || f < 0)) return "مقدار از باید عدد ≥ ۰ باشد";
+  if (t !== null && (Number.isNaN(t) || t < 0)) return "مقدار تا باید عدد ≥ ۰ باشد";
   if (f !== null && t !== null && t < f) return "تا نباید کمتر از از باشد";
   return null;
 }
 
+function toNullableNumber(value: string): number | null {
+  if (value.trim() === "") return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
 function CreditCustomersPage() {
+  const { roles } = useAuth();
+  const canOpenSensitiveProfile = hasAnyRole(roles, ["admin", "manager", "accountant"]);
+
   const [page, setPage] = useState(0);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [responsible, setResponsible] = useState<{ id: string; label: string } | null>(null);
   const [purchases, setPurchases] = useState<NumRange>(EMPTY_RANGE);
-  const [credit, setCredit] = useState<NumRange>(EMPTY_RANGE);
+  const [allowedCredit, setAllowedCredit] = useState<NumRange>(EMPTY_RANGE);
   const [debt, setDebt] = useState<NumRange>(EMPTY_RANGE);
   const [score, setScore] = useState<NumRange>(EMPTY_RANGE);
+  const [onlyTrusted, setOnlyTrusted] = useState(true);
 
   const dName = normalizeSearchText(useDebounce(name, 350));
   const dPhone = useDebounce(phone, 350);
   const dPurchases = useDebounce(purchases, 350);
-  const dCredit = useDebounce(credit, 350);
+  const dAllowedCredit = useDebounce(allowedCredit, 350);
   const dDebt = useDebounce(debt, 350);
   const dScore = useDebounce(score, 350);
 
@@ -97,32 +124,32 @@ function CreditCustomersPage() {
     let n = 0;
     if (dName.trim()) n++;
     if (dPhone.trim()) n++;
-    if (responsible) n++;
     if (dPurchases.from || dPurchases.to) n++;
-    if (dCredit.from || dCredit.to) n++;
+    if (dAllowedCredit.from || dAllowedCredit.to) n++;
     if (dDebt.from || dDebt.to) n++;
     if (dScore.from || dScore.to) n++;
+    if (onlyTrusted) n++;
     return n;
-  }, [dName, dPhone, responsible, dPurchases, dCredit, dDebt, dScore]);
+  }, [dName, dPhone, dPurchases, dAllowedCredit, dDebt, dScore, onlyTrusted]);
 
   const rangeErrors = {
     purchases: rangeError(dPurchases),
-    credit: rangeError(dCredit),
+    allowedCredit: rangeError(dAllowedCredit),
     debt: rangeError(dDebt),
     score: rangeError(dScore),
   };
   const hasRangeError = Object.values(rangeErrors).some(Boolean);
 
   const queryKey = [
-    "credit-customers",
+    "trusted-credit-customers",
     page,
     dName,
     dPhone,
-    responsible?.id ?? null,
     dPurchases,
-    dCredit,
+    dAllowedCredit,
     dDebt,
     dScore,
+    onlyTrusted,
   ];
 
   const { data, isFetching, error } = useQuery({
@@ -130,35 +157,28 @@ function CreditCustomersPage() {
     enabled: !hasRangeError,
     staleTime: 30_000,
     queryFn: async () => {
-      let q = supabase
-        .from("customers")
-        .select(
-          `id, name, phone, responsible_id,
-           responsible:profiles!customers_responsible_id_fkey(id, full_name),
-           customer_credit_profile!inner(total_purchases, credit_limit, outstanding_balance, credit_score)`,
-          { count: "exact" },
-        )
-        .order("name", { ascending: true })
-        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+      const { data, error } = await (supabase.rpc as unknown as TrustedCustomersRpc)(
+        "list_trusted_credit_customers",
+        {
+          p_search: dName.trim() || null,
+          p_phone: dPhone.trim() || null,
+          p_min_total_purchases: toNullableNumber(dPurchases.from),
+          p_max_total_purchases: toNullableNumber(dPurchases.to),
+          p_min_allowed_credit: toNullableNumber(dAllowedCredit.from),
+          p_max_allowed_credit: toNullableNumber(dAllowedCredit.to),
+          p_min_outstanding_balance: toNullableNumber(dDebt.from),
+          p_max_outstanding_balance: toNullableNumber(dDebt.to),
+          p_min_credit_score: toNullableNumber(dScore.from),
+          p_max_credit_score: toNullableNumber(dScore.to),
+          p_only_trusted: onlyTrusted,
+          p_limit: PAGE_SIZE,
+          p_offset: page * PAGE_SIZE,
+        },
+      );
 
-      const term = dName.trim().replace(/[%_]/g, "");
-      if (term) q = q.ilike("name", `%${term}%`);
-      const phoneTerm = dPhone.trim().replace(/[%_]/g, "");
-      if (phoneTerm) q = q.ilike("phone", `%${phoneTerm}%`);
-      if (responsible?.id) q = q.eq("responsible_id", responsible.id);
-
-      const numFilter = (col: string, r: NumRange) => {
-        if (r.from !== "") q = q.gte(`customer_credit_profile.${col}`, Number(r.from));
-        if (r.to !== "") q = q.lte(`customer_credit_profile.${col}`, Number(r.to));
-      };
-      numFilter("total_purchases", dPurchases);
-      numFilter("credit_limit", dCredit);
-      numFilter("outstanding_balance", dDebt);
-      numFilter("credit_score", dScore);
-
-      const { data, error, count } = await q;
-      if (error) throw error;
-      return { rows: (data ?? []) as unknown as Row[], count: count ?? 0 };
+      if (error) throw new Error(error.message || "خطا در دریافت مشتریان معتبر");
+      const rows = data ?? [];
+      return { rows, count: rows[0]?.total_count ?? 0 };
     },
   });
 
@@ -169,11 +189,11 @@ function CreditCustomersPage() {
     setPage(0);
     setName("");
     setPhone("");
-    setResponsible(null);
     setPurchases(EMPTY_RANGE);
-    setCredit(EMPTY_RANGE);
+    setAllowedCredit(EMPTY_RANGE);
     setDebt(EMPTY_RANGE);
     setScore(EMPTY_RANGE);
+    setOnlyTrusted(true);
   }
 
   const filtersPanel = (
@@ -188,20 +208,15 @@ function CreditCustomersPage() {
         setPage(0);
         setPhone(v);
       }}
-      responsible={responsible}
-      setResponsible={(v) => {
-        setPage(0);
-        setResponsible(v);
-      }}
       purchases={purchases}
       setPurchases={(v) => {
         setPage(0);
         setPurchases(v);
       }}
-      credit={credit}
-      setCredit={(v) => {
+      allowedCredit={allowedCredit}
+      setAllowedCredit={(v) => {
         setPage(0);
-        setCredit(v);
+        setAllowedCredit(v);
       }}
       debt={debt}
       setDebt={(v) => {
@@ -213,6 +228,11 @@ function CreditCustomersPage() {
         setPage(0);
         setScore(v);
       }}
+      onlyTrusted={onlyTrusted}
+      setOnlyTrusted={(v) => {
+        setPage(0);
+        setOnlyTrusted(v);
+      }}
       errors={rangeErrors}
     />
   );
@@ -220,21 +240,20 @@ function CreditCustomersPage() {
   return (
     <div className="space-y-6" dir="rtl">
       <PageHeader
-        title="وضعیت اعتبار مشتریان"
-        description="فیلتر و مشاهده وضعیت اعتباری مشتریان"
+        title="مشتریان معتبر و سقف حساب‌باز"
+        description="نمای کنترل‌شدهٔ مشتریان قابل فروش حساب‌باز و سقف مجاز محاسبه‌شده"
         actions={
           <HelpHint
             size={18}
             text={
-              "این لیست وضعیت اعتباری همهٔ مشتریان را نشان می‌دهد.\n" +
-              "با فیلترها می‌توانید بر اساس نام، تلفن، مسئول، سابقهٔ خرید، اعتبار، بدهی یا امتیاز فیلتر کنید.\n" +
-              "روی نام هر مشتری بزنید تا وارد پروفایل اعتباری او شوید."
+              "مشتری معتبر یعنی مشتری‌ای که معوق فعال ندارد و سقف مجاز محاسبه‌شده‌اش بیشتر از صفر است.\n" +
+              "عدد اصلی این صفحه «سقف مجاز حساب‌باز» است؛ یعنی اعتبار قابل استفاده پس از کسر محدودیت‌های فعال، نه صرفاً سقف خام اعتبار.\n" +
+              "فروشنده‌ها نمای عملیاتی و محدود می‌بینند؛ جزئیات حساس فرمول اعتبار فقط در صفحات مجاز باقی می‌ماند."
             }
           />
         }
       />
 
-      {/* Mobile: Sheet, Desktop: Collapsible */}
       <div className="md:hidden">
         <Sheet>
           <div className="flex items-center justify-between gap-2">
@@ -255,9 +274,9 @@ function CreditCustomersPage() {
               </Button>
             )}
           </div>
-          <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto" dir="rtl">
+          <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-md" dir="rtl">
             <SheetHeader>
-              <SheetTitle>فیلترهای پیشرفته</SheetTitle>
+              <SheetTitle>فیلترهای مشتریان معتبر</SheetTitle>
             </SheetHeader>
             <div className="mt-4">{filtersPanel}</div>
           </SheetContent>
@@ -292,7 +311,7 @@ function CreditCustomersPage() {
       </div>
 
       <Card>
-        <CardContent className="p-4 space-y-4">
+        <CardContent className="space-y-4 p-4">
           {error && (
             <p className="text-sm text-destructive">خطا در بارگذاری: {(error as Error).message}</p>
           )}
@@ -309,45 +328,72 @@ function CreditCustomersPage() {
                   <TableHead>نام مشتری</TableHead>
                   <TableHead>تلفن</TableHead>
                   <TableHead>مسئول</TableHead>
-                  <TableHead>کل خرید</TableHead>
-                  <TableHead>اعتبار</TableHead>
-                  <TableHead>بدهی</TableHead>
+                  <TableHead>وضعیت</TableHead>
+                  <TableHead>سقف مجاز حساب‌باز</TableHead>
+                  <TableHead>سقف اعتبار پایه</TableHead>
+                  <TableHead>بدهی جاری</TableHead>
                   <TableHead>امتیاز</TableHead>
+                  <TableHead>دلیل</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {(data?.rows ?? []).map((r) => {
-                  const ccp = r.customer_credit_profile;
-                  return (
-                    <TableRow key={r.id}>
-                      <TableCell>
+                {(data?.rows ?? []).map((r) => (
+                  <TableRow key={r.customer_id}>
+                    <TableCell>
+                      {canOpenSensitiveProfile ? (
                         <Link
                           to="/sales/customers/$customerId/credit"
-                          params={{ customerId: r.id }}
-                          className="font-medium text-primary hover:underline inline-flex items-center gap-1"
+                          params={{ customerId: r.customer_id }}
+                          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
                         >
                           <ShieldCheck className="h-3.5 w-3.5" />
-                          {r.name}
+                          {r.customer_name}
                         </Link>
-                      </TableCell>
-                      <TableCell dir="ltr" className="text-right">
-                        {r.phone ? toFaDigits(r.phone) : "—"}
-                      </TableCell>
-                      <TableCell>
-                        {r.responsible?.full_name || (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{ccp ? formatNumber(ccp.total_purchases) : "—"}</TableCell>
-                      <TableCell>{ccp ? formatNumber(ccp.credit_limit) : "—"}</TableCell>
-                      <TableCell>{ccp ? formatNumber(ccp.outstanding_balance) : "—"}</TableCell>
-                      <TableCell>{ccp ? <ScoreBadge score={ccp.credit_score} /> : "—"}</TableCell>
-                    </TableRow>
-                  );
-                })}
+                      ) : (
+                        <span className="inline-flex items-center gap-1 font-medium">
+                          <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                          {r.customer_name}
+                        </span>
+                      )}
+                      {r.easy_code && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          کد آسان: {toFaDigits(r.easy_code)}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell dir="ltr" className="text-right">
+                      {r.phone ? toFaDigits(r.phone) : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {r.responsible_name || <span className="text-muted-foreground">—</span>}
+                    </TableCell>
+                    <TableCell>
+                      <TrustedStatusBadge row={r} />
+                    </TableCell>
+                    <TableCell className="font-semibold">
+                      {formatNumber(Number(r.computed_allowed_credit ?? 0))}
+                    </TableCell>
+                    <TableCell>{formatNumber(Number(r.credit_limit ?? 0))}</TableCell>
+                    <TableCell>{formatNumber(Number(r.outstanding_balance ?? 0))}</TableCell>
+                    <TableCell>
+                      <ScoreBadge score={Number(r.credit_score ?? 0)} />
+                    </TableCell>
+                    <TableCell className="min-w-[220px] text-xs text-muted-foreground">
+                      <div>{r.status_reason || "—"}</div>
+                      {r.has_active_overdue && (
+                        <div className="mt-1 text-destructive">
+                          معوق: {formatNumber(Number(r.overdue_amount ?? 0))}
+                          {r.oldest_due_date
+                            ? `، قدیمی‌ترین سررسید: ${toFaDigits(r.oldest_due_date)}`
+                            : ""}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
                 {!isFetching && (data?.rows.length ?? 0) === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-6">
+                    <TableCell colSpan={9} className="py-6 text-center text-muted-foreground">
                       مشتری‌ای با این فیلترها یافت نشد
                     </TableCell>
                   </TableRow>
@@ -386,7 +432,28 @@ function CreditCustomersPage() {
   );
 }
 
-/* ---------------- Score badge ---------------- */
+function TrustedStatusBadge({ row }: { row: TrustedCreditCustomerRow }) {
+  const cls = row.is_trusted
+    ? "bg-green-100 text-green-700 dark:bg-green-950/50 dark:text-green-300"
+    : row.has_active_overdue
+      ? "bg-red-100 text-red-700 dark:bg-red-950/50 dark:text-red-300"
+      : "bg-orange-100 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300";
+
+  const label = row.is_trusted
+    ? "معتبر"
+    : row.has_active_overdue
+      ? "معوق‌دار"
+      : row.status_code === "inactive"
+        ? "غیرفعال"
+        : "بدون سقف مجاز";
+
+  return (
+    <Badge variant="outline" className={cn("gap-1 font-semibold", cls)}>
+      {row.has_active_overdue && <AlertTriangle className="h-3 w-3" />}
+      {label}
+    </Badge>
+  );
+}
 
 function ScoreBadge({ score }: { score: number }) {
   const cls =
@@ -402,26 +469,24 @@ function ScoreBadge({ score }: { score: number }) {
   );
 }
 
-/* ---------------- Filters form ---------------- */
-
 interface FiltersFormProps {
   name: string;
   setName: (v: string) => void;
   phone: string;
   setPhone: (v: string) => void;
-  responsible: { id: string; label: string } | null;
-  setResponsible: (v: { id: string; label: string } | null) => void;
   purchases: NumRange;
   setPurchases: (v: NumRange) => void;
-  credit: NumRange;
-  setCredit: (v: NumRange) => void;
+  allowedCredit: NumRange;
+  setAllowedCredit: (v: NumRange) => void;
   debt: NumRange;
   setDebt: (v: NumRange) => void;
   score: NumRange;
   setScore: (v: NumRange) => void;
+  onlyTrusted: boolean;
+  setOnlyTrusted: (v: boolean) => void;
   errors: {
     purchases: string | null;
-    credit: string | null;
+    allowedCredit: string | null;
     debt: string | null;
     score: string | null;
   };
@@ -430,7 +495,7 @@ interface FiltersFormProps {
 function FiltersForm(p: FiltersFormProps) {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1">
           <Label className="text-xs">نام مشتری</Label>
           <div className="relative">
@@ -438,7 +503,7 @@ function FiltersForm(p: FiltersFormProps) {
             <Input
               value={p.name}
               onChange={(e) => p.setName(e.target.value)}
-              placeholder="جستجو نام..."
+              placeholder="جستجوی نام یا کد آسان..."
               className="pr-8"
             />
           </div>
@@ -455,8 +520,15 @@ function FiltersForm(p: FiltersFormProps) {
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-xs">مسئول</Label>
-          <ResponsiblePicker value={p.responsible} onChange={p.setResponsible} />
+          <Label className="text-xs">نمایش</Label>
+          <Button
+            type="button"
+            variant={p.onlyTrusted ? "default" : "outline"}
+            className="w-full justify-center"
+            onClick={() => p.setOnlyTrusted(!p.onlyTrusted)}
+          >
+            {p.onlyTrusted ? "فقط مشتریان معتبر" : "همه وضعیت‌های اعتباری"}
+          </Button>
         </div>
       </div>
 
@@ -465,28 +537,28 @@ function FiltersForm(p: FiltersFormProps) {
         range={p.purchases}
         onChange={p.setPurchases}
         error={p.errors.purchases}
-        hint="مجموع خریدهای مشتری از ابتدای فعالیت. برای پیدا کردن مشتریان بزرگ، فقط «از» را پر کنید."
+        hint="مجموع خرید ثبت‌شده برای مشتری."
       />
       <NumberRange
-        label="اعتبار (تومان)"
-        range={p.credit}
-        onChange={p.setCredit}
-        error={p.errors.credit}
-        hint="سقف اعتبار تخصیص‌یافته به مشتری؛ بازهٔ از/تا برای فیلتر مشتریان با اعتبار در این محدوده."
+        label="سقف مجاز حساب‌باز (تومان)"
+        range={p.allowedCredit}
+        onChange={p.setAllowedCredit}
+        error={p.errors.allowedCredit}
+        hint="عدد قابل استفاده برای فروش حساب‌باز؛ مشتری معوق‌دار اینجا صفر می‌شود."
       />
       <NumberRange
-        label="بدهی (تومان)"
+        label="بدهی جاری (تومان)"
         range={p.debt}
         onChange={p.setDebt}
         error={p.errors.debt}
-        hint="مانده بدهی فعلی مشتری (پرداخت‌نشده). برای پیدا کردن بدهکاران بزرگ از فیلد «از» استفاده کنید."
+        hint="مانده بدهی فعلی مشتری."
       />
       <NumberRange
         label="امتیاز اعتباری"
         range={p.score}
         onChange={p.setScore}
         error={p.errors.score}
-        hint="عدد ۰ تا ۱۰۰: تا ۳۰ ضعیف (قرمز)، ۳۱ تا ۶۰ متوسط (نارنجی)، بالاتر از ۶۰ خوب (سبز)."
+        hint="امتیاز فقط روی مبلغ اعتبار اثر می‌گذارد و به‌تنهایی مجوز فروش نیست."
       />
     </div>
   );
@@ -501,128 +573,35 @@ function NumberRange({
 }: {
   label: string;
   range: NumRange;
-  onChange: (v: NumRange) => void;
+  onChange: (r: NumRange) => void;
   error: string | null;
-  hint?: string;
+  hint: string;
 }) {
   return (
-    <div className="space-y-1">
-      <Label className="text-xs inline-flex items-center gap-1">
+    <div className="space-y-2">
+      <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
         {label}
-        {hint && <HelpHint text={hint} size={12} />}
-      </Label>
+        <HelpHint text={hint} />
+      </div>
       <div className="grid grid-cols-2 gap-2">
         <Input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          placeholder="از"
           value={range.from}
           onChange={(e) => onChange({ ...range, from: e.target.value })}
+          placeholder="از"
+          inputMode="numeric"
+          dir="ltr"
+          className="text-right"
         />
         <Input
-          type="number"
-          min="0"
-          inputMode="numeric"
-          placeholder="تا"
           value={range.to}
           onChange={(e) => onChange({ ...range, to: e.target.value })}
+          placeholder="تا"
+          inputMode="numeric"
+          dir="ltr"
+          className="text-right"
         />
       </div>
       {error && <p className="text-xs text-destructive">{error}</p>}
-    </div>
-  );
-}
-
-/* ---------------- Responsible autocomplete ---------------- */
-
-function ResponsiblePicker({
-  value,
-  onChange,
-}: {
-  value: { id: string; label: string } | null;
-  onChange: (v: { id: string; label: string } | null) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const debounced = useDebounce(search, 350);
-
-  const { data: profiles = [] } = useQuery({
-    queryKey: ["credit-customers-resp-profiles", debounced],
-    enabled: open,
-    staleTime: 60_000,
-    queryFn: async () => {
-      let q = supabase
-        .from("profiles")
-        .select("id, full_name")
-        .eq("status", "active")
-        .order("full_name", { ascending: true })
-        .limit(20);
-      const term = debounced.trim().replace(/[%_]/g, "");
-      if (term) q = q.ilike("full_name", `%${term}%`);
-      const { data, error } = await q;
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
-
-  return (
-    <div className="flex gap-1">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            role="combobox"
-            className={cn(
-              "flex-1 justify-between font-normal h-9",
-              !value && "text-muted-foreground",
-            )}
-          >
-            {value ? value.label || "کاربر" : "همه"}
-            <ChevronsUpDown className="h-4 w-4 opacity-50" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-          <Command shouldFilter={false}>
-            <CommandInput placeholder="نام کاربر..." value={search} onValueChange={setSearch} />
-            <CommandList>
-              <CommandEmpty>کاربری یافت نشد</CommandEmpty>
-              <CommandGroup>
-                {profiles.map((pr) => (
-                  <CommandItem
-                    key={pr.id}
-                    value={pr.id}
-                    onSelect={() => {
-                      onChange({ id: pr.id, label: pr.full_name ?? "" });
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "ml-2 h-4 w-4",
-                        pr.id === value?.id ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                    <span>{pr.full_name || "بدون نام"}</span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
-      {value && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => onChange(null)}
-          aria-label="پاک کردن"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      )}
     </div>
   );
 }

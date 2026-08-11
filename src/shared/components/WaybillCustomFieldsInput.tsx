@@ -1,5 +1,6 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import {
   Select,
   SelectContent,
@@ -97,10 +98,9 @@ export function WaybillCustomFieldsInput({
                   </SelectContent>
                 </Select>
               ) : f.field_type === "date" ? (
-                <Input
-                  type="date"
-                  value={String(v)}
-                  onChange={(e) => set(f.field_key, e.target.value)}
+                <PersianDatePicker
+                  value={v ? String(v) : null}
+                  onChange={(val) => set(f.field_key, val ?? "")}
                 />
               ) : f.field_type === "number" ? (
                 <Input

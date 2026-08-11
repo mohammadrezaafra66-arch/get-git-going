@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 import { IDENTIFIER_KINDS, type IdentifierKind } from "./identifiers-normalize";
+import { PersonContextKindEnum } from "./context-links.schemas";
 
 /** Serializable JSON value — used for jsonb fields shipped across serverFn boundary. */
 export type JsonValue =
@@ -49,8 +50,36 @@ export const PersonFieldValueInputSchema = z.object({
 });
 export type PersonFieldValueInput = z.infer<typeof PersonFieldValueInputSchema>;
 
+export const IdentifierKindEnum = z.enum(
+  IDENTIFIER_KINDS as unknown as [IdentifierKind, ...IdentifierKind[]],
+);
+export const IdentifierStatusEnum = z.enum(["provisional", "confirmed", "revoked"]);
+
+/**
+ * Identifier supplied INLINE with a person creation (item 226).
+ *
+ * Deliberately has no `person_id` — the person does not exist yet. The raw
+ * value is normalized server-side by normalizeIdentifier() before it reaches
+ * person_create_full(); the DB never normalizes (see the migration header).
+ */
+export const CreatePersonIdentifierSchema = z.object({
+  kind: IdentifierKindEnum,
+  value_raw: z
+    .string()
+    .min(1, "مقدار شناسه نمی‌تواند خالی باشد")
+    .max(512, "طول مقدار شناسه بیش از حد مجاز است"),
+  is_primary: z.boolean().optional().default(false),
+  status: IdentifierStatusEnum.optional().default("provisional"),
+});
+export type CreatePersonIdentifier = z.infer<typeof CreatePersonIdentifierSchema>;
+
+/**
+ * `kind` defaults to 'individual' and everything except `display_name` is
+ * optional — a person must be creatable from a name alone, because roles and
+ * profile data must never be preconditions for introducing a person.
+ */
 export const CreatePersonInputSchema = z.object({
-  kind: z.enum(PERSON_KINDS),
+  kind: z.enum(PERSON_KINDS).optional().default("individual"),
   display_name: z
     .string()
     .trim()
@@ -61,6 +90,12 @@ export const CreatePersonInputSchema = z.object({
   is_active: z.boolean().optional().default(true),
   notes: z.string().trim().max(2000).optional().nullable(),
   field_values: z.array(PersonFieldValueInputSchema).optional().default([]),
+  identifiers: z.array(CreatePersonIdentifierSchema).optional().default([]),
+  /** Optional provenance: where this person was introduced from. Never a gate. */
+  context_kind: PersonContextKindEnum.optional().nullable(),
+  context_ref_table: z.string().trim().max(63).optional().nullable(),
+  context_ref_id: z.string().uuid().optional().nullable(),
+  context_note: z.string().trim().max(2000).optional().nullable(),
 });
 export type CreatePersonInput = z.infer<typeof CreatePersonInputSchema>;
 
@@ -77,11 +112,6 @@ export const UpdatePersonInputSchema = z.object({
 export type UpdatePersonInput = z.infer<typeof UpdatePersonInputSchema>;
 
 /* ---------- identifiers (shared input shape) ---------- */
-
-export const IdentifierKindEnum = z.enum(
-  IDENTIFIER_KINDS as unknown as [IdentifierKind, ...IdentifierKind[]],
-);
-export const IdentifierStatusEnum = z.enum(["provisional", "confirmed", "revoked"]);
 
 export const PersonIdentifierInputSchema = z.object({
   person_id: z.string().uuid({ message: "شناسه شخص نامعتبر است" }),

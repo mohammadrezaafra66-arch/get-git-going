@@ -1,13 +1,13 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, Loader2, Check, X, Pencil } from "lucide-react";
+import { Plus, Search, Loader2, Check, X, Pencil, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasAnyRole } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -90,17 +90,35 @@ function statusBadge(status: SupplierRow["status"]) {
 function SuppliersListPage() {
   const { roles } = useAuth();
   const queryClient = useQueryClient();
-  const canManage = hasAnyRole(roles, ["admin", "accountant"]);
+  // P1.5b — see SupplierForm: role_permissions is the source of truth.
+  const canManage = hasPermissionEx(roles, "suppliers", "update");
 
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [onlyMissingCode, setOnlyMissingCode] = useState(false);
   const [page, setPage] = useState(0);
   const debouncedRaw = useDebounce(search, 350);
   const debouncedNorm = normalizeSearchText(debouncedRaw);
   const debounced = debouncedNorm.length >= 2 ? debouncedNorm : "";
 
+  // How many suppliers still lack an Asan code. Counted live and never written
+  // as a literal: the mission file said 15, it was 13 the day after migration
+  // 303, and it moves again on every add or removal. `head: true` fetches the
+  // count without the rows.
+  const { data: missingCodeCount = 0 } = useQuery({
+    queryKey: ["suppliers", "missing-asan-code"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("suppliers")
+        .select("id", { count: "exact", head: true })
+        .is("accounting_code", null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ["suppliers", { q: debounced, status, page }],
+    queryKey: ["suppliers", { q: debounced, status, page, onlyMissingCode }],
     queryFn: async () => {
       let q = supabase
         .from("suppliers")
@@ -109,6 +127,7 @@ function SuppliersListPage() {
         .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
 
       if (status !== "all") q = q.eq("status", status);
+      if (onlyMissingCode) q = q.is("accounting_code", null);
       if (debounced.trim()) {
         const term = `%${debounced.trim()}%`;
         q = q.or(
@@ -162,6 +181,36 @@ function SuppliersListPage() {
         description="مدیریت لیست تأمین‌کنندگان، تأیید و سطح اعتماد"
         actions={headerActions}
       />
+
+      {/* P2.3 — the count is live. When every supplier has a code it reaches 0
+          and the banner disappears on its own, with nothing to remember to
+          remove. Clicking filters this same list rather than navigating away. */}
+      {missingCodeCount > 0 && (
+        <div className="flex flex-col gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div className="leading-6">
+              <span className="font-medium">
+                {toFaDigits(missingCodeCount)} تأمین‌کننده هنوز کد آسان ندارند
+              </span>
+              <p className="text-xs text-muted-foreground">
+                تا وقتی کد آسان ثبت نشود، خروجی آسانِ خرید برای این تأمین‌کننده‌ها کار نمی‌کند.
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={() => {
+              setOnlyMissingCode((v) => !v);
+              setPage(0);
+            }}
+          >
+            {onlyMissingCode ? "نمایش همه" : "نمایش بدون کد"}
+          </Button>
+        </div>
+      )}
 
       <Card>
         <CardContent className="space-y-4 pt-6">
