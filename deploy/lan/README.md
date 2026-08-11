@@ -365,7 +365,7 @@ docker exec afrakala-lan-db psql -U postgres -d postgres -c "select rolname, rol
 
 ```powershell
 cd C:\afrakala-lan\get-git-going
-git pull origin main
+git pull --ff-only origin (git rev-parse --abbrev-ref HEAD)
 Select-String -Path .\deploy\lan\scripts\*.sh,.\deploy\supabase\volumes\db\init\*.sh -Pattern "`r" -List
 powershell -ExecutionPolicy Bypass -File .\deploy\lan\scripts\init-lan.ps1 -RotateSecrets
 docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
@@ -392,11 +392,19 @@ docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan u
 
 فایل `.gitattributes` در ریشهٔ ریپو این مسیرها را به LF قفل می‌کند. روی لپ‌تاپ LAN یک بار این کارها را انجام دهید:
 
+> 🔴 **این دستورها فقط برای نصب تازه‌اند.** `git reset --hard` هر تغییر محلی را
+> دور می‌ریزد و `down -v` **volume دیتابیس را برای همیشه پاک می‌کند**. روی سروری
+> که داده دارد اجرا نکنید. اگر فقط مشکل CRLF دارید، تا خط `git checkout --` کافی
+> است و دو خط آخر لازم نیست.
+
 ```powershell
 cd C:\afrakala-lan\get-git-going
-git pull origin main
+$branch = (git rev-parse --abbrev-ref HEAD).Trim()
+git pull --ff-only origin $branch
 git rm --cached -r deploy/supabase/volumes/db/init
-git reset --hard origin/main
+git checkout -- deploy/supabase/volumes/db/init
+
+# فقط روی نصب تازه و بدون داده:
 docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan down -v
 docker compose -f .\deploy\lan\docker-compose.yml --env-file .\deploy\lan\.env.lan up -d
 ```
