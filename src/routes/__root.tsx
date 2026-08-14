@@ -285,6 +285,19 @@ function normalizeEnvironmentName(value: unknown) {
     .toLowerCase();
 }
 
+// Hosts the deployment itself declares as its real, intended address.
+// AfraKala's production server genuinely lives on a LAN IP (192.168.170.10),
+// which isLocalOrTestHost() below would otherwise flag as "you are running a
+// production build on a test address" — a permanent false alarm on the one
+// machine that matters. Set VITE_TRUSTED_HOSTS at build time (comma-separated)
+// to tell the bundle which hostnames are legitimate for it.
+function getTrustedHosts() {
+  return String(import.meta.env.VITE_TRUSTED_HOSTS ?? "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function isLocalOrTestHost(hostname: string) {
   const normalizedHost = hostname.trim().toLowerCase();
   return (
@@ -316,8 +329,9 @@ function EnvironmentSafetyBanner() {
   const isProduction = appEnv === "production";
   const isStaging = appEnv === "staging";
   const shouldShowNonProductionBanner = bannerEnabled || (appEnv !== "" && !isProduction);
+  const isTrustedHost = hostname !== "" && getTrustedHosts().includes(hostname.toLowerCase());
   const suspiciousProductionRuntime =
-    isProduction && hostname !== "" && isLocalOrTestHost(hostname);
+    isProduction && hostname !== "" && !isTrustedHost && isLocalOrTestHost(hostname);
 
   if (!shouldShowNonProductionBanner && !suspiciousProductionRuntime) {
     return null;
