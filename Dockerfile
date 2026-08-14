@@ -28,6 +28,13 @@ RUN rm -f .npmrc .yarnrc .yarnrc.yml .bunfig.toml bunfig.toml || true
 ARG VITE_SUPABASE_URL
 ARG VITE_SUPABASE_PUBLISHABLE_KEY
 ARG VITE_SUPABASE_PROJECT_ID
+# Environment identity for the client bundle. Without VITE_APP_ENV the bundle
+# falls back to Vite's MODE, which is always "production" for a real build; the
+# environment safety banner then treats every LAN address as a test address and
+# shows a red warning even on the production server. VITE_TRUSTED_HOSTS lists
+# the hostnames that deployment is legitimately served from.
+ARG VITE_APP_ENV
+ARG VITE_TRUSTED_HOSTS
 # Build identity. Also declared in the runtime stage below (a Dockerfile ARG is
 # scoped to one stage), but needed HERE too: vite.config.ts reads GIT_SHA and
 # BUILD_TIME at build time to derive the service worker's version, which is what
@@ -38,6 +45,8 @@ ARG BUILD_TIME=unknown
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
     VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
+    VITE_APP_ENV=$VITE_APP_ENV \
+    VITE_TRUSTED_HOSTS=$VITE_TRUSTED_HOSTS \
     GIT_SHA=$GIT_SHA \
     BUILD_TIME=$BUILD_TIME \
     NODE_ENV=production \

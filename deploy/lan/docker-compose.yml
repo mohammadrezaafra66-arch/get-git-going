@@ -33,6 +33,10 @@ services:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
         VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+        # production روی سرور اصلی، test روی کامپیوتر تست.
+        # VITE_TRUSTED_HOSTS آدرس واقعی همان سرور است تا بنر هشدار قرمز نمایش داده نشود.
+        VITE_APP_ENV: ${VITE_APP_ENV:-production}
+        VITE_TRUSTED_HOSTS: ${VITE_TRUSTED_HOSTS:-}
         GIT_SHA: ${GIT_SHA:-local-unknown}
         BUILD_TIME: ${BUILD_TIME:-local-unknown}
         APP_ENV: lan
