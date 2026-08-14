@@ -41,20 +41,79 @@ Any customer, supplier, account party, receiver, driver, referrer, marketer, rep
 
 ---
 
-## Working environment (LAN test server)
+## Branch flow
 
-This is the environment day-to-day work happens in. It is **not** the same as
-the Cursor Cloud / `deploy/local/` setup documented at the end of this file.
+Nobody works directly on `main` or `staging`. This mirrors
+`docs/process/branch-policy.md`, which is the authority if the two disagree.
 
-| Fact | Value |
-|---|---|
-| Working branch | `feature/navigation-modernization` |
-| Test server | `192.168.170.8` — all work happens here |
-| **Production** | `192.168.170.10` — **never touch it**, for any reason |
-| Database | `afrakala`, in container `afrakala-lan-db` |
-| Web container | `afrakala-lan-web` (published on port 3100) |
-| Deploy scripts | `deploy/lan/build.ps1` then `deploy/lan/up.ps1` |
-| Ollama | runs on the Windows host, not in Docker: `http://192.168.170.8:11434` |
+```
+feature/<task>  ──PR──►  staging  ──PR──►  main
+                            │                │
+                     test computer    production laptop
+```
+
+- `main` — the code production runs. Protected; PR only.
+- `staging` — the code the test computer runs. Protected; PR only.
+- `feature/*`, `hotfix/*`, `cursor/*`, `lovable/*` — where work actually happens.
+
+Boundary Guard enforces this on every PR, and it is a required status check: a
+PR into `main` must come from `staging` or an approved `hotfix/*` branch.
+
+Start every task from a fresh `staging`:
+
+```powershell
+git fetch origin; git switch staging; git pull; git switch -c feature/<short-name>
+```
+
+> Until 2026-08-14 this file named `feature/navigation-modernization` as *the*
+> working branch. That branch had grown into a 1600-commit parallel `main` and
+> is being retired — do not start new work on it.
+
+## Working environments
+
+Two machines run this project, and they are not interchangeable. One is where
+you work; the other holds the company's real records.
+
+| | Test computer | Production laptop |
+|---|---|---|
+| Address | `192.168.170.8:3100` | `192.168.170.10:3000` |
+| Repo folder | `D:\AfraKalaTest\app` | `C:\afrakala` |
+| Branch it tracks | `staging` | `main` |
+| **Database name** | `afrakala` | **`postgres`** |
+| DB container | `afrakala-lan-db` | `afrakala-lan-db` |
+| Web container | `afrakala-lan-web` | `afrakala-lan-web` |
+| What you may do | develop, test, break things | **pull and build only** |
+| Ollama | Windows host: `http://192.168.170.8:11434` | — |
+
+**The database name differs between the two machines.** On production it is
+`postgres`. Running `psql -d afrakala` there fails with `database "afrakala"
+does not exist` — that means you copied a command written for the test server,
+not that production is broken. This exact mistake cost a round-trip on
+2026-08-14.
+
+This is also *not* the Cursor Cloud / `deploy/local/` setup documented at the
+end of this file.
+
+### Production is deploy-only, not untouchable
+
+This file used to say "never touch production, for any reason". That was true
+while production ran two-month-old code and had no migration ledger; it stopped
+being the rule on 2026-08-11, when the owner approved the cutover. What replaces
+it is narrower and stricter where it counts:
+
+- **Never develop on the production laptop.** Code is edited only on the test
+  computer. A commit made in `C:\afrakala` exists nowhere else, and the next
+  `git pull` there will either destroy it or conflict.
+- **Never modify production data** — no `INSERT`/`UPDATE`/`DELETE`, no importing
+  test persons, products, or pre-invoices. Those are the company's real records.
+- **Never run a migration on production without explicit owner approval**, and
+  never as a side effect of a deploy.
+- **Never `docker compose down -v`.** The `-v` deletes the database volume.
+- A deploy touches the `web` service only: `git pull` → `build web` → `up -d web`.
+- Take a rollback tag on the current image before every deploy.
+
+`deploy/lan/scripts/update-lan.ps1` automates the safe path and pulls whatever
+branch the checkout is on.
 
 After a deploy, confirm the running code is the code you think it is:
 
@@ -323,7 +382,7 @@ not `git stash`**: that yanks another agent's in-flight work out from under
 them. Check divergence without touching the tree instead:
 
 ```powershell
-git fetch origin feature/navigation-modernization
+git fetch origin $(git rev-parse --abbrev-ref HEAD)
 git rev-list --count HEAD..FETCH_HEAD    # 0 ⇒ a rebase would be a no-op
 ```
 
