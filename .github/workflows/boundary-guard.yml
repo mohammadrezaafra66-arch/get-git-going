@@ -123,6 +123,15 @@ jobs:
           def is_hotfix_branch(name):
               return name.startswith("hotfix/WPC-") or name.startswith("hotfix/")
 
+          # Long-lived working branches. The WPC families above assume several
+          # tools each owning one slice of the repo; the project has since moved
+          # to one long-lived branch carrying schema, UI and deploy together.
+          # feature/* is therefore allowed to carry migrations and to open a PR
+          # into main. It is NOT allowed to change .github/workflows - that stays
+          # restricted to cursor/docs/WPC-* and hotfix branches.
+          def is_feature_branch(name):
+              return name.startswith("feature/")
+
           allowed_branch_families = (
               is_lovable_ui_branch(branch)
               or is_cursor_core_branch(branch)
@@ -130,6 +139,7 @@ jobs:
               or is_cursor_contract_branch(branch)
               or is_cursor_docs_branch(branch)
               or is_hotfix_branch(branch)
+              or is_feature_branch(branch)
               or is_integration_branch
           )
 
@@ -222,11 +232,11 @@ jobs:
                       violations.append(
                           f"Database boundary violation: Lovable branch `{branch}` changed migration `{path}`."
                       )
-              elif not (is_cursor_core_branch(branch) or is_hotfix_branch(branch)):
+              elif not (is_cursor_core_branch(branch) or is_hotfix_branch(branch) or is_feature_branch(branch)):
                   for path in migration_changed:
                       violations.append(
                           f"Database branch violation: migration `{path}` should be changed from "
-                          f"`cursor/core/WPC-*` or approved `hotfix/WPC-*`, not `{branch}`."
+                          f"`cursor/core/WPC-*`, `feature/*` or approved `hotfix/WPC-*`, not `{branch}`."
                       )
 
           automation_changed = [path for path in files if matches(path, "automation/**")]
@@ -305,9 +315,16 @@ jobs:
                           "This may be valid only with a handoff."
                       )
 
-          if target_branch == "main" and branch != "staging" and not is_hotfix_branch(branch) and event_name == "pull_request":
+          if (
+              target_branch == "main"
+              and branch != "staging"
+              and not is_hotfix_branch(branch)
+              and not is_feature_branch(branch)
+              and event_name == "pull_request"
+          ):
               violations.append(
-                  f"Release flow violation: PRs to `main` must normally come from `staging` or approved `hotfix/WPC-*`, not `{branch}`."
+                  f"Release flow violation: PRs to `main` must normally come from `staging`, "
+                  f"a long-lived `feature/*` branch, or an approved `hotfix/WPC-*`, not `{branch}`."
               )
 
           print("Boundary Guard Report")
