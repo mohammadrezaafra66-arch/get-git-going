@@ -54,8 +54,7 @@ import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermission } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
-import { fetchSalePriceTypes, fetchSettlementTypes } from "@/lib/pricing/queries";
-import { PREPAY_SETTLEMENT_CODE } from "@/lib/pricing/constants";
+import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { fetchEffectiveCurrencies } from "@/lib/pricing/effective-currencies";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
@@ -292,22 +291,6 @@ function SalesSearchPage() {
     queryFn: () => fetchSalePriceTypes(true),
     staleTime: 5 * 60_000,
   });
-
-  // ترم‌های تسویه — فقط برای پیدا کردن شناسهٔ «پیش واریز». RPC جست‌وجو
-  // `settlement_type_id` و `settlement_title` را برمی‌گرداند ولی `code` ترم تسویه
-  // را نه، و تطبیق روی عنوان شکننده است چون کاربر می‌تواند از رابط کاربری عوضش کند.
-  const { data: settlementTypes = [] } = useQuery({
-    queryKey: ["settlement-types-active"],
-    queryFn: () => fetchSettlementTypes(true),
-    staleTime: 5 * 60_000,
-  });
-  const prepaySettlementId = useMemo(
-    () =>
-      (settlementTypes as Array<{ id: string; code: string }>).find(
-        (s) => s.code === PREPAY_SETTLEMENT_CODE,
-      )?.id ?? null,
-    [settlementTypes],
-  );
 
   // pick first active sale price type by default
   useEffect(() => {
@@ -983,7 +966,6 @@ function SalesSearchPage() {
                     isSelected={selectedProductIds.has(p.id)}
                     onToggleSelected={() => toggleProductSelection(p.id)}
                     primarySalePriceTypeId={salePriceTypeId}
-                    prepaySettlementId={prepaySettlementId}
                     searchSessionId={searchSessionId}
                     isPrivileged={isPrivileged}
                     canRecalcPrice={canRecalcPrice}
@@ -1161,12 +1143,6 @@ interface ProductCardProps {
   isSelected: boolean;
   onToggleSelected: () => void;
   primarySalePriceTypeId: string;
-  /**
-   * شناسهٔ ترم تسویهٔ «پیش واریز». کارت اصلی قیمت باید همین ترم را نشان دهد،
-   * نه قیمت پایه. `null` یعنی هنوز بارگذاری نشده یا چنین ترمی تعریف نشده — در
-   * آن صورت به قیمت پایه برمی‌گردیم (رفتار قبلی).
-   */
-  prepaySettlementId: string | null;
   searchSessionId: string | null;
   isPrivileged: boolean;
   canRecalcPrice: boolean;
@@ -1182,7 +1158,6 @@ function ProductCard({
   isSelected,
   onToggleSelected,
   primarySalePriceTypeId,
-  prepaySettlementId,
   searchSessionId,
   canRecalcPrice,
   observatorySnippet,
@@ -1243,37 +1218,19 @@ function ProductCard({
   // Baseline rows carry settlement_type_id == null (exactly the pre-settlement
   // behavior). Per-settlement rows carry a settlement_type_id + settlement_title.
   const isBaseline = (p: PriceEntry) => p.settlement_type_id == null;
-  const isPrepay = (p: PriceEntry) =>
-    prepaySettlementId != null && p.settlement_type_id === prepaySettlementId;
-  // primary price = the «پیش واریز» row of the globally selected sale type.
-  // Roughly half the catalogue has no settlement price yet — products that have
-  // not been re-published since 2026-07-18, when the settlement dimension was
-  // added — so we fall back to the baseline row and flag it, rather than showing
-  // an empty card.
+  // primary price = the BASELINE row of the globally selected sale type
+  // (fallback to any baseline row, then the first entry).
   const primary =
-    prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId && isPrepay(p)) ??
-    prices.find((p) => isPrepay(p)) ??
     prices.find((p) => p.sale_price_type_id === primarySalePriceTypeId && isBaseline(p)) ??
     prices.find((p) => isBaseline(p)) ??
     prices[0] ??
     null;
-  const primaryIsBaselineFallback = primary != null && !isPrepay(primary);
   // Other sale-price types (baseline rows only, excluding the primary's type).
   const otherSaleTypes = prices.filter(
     (p) => isBaseline(p) && p.sale_price_type_id !== (primary?.sale_price_type_id ?? ""),
   );
   // Per-settlement prices (one row per settlement term that has a price).
-  // ترمی که در کارت اصلی نشان داده شده اینجا تکرار نمی‌شود، وگرنه «پیش واریز»
-  // دو بار دیده می‌شود.
-  const settlementPrices = prices.filter(
-    (p) =>
-      !isBaseline(p) &&
-      !(
-        primary != null &&
-        p.settlement_type_id === primary.settlement_type_id &&
-        p.sale_price_type_id === primary.sale_price_type_id
-      ),
-  );
+  const settlementPrices = prices.filter((p) => !isBaseline(p));
 
   const cur = primary?.current_price != null ? Number(primary.current_price) : null;
   const prev = primary?.previous_price != null ? Number(primary.previous_price) : null;
@@ -1484,18 +1441,7 @@ function ProductCard({
           ) : primary && cur !== null ? (
             <div className="flex items-end justify-between gap-2">
               <div>
-                <div className="text-xs text-muted-foreground">
-                  قیمت {primary.title}
-                  {primary.settlement_title ? ` (${primary.settlement_title})` : ""}
-                  {primaryIsBaselineFallback && (
-                    <span
-                      className="mr-1"
-                      title="برای این محصول قیمت تسویهٔ «پیش واریز» ثبت نشده؛ قیمت پایه نمایش داده شده است."
-                    >
-                      — پایه
-                    </span>
-                  )}
-                </div>
+                <div className="text-xs text-muted-foreground">قیمت {primary.title}</div>
                 <div
                   key={`pcard-${cur}`}
                   className="price-flash inline-block text-base font-semibold tabular-nums tracking-tight text-primary"

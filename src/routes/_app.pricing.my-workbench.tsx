@@ -669,17 +669,7 @@ function DesktopRow({
       </TableCell>
       <TableCell className="text-xs">
         {hasValidSalePrice(row.sale_price) ? (
-          <span className="inline-flex items-center gap-1">
-            {formatNumber(row.sale_price as number)}
-            {row.sale_price_from_baseline && (
-              <span
-                className="text-[10px] text-muted-foreground"
-                title="برای این محصول قیمت تسویهٔ «پیش واریز» ثبت نشده؛ قیمت پایه نمایش داده شده است."
-              >
-                (پایه)
-              </span>
-            )}
-          </span>
+          formatNumber(row.sale_price as number)
         ) : (
           <Badge variant="destructive" className="text-[10px]">
             بدون قیمت فروش
@@ -921,7 +911,6 @@ function MobileCard({
           {hasValidSalePrice(row.sale_price) ? (
             <Badge variant="secondary" className="text-[10px]">
               فروش نقدی: {formatNumber(row.sale_price as number)}
-              {row.sale_price_from_baseline && " (پایه)"}
             </Badge>
           ) : (
             <Badge variant="destructive" className="text-[10px]">
