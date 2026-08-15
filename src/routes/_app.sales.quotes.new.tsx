@@ -807,6 +807,8 @@ function NewQuotePage() {
         <AddItemPanel
           priceTypes={priceTypes as Array<{ id: string; code: string; title: string }>}
           canEditPriceFreely={canEditPriceFreely}
+          settlementTypeId={settlementTypeId}
+          settlementTitle={settlementTypes.find((s) => s.id === settlementTypeId)?.title ?? null}
           onClose={() => setPickerOpen(false)}
           onAdd={(it) => {
             addItem(it);
@@ -946,6 +948,11 @@ function NewQuotePage() {
 function AddItemPanel(props: {
   priceTypes: Array<{ id: string; code: string; title: string }>;
   canEditPriceFreely: boolean;
+  // The settlement term chosen on the main form. The unit price of a product
+  // line is read for exactly this term, because that is the term the server
+  // measures the price floor against.
+  settlementTypeId: string;
+  settlementTitle: string | null;
   onClose: () => void;
   onAdd: (it: DraftQuoteItem) => void;
 }) {
@@ -973,7 +980,12 @@ function AddItemPanel(props: {
             </TabsList>
 
             <TabsContent value="product" className="pt-3">
-              <ProductTab priceTypes={props.priceTypes} onAdd={props.onAdd} />
+              <ProductTab
+                priceTypes={props.priceTypes}
+                settlementTypeId={props.settlementTypeId}
+                settlementTitle={props.settlementTitle}
+                onAdd={props.onAdd}
+              />
             </TabsContent>
             <TabsContent value="manual" className="pt-3">
               <FreeItemTab source="manual" onAdd={props.onAdd} />
@@ -993,8 +1005,19 @@ function AddItemPanel(props: {
 }
 
 /* ---- Product tab ---- */
+
+// Why a lookup product was not priced decides what the user is told, so the
+// outcomes stay distinct instead of collapsing into one "no price" message.
+type SettlementPriceLookup =
+  | { status: "match"; price: number }
+  | { status: "baseline_fallback"; price: number }
+  | { status: "no_price" }
+  | { status: "product_not_found" };
+
 function ProductTab(props: {
   priceTypes: Array<{ id: string; code: string; title: string }>;
+  settlementTypeId: string;
+  settlementTitle: string | null;
   onAdd: (it: DraftQuoteItem) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -1006,7 +1029,6 @@ function ProductTab(props: {
   const [quantity, setQuantity] = useState<number>(1);
   const [unitPrice, setUnitPrice] = useState<number>(0);
   const [discount, setDiscount] = useState<number>(0);
-  const [priceMissing, setPriceMissing] = useState<string | null>(null);
 
   const term = dSearch.trim();
   const productsQuery = useQuery({
@@ -1031,84 +1053,97 @@ function ProductTab(props: {
     staleTime: 30_000,
   });
 
-  // Fetch all sale prices (per price type) for products currently in the search result list,
-  // so the user can see every price (نقدی، اعتباری، اقساطی، …) alongside each product and
-  // pick one directly from the list — not just the cash price.
   const productIds = useMemo(
     () => (productsQuery.data ?? []).map((p: { id: string }) => p.id),
     [productsQuery.data],
   );
   const { thumbnailFor } = useProductThumbnails(productIds);
-  const pricesByProductQuery = useQuery({
-    enabled: productIds.length > 0,
-    queryKey: ["quote-product-search-prices", productIds],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("product_computed_prices_public")
-        .select("product_id, sale_price_type_id, final_sale_price, rounded_sale_price, computed_at")
-        .in("product_id", productIds);
-      if (error) throw error;
-      const map = new Map<string, Array<{ sale_price_type_id: string; price: number }>>();
-      for (const row of (data ?? []) as Array<{
-        product_id: string | null;
-        sale_price_type_id: string | null;
-        final_sale_price: number | null;
-        rounded_sale_price: number | null;
-      }>) {
-        if (!row.product_id || !row.sale_price_type_id) continue;
-        const price = Number(row.rounded_sale_price ?? row.final_sale_price ?? 0);
-        if (!(price > 0)) continue;
-        const list = map.get(row.product_id) ?? [];
-        list.push({ sale_price_type_id: row.sale_price_type_id, price });
-        map.set(row.product_id, list);
-      }
-      return map;
-    },
+
+  // The unit price must come from the same (product × sale price type ×
+  // settlement term) triple the server measures its floor against — see
+  // create_sales_quote_with_items. product_computed_prices_public cannot serve
+  // that: it is filtered to settlement_type_id IS NULL, so it only ever returns
+  // the baseline price. The base table is closed to the sales role
+  // (pcp_read_privileged), so the settlement-aware path open to sales is the
+  // SECURITY DEFINER RPC get_sales_search_products, whose `prices` array
+  // carries one row per (sale price type × settlement term).
+  const settlementPriceQuery = useQuery({
+    enabled: !!selected && !!salePriceTypeId,
+    queryKey: [
+      "quote-item-settlement-price",
+      selected?.id ?? null,
+      salePriceTypeId,
+      props.settlementTypeId,
+    ],
     staleTime: 30_000,
+    queryFn: async (): Promise<SettlementPriceLookup> => {
+      if (!selected) return { status: "product_not_found" };
+      // The RPC matches on name/SKU/model/brand/… and caps p_limit at 50, so it
+      // can legitimately fail to return a product the id-based search found.
+      // That is a different situation from "this product has no price", and the
+      // two must not share a message.
+      const { data, error } = await supabase.rpc("get_sales_search_products", {
+        p_search: selected.sku ?? selected.name,
+        p_limit: 50,
+      });
+      if (error) throw error;
+      const row = ((data ?? []) as Array<{ id: string; prices: unknown }>).find(
+        (r) => r.id === selected.id,
+      );
+      if (!row) return { status: "product_not_found" };
+
+      const entries = (Array.isArray(row.prices) ? row.prices : []) as Array<{
+        sale_price_type_id: string | null;
+        settlement_type_id: string | null;
+        current_price: number | string | null;
+      }>;
+      // "" on the main form means no settlement term, which the server treats as
+      // the base term (settlement_type_id IS NOT DISTINCT FROM NULL).
+      const wanted = props.settlementTypeId || null;
+      const priceOf = (settlementId: string | null) => {
+        const hit = entries.find(
+          (e) =>
+            e.sale_price_type_id === salePriceTypeId &&
+            e.settlement_type_id === settlementId &&
+            e.current_price != null,
+        );
+        const value = Number(hit?.current_price ?? 0);
+        return value > 0 ? value : null;
+      };
+
+      const exact = priceOf(wanted);
+      if (exact != null) return { status: "match", price: exact };
+      if (wanted != null) {
+        // No settlement-specific price exists. The server's floor lookup finds
+        // nothing either, so it applies no floor here; falling back to the base
+        // price neither weakens nor invents a limit, but the user is told.
+        const baseline = priceOf(null);
+        if (baseline != null) return { status: "baseline_fallback", price: baseline };
+      }
+      return { status: "no_price" };
+    },
   });
 
-  // load latest sale price when product + price type are selected
+  // Apply the looked-up price. Clearing to 0 while the lookup is pending keeps a
+  // previous product's price from being submitted against a new selection, and
+  // leaves canSubmit false until a real price arrives. A manual edit is not
+  // overwritten: the query key does not change when the user types.
+  const settlementPrice = settlementPriceQuery.data;
   useEffect(() => {
-    let cancelled = false;
-    setPriceMissing(null);
-    if (!selected || !salePriceTypeId) return;
-    // If the price is already known from the search list, skip the extra query.
-    const cached = pricesByProductQuery.data
-      ?.get(selected.id)
-      ?.find((p) => p.sale_price_type_id === salePriceTypeId);
-    if (cached) {
-      setUnitPrice(cached.price);
-      setPriceMissing(null);
+    if (!selected || !salePriceTypeId || !settlementPrice) {
+      setUnitPrice(0);
       return;
     }
-    (async () => {
-      const { data, error } = await supabase
-        .from("product_sale_price_history")
-        .select("new_sale_price, created_at")
-        .eq("product_id", selected.id)
-        .eq("sale_price_type_id", salePriceTypeId)
-        .order("created_at", { ascending: false })
-        .limit(1);
-      if (cancelled) return;
-      if (error) {
-        setPriceMissing("خطا در دریافت قیمت فروش.");
-        return;
-      }
-      if (!data || data.length === 0) {
-        setUnitPrice(0);
-        setPriceMissing("برای این محصول و نوع قیمت، قیمت فروش ثبت نشده است.");
-      } else {
-        setUnitPrice(Number(data[0].new_sale_price) || 0);
-        setPriceMissing(null);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [selected, salePriceTypeId, pricesByProductQuery.data]);
+    setUnitPrice(
+      settlementPrice.status === "match" || settlementPrice.status === "baseline_fallback"
+        ? settlementPrice.price
+        : 0,
+    );
+  }, [selected, salePriceTypeId, settlementPrice]);
 
   const canSubmit = !!selected && !!salePriceTypeId && quantity > 0 && unitPrice > 0;
-  const priceTypeTitle = (id: string) => props.priceTypes.find((t) => t.id === id)?.title ?? "—";
+  const selectedPriceTypeTitle =
+    props.priceTypes.find((t) => t.id === salePriceTypeId)?.title ?? "—";
 
   return (
     <div className="space-y-3">
@@ -1155,7 +1190,6 @@ function ProductTab(props: {
                         | null;
                     }>;
                   }) => {
-                    const prices = pricesByProductQuery.data?.get(p.id) ?? [];
                     const thumb = thumbnailFor(p.id);
                     const labelList = (p.labels ?? [])
                       .map((row) => (Array.isArray(row.label) ? row.label[0] : row.label))
@@ -1237,39 +1271,6 @@ function ProductTab(props: {
                             </div>
                           </div>
                         </button>
-                        {prices.length === 0 ? (
-                          <div className="text-[11px] text-muted-foreground">
-                            {pricesByProductQuery.isLoading
-                              ? "در حال دریافت قیمت‌ها..."
-                              : "قیمت فروش ثبت‌شده‌ای ندارد."}
-                          </div>
-                        ) : (
-                          <div className="flex flex-wrap gap-1.5">
-                            {prices.map((pr) => (
-                              <button
-                                key={`${p.id}:${pr.sale_price_type_id}`}
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelected({ id: p.id, name: p.name, sku: p.sku });
-                                  setSalePriceTypeId(pr.sale_price_type_id);
-                                  setUnitPrice(pr.price);
-                                  setPriceMissing(null);
-                                }}
-                                className="rounded-md border border-border bg-card px-2 py-1 text-[11px] hover:border-primary hover:bg-primary/10"
-                                title="انتخاب این نوع قیمت"
-                              >
-                                <span className="text-muted-foreground">
-                                  {priceTypeTitle(pr.sale_price_type_id)}:{" "}
-                                </span>
-                                <span className="font-medium">{formatNumber(pr.price)}</span>
-                                <span className="mr-1 text-[10px] text-muted-foreground">
-                                  تومان
-                                </span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
                       </div>
                     );
                   },
@@ -1294,45 +1295,11 @@ function ProductTab(props: {
                   setSelected(null);
                   setSalePriceTypeId("");
                   setUnitPrice(0);
-                  setPriceMissing(null);
                 }}
               >
                 تغییر محصول
               </Button>
             </div>
-            {(() => {
-              const prices = pricesByProductQuery.data?.get(selected.id) ?? [];
-              if (prices.length === 0) return null;
-              return (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {prices.map((pr) => {
-                    const active = pr.sale_price_type_id === salePriceTypeId;
-                    return (
-                      <button
-                        key={pr.sale_price_type_id}
-                        type="button"
-                        onClick={() => {
-                          setSalePriceTypeId(pr.sale_price_type_id);
-                          setUnitPrice(pr.price);
-                          setPriceMissing(null);
-                        }}
-                        className={`rounded-md border px-2 py-1 text-[11px] transition-colors ${
-                          active
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border bg-card hover:border-primary hover:bg-primary/10"
-                        }`}
-                      >
-                        <span className="text-muted-foreground">
-                          {priceTypeTitle(pr.sale_price_type_id)}:{" "}
-                        </span>
-                        <span className="font-medium">{formatNumber(pr.price)}</span>
-                        <span className="mr-1 text-[10px] text-muted-foreground">تومان</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
@@ -1362,6 +1329,12 @@ function ProductTab(props: {
             </div>
             <div className="space-y-1.5">
               <Label>قیمت واحد (تومان)</Label>
+              {/* The price chips that used to sit above carried this context;
+                  without them the user cannot otherwise tell which settlement
+                  term the auto-filled number belongs to. */}
+              <span className="block text-[11px] text-muted-foreground">
+                بر اساس تسویهٔ «{props.settlementTitle ?? "پایه"}»
+              </span>
               <Input
                 data-testid="quote-item-unit-price"
                 type="number"
@@ -1380,9 +1353,31 @@ function ProductTab(props: {
               />
             </div>
           </div>
-          {priceMissing && (
+          {salePriceTypeId && settlementPriceQuery.isFetching && (
+            <div className="text-xs text-muted-foreground">در حال دریافت قیمت...</div>
+          )}
+          {salePriceTypeId && !settlementPriceQuery.isFetching && settlementPriceQuery.isError && (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
-              {priceMissing}
+              خطا در دریافت قیمت فروش.
+            </div>
+          )}
+          {!settlementPriceQuery.isFetching && settlementPrice?.status === "product_not_found" && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs leading-6 text-destructive">
+              قیمت این محصول دریافت نشد: محصول در نتایج سرویس قیمت نبود (این سرویس حداکثر ۵۰ ردیف
+              برمی‌گرداند و بر اساس بارکد جست‌وجو نمی‌کند). این به معنی نبودِ قیمت نیست — با نام یا
+              SKU دقیق‌تر جست‌وجو کنید.
+            </div>
+          )}
+          {!settlementPriceQuery.isFetching && settlementPrice?.status === "no_price" && (
+            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-2 text-xs leading-6 text-destructive">
+              برای این محصول با نوع قیمت «{selectedPriceTypeTitle}» و تسویهٔ «
+              {props.settlementTitle ?? "پایه"}» قیمتی ثبت نشده است.
+            </div>
+          )}
+          {!settlementPriceQuery.isFetching && settlementPrice?.status === "baseline_fallback" && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs leading-6">
+              برای تسویهٔ «{props.settlementTitle}» قیمت اختصاصی ثبت نشده است؛ قیمت پایه نمایش داده
+              شد.
             </div>
           )}
           <div className="flex justify-end">
