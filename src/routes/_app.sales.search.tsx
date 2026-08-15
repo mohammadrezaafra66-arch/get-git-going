@@ -1612,8 +1612,13 @@ function ProductCard({
                     }}
                     className="rounded-md border border-dashed bg-background/50 px-2 py-1.5 text-right transition hover:border-primary/40"
                   >
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {p.settlement_title ?? p.title}
+                    {/* هر دو بُعد لازم است. قیمت روی سه‌تایی (محصول، نوع‌قیمت،
+                        ترم تسویه) ذخیره می‌شود، پس برای هر ترم تسویه یک ردیف
+                        به‌ازای هر نوع‌قیمت وجود دارد. با نوشتن فقط نام تسویه،
+                        چند کارت با برچسب یکسان ولی عدد متفاوت دیده می‌شد. */}
+                    <div className="text-[10px] leading-tight text-muted-foreground">
+                      <span className="font-medium text-foreground/70">{p.title}</span>
+                      {p.settlement_title ? ` · ${p.settlement_title}` : ""}
                     </div>
                     <div className="text-base font-semibold tabular-nums">
                       {c !== null ? (
