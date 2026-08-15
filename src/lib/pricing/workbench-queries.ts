@@ -7,7 +7,7 @@
  * ممکن است به RPC/view اختصاصی نیاز داشته باشند. الان limit 10_000 برای pre-filter.
  */
 import { supabase } from "@/integrations/supabase/client";
-import { BASE_SALE_PRICE_TYPE_CODE } from "./constants";
+import { BASE_SALE_PRICE_TYPE_CODE, PREPAY_SETTLEMENT_CODE } from "./constants";
 import type {
   WorkbenchFilters,
   StockStatusV,
@@ -50,6 +50,12 @@ export interface WorkbenchRowV2 {
   current_currency: CurrencyCodeV | string | null;
   sale_price: number | null;
   sale_price_updated_at: string | null;
+  /**
+   * true یعنی این عدد قیمت **پایه** است، نه قیمت ترم تسویهٔ «پیش واریز» —
+   * چون برای این محصول قیمت پیش‌واریز ثبت نشده. رابط کاربری باید این را
+   * نشان دهد، وگرنه کاربر عددی می‌بیند و فکر می‌کند پیش‌واریز است.
+   */
+  sale_price_from_baseline: boolean;
   owners: WorkbenchOwnerLite[];
   tags: WorkbenchTagLite[];
 }
@@ -301,7 +307,7 @@ export async function fetchWorkbenchRowsV2(opts: {
 
   // 3) hydrate: purchase price (latest active), sale price (latest), owners, tags, parent category
   const nowIso = new Date().toISOString();
-  const [ppRes, spRes, ownRes, tagRes, parentCatRes] = await Promise.all([
+  const [ppRes, spBaseRes, spPrepayRes, ownRes, tagRes, parentCatRes] = await Promise.all([
     supabase
       .from("purchase_prices")
       .select("id, product_id, supplier_id, purchase_price, currency, effective_at")
@@ -313,11 +319,28 @@ export async function fetchWorkbenchRowsV2(opts: {
     // به‌ازای هر نوع‌قیمت فعال می‌نویسد (نقدی، چکی، همکاری) و همه یک `computed_at`
     // نزدیک به هم دارند. بدون این فیلتر، «آخرین ردیف» عملاً همکاری یا چکی می‌شد و
     // ستون قیمت فروش برای ۷۷ محصول از ۳۱۶ محصول عدد اشتباه نشان می‌داد.
+    // قیمت پایه (settlement_type_id IS NULL) — مسیر برگشت وقتی قیمت پیش‌واریز
+    // ثبت نشده. منبع از ویوِ `_public` به جدول اصلی تغییر کرد چون آن ویو ستون
+    // `settlement_type_id` را اصلاً بیرون نمی‌دهد و روی `IS NULL` هاردکد شده.
+    // دسترسی تنگ‌تر نشد: `pcp_read_privileged` نقش‌های admin/manager/accountant و
+    // هر کسی با مجوز `pricing:view` را می‌پذیرد، و نقش `sales` — که ۹ نفر از ۱۶
+    // مالک محصول را تشکیل می‌دهد — این مجوز را دارد.
     (supabase as any)
-      .from("product_computed_prices_public")
+      .from("product_computed_prices")
       .select("product_id, rounded_sale_price, computed_at, sale_price_types!inner(code)")
       .in("product_id", productIds)
       .eq("sale_price_types.code", BASE_SALE_PRICE_TYPE_CODE)
+      .is("settlement_type_id", null)
+      .order("computed_at", { ascending: false }),
+    // قیمت ترم تسویهٔ «پیش واریز» — چیزی که ستون «قیمت فروش (نقدی)» باید نشان دهد.
+    (supabase as any)
+      .from("product_computed_prices")
+      .select(
+        "product_id, rounded_sale_price, computed_at, sale_price_types!inner(code), settlement_types!inner(code)",
+      )
+      .in("product_id", productIds)
+      .eq("sale_price_types.code", BASE_SALE_PRICE_TYPE_CODE)
+      .eq("settlement_types.code", PREPAY_SETTLEMENT_CODE)
       .order("computed_at", { ascending: false }),
     supabase
       .from("product_owner_assignments")
@@ -346,8 +369,11 @@ export async function fetchWorkbenchRowsV2(opts: {
     })(),
   ]);
 
-  if ((spRes as any).error) {
-    console.error("[workbench] sale price query failed", (spRes as any).error);
+  if ((spBaseRes as any).error) {
+    console.error("[workbench] baseline sale price query failed", (spBaseRes as any).error);
+  }
+  if ((spPrepayRes as any).error) {
+    console.error("[workbench] prepay sale price query failed", (spPrepayRes as any).error);
   }
 
   const latestPP = new Map<string, any>();
@@ -393,10 +419,26 @@ export async function fetchWorkbenchRowsV2(opts: {
     tagsByProduct.set(r.product_id, arr);
   });
 
-  const latestSP = new Map<string, { price: number; at: string }>();
-  (spRes.data ?? []).forEach((r: any) => {
+  // قیمت پیش‌واریز اولویت دارد؛ اگر برای محصولی ثبت نشده باشد به قیمت پایه
+  // برمی‌گردیم و علامتش می‌زنیم تا رابط کاربری بتواند شفاف باشد. حدود نیمی از
+  // کاتالوگ هنوز قیمت تسویه ندارد (محصولاتی که از ۲۰۲۶-۰۷-۱۸ به بعد دوباره
+  // منتشر نشده‌اند)، پس بدون این برگشت، ستون قیمت برای آن‌ها خالی می‌شد.
+  const latestSP = new Map<string, { price: number; at: string; fromBaseline: boolean }>();
+  (spPrepayRes.data ?? []).forEach((r: any) => {
     if (latestSP.has(r.product_id)) return;
-    latestSP.set(r.product_id, { price: Number(r.rounded_sale_price), at: r.computed_at });
+    latestSP.set(r.product_id, {
+      price: Number(r.rounded_sale_price),
+      at: r.computed_at,
+      fromBaseline: false,
+    });
+  });
+  (spBaseRes.data ?? []).forEach((r: any) => {
+    if (latestSP.has(r.product_id)) return;
+    latestSP.set(r.product_id, {
+      price: Number(r.rounded_sale_price),
+      at: r.computed_at,
+      fromBaseline: true,
+    });
   });
 
   const parentCatMap = new Map<string, CategoryRow>();
@@ -428,6 +470,7 @@ export async function fetchWorkbenchRowsV2(opts: {
       current_currency: pp?.currency ?? p.base_currency,
       sale_price: sp ? sp.price : null,
       sale_price_updated_at: sp ? sp.at : null,
+      sale_price_from_baseline: sp ? sp.fromBaseline : false,
       owners: ownersByProduct.get(p.id) ?? [],
       tags: tagsByProduct.get(p.id) ?? [],
     };
