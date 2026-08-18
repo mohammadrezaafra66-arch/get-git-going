@@ -10,11 +10,11 @@ Programme:            AfraKala Live Ledger
 Current phase:        1 COMPLETE — phase 2 not started
 Current task:         2.1 (not started)
 Branch:               feature/backend-phase-1
-Last commit SHA:      b62c9f03
+Last commit SHA:      <pending 347>
 Live APP_GIT_SHA:     <fill>   Match: <yes/no>
 Typecheck:            70 / 70 baseline
-Migrations applied:   11 (336-346)
-Open Owner-Gates:     OG-8..OG-15. OG-10 BLOCKS task 2.6; OG-14 must close before phase 9
+Migrations applied:   12 (336-347)
+Open Owner-Gates:     OG-8, OG-11, OG-12, OG-13, OG-14, OG-15 (OG-10 CLOSED). OG-14 must close before phase 9
 Blocked tasks:        none
 Production touched:   NO
 ```
@@ -24,7 +24,7 @@ Production touched:   NO
 | Phase | Status | Started | Finished | Tests | Notes |
 |---|---|---|---|---|---|
 | 0 Ground and decisions | complete | | 2026-08-18 | n/a | OG-1 confirmed |
-| 1 Shared foundations | **complete** | 2026-08-18 | 2026-08-18 | Gate B PASS, Gate A FAIL then remediated | 11 migrations; 2 risks recorded |
+| 1 Shared foundations | **complete** | 2026-08-18 | 2026-08-18 | Gate B PASS, Gate A FAIL then remediated | 12 migrations; OG-10 closed, 1 risk open (OG-14) |
 | 2 Receipts post | not started | | | | |
 | 3 Payments post | not started | | | | |
 | 4 Dual documents | not started | | | | |
@@ -46,7 +46,7 @@ Production touched:   NO
 | OG-6 production authorised | | | |
 | OG-8 drop orphaned trg_post_receipt_on_approve? | 2026-08-18 | | raised in task 1.1 |
 | OG-9 should the document serial reset each Jalali year? | 2026-08-18 | | raised in task 1.2 |
-| OG-10 can an own cheque be issued to an external party? | 2026-08-18 | | raised in task 1.4 |
+| OG-10 cheque counterparty may be an external party? | 2026-08-18 | **2026-08-18** | **ANSWERED: YES, both directions.** A cheque received may come from a non-customer; a cheque issued may go to a non-supplier. Implemented in migration **347**: `validate_journal_line_ref` accepts `external_parties` for both `cheque_receivable` and `cheque_payable`. **Closes Gate A M6** (the receipt-side mirror) by the same migration. Design choice (a) - existence in any allowed table - recorded with reasons in phase-1-PROGRESS.md. |
 | OG-11 post_receipt_accounting back-fill vs immutability | 2026-08-18 | | raised in task 1.6 |
 | OG-12 is 'ledger-documents' the right module string? | 2026-08-18 | | raised in task 1.7 |
 | OG-13 should manager get can_view on ledger-documents? | 2026-08-18 | | refined by Gate A M3; create=admin+accountant+manager, read=admin+accountant |
@@ -92,3 +92,4 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 344 | 20260818158000_344_seed_ledger_documents_module.sql | 1 | 2026-08-18 | docs/verification/344-down.sql | yes |
 | 345 | 20260818160000_345_writers_supply_doc_kind.sql | 1 | 2026-08-18 | docs/verification/345-down.sql | yes |
 | 346 | 20260818161000_346_gate_a_major_fixes.sql | 1 | 2026-08-18 | docs/verification/346-down.sql | yes |
+| 347 | 20260818170000_347_cheque_external_party_counterparties.sql | 1 (OG-10) | 2026-08-18 | docs/verification/347-down.sql | yes |
