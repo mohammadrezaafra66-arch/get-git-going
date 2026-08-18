@@ -153,3 +153,4 @@ where the rules live.
 ---
 
 OG-1: CONFIRMED 2026-08-18 — A1, A2, A3, A4 approved by owner.
+OG-2: CONFIRMED 2026-08-18 — owner authorised dropping trg_payment_receipts_post_journal and post_receipt_journal.
