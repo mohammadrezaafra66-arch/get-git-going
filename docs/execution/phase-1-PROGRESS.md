@@ -7,14 +7,14 @@ a phase that hits its context limit mid-run must be resumable from this file alo
 
 ```
 Phase:                1 - Shared foundations
-Status:               in progress
+Status:               complete (PASS WITH RECORDED RISKS)
 Branch:               feature/backend-phase-1
 Base:                 staging @ 7197c190
 Tasks:                7 of 7
 Current task:         phase exit (Gate A / Gate B)
 Blocked by:           nothing
-Migrations applied:   336..344
-REST restarted after: 336..341 all yes
+Migrations applied:   336..346 (11)
+REST restarted after: 336..346 all yes
 Backup taken:         D:/AfraKalaBackups/pre-phase1-20260818-144648.dump (16,773,020 bytes)
 Typecheck:            70 / 70 baseline (no regression)
 Last commit:          185ef398
@@ -768,3 +768,135 @@ SELECT count(*) FROM public.document_numbers;                                   
 
 Recorded because deleting numbering rows is normally forbidden (a burned number is never
 reissued). These were never issued against a real document, and this is the test database.
+
+---
+
+## GATE A — Supervising Engineer review and remediation
+
+Full report: `docs/execution/phase-1-GATE-A.md`.
+
+**Gate A verdict on first submission: FAIL — 1 BLOCKER, 6 MAJOR, 8 MINOR.**
+
+The reviewer's summary of the pattern is accurate and worth repeating verbatim, because it is the
+lesson of this phase: *"the phase rigorously verified what it built and did not sweep what already
+depended on what it changed."* B1, M1, M2 and M4 are all that same shape.
+
+### BLOCKER — B1: three shipped features were dead
+
+341 made `journal_entries.doc_kind` NOT NULL and dropped its DEFAULT. That reasoning was right.
+What 341 did not do was check which EXISTING writers omit the column. **All three do:**
+`post_receipt_accounting`, `pay_purchase_with_voucher`, `post_mutual_settlement`. Every one failed
+`23502`, so the receipt-posting button, purchase payments and mutual settlement were broken on the
+test database between 341 and the fix.
+
+Worse, migration 343's own header asserted "the normal path INSERTs a new entry and is
+unaffected". That claim was untested and false. I wrote it.
+
+Verified independently before fixing:
+
+```
+post_receipt_accounting    | mentions_doc_kind = f
+pay_purchase_with_voucher  | mentions_doc_kind = f
+post_mutual_settlement     | mentions_doc_kind = f
+
+INSERT INTO journal_entries(source_type, source_id, entry_date, description, status, posted_by)
+  -> ERROR: null value in column "doc_kind" violates not-null constraint
+```
+
+**FIX — migration 345.** Each writer supplies its own value: `post_receipt_accounting` -> `receipt`,
+`pay_purchase_with_voucher` -> `purchase_payment`, `post_mutual_settlement` -> `settlement`. Each
+body was captured live with `pg_get_functiondef` first and only the INSERT column list and its
+literal were changed (CLAUDE.md rule 4). The DEFAULT was **not** restored — that would fix the
+symptom by reintroducing the silent-`other` hole 341 correctly closed.
+
+This also resolves MINOR m5: `purchase_payment` now has a producer.
+
+**Regression test** (BEGIN..ROLLBACK, real approved receipt, simulated JWT):
+
+```
+post_receipt_accounting posted 1 entry, doc_kind=receipt
+entry has 2 lines
+database unchanged after rollback: 1 entry, 2 lines
+```
+
+### MAJOR fixes — migration 346
+
+| # | Defect | Fix | Re-verified as |
+|---|---|---|---|
+| M1 | `require_asan_code` was SECURITY DEFINER with no role gate — a viewer-only user got an 8-char Asan code the RLS on `person_identifiers` hides from them | made SECURITY INVOKER, so a direct caller gets exactly the visibility RLS already grants; the phase-2/3/4 RPCs are themselves DEFINER so it still resolves inside them | viewer-only user under `SET LOCAL ROLE authenticated` -> **refused** |
+| M2 | `journal_entries`/`journal_lines` still had INSERT and UPDATE policies. audit-trigger-spec section 4 requires none. An accountant could fabricate a `posted` entry through PostgREST, bypassing numbering, Asan code, balance and audit | dropped all four policies. SELECT policies untouched. The DEFINER RPCs are unaffected — they run as the table owner | accountant running the spec's own section 6 test -> **42501** |
+| M3 | `manager` passed the spec's canonical gate and the attachments INSERT policy but was refused by `assign_document_number`, so a phase-2 `create_receipt` would die mid-transaction | admitted manager to `assign_document_number`. `document_numbers` SELECT deliberately NOT widened: manager may create a document, not browse the ledger | manager-only user -> **RCP-1405-000001** |
+| M4 | `document_attachments` orphaned on parent delete — no FK, no cascade, no cleanup trigger, while `document_numbers` got burn triggers on the same two tables | AFTER DELETE triggers on `payment_receipts` and `payment_vouchers` removing matching rows | attachment count before parent delete = 1, after = **0** |
+
+Storage objects behind deleted attachment rows are reclaimed by the application; SQL cannot
+delete from the bucket. Stated rather than implied.
+
+### MAJOR recorded, not fixed — these are scope decisions, not code
+
+**M5 — a posted entry is now permanently unremovable and `reverse_document` does not exist.**
+Verified: `SELECT count(*) FROM pg_proc WHERE proname='reverse_document'` -> **0**. Ground-truth
+section 5 records that `journal_entries.source_id` is not an FK, so deleting a source document
+orphans its entry. Before 343 an admin could remove that orphan; after 343 it is immutable,
+orphaned and uncorrectable, because D11's sanctioned remedy is not built.
+
+Not fixed here because `reverse_document` appears in no task in phases 1-5 of MASTER-CHECKLIST,
+and inventing it inside a Gate A remediation would be exactly the unilateral scope change the
+session rules forbid. **Recorded as an accepted risk that must be closed before phase 9
+(production).**
+>>> OG-14: build `reverse_document`, or add an admin-only audited escape hatch? Which phase owns it?
+
+**M6 — `cheque_receivable -> customers` breaks a cheque receipt from a non-customer payer.**
+T7 makes suppliers and external parties reachable as payers by design, and
+`post_receipt_accounting` already has an `external_party` branch. Nothing is broken today
+(`journal_lines` holds no cheque rows), but a phase-2 cheque receipt from such a payer would be
+rejected `23503`. This is the receipt-side mirror of OG-10, which I raised, and it lands a phase
+earlier. Merged into one question:
+>>> OG-10 (widened): what is the account-reference target for each cheque kind when the
+counterparty is not a customer/supplier? **Must be answered before task 2.6 writes the cheque
+branch.**
+
+### MINOR — dispositions
+
+| # | Disposition |
+|---|---|
+| m1 | **FIXED.** `338-down.sql` now carries the data-loss warning and a pre-flight count gate. |
+| m2 | **Accepted.** Gate B used 50 distinct source_ids, proving uniqueness and gap-freedom but not same-source_id idempotency under contention. Added to the phase-2 Gate B script rather than re-run now. |
+| m3 | **Accepted, and worth stating in the design:** the never-reissue invariant is enforced by the absence of a write path for application roles, not by the database. `supabase_admin` can undo it, and did once, by hand, in Gate B cleanup. |
+| m4 | **FIXED.** Exit criteria, deploy block and the contradictions table are filled below. |
+| m5 | **FIXED** by migration 345: `pay_purchase_with_voucher` writes `purchase_payment`. |
+| m6 | **Accepted.** `trg_post_receipt_on_approve` is genuinely inert (Gate A confirmed `0A000`, 0 referencing triggers), so OG-8's judgement stands. Drop it when OG-8 is answered. |
+| m7 | **Accepted, recorded.** Neither new table carries the RESTRICTIVE `viewer_restricted` backstop. Correct today because SELECT is already narrower, but the backstop is what survives a future widening. Raised as OG-15 rather than changed, because adding it breaks task 1.5's acceptance count of 3 — and changing an acceptance criterion is the owner's call. |
+| m8 | **Recorded as a phase-5 hazard.** `asan_list_journal_export` already RETURNS a column named `doc_kind` (the inferred classifier, values include `unclassified`); 341 introduced a STORED column of the same name with a different value set. Task 5.1 rewires one onto the other — a name collision there ships a silently wrong export. Flagged now while it is cheap. |
+
+### Gate A verdict after remediation
+
+BLOCKER: fixed and regression-tested. All 6 MAJOR: 4 fixed and re-verified, 2 recorded as owner
+decisions with the failure mode and owning phase named. MINOR: 3 fixed, 5 recorded.
+
+**Phase 1 closes as: PASS WITH RECORDED RISKS (M5, M6 open as OG-14, OG-10-widened).**
+
+I am not marking this a clean pass. Gate A found a blocker that broke three live features, and it
+found it because it swept the existing callers that I did not.
+
+---
+
+## Exit criteria
+
+- [x] All 7 tasks complete with real acceptance output recorded
+- [x] Rollback file written BEFORE each of the 11 migrations
+- [x] `docker restart afrakala-lan-rest` after every migration
+- [x] Typecheck 70/70 baseline, no regression
+- [x] Gate B passed (50 concurrent, 0 gaps, 0 duplicates, 0 errors)
+- [x] Gate A run, defects fixed or recorded
+- [x] Every migration committed; none applied-but-uncommitted
+- [x] Branch pushed; no PR opened; nothing merged
+- [x] Production never contacted
+
+## Contradictions found against ground-truth.md
+
+| # | Expected | Found | Where | Impact |
+|---|---|---|---|---|
+| 1 | ground-truth section 2: `post_receipt_accounting` "exists, correct — the reference implementation for phase 2" | Broken by my own migration 341 (`23502` on `doc_kind`), along with `pay_purchase_with_voucher` and `post_mutual_settlement` | Gate A B1 | Three shipped features dead until migration 345. **The stop-the-line event of this phase.** |
+| 2 | audit-trigger-spec section 4: INSERT/UPDATE = none on the ledger tables | Both tables carried INSERT and UPDATE policies; an accountant could fabricate a posted entry | Gate A M2 | Immutability guarded the wrong door until 346 |
+| 3 | ground-truth section 5: deleting a source orphans its journal entry (an admin could clean it up) | After 343 that orphan is permanent, and `reverse_document` does not exist | Gate A M5 | Recorded as OG-14; must close before phase 9 |
+| 4 | D12: "the old create path survives until task 6.9" | 341 broke it | Gate A B1 | Restored by 345 |
