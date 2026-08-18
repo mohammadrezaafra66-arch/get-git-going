@@ -41,6 +41,13 @@ manually, replicate the body without the role guard. Never invoke.
 
 Creates a receipt and posts it in one step. Replaces the four client-side inserts.
 
+> **Reconciled against the live schema on 2026-08-18 (task 2.1).** Four statements in the original
+> draft of this section were contradicted by the database and have been corrected in place: the
+> source row's `status` (C3), the cheque debit's `account_ref_id` (C1), when
+> `p_destination_bank_account_id` is required (C5), and how `p_channel` is stored (C6). Each
+> correction is marked below and the evidence is in `docs/execution/phase-2-PROGRESS.md`
+> § *Contradictions found*. Implemented by migrations 348 and 349.
+
 ```sql
 create_receipt(
   p_channel                      text,      -- 'bank' | 'cash' | 'cheque'
@@ -48,7 +55,7 @@ create_receipt(
   p_amount                       numeric,   -- Toman, > 0, integral
   p_payment_date                 date,
   p_payment_time                 time,      -- required: the column has no default
-  p_destination_bank_account_id  uuid    DEFAULT NULL,  -- required when channel='bank'
+  p_destination_bank_account_id  uuid    DEFAULT NULL,  -- required for 'bank' AND 'cash'  (C5)
   p_tracking_number              text    DEFAULT NULL,  -- required for 'bank'; minted for others
   p_source_bank                  text    DEFAULT NULL,
   p_cheque_number                text    DEFAULT NULL,  -- required when channel='cheque'
@@ -67,36 +74,75 @@ create_receipt(
 
 ## Order of operations
 
-1. Role gate → `42501`.
+1. Role gate → `42501`. `public.has_any_role(auth.uid(), ARRAY['admin','accountant','manager']::app_role[])`,
+   the same boundary `assign_document_number` uses since migration 346 (OG-13, answer (a)).
 2. Argument validation → `22023`: amount > 0 and `= trunc(amount)`; date not null; per-channel
    requirements above.
-3. `require_asan_code(customers.person_id)` → `P0001` naming the customer.
+3. `require_asan_code(customers.person_id)` → `P0001` naming the customer. It is `SECURITY INVOKER`
+   since migration 346 and runs as the owner inside this `SECURITY DEFINER` function.
 4. If `p_channel <> 'bank'`, mint `p_tracking_number` as `INT-<doc_number>` — the column is
    `NOT NULL` with no default and cash has no bank reference.
 5. `assign_document_number('receipt', <new uuid>)`.
-6. Insert `payment_receipts` with `status='posted'` (T1 removed approval) and
-   `receipt_type` set to its fixed default (T5 removed the field but the column stays `NOT NULL`).
-7. Insert `payment_receipt_links` from `p_allocations`. Sum of allocations must be ≤ amount →
-   `P0001`. Any failure here aborts the whole transaction, so no orphan can exist.
+6. Insert `payment_receipts` with `status='approved'`, `posting_status='posted'`, `posted_at=now()`,
+   and `receipt_type` set to its fixed default (T5 removed the field but the column stays
+   `NOT NULL`).
+
+   > **C3 — corrected.** This step originally read `status='posted'`. That value does not exist:
+   > `payment_receipts_status_check` admits only `pending_review | approved | rejected`. More
+   > importantly, `enforce_payment_receipt_link_limits` caps a proforma's remaining balance counting
+   > **only** receipts with `status='approved'`, so a fourth status value would have silently
+   > disabled the over-allocation cap for every receipt this RPC creates. T1 is satisfied as written:
+   > there is no approval **step** — the row is born approved and posted inside one transaction.
+   > `posting_status='posted'` additionally makes the legacy `post_receipt_accounting` button
+   > short-circuit on `already_posted` instead of double-posting.
+
+   `document_channel` stores `'cash'` for cash and `'cheque'` for cheque; for `'bank'` it is left
+   `NULL`, because the column's CHECK has no `bank` value and its real sub-channel
+   (`paya`/`satna`/`pol`/`card_to_card`) is not known until the phase-6 wizard collects it. **(C6)**
+7. Insert `payment_receipt_links` from `p_allocations` (`quote_id` only — the `invoice_id` branch is
+   retired). The existing `trg_payment_receipt_links_enforce_limits` trigger enforces both caps: sum
+   of this receipt's allocations ≤ the receipt amount, and each allocation ≤ the proforma's remaining
+   balance. Do **not** re-implement those checks in the RPC. Any failure here aborts the whole
+   transaction, so no orphan can exist.
 8. Bind `p_attachment_ids` to `document_attachments` (`document_type='receipt'`).
 9. Post the entry — see below.
-10. Insert the audit row per `audit-trigger-spec.md`.
+10. Insert the audit row per `audit-trigger-spec.md`. `audit_logs` has no dedicated
+    `journal_entry_id` / `document_number` / `amount` / `counterparty_*` columns, so those fields go
+    into `diff jsonb`; `entity_type='payment_receipt'`, `entity_id=receipt_id::text`,
+    `action='receipt_created'`, `actor_id=auth.uid()`.
 
 ## The journal entry
 
 | | account_kind | account_ref_id | source |
 |---|---|---|---|
-| Debit | `bank` (channel bank/cash) or `cheque_receivable` (cheque) | `p_destination_bank_account_id`, or the cheque register row | money arrives |
+| Debit | `bank` (channel bank/cash) or `cheque_receivable` (cheque) | `p_destination_bank_account_id`, or **`p_customer_id`** for a cheque (C1) | money arrives |
 | Credit | `customer_credit` | `p_customer_id` | the customer's credit rises |
 
+> **C1 — corrected.** This table originally gave the cheque debit's `account_ref_id` as "the cheque
+> register row". **There is no cheque register**: A2 explicitly defers the cheque lifecycle, and the
+> live `validate_journal_line_ref` accepts `cheque_receivable` only against `customers` or
+> `external_parties` (migration 341, widened by 347 for OG-10). The drawer is therefore the
+> reference, and for the customer path that is `p_customer_id`.
+
 `journal_entries`: `source_type='payment_receipt'`, `source_id=receipt_id`, `doc_kind='receipt'`,
-`status='posted'`, `entry_date=p_payment_date`, `posted_by=auth.uid()`.
+`status='posted'`, `entry_date=p_payment_date`, `posted_by=auth.uid()`. `doc_kind` is passed
+explicitly — migration 341 dropped its DEFAULT on purpose so an omission fails loudly.
 
 **Cash is still `bank`** — a cash box is a row in `bank_accounts` with `account_type='cash'`. Do not
-invent a `cash` account kind.
+invent a `cash` account kind. It follows that **cash also requires `p_destination_bank_account_id`**
+(the cash box account): the debit line needs a reference, and
+`payment_receipts_receiver_exclusive_chk` requires a receiver on any non-`pending_review` row. **(C5)**
 
 **Before posting**, verify the debit account resolves to an `accounting_code`; if not, raise `P0001`
-naming the account. Discovering this at export time means silently withholding the document.
+naming the account. Discovering this at export time means silently withholding the document. For the
+cheque branch there is nothing to verify — `cheque_receivable` has no Asan code by design (D8), and
+the export skips those lines rather than blocking the document (task 5.2).
+
+**Idempotency.** A retry with the same `p_channel`/`p_customer_id`/`p_amount`/… does **not**
+deduplicate — every call is a new receipt with a new `source_id`. The `UNIQUE (source_type,
+source_id)` guarantee is that one receipt can never carry two entries; it is not a request-level
+idempotency key. There is no natural key for "the same receipt submitted twice", and inventing one
+would silently swallow a genuine second payment of the same amount on the same day.
 
 ---
 
