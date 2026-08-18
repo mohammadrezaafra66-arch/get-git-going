@@ -7,14 +7,14 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        1 — Shared foundations (tasks done, gates running)
-Current task:         phase 1 exit gates
+Current phase:        1 COMPLETE — phase 2 not started
+Current task:         2.1 (not started)
 Branch:               feature/backend-phase-1
-Last commit SHA:      f9bb12f0
+Last commit SHA:      b62c9f03
 Live APP_GIT_SHA:     <fill>   Match: <yes/no>
 Typecheck:            70 / 70 baseline
-Migrations applied:   9 (336-344)
-Open Owner-Gates:     OG-8..OG-13 raised in phase 1 (none blocking)
+Migrations applied:   11 (336-346)
+Open Owner-Gates:     OG-8..OG-15. OG-10 BLOCKS task 2.6; OG-14 must close before phase 9
 Blocked tasks:        none
 Production touched:   NO
 ```
@@ -24,7 +24,7 @@ Production touched:   NO
 | Phase | Status | Started | Finished | Tests | Notes |
 |---|---|---|---|---|---|
 | 0 Ground and decisions | complete | | 2026-08-18 | n/a | OG-1 confirmed |
-| 1 Shared foundations | tasks 7/7 done | 2026-08-18 | | Gate B PASS | 9 migrations; Gate A running |
+| 1 Shared foundations | **complete** | 2026-08-18 | 2026-08-18 | Gate B PASS, Gate A FAIL then remediated | 11 migrations; 2 risks recorded |
 | 2 Receipts post | not started | | | | |
 | 3 Payments post | not started | | | | |
 | 4 Dual documents | not started | | | | |
@@ -49,7 +49,9 @@ Production touched:   NO
 | OG-10 can an own cheque be issued to an external party? | 2026-08-18 | | raised in task 1.4 |
 | OG-11 post_receipt_accounting back-fill vs immutability | 2026-08-18 | | raised in task 1.6 |
 | OG-12 is 'ledger-documents' the right module string? | 2026-08-18 | | raised in task 1.7 |
-| OG-13 should manager get can_view on ledger-documents? | 2026-08-18 | | raised in task 1.7 |
+| OG-13 should manager get can_view on ledger-documents? | 2026-08-18 | | refined by Gate A M3; create=admin+accountant+manager, read=admin+accountant |
+| OG-14 build reverse_document, or an audited escape hatch? | 2026-08-18 | | Gate A M5 - MUST close before phase 9 |
+| OG-15 add viewer_restricted to the two new tables? | 2026-08-18 | | Gate A m7 - changes task 1.5 acceptance count |
 
 ## Contradictions found against ground-truth.md
 
@@ -79,3 +81,5 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 342 | 20260818156000_342_document_attachments.sql | 1 | 2026-08-18 | docs/verification/342-down.sql | yes |
 | 343 | 20260818157000_343_posted_entry_immutability.sql | 1 | 2026-08-18 | docs/verification/343-down.sql | yes |
 | 344 | 20260818158000_344_seed_ledger_documents_module.sql | 1 | 2026-08-18 | docs/verification/344-down.sql | yes |
+| 345 | 20260818160000_345_writers_supply_doc_kind.sql | 1 | 2026-08-18 | docs/verification/345-down.sql | yes |
+| 346 | 20260818161000_346_gate_a_major_fixes.sql | 1 | 2026-08-18 | docs/verification/346-down.sql | yes |
