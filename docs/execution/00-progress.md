@@ -7,16 +7,19 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        2 COMPLETE — phase 3 not started (separate dispatch)
+Current phase:        2 COMPLETE — Gate A remediation applied; phase 3 not started (separate dispatch)
 Current task:         3.1 (not started)
-Branch:               staging @ c937c923 (PRs #300, #301 merged)
-Last commit SHA:      97a763bf (phase-2 migrations), merged as c937c923
+Branch:               staging (PRs #300, #301, #303 merged; Gate A remediation 350-353 merged)
+Last commit SHA:      Gate A remediation (350-353) — see the migration ledger below
 Live APP_GIT_SHA:     bfcc723a   Match: NO — pre-existing drift, see note below
 Typecheck:            70 / 70 baseline
-Migrations applied:   14 (336-349)
-Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-16 (OG-10 and OG-13 CLOSED).
-                      OG-14 must close before phase 9
+Migrations applied:   18 (336-353)
+Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-16, OG-17 (OG-10 and OG-13 CLOSED).
+                      OG-14 must close before phase 9; OG-17 before phase 6
 Blocked tasks:        none
+Gate A defects:       16 raised, 10 closed, 1 with the owner (OG-17), 5 open (M4, M5, m1, m3, m7).
+                      M4 + M5 need one hand-run by the owner — the exact command is in
+                      docs/execution/phase-2-REMEDIATION-PROGRESS.md
 Production touched:   NO
 ```
 
@@ -34,7 +37,7 @@ deploy, and nothing in phase 2 needs one.
 |---|---|---|---|---|---|
 | 0 Ground and decisions | complete | | 2026-08-18 | n/a | OG-1 confirmed |
 | 1 Shared foundations | **complete** | 2026-08-18 | 2026-08-18 | Gate B PASS, Gate A FAIL then remediated | 12 migrations; OG-10 closed, 1 risk open (OG-14) |
-| 2 Receipts post | **complete** | 2026-08-18 | 2026-08-18 | 8/8 accept PASS; stress PASS | migrations 348-349; OG-16 raised; Gate A m2 closed |
+| 2 Receipts post | **complete** | 2026-08-18 | 2026-08-18 | 8/8 accept PASS; stress PASS; Gate A FAIL then remediated | migrations 348-349 + remediation 350-353; OG-16 and OG-17 raised; OG-13 fully closed. 10 of 16 Gate A defects closed — `phase-2-REMEDIATION-PROGRESS.md` |
 | 3 Payments post | not started | | | | |
 | 4 Dual documents | not started | | | | |
 | 5 Asan exports live | not started | | | | OG-3 answered (989) — 5.4 unblocked |
@@ -58,10 +61,11 @@ deploy, and nothing in phase 2 needs one.
 | OG-10 cheque counterparty may be an external party? | 2026-08-18 | **2026-08-18** | **ANSWERED: YES, both directions.** A cheque received may come from a non-customer; a cheque issued may go to a non-supplier. Implemented in migration **347**: `validate_journal_line_ref` accepts `external_parties` for both `cheque_receivable` and `cheque_payable`. **Closes Gate A M6** (the receipt-side mirror) by the same migration. Design choice (a) - existence in any allowed table - recorded with reasons in phase-1-PROGRESS.md. |
 | OG-11 post_receipt_accounting back-fill vs immutability | 2026-08-18 | | raised in task 1.6 |
 | OG-12 is 'ledger-documents' the right module string? | 2026-08-18 | | raised in task 1.7 |
-| OG-13 should manager get can_view on ledger-documents? | 2026-08-18 | **2026-08-18** | **ANSWERED — option (a). CLOSED.** The boundary stands as migration 346 applied it: create = `admin`, `accountant`, `manager`; read the numbering ledger = `admin`, `accountant`. No migration needed. `create_receipt` uses `has_any_role(_uid, ARRAY['admin','accountant','manager'])`, matching `assign_document_number`. Proved end to end in task 2.8: manager creates successfully through gate → numbering → receipt → links → entry → credit → audit, which is what Gate A's M3 said would break. |
+| OG-13 should manager get can_view on ledger-documents? | 2026-08-18 | **2026-08-18** | **ANSWERED — option (a). CLOSED.** The boundary stands as migration 346 applied it: create = `admin`, `accountant`, `manager`; read the numbering ledger = `admin`, `accountant`. No migration needed. `create_receipt` uses `has_any_role(_uid, ARRAY['admin','accountant','manager'])`, matching `assign_document_number`. Proved end to end in task 2.8: manager creates successfully through gate → numbering → receipt → links → entry → credit → audit, which is what Gate A's M3 said would break. **Correction 2026-08-18 (Gate A M3):** this row was premature — two of OG-13's four surfaces still carried the old answer when it was written. Migration **352** applied answer (a) to both: `document_numbers_select_finance` now admits `manager`, and `role_permissions('ledger-documents','manager')` is `can_view=t, can_create=t`. Both verified in the live catalogue. OG-13 is closed on all four surfaces. |
 | OG-14 build reverse_document, or an audited escape hatch? | 2026-08-18 | | Gate A M5 - MUST close before phase 9 |
 | OG-15 add viewer_restricted to the two new tables? | 2026-08-18 | | Gate A m7 - changes task 1.5 acceptance count |
 | OG-16 what does a receipt from a non-customer credit? | 2026-08-18 | | Raised in task 2.1 (contradiction C2). `create_receipt` takes `p_customer_id` and always credits `customer_credit`, which resolves only through `customers.person_id`. OG-10 confirmed a cheque may arrive from a non-customer, and T7 searches `persons`. Options (a) `external_party`, (b) a new `person_credit` kind, (c) require promotion to a customer first. **Blocks nothing** — phase 2 built the customer path exactly as the contract specifies. Full text in `phase-2-PROGRESS.md` § OWNER-GATE. |
+| OG-17 a receipt allocated to a proforma is counted twice | 2026-08-18 | | Gate A **M1**. An allocated receipt reduces the proforma's `outstanding_amount` (via `payment_receipt_links` → `vw_customer_receivables`) **and** calls `increase_credit` for the **full** receipt amount, so the same money becomes spendable credit that `hold_credit` can commit to a different order. Reproduced: 62,200,000 → 61,200,000 outstanding, 0 → 1,000,000 available credit, `hold_credit(1,000,000)` **succeeded**. Confirmed statically at `351:542` — `PERFORM public.increase_credit(p_customer_id, p_amount, …)`, no allocation term. Options: (a) `available_credit` is prepayment credit → add only `p_amount − sum(allocations)`; (b) it is "total ever received" → it must not be what `hold_credit` spends, nor be labelled اعتبار قابل استفاده in the UI. **Not fixed — business decision.** Predates phase 2 (`post_receipt_accounting` does the same) and `hold_credit` has no call site in `src/` yet, which is why it is not a blocker. **Must be answered before phase 6 wires the RPC.** Full text in `phase-2-REMEDIATION-PROGRESS.md` § OWNER-GATE. |
 
 ## Contradictions found against ground-truth.md
 
@@ -106,9 +110,39 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 347 | 20260818170000_347_cheque_external_party_counterparties.sql | 1 (OG-10) | 2026-08-18 | docs/verification/347-down.sql | yes |
 | 348 | 20260818180000_348_receipt_cheque_receiver_check.sql | 2 | 2026-08-18 | docs/verification/348-down.sql | yes |
 | 349 | 20260818181000_349_create_receipt.sql | 2 | 2026-08-18 | docs/verification/349-down.sql | yes |
+| 350 | 20260819090000_350_bank_deposit_export_excludes_cash_cheque.sql | 2 Gate A (B1) | 2026-08-18 | docs/verification/350-down.sql | yes |
+| 351 | 20260819091000_351_create_receipt_cash_account_and_date_bounds.sql | 2 Gate A (B1, M6) | 2026-08-18 | docs/verification/351-down.sql | yes |
+| 352 | 20260819092000_352_og13_remaining_surfaces.sql | 2 Gate A (M3, m2) | 2026-08-18 | docs/verification/352-down.sql | yes |
+| 353 | 20260819093000_353_block_receipt_delete_when_posted.sql | 2 Gate A (M8 stopgap) | 2026-08-18 | docs/verification/353-down.sql | yes |
 
 Both phase-2 rollback files were written **before** their forward migration and then executed
 (349-down then 348-down, one `BEGIN … ROLLBACK`, exit 0). `348-down` restores a CHECK that is
 *stricter* than the one 348 installs, so it fails loudly rather than running once cheque
 receipts exist — the file carries a pre-flight gate saying so. Phase 1 shipped a rollback file
 that would not have run; these two were proved.
+
+**Migrations 350-353 (Gate A remediation).** All four were applied to the test database on
+2026-08-18 and then, because the authoring session was cut off by an API error, sat **applied but
+uncommitted** until they were recovered. Nothing was re-applied: each was verified against the live
+object (`pg_get_functiondef`, `pg_policies`, `pg_get_triggerdef`, `role_permissions`) rather than
+against the file on disk, and only then committed. The full verification table is in
+`phase-2-REMEDIATION-PROGRESS.md` § 0. **The commit is part of applying a migration, not a step that
+follows it** — a database ahead of `staging` is what phase 9 replays against nothing.
+
+The `REST restarted` column for these four rows rests on one observation rather than four: the
+`afrakala-lan-rest` container reports `StartedAt = 2026-08-18T16:16:26Z`, which is 13 seconds after
+migration 353 was written (21:16:13 local, UTC+5) and after all four had been applied. One restart
+after the last migration reloads the schema cache for all of them, so every new object is reachable
+through PostgREST. Individual restarts between 350 and 353 were not witnessed and are not claimed.
+
+**Rollback-file rule, from 350 onward (Gate A M7).** A `docs/verification/*-down.sql` file contains
+**statements only** — no `BEGIN`, no `COMMIT`, no `ROLLBACK`. The caller owns the transaction. An
+embedded `COMMIT` commits the *outer* transaction, which is why phase 2's recorded rollback proof
+could not have happened as written. `docs/verification/rollback-dryrun.sql` applies a file inside a
+transaction it owns, asserts, and discards; if a down file ever carries its own `COMMIT` again, the
+"after ROLLBACK" marker is what catches it.
+
+**`supabase_migrations.schema_migrations` is stale and should not be trusted.** Its newest row is
+`20260811180000`; nothing from 336 onward is recorded there. The table above is the real ledger. This
+predates phase 1 and is flagged here because a phase-9 replay tool that trusts that table would skip
+eighteen migrations.
