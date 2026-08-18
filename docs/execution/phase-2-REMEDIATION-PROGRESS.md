@@ -19,6 +19,8 @@ Defects closed:       B1, M2, M3, M6, M7, M8, m2, m4, m5, m6      (10 of 16)
 Defects with owner:   M1 → OG-17, M5* (see below)
 Defects still open:   M4, M5, m1, m3, m7                          (5 of 16)
 Production touched:   NO
+Live APP_GIT_SHA:     87c1a921 vs staging 9b837306 — 2 commits behind, both docs+SQL only.
+                      Rebuild attempted and deliberately not forced (shared tree not clean).
 ```
 
 ---
@@ -446,7 +448,33 @@ untracked, and is never printed.
    before phase 6, not phase 9.
 4. **Browser check of `/admin/asan-export`** after the cleanup — confirm the page shows one row, not
    51. No agent can do this.
-5. **Confirm cash receipts.** Once the owner creates a `bank_accounts` row with
+5. **Rebuild the web image** to bring `APP_GIT_SHA` up to `HEAD`. Attempted and **deliberately not
+   forced** — see below.
+6. **Confirm cash receipts.** Once the owner creates a `bank_accounts` row with
    `account_type='cash'` (the صندوق), re-test a cash receipt end to end. Until that row exists, B1's
    second half means every cash receipt is correctly refused.
-6. **Carry forward:** m1 → phase 6 (task 6.9), m3 → phase 5, m7 → phase 6.
+7. **Carry forward:** m1 → phase 6 (task 6.9), m3 → phase 5, m7 → phase 6.
+
+### The deploy: attempted, not forced, and why
+
+`staging` was fast-forwarded to `9b837306` on the test computer and the deploy was attempted.
+`deploy/lan/build.ps1` **refuses to build a tree that is not clean**, because `docker-compose`
+builds from the working tree — anything uncommitted ships into the image while `APP_GIT_SHA` still
+reports the last commit. This shared checkout holds **8 untracked files belonging to other
+missions** (`audit/`, `docs/audits/7-eg-checklist-mission.md`,
+`docs/execution/production-gap-analysis-mission.md`, `docs/research/_a…_e`).
+
+`-Force` exists, and it was not used. Forcing would stamp `9b837306` onto an image that also
+contains eight uncommitted files — which is precisely the "state does not match the recorded commit"
+drift that § 0 of this document exists to close. Closing that drift in git and then recreating it in
+the image would have been self-defeating.
+
+**It costs nothing to wait.** The running image reports `87c1a921`, two commits behind, and
+`git diff --name-only 87c1a921 9b837306` is **entirely `docs/` and `supabase/migrations/`** — not one
+file reaches the built web bundle. A rebuild moves the SHA stamp and changes no behaviour. What
+actually makes the new database objects reachable is the PostgREST restart, and that already happened
+(`StartedAt = 2026-08-18T16:16:26Z`, after all four migrations).
+
+The copy-pasteable deploy block, to run once the tree is clean, is in `00-progress.md` under the
+**APP_GIT_SHA note** — which also corrects a stale claim there: it said the container reported
+`bfcc723a` "which predates the phase-1 merge". It reports `87c1a921`.
