@@ -16,24 +16,85 @@ must be exact and the Asan export blocks on fractions anyway.
 | SQLSTATE | Meaning | Front-end behaviour |
 |---|---|---|
 | `22023` | Invalid argument (bad date, non-positive amount, fraction) | Field-level message |
-| `23505` | Idempotent replay — the document already exists | Treat as success; return the existing document |
+| `23505` | A real unique violation. **Not** a success path — see Idempotency below | Show an error; do not treat as "already done" |
 | `42501` | Caller lacks the required role | Generic "no permission" message |
-| `P0001` | Business rule violated (no Asan code, imbalance, missing account code) | Show the Persian message verbatim — it is written for the user |
+| `0A000` | The feature exists in the signature but is not wired yet (today: `p_attachment_ids`) | Show the Persian message; do not retry |
+| `P0001` | Business rule violated (no Asan code, imbalance, missing account code, wrong account type) | Show the Persian message verbatim — it is written for the user |
 
 **Persian messages are part of the contract.** They surface directly in the UI. Never let a raw
 database error reach the user.
 
-**Idempotency.** Each function honours `UNIQUE (source_type, source_id)` on `journal_entries`. A
-retry with the same source row returns the existing document rather than creating a second entry.
-Callers should retry safely on network failure.
+**Idempotency — RETRY IS NOT SAFE. Read this before writing a caller.**
+
+> Corrected 2026-08-19 (Gate A phase 2, defect M2). This section previously said a retry returns
+> the existing document and that callers "should retry safely on network failure". That was false,
+> and §1 already said the opposite, so the document contradicted itself. Phase 6 would have built
+> the retry.
+
+These functions have **no request-level idempotency key**. Each call mints a fresh `source_id`
+internally, so two identical calls produce **two independent documents**: two source rows, two
+document numbers, two posted journal entries, and two balance movements. Measured:
+
+```
+B7 identical call submitted twice | doc1=RCP-1405-000054 doc2=RCP-1405-000055
+   receipts_with_that_tracking_number=2 -> two immutable posted documents, two credit increases
+```
+
+`UNIQUE (source_type, source_id)` on `journal_entries` guarantees that **one source row can never
+carry two journal entries**. That is all it guarantees. It is not a deduplication key for "the same
+receipt submitted twice", and there is no natural key for that — inventing one would silently
+swallow a genuine second payment of the same amount on the same day.
+
+The duplicate cannot be cleaned up afterwards. The journal entry is immutable (migration 343),
+`reverse_document` does not exist (OG-14), and migration 353 refuses to delete a receipt that has
+posted. A double submission is permanent.
+
+**What the front end must do instead:**
+
+1. **Disable the submit control on first click** and keep it disabled until the call settles.
+   Do not rely on a debounce.
+2. **On a network timeout, do NOT retry automatically.** The call may well have committed. Tell
+   the user the outcome is unknown and send them to the document list to check.
+3. **Offer an explicit "I checked, create it again" path** rather than a silent retry, so a second
+   document is only ever created by a deliberate human action.
+4. If true retry safety is needed later, it requires a caller-supplied idempotency key stored on
+   the source row with a unique index. That is a design change, not a client-side fix.
 
 **Role gate.** `admin`, `accountant`, `manager` may create. Enforced with `public.has_any_role`
 inside SQL — **never** via `supabase.rpc('has_any_role', …)`, which throws `PGRST203` because both
 overloads match. Failure must `RAISE`, never return zero rows: an unauthorised caller receiving an
 empty result is read upstream as "there is nothing here".
 
-**`auth.uid()` is NULL in psql**, so these functions cannot be called from a shell. To verify them
-manually, replicate the body without the role guard. Never invoke.
+**Verifying these functions from psql — invoke them, do not replicate them.**
+
+> Corrected 2026-08-19 (Gate A phase 2, defect m6). This section previously read: "`auth.uid()` is
+> NULL in psql, so these functions cannot be called from a shell. To verify them manually,
+> replicate the body without the role guard. Never invoke." Both halves were wrong. `auth.uid()`
+> reads `request.jwt.claims`, which any session can set, and the Gate A review invoked
+> `create_receipt` dozens of times from psql this way. The advice it gave instead — test a copy of
+> the body — is the anti-pattern that let phase 1's BLOCKER through three reviewers: a replicated
+> body passes while the real function fails.
+
+Simulate the caller's JWT, exactly as CLAUDE.md rule 7 prescribes, and call the real object inside
+`BEGIN … ROLLBACK` so nothing is written:
+
+```sql
+BEGIN;
+SELECT set_config('request.jwt.claims',
+  '{"sub":"<user-uuid>","role":"authenticated"}', true);
+
+SELECT * FROM public.create_receipt(
+  p_channel := 'bank', p_customer_id := '<customer-uuid>', p_amount := 1000000,
+  p_payment_date := current_date, p_payment_time := '10:00'::time,
+  p_destination_bank_account_id := '<bank-account-uuid>', p_tracking_number := 'PROBE-1');
+
+ROLLBACK;
+```
+
+To exercise RLS as well as the role gate, add `SET LOCAL ROLE authenticated` — the `SECURITY
+DEFINER` functions still run as their owner, but direct table reads then obey the caller's
+policies. Persian output goes to a file with `\o` and is read with a file reader; it is never
+printed to a terminal (README-EXECUTION §2 rule 2).
 
 ---
 
@@ -56,14 +117,14 @@ create_receipt(
   p_payment_date                 date,
   p_payment_time                 time,      -- required: the column has no default
   p_destination_bank_account_id  uuid    DEFAULT NULL,  -- required for 'bank' AND 'cash'  (C5)
-  p_tracking_number              text    DEFAULT NULL,  -- required for 'bank'; minted for others
+  p_tracking_number              text    DEFAULT NULL,  -- required for 'bank'; minted only when not supplied (m5)
   p_source_bank                  text    DEFAULT NULL,
   p_cheque_number                text    DEFAULT NULL,  -- required when channel='cheque'
   p_cheque_due_date              date    DEFAULT NULL,  -- required when channel='cheque'
   p_cheque_bank                  text    DEFAULT NULL,
   p_description                  text    DEFAULT NULL,
   p_allocations                  jsonb   DEFAULT '[]'::jsonb,  -- [{quote_id, amount}]
-  p_attachment_ids               uuid[]  DEFAULT NULL
+  p_attachment_ids               uuid[]  DEFAULT NULL   -- NOT WIRED: a non-empty array raises 0A000 (m4)
 ) RETURNS TABLE (
   receipt_id       uuid,
   document_number  text,
@@ -77,11 +138,30 @@ create_receipt(
 1. Role gate → `42501`. `public.has_any_role(auth.uid(), ARRAY['admin','accountant','manager']::app_role[])`,
    the same boundary `assign_document_number` uses since migration 346 (OG-13, answer (a)).
 2. Argument validation → `22023`: amount > 0 and `= trunc(amount)`; date not null; per-channel
-   requirements above.
+   requirements above; **and the date bounds** — `p_payment_date` may not be in the future, and
+   its Jalali year may not be older than the previous one (migration 351, Gate A M6). The two are
+   refused separately so the message tells the user which rule they hit. Rationale: a backdated
+   entry lands in an Asan export window that may already have been submitted, and it can never be
+   moved or withdrawn afterwards (343 immutability, and no `reverse_document` — OG-14). The
+   one-year window exists so an accountant entering a 29 Esfand receipt on 2 Farvardin is not
+   pushed back onto the legacy form.
 3. `require_asan_code(customers.person_id)` → `P0001` naming the customer. It is `SECURITY INVOKER`
    since migration 346 and runs as the owner inside this `SECURITY DEFINER` function.
-4. If `p_channel <> 'bank'`, mint `p_tracking_number` as `INT-<doc_number>` — the column is
-   `NOT NULL` with no default and cash has no bank reference.
+4. Resolve the destination account and **check that its `account_type` matches the channel** →
+   `P0001` naming the account (migration 351, Gate A B1). `cash` requires a `bank_accounts` row
+   with `account_type='cash'`; `bank` requires `account_type='bank'`. Without this, a cash receipt
+   debited a real bank account and inflated it in `vw_account_balances` and `get_account_ledger`.
+   **On the test database no `account_type='cash'` row exists yet, so cash receipts are refused
+   until the owner creates the صندوق.** That is the intended behaviour, not a defect.
+
+   Then mint `p_tracking_number` as `INT-<doc_number>` **if the caller did not supply one** — the
+   column is `NOT NULL` with no default and cash has no bank reference.
+
+   > **Corrected 2026-08-19 (Gate A m5).** This step originally read "If `p_channel <> 'bank'`,
+   > mint `p_tracking_number`", i.e. unconditionally for non-bank channels. The implementation
+   > honours a caller-supplied value instead and mints only as a fallback, because discarding a
+   > value the caller sent is a swallowed input and a cheque in particular may carry a real
+   > reference. The behaviour is right; the contract was stale.
 5. `assign_document_number('receipt', <new uuid>)`.
 6. Insert `payment_receipts` with `status='approved'`, `posting_status='posted'`, `posted_at=now()`,
    and `receipt_type` set to its fixed default (T5 removed the field but the column stays
@@ -104,7 +184,24 @@ create_receipt(
    of this receipt's allocations ≤ the receipt amount, and each allocation ≤ the proforma's remaining
    balance. Do **not** re-implement those checks in the RPC. Any failure here aborts the whole
    transaction, so no orphan can exist.
-8. Bind `p_attachment_ids` to `document_attachments` (`document_type='receipt'`).
+8. `p_attachment_ids` — **not wired. A non-empty array raises `0A000`.**
+
+   > **C8 — corrected.** This step originally read "Bind `p_attachment_ids` to
+   > `document_attachments` (`document_type='receipt'`)". That cannot be done in this order:
+   > `document_attachments.document_id` is `NOT NULL` and `validate_document_attachment_ref` is a
+   > `BEFORE INSERT OR UPDATE` existence trigger, so an attachment row cannot exist before the
+   > document it belongs to. There is no id this parameter could legitimately carry today, and
+   > accepting one would either be a silent no-op or a way to re-point another document's
+   > attachment onto this receipt. The function refuses loudly instead, exactly as
+   > `validate_document_attachment_ref` already does for `document_type='dual'`.
+   >
+   > `NULL` and an empty array are both accepted and mean "no attachments".
+   >
+   > **Phase 6 owns the decision** this leaves open: either create-then-attach as a second call,
+   > or a nullable `document_id` with a completion step. The parameter stays in the signature so
+   > wiring it later does not change the signature — adding a parameter to a defaulted-argument
+   > function creates an overload rather than replacing it (CLAUDE.md rule 5), and this project
+   > has already been bitten by that.
 9. Post the entry — see below.
 10. Insert the audit row per `audit-trigger-spec.md`. `audit_logs` has no dedicated
     `journal_entry_id` / `document_number` / `amount` / `counterparty_*` columns, so those fields go
@@ -288,9 +385,25 @@ correction workflow.
 
 # 5. What the front end must handle
 
-1. **`23505` is success**, not an error — the document already exists; show it.
+> Items 1 and 5 were corrected on 2026-08-19 (Gate A phase 2, defect M2). They previously said
+> `23505` was a success path and that retrying on timeout was safe. Both were false, and both
+> would have produced duplicate permanent documents. If you are reading a cached copy of this
+> file, re-read it.
+
+1. **`23505` is a real error**, not a success. These functions cannot raise it as a "document
+   already exists" replay — each call mints a fresh `source_id`, so the unique index on
+   `journal_entries (source_type, source_id)` can never match a previous call. If you see it,
+   something genuinely collided; surface it.
 2. **`P0001` messages are for the user.** Display verbatim; they are written in Persian for that.
 3. **`42501` never means "empty"** — it means no permission. Do not render an empty state.
 4. **Fractional amounts** are rejected server-side; also block them in the form so the user learns
    before submitting.
-5. **Retry is safe.** On timeout, retry the same call rather than creating a second document.
+5. **Retry is NOT safe.** There is no idempotency key: a second call creates a second permanent
+   document, and it cannot be reversed or deleted. Disable the submit control on first click; on a
+   timeout, tell the user the outcome is unknown and send them to check the list rather than
+   retrying. See **Idempotency** in the Conventions section for the full rule and the measurement.
+6. **`0A000` means "not built yet"**, not "you did something wrong". Today only
+   `p_attachment_ids` raises it. Do not retry; do not show a validation error against a field.
+7. **Dates are bounded.** `p_payment_date` may not be in the future, and may not be older than the
+   previous Jalali year. Enforce the same bounds in the date picker so the user learns before
+   submitting rather than after (migration 351, Gate A M6).
