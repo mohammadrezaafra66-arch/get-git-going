@@ -57,6 +57,9 @@ normally.
 ## D9 — `create_dual_document` takes one amount, not two
 The two sides must be equal or the entry does not balance, and an unbalanced document is dropped
 from the export entirely. The UI may show two fields; the contract takes one.
+*Confirmed by the owner 2026-08-18:* the two sides of a dual document are always equal. If 100 is owed
+and only 60 goes to the creditor while 40 comes to us, that is **two documents** — one dual document
+for 60 and one ordinary receipt for 40 — never one dual document with unequal sides.
 *Overturned by:* a real case of an unequal dual document, which would be a different document type.
 
 ## D10 — The dual document gets its own source table if `mutual_settlements` does not fit
