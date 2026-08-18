@@ -11,7 +11,7 @@ Current phase:        2 COMPLETE — Gate A remediation applied; phase 3 not sta
 Current task:         3.1 (not started)
 Branch:               staging (PRs #300, #301, #303 merged; Gate A remediation 350-353 merged)
 Last commit SHA:      Gate A remediation (350-353) — see the migration ledger below
-Live APP_GIT_SHA:     bfcc723a   Match: NO — pre-existing drift, see note below
+Live APP_GIT_SHA:     87c1a921   Match: NO — 2 commits behind, both docs+SQL only. See note below
 Typecheck:            70 / 70 baseline
 Migrations applied:   18 (336-353)
 Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-16, OG-17 (OG-10 and OG-13 CLOSED).
@@ -23,13 +23,36 @@ Gate A defects:       16 raised, 10 closed, 1 with the owner (OG-17), 5 open (M4
 Production touched:   NO
 ```
 
-**APP_GIT_SHA note.** The `afrakala-lan-web` container reports `bfcc723a`, which predates the
-phase-1 merge — the drift was already there when phase 2 started and phase 2 did not cause it.
-Phases 1 and 2 changed **only** SQL, so a web rebuild would move the SHA and nothing else;
-PostgREST was restarted after every migration, which is what actually makes new database objects
-reachable. **Remaining manual step for a human:** run the deploy block in `README-EXECUTION.md`
-§3 on the test computer to bring `APP_GIT_SHA` up to `HEAD`. Not done here because a rebuild is a
-deploy, and nothing in phase 2 needs one.
+**APP_GIT_SHA note — corrected 2026-08-18.** This entry previously read `bfcc723a`, "which
+predates the phase-1 merge". That is no longer true: the `afrakala-lan-web` container now reports
+**`87c1a921`**, so the image was rebuilt at some point after phase 2 merged. It is now exactly two
+commits behind `staging` (`9b837306`), and `git diff --name-only 87c1a921 9b837306` is **entirely
+`docs/` and `supabase/migrations/`** — not one file that reaches the built web bundle. A rebuild
+would move the SHA stamp and change nothing else. PostgREST was restarted after the migrations,
+which is what actually makes new database objects reachable.
+
+**The deploy was attempted and deliberately not forced.** `deploy/lan/build.ps1` refuses to build a
+tree that is not clean, because `docker-compose` builds from the working tree, so anything
+uncommitted ships into the image while `APP_GIT_SHA` still reports the last commit. This shared
+checkout currently holds **8 untracked files belonging to other missions** (`audit/`,
+`docs/audits/7-eg-checklist-mission.md`, `docs/execution/production-gap-analysis-mission.md`,
+`docs/research/_a…_e`). Building with `-Force` would stamp `9b837306` onto an image that also
+contains eight uncommitted files — reintroducing exactly the "state does not match the recorded
+commit" drift that this remediation existed to close (§ 0 of
+`phase-2-REMEDIATION-PROGRESS.md`). The guard was left to do its job.
+
+**Remaining manual step for a human.** Once the other missions have committed their files and
+`git status --porcelain` is empty, on the **test computer**:
+
+```powershell
+git switch staging; git pull --ff-only origin staging
+powershell -ExecutionPolicy Bypass -File deploy\lan\build.ps1 web
+docker compose -f deploy\lan\docker-compose.yml --env-file deploy\lan\.env.lan up -d web
+docker inspect afrakala-lan-web --format "{{range .Config.Env}}{{println .}}{{end}}" | Select-String "APP_GIT_SHA"
+```
+
+`APP_GIT_SHA` must then equal `git rev-parse --short HEAD`. Nothing in phase 2 or in this
+remediation needs that rebuild to function — it closes a reporting discrepancy, not a defect.
 
 ## Phase status
 
