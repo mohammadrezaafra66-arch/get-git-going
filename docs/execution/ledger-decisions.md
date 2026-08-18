@@ -1,6 +1,6 @@
 # Locked ledger decisions
 
-Two classes of decision. **Owner decisions (T1–T13)** were made by the owner and are not reopenable.
+Two classes of decision. **Owner decisions (T1–T14)** were made by the owner and are not reopenable.
 **Architecture decisions (A1–A4)** were taken by the execution architect from the options in the
 roadmap; they become binding once OG-1 is answered.
 
@@ -8,7 +8,10 @@ roadmap; they become binding once OG-1 is answered.
 the T9 research's recommendation **(b)**, records the four constraints binding on phase 3, and closes
 the production-count question **by decision rather than by contacting production**. The same research
 corrected two claims inside T9 itself and replaced Part 4's "unmeasured caveat" with a measurement —
-each correction is marked in place with its date. T9 and T10 contradict what the current
+each correction is marked in place with its date. **T14 was added on 2026-08-19**: it answers
+**OG-19** by deciding that the ledger records money movements only — purchases and sales do not post
+— which makes the one-sided accumulation in `supplier_payable` and `customer_credit` intended rather
+than defective, and places a binding constraint on what phase 5 may call a balance. T9 and T10 contradict what the current
 schema assumes — the ledger keeps three balances per person where the owner keeps one — so they are
 not bookkeeping: they are what stops phases 3 and 4 being built to the wrong model. T10 answers
 **OG-16**. Part 4 records what "credit" means in this business, which nothing in the repository stated
@@ -223,7 +226,55 @@ empty, so `pay_purchase_with_voucher` has never run. The split is cheap to chang
 empty, and `create_payment` is the function that stops it being empty. Constraint 2 is what keeps it
 cheap.
 
+## T14 — The ledger records money movements only
+`journal_entries` records **money movements** — receipts, payments, dual documents, settlements. It
+does **not** record the obligations that caused them. A purchase does not post. A sale does not post.
+
+**This is a scope decision, not a defect resolution.** It settles a question that has been open since
+before phase 0, and it is the answer to **OG-19**. The owner will complete the purchase and sales
+side later, **separately from this programme**.
+
+### What follows from it, stated plainly so a later reader does not file it as a bug
+
+* `supplier_payable` accumulates **debits with no credits** — a payment lowers what we owe, and
+  nothing ever raised it, because the purchase that created the debt was never a ledger event.
+* `customer_credit` accumulates **credits with no debits** — the mirror image, for the same reason.
+* **This is by design. It is not an absent counter-posting and it must not be "fixed".**
+
+Therefore **`person_settlement_position` and every ledger-derived balance shows money moved, not the
+party's full position.** The party measured by the T9 research — 13,000,000,000 Toman of received
+purchases — reads `balanced`, because the purchase was never a ledger event. **That figure is correct
+for what it measures and wrong for what its name suggests.**
+
+*This also confirms two earlier judgements, which stand:* phase 3's contradiction **C5** and its
+refusal to invert the sign convention were both **right**. The convention was never inverted, three
+functions still agree, and the one-sided accumulation those functions read is now confirmed as
+intended rather than defective.
+
+### The constraint this places on phase 5 — binding
+
+Phase 5 is where these numbers reach the accountant.
+
+> **No phase-5 export or report may present a ledger-derived figure as a party's total balance or
+> total debt.** Name it for what it is — money moved through the ledger — not a position.
+>
+> If a phase-5 task requires a party's **full** position, that task must **raise an Owner-Gate**
+> rather than sum the ledger and hope.
+
+A ledger-derived total labelled "بدهی" or "مانده" would be wrong by an amount nobody can bound, and
+it would be wrong silently, because the arithmetic is correct.
+
+### What T14 does NOT resolve — open and unassigned
+
+**T9** says a person has one file and one balance. **T14** says the ledger holds only part of that
+balance. **Where the complete figure comes from is not decided.** A report combining `sales_quotes`,
+`purchases` and the ledger is one possibility; there are others; none is chosen here.
+
+The owner has **deferred this explicitly**, along with the purchase and sales work. It is recorded as
+**open and unassigned** — no phase owns it, and this decision deliberately proposes no design for it.
+
 ---
+
 
 # Part 2 — Architecture decisions
 
