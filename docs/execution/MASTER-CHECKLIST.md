@@ -42,7 +42,13 @@ optional.
 - [ ] **1.1** Remove the dead posting path — Scope: `supabase/migrations/` — S — **gated by OG-2**
   Capture `pg_get_functiondef` for both objects into the progress file first, then
   `DROP TRIGGER trg_payment_receipts_post_journal ON public.payment_receipts;`
-  `DROP FUNCTION public.post_receipt_journal();`
+  `DROP FUNCTION public.post_receipt_journal(_receipt_id uuid);`
+  <!-- CORRECTED 2026-08-18 (FIX 3). Was `post_receipt_journal()` with no arguments, which
+       errors: the live signature verified via pg_get_function_identity_arguments is
+       `post_receipt_journal(_receipt_id uuid)`, exactly one overload. -->
+  NOTE: the trigger fires `trg_post_receipt_on_approve()`, which is what calls
+  `post_receipt_journal`. Dropping only the two objects named here leaves
+  `trg_post_receipt_on_approve()` orphaned. Decide its fate during the task and record it.
   **Accept:** `SELECT count(*) FROM pg_proc WHERE proname='post_receipt_journal';` → `0`
   and `SELECT count(*) FROM pg_trigger WHERE tgname='trg_payment_receipts_post_journal';` → `0`
 
