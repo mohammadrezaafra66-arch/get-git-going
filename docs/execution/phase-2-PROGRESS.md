@@ -6,18 +6,19 @@ Copied from `phase-TEMPLATE-PROGRESS.md` at phase start. Filled as the phase ran
 
 ```
 Phase:                2 - Receipts post
-Status:               in progress
-Branch:               feature/phase-2-rpc-contract (2.1), feature/phase-2-create-receipt (2.2-2.8)
-Base:                 staging @ f916a4ef
-Tasks:                0 of 8
-Current task:         2.1
+Status:               COMPLETE
+Branch:               feature/phase-2-rpc-contract (2.1), feature/phase-2-create-receipt (2.2-2.8),
+                      feature/phase-2-closeout (this file + 00-progress)
+Base:                 staging @ f916a4ef  ->  merged to staging @ c937c923
+Tasks:                8 of 8
+Current task:         none - phase 3 is a separate dispatch
 Blocked by:           nothing (OG-16 raised, does not block the customer path)
-Migrations applied:   (none yet; 348, 349 planned)
-REST restarted after: (pending)
+Migrations applied:   348, 349
+REST restarted after: yes after 348, yes after 349
 Backup taken:         D:\AfraKalaBackups\pre-phase2-20260818-192441.dump  (16,799,660 bytes)
-Typecheck:            not run yet / 70 baseline
-Last commit:          <pending>
-PR:                   <pending>
+Typecheck:            70 / 70 baseline
+Last commit:          97a763bf (migrations), merged as c937c923
+PR:                   #300 MERGED 2026-08-18T14:31:09Z  |  #301 MERGED 2026-08-18T14:46:59Z
 ```
 
 ## Pre-flight
@@ -447,11 +448,15 @@ the answer.
 ## Phase test
 
 ```
-Command:   npm run typecheck   (npx tsc --noEmit)
+Command:   npx tsc --noEmit          (there is no `test` script in this project)
+           counted with: | Select-String "error TS" | Measure-Object
 Expected:  70 errors (documented baseline, D14)
-Actual:    <filled below>
-Note:      run ONCE per phase (~3 min). Phase 2 changed only SQL, so any movement off 70
-           would mean something other than this phase moved.
+Actual:    70
+Verdict:   PASS - exactly the baseline, no movement.
+Note:      run ONCE per phase (~3 min). tsc exits with code 2 whenever it reports errors, so
+           the non-zero exit is the baseline itself, not a failure of the run. Phase 2 changed
+           only SQL, so any movement off 70 would have meant something other than this phase
+           moved.
 ```
 
 ### Standing invariants re-asserted after 348 and 349
@@ -525,19 +530,93 @@ delete row by row.
 ## Deploy verification
 
 ```
-git rev-parse --short HEAD:                          <filled below>
-docker exec afrakala-lan-web printenv APP_GIT_SHA:   <filled below>
-Match:                                                <filled below>
-docker restart afrakala-lan-rest:                     done, after 348 and after 349
-git status --short:                                   <filled below>
+git rev-parse --short HEAD (staging after both merges):  c937c923
+docker exec afrakala-lan-web printenv APP_GIT_SHA:       bfcc723a
+Match:                                                    NO
+docker restart afrakala-lan-rest:                         done, after 348 and after 349
+git status --short (programme files):                     clean — no migration, rollback file
+                                                          or progress file is uncommitted
 ```
+
+**The APP_GIT_SHA mismatch is pre-existing and is not phase 2's.** `bfcc723a` predates the
+phase-1 merge, so the web container was already behind when this phase started. Phases 1 and 2
+changed **only** SQL; the thing that actually makes new database objects reachable is the
+PostgREST restart, which was done after each migration. A web rebuild would move the SHA and
+nothing else.
+
+**Remaining manual step, for a human:** run the deploy block in `README-EXECUTION.md` §3 on the
+test computer to bring `APP_GIT_SHA` up to `HEAD`. Not done here — a rebuild is a deploy, and
+nothing in phase 2 requires one. Listed explicitly rather than quietly omitted.
 
 ## Exit criteria
 
-- [ ] Every task PASS with real output recorded
-- [ ] Phase test passed
-- [ ] Stress test passed
-- [ ] No migration applied-but-uncommitted
-- [ ] PR merged and verified
-- [ ] `APP_GIT_SHA` matches HEAD
-- [ ] `00-progress.md` updated
+- [x] **Every task PASS with real output recorded** — 8 of 8. Every one is a real
+      `create_receipt` call under a simulated JWT, not a replicated body; the actual output is
+      pasted in each task block above, including the Persian messages.
+- [x] **Phase test passed** — `npx tsc --noEmit` → **70**, exactly the D14 baseline. Run once.
+- [x] **Stress test passed** — 50 concurrent receipts → 50 distinct numbers, 0 duplicates,
+      0 unbalanced, 0 orphans, 0 serial gaps. Plus the same-`source_id` race Gate A left
+      unmeasured (m2): both racers got `RCP-1405-000051`, one row. **m2 closed.**
+- [x] **No migration applied-but-uncommitted** — 348 and 349 were committed as `97a763bf` and
+      merged before this file was finished; `git status --short` shows no programme file
+      outstanding.
+- [x] **PR merged and verified** — `#300` `MERGED 2026-08-18T14:31:09Z` (task 2.1),
+      `#301` `MERGED 2026-08-18T14:46:59Z` (tasks 2.2–2.8). Boundary Guard **pass** on both.
+      `Staging Check` red at the known 70-error baseline, passed with `--admin` as documented.
+- [ ] **`APP_GIT_SHA` matches HEAD** — **NOT MET, and not phase 2's to meet.** `bfcc723a`
+      predates the phase-1 merge. Phase 2 is SQL-only. Left as an explicit manual step above
+      rather than ticked or omitted.
+- [x] **`00-progress.md` updated** — phase 2 → complete, migrations 348/349 in the ledger,
+      OG-13 closed, OG-16 added to the gate log.
+
+## Close-out
+
+**Phase 2 is complete.** A receipt created through `create_receipt` now posts immediately and
+moves the customer's balance, which is what the phase set out to deliver. Two migrations, 348
+and 349, both applied, both committed, both merged, each with a rollback file that was written
+before the forward migration and then proved to run.
+
+**What actually changed.** One new function and one relaxed CHECK. The function does everything
+in one transaction — validate, precondition, number, receipt, links, entry, credit, audit — so
+partial creation is impossible by construction rather than by convention. That kills the defect
+ground-truth §4.1 records: the old path's compensating `DELETE` ran against a table with no
+DELETE policy, so its orphan was guaranteed, not merely possible. Task 2.7 proves the
+replacement by forcing the failure rather than reasoning about it: across a failed call,
+receipts, links, entries and document numbers are all unchanged.
+
+**What was reused rather than rebuilt.** `require_asan_code`, `assign_document_number`,
+`increase_credit`, and `trg_payment_receipt_links_enforce_limits` for both allocation caps. The
+one rule that is genuinely new — a receipt may not settle another customer's proforma — lives in
+the RPC because A4 makes that the only place it can hold for every caller.
+
+**On the mission's §G instruction.** Phase 1 failed its gate for verifying what it built and not
+what already depended on what it changed. Phase 2 creates one new object, which depends on
+nothing; the exposure was the single existing object it alters, the
+`payment_receipts_receiver_exclusive_chk` constraint. That sweep is the G-question table near
+the top of this file, written before migration 348 was applied. It found one reachable new
+state — a legacy cheque receipt approved with no receiver — and established that
+`post_receipt_accounting` refuses it loudly through its own independent guard rather than
+posting a wrong entry.
+
+**Six contradictions were recorded and decided, none silently adapted.** Two were handed to this
+phase (C1, C2); four were found here (C3–C6), plus C7 as a phase-5 hazard, C8 as a phase-6
+decision, and C9 as an amendment the audit spec will need in phase 4. C3 is the one worth
+re-reading before phase 3: building the contract's literal `status='posted'` would have needed a
+CHECK widened **and** would have silently disabled the proforma over-allocation cap for every
+receipt this RPC creates, because `enforce_payment_receipt_link_limits` counts only
+`status='approved'` rows. `create_payment` should expect the same class of interaction with
+`payment_vouchers`' existing status and its `payee_matches_type` CHECK.
+
+**Carried forward.**
+
+| For | What |
+|---|---|
+| Owner | **OG-16** — what a receipt from a non-customer credits. Blocks nothing; phase 2 built the customer path as specified. |
+| Owner | **OG-14** — no `reverse_document` exists and posted entries are permanent. Not built here, correctly out of phase 2's scope, **must close before phase 9.** |
+| Phase 3 | C3's lesson above. `create_payment` also inherits C5/C6-shaped questions about `payment_vouchers`' own channel and status columns. |
+| Phase 5 | **C7** — the export still infers `doc_kind` and does not read the stored column, and a cheque receipt classifies `unclassified` with a line that resolves to no code. Tasks 5.1 and 5.2 already own both; recorded so they are not discovered as a silently missing export. |
+| Phase 6 | **C8** — `p_attachment_ids` currently raises `0A000`. An attachment row cannot exist before its document, so phase 6 must choose the upload order and wire the parameter. |
+| Whoever runs the next deploy | `APP_GIT_SHA` is `bfcc723a` against `HEAD` `c937c923`. SQL-only phases do not need a rebuild; the SHA needs one. |
+| The shared test database | 50 receipts marked `description='PHASE2_STRESS_do_not_keep'`, worth 50,000 Toman of credit on customer `d634ac60-…`. They cannot be deleted (343 immutability); restore `pre-phase2-20260818-192441.dump` if they must go. |
+
+**Phase 3 is a separate dispatch.** Ending the run here, as instructed.

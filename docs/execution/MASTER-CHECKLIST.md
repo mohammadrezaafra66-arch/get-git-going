@@ -100,24 +100,24 @@ numbers with no gaps and no duplicates.
 
 ## Phase 2 — Receipts post
 
-- [ ] **2.1** `rpc-contracts.md` entry for `create_receipt` — Scope: `docs/api/` — S
-- [ ] **2.2** `create_receipt` skeleton: validate, mint number, insert receipt, audit — Scope:
+- [x] **2.1** `rpc-contracts.md` entry for `create_receipt` — Scope: `docs/api/` — S
+- [x] **2.2** `create_receipt` skeleton: validate, mint number, insert receipt, audit — Scope:
   `supabase/migrations/` — M
   **Accept:** an RPC call creates exactly one `payment_receipts` row with a `document_number`.
-- [ ] **2.3** Asan-code precondition inside `create_receipt` — Scope: `supabase/migrations/` — S
+- [x] **2.3** Asan-code precondition inside `create_receipt` — Scope: `supabase/migrations/` — S
   **Accept:** creating for a customer with no code raises `P0001`; zero rows inserted afterwards.
-- [ ] **2.4** Post the balanced entry inside the same transaction — Scope: `supabase/migrations/` — M
+- [x] **2.4** Post the balanced entry inside the same transaction — Scope: `supabase/migrations/` — M
   `doc_kind='receipt'`, `status='posted'`, debit `bank`/`cheque_receivable`, credit
   `customer_credit`. Reject fractional amounts; reject imbalance.
   **Accept:** after one call,
   `SELECT sum(debit)=sum(credit) FROM journal_lines WHERE journal_entry_id=<id>;` → `t`
-- [ ] **2.5** Cash branch: mint an internal tracking number — Scope: `supabase/migrations/` — S
+- [x] **2.5** Cash branch: mint an internal tracking number — Scope: `supabase/migrations/` — S
   **Accept:** a cash receipt created with no `tracking_number` succeeds and stores a generated one.
-- [ ] **2.6** Cheque branch: debit `cheque_receivable` — Scope: `supabase/migrations/` — S
+- [x] **2.6** Cheque branch: debit `cheque_receivable` — Scope: `supabase/migrations/` — S
   **Accept:** the entry's debit line has `account_kind='cheque_receivable'`.
-- [ ] **2.7** Proforma links inside the transaction — Scope: `supabase/migrations/` — M
+- [x] **2.7** Proforma links inside the transaction — Scope: `supabase/migrations/` — M
   **Accept:** a failed link insert leaves **zero** `payment_receipts` rows (no orphan).
-- [ ] **2.8** Role gate + grants — Scope: `supabase/migrations/` — S
+- [x] **2.8** Role gate + grants — Scope: `supabase/migrations/` — S
   **Accept:** `EXECUTE` as a `sales` test user raises `42501`; as `accountant` it succeeds.
 
 **Phase 2 exit:** a receipt created via RPC posts immediately and moves the customer balance.
