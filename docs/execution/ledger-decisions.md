@@ -149,3 +149,7 @@ where the rules live.
 4. **Never let free text become an identity.** `payer_accounting_code` is free text. Identity comes
    only from `person_identifiers`. Migration 295 already gates this; do not weaken it.
 5. **Toman in SQL, Rial only in `src/lib/asan/amounts.ts`.** One conversion point.
+
+---
+
+OG-1: CONFIRMED 2026-08-18 — A1, A2, A3, A4 approved by owner.
