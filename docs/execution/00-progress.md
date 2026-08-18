@@ -7,22 +7,24 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        2 COMPLETE — Gate A remediation applied; phase 3 not started (separate dispatch)
-Current task:         3.1 (not started)
+Current phase:        3 COMPLETE — awaiting independent Gate A review; phase 4 not started
+Current task:         4.1 (not started)
 Branch:               staging (PRs #300, #301, #303 merged; Gate A remediation 350-353 merged)
 Last commit SHA:      Gate A remediation (350-353) — see the migration ledger below
 Live APP_GIT_SHA:     87c1a921   Match: NO — 2 commits behind, both docs+SQL only. See note below
 Typecheck:            70 / 70 baseline
-Migrations applied:   18 (336-353)
-Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-17 (OG-10, OG-13, OG-16 CLOSED).
+Migrations applied:   20 (336-355)
+Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-17, OG-18, OG-19, OG-20
+                      (OG-10, OG-13, OG-16 CLOSED). OG-18/19/20 raised by phase 3; none blocks it.
                       OG-14 must close before phase 9. OG-17 stays open with a CHANGED question -
                       the owner confirmed the intended credit model, but the hold/release symmetry
                       it depends on is unmeasured. See ledger-decisions.md Part 4.
 Owner decisions:      T9-T13 in ledger-decisions.md. T9-T12 recorded 2026-08-18; T13 recorded
                       2026-08-19. T9 (one person, one file, one balance) and T10 contradict what the
                       schema assumes today. T13 adopts the T9 research's recommendation (b).
-Blocked tasks:        none - phase 3 is UNBLOCKED, subject to T13's four constraints.
-                      T9 itself must be RESOLVED BEFORE PHASE 5.
+Blocked tasks:        none. Phase 3 is COMPLETE and honoured all four T13 constraints - proved,
+                      not asserted (phase-3-PROGRESS.md, task 3.3/3.4 and the T13-c3 proof).
+                      T9 itself must still be RESOLVED BEFORE PHASE 5.
 Gate A defects:       16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred (m1, m7 -> phase 6;
                       m3 -> phase 5). M4 + M5 CLOSED 2026-08-18: the owner ran the cleanup script by
                       hand, verifier 14/14 PASS, independently re-measured. The Asan bank-deposit
@@ -101,7 +103,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 0 Ground and decisions | complete | | 2026-08-18 | n/a | OG-1 confirmed |
 | 1 Shared foundations | **complete** | 2026-08-18 | 2026-08-18 | Gate B PASS, Gate A FAIL then remediated | 12 migrations; OG-10 closed, 1 risk open (OG-14) |
 | 2 Receipts post | **complete** | 2026-08-18 | 2026-08-18 | 8/8 accept PASS; stress PASS; Gate A FAIL then remediated; cleanup verifier 14/14 PASS | migrations 348-349 + remediation 350-353; OG-16 and OG-17 raised; OG-13 fully closed. 12 of 16 Gate A defects closed, 1 with the owner (OG-17), 3 deferred — `phase-2-REMEDIATION-PROGRESS.md` |
-| 3 Payments post | not started | | | | |
+| 3 Payments post | **complete** | 2026-08-19 | 2026-08-19 | 9/9 accept PASS; stress PASS; cleanup proved clean | migrations 354-355; OG-18, OG-19, OG-20 raised; 11 contradictions recorded. Stress data removed inside the phase - `phase-3-PROGRESS.md` |
 | 4 Dual documents | not started | | | | |
 | 5 Asan exports live | not started | | | | OG-3 answered (989) — 5.4 unblocked |
 | 6 Wizard front end | not started | | | | Needs OG-4 + `normalize_identifier` |
@@ -129,6 +131,9 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | OG-15 add viewer_restricted to the two new tables? | 2026-08-18 | | Gate A m7 - changes task 1.5 acceptance count |
 | OG-16 what does a receipt from a non-customer credit? | 2026-08-18 | **2026-08-18** | **ANSWERED — CLOSED. Superseded by owner decision T10.** The gate offered three options (a) `external_party`, (b) a new `person_credit` kind, (c) require promotion to a customer first. T10 replaces all three: **a person has one file and one balance (T9), and the sign of that balance decides the direction.** If they owe us, a receipt reduces what they owe; if we owe them, it increases what we owe. The user is never asked what the money is for. A friend or relative lending money is not a special case — they become a creditor under the same rule. **Consequence recorded, not patched:** `create_receipt` takes `p_customer_id` and always credits `customer_credit`, which is now known to be too narrow. The fix belongs to the T9 research, not to a patch on the RPC — a second narrow path is worse than one. Full text in `ledger-decisions.md` § T10. |
 | OG-17 the credit hold half was never built - should it be? | 2026-08-18 | | **STILL OPEN. Question restated a SECOND time on 2026-08-19, now from measurement.** It began as "a receipt allocated to a proforma is counted twice" (Gate A **M1**), became "is the hold/release symmetry actually maintained" once the owner confirmed the model, and is now: **given that the hold half was never built - should it be built, and if so, in which phase?** **The owner's model stands and the behaviour is correct:** credit is a **revolving limit, not a wallet** - finalising a proforma consumes the limit and paying restores it, so a receipt raising available credit is releasing a consumed limit, not creating money (`ledger-decisions.md` **Part 4**). **What the T9 research measured (`bc0ddafc`) is that one side of the symmetry does not exist.** CHECK: built and running - `create_sales_quote_with_items` reads `get_customer_dynamic_credit`, and `audit_logs` holds **6** `credit_limit_blocked` rows. **HOLD: never built** - `hold_credit` has **zero** SQL callers and appears in `src/` only in generated `types.ts`; all **11** `customer_credit_balance` rows have `held_credit = 0.00` with **0** rows holding anything; **none of the 9 `sales_quotes` triggers touches credit**; `create_sales_quote_with_items` writes a jsonb snapshot but never calls `hold_credit`, never writes `held_credit`, never writes `customer_credit_ledger`. RELEASE: built and running - `increase_credit`. So the system **checks the limit, never reserves against it, then releases against it on payment**. That is why `available_credit` behaves as a monotonically increasing total of receipts, and why M1's measurement looked like a double count. **Not a defect to fix - a decision about what the limit should do.** Deliberately NOT answered. |
+| OG-18 does a cheque payment reduce the bank balance on the day it is written? | 2026-08-19 | | Raised by phase 3 (contradiction C4). `vw_account_balances` and `get_account_ledger` both sum `payment_vouchers.amount` filtered on `status='approved'` with **no `document_channel` predicate**, so a cheque payment reduces the displayed bank balance immediately although no money leaves until the cheque clears. **The ledger is correct** - `create_payment` credits `cheque_payable` or `cheque_receivable`, never `bank` - so this is a reporting defect in two views, not a mis-posting. Pre-existing: `pay_purchase_with_voucher` can already write a cheque voucher. Options appear to be (a) add `AND document_channel <> 'cheque'` to both readers, the direct mirror of migration 350 on the receipt side; (b) treat a cheque as committed funds and relabel the figure; (c) wait for the cheque lifecycle (A2). **Not decided** - (a) and (b) mean different things to an accountant. Blocks nothing. |
+| OG-19 nothing posts the OTHER side of supplier_payable or customer_credit | 2026-08-19 | | Raised by phase 3 (contradiction C5), and it supersedes the MASTER-CHECKLIST's premise that phase 3 should 'fix the sign convention'. **The convention is already correct and coherent** across `person_settlement_position`, `list_mutual_settlement_candidates` and `post_mutual_settlement`; inverting it would invert all three. A paid supplier reads negative because **no purchase is ever posted to `supplier_payable`**, exactly as the T9 research found that **no sale is ever posted to `customer_credit`**. The cause is an absent counter-posting, not a sign. This is why `person_settlement_position` reports `balanced` for a party carrying 13,000,000,000 Toman of received purchases. **No phase currently owns building purchase or sales posting.** Matters before phase 5, when these become the accountant's numbers. |
+| OG-20 payment_vouchers has no delete guard while payment_receipts does | 2026-08-19 | | Raised by phase 3. Migration 353 added `trg_payment_receipts_block_delete_when_posted` so a receipt with a posted entry cannot be deleted and orphan it (Gate A M8). **There is no equivalent on `payment_vouchers`**, so a posted payment voucher deletes freely and leaves an immutable orphaned entry - the same failure on the path phase 3 just opened. Noticed while writing the stress cleanup, which must delete the entries first precisely because of it. Not fixed in phase 3: the symmetrical cure is `reverse_document` (**OG-14**), not a second stopgap. Blocks nothing. |
 
 ## Contradictions found against ground-truth.md
 
@@ -177,6 +182,8 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 351 | 20260819091000_351_create_receipt_cash_account_and_date_bounds.sql | 2 Gate A (B1, M6) | 2026-08-18 | docs/verification/351-down.sql | yes |
 | 352 | 20260819092000_352_og13_remaining_surfaces.sql | 2 Gate A (M3, m2) | 2026-08-18 | docs/verification/352-down.sql | yes |
 | 353 | 20260819093000_353_block_receipt_delete_when_posted.sql | 2 Gate A (M8 stopgap) | 2026-08-18 | docs/verification/353-down.sql | yes |
+| 354 | 20260819100000_354_payment_voucher_endorsed_cheque_ref.sql | 3 (task 3.8) | 2026-08-19 | docs/verification/354-down.sql | yes |
+| 355 | 20260819101000_355_create_payment.sql | 3 (tasks 3.3-3.7, 3.9) | 2026-08-19 | docs/verification/355-down.sql | yes |
 
 Both phase-2 rollback files were written **before** their forward migration and then executed
 (349-down then 348-down, one `BEGIN … ROLLBACK`, exit 0). `348-down` restores a CHECK that is

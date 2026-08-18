@@ -245,27 +245,31 @@ would silently swallow a genuine second payment of the same amount on the same d
 
 # 2. `create_payment`
 
-Mirrors `create_receipt` in the opposite direction. **This is wiring, not building:**
-`payment_vouchers` already carries `payee_party_id`, `payee_name`, `tracking_number` and the
-`payment_vouchers_payee_matches_type_chk` XOR constraint. `pay_purchase_with_voucher` already posts
-a balanced entry using `supplier_payable` — read it before writing this.
+Mirrors `create_receipt` in the opposite direction. Implemented by migrations **354** (the
+endorsed-cheque reference) and **355** (the function).
+
+> **Reconciled against the live schema on 2026-08-19 (task 3.1).** This section was written before
+> the function existed and **ten** of its statements were contradicted by the database or by owner
+> decisions T9–T13. Each correction is marked **P3-Cn** below and the evidence is in
+> `docs/execution/phase-3-PROGRESS.md` § *Contradictions found*. The description "this is wiring,
+> not building" held: no new table, no new `account_kind`, no new `account_kind` → table mapping.
 
 ```sql
 create_payment(
   p_channel              text,      -- 'bank' | 'cash' | 'cheque'
-  p_payee_type           text,      -- 'supplier' | 'external_party' | 'customer' | 'other'
+  p_payee_type           text,      -- 'supplier' | 'external_party' | 'customer'   (P3-C2)
   p_payee_id             uuid,      -- matched against payee_type by the existing CHECK
   p_amount               numeric,   -- Toman, > 0, integral
-  p_payment_date         date,
-  p_source_account_id    uuid,      -- always required: money leaves an account of ours
-  p_tracking_number      text    DEFAULT NULL,  -- required for 'bank'; minted otherwise
+  p_payment_date         date,      -- not future, not older than the previous Jalali year (P3-C8)
+  p_source_account_id    uuid,      -- always required: the column is NOT NULL              (P3-C3)
+  p_tracking_number      text    DEFAULT NULL,  -- required for 'bank'; minted only if absent
   p_cheque_kind          text    DEFAULT NULL,  -- 'own' | 'endorsed'; required when cheque
   p_cheque_number        text    DEFAULT NULL,  -- required when cheque_kind='own'
   p_cheque_due_date      date    DEFAULT NULL,
-  p_endorsed_cheque_id   uuid    DEFAULT NULL,  -- required when cheque_kind='endorsed'
+  p_endorsed_cheque_id   uuid    DEFAULT NULL,  -- a payment_receipts row, channel='cheque' (P3-C9)
   p_purchase_id          uuid    DEFAULT NULL,  -- optional link to a purchase
   p_description          text    DEFAULT NULL,
-  p_attachment_ids       uuid[]  DEFAULT NULL
+  p_attachment_ids       uuid[]  DEFAULT NULL   -- NOT WIRED: a non-empty array raises 0A000
 ) RETURNS TABLE (
   voucher_id       uuid,
   document_number  text,
@@ -276,25 +280,117 @@ create_payment(
 
 ## The journal entry
 
-| | account_kind | account_ref_id |
+**The debit `account_kind` is chosen from `payee_type`.** This is the most important line in the
+contract and it replaces what this section originally said.
+
+| `payee_type` | Debit `account_kind` | `account_ref_id` | `validate_journal_line_ref` target |
+|---|---|---|---|
+| `supplier` | `supplier_payable` | the supplier | `ARRAY['suppliers']` |
+| `external_party` | `external_party` | the party | `ARRAY['external_parties']` |
+| `customer` | `customer_credit` | the customer | `ARRAY['customers']` |
+| `other` | **refused** — see P3-C2 | — | — |
+
+> **P3-C1 — corrected.** This table originally read: *Debit `supplier_payable` — the payee*. That is
+> true only when the payee is a supplier. `payment_vouchers.payee_type` admits four values and
+> `supplier_payable` maps to `suppliers` alone, so for any other payee the line would either be
+> refused by `validate_journal_line_ref` (`23503`) or — following `pay_purchase_with_voucher`'s
+> precedent — be keyed to a **supplier who did not receive the money**. That precedent posts
+> `('supplier_payable', _purchase.supplier_id)` unconditionally, including for an `external_party`
+> payee and including when `supplier_id` is `NULL`, where the trigger returns early on the NULL ref
+> and nothing checks it at all. **T10** forbids it: a payment has one counterparty and it moves
+> *that* person's balance. **T13 constraint 3** names it explicitly. Selecting the kind from
+> `payee_type` needs **zero** new mappings (**T13 constraint 1**).
+
+The credit side — where the money comes from:
+
+| Channel | Credit `account_kind` | `account_ref_id` |
 |---|---|---|
-| Debit | `supplier_payable` | the payee — what we owe falls |
-| Credit | `bank` (bank/cash), `cheque_payable` (own cheque), `cheque_receivable` (endorsed) | source of funds |
+| `bank` | `bank` | `p_source_account_id` |
+| `cash` | `bank` | `p_source_account_id`, which must be `account_type='cash'` |
+| `cheque`, `own` | `cheque_payable` | the payee (347: `suppliers` **or** `external_parties`) |
+| `cheque`, `endorsed` | `cheque_receivable` | the endorsed cheque's drawer (its customer) |
 
 `doc_kind='payment'`, `source_type='payment_voucher'`, `status='posted'`.
 
-## Sign-convention warning
+> **P3-C10 — the export does not read `doc_kind`.** `asan_list_journal_export` classifies by a
+> **bank-sign heuristic**: `has_external` → `third_party`; `bank_net > 0` → `receipt`;
+> `bank_net < 0` → `payment`; otherwise `unclassified`. So a payment to an `external_party`
+> classifies as **`third_party`**, and a **cheque payment has no bank line at all** and classifies
+> as **`unclassified`**, dropping out of every filtered export. `doc_kind='payment'` is still
+> written — task 3.4 requires it and it is the only non-heuristic signal phase 5 will have — but
+> writing it does **not** make the document appear under the `payment` filter today. Phase 5 owns
+> the export.
 
-`person_settlement_position` computes payable as `SUM(credit − debit)` on `supplier_payable`, but
-the only existing writer **debits** it. A paid supplier therefore reads **negative**. Fix the
-convention in phase 3 and record which direction was chosen in the phase progress file. Leaving this
-inconsistent inverts the direction of every future settlement.
+## What changed against the original draft
+
+| # | The contract said | The database or an owner decision says |
+|---|---|---|
+| **P3-C1** | Debit `supplier_payable` — the payee | The kind is chosen from `payee_type`; see above |
+| **P3-C2** | `p_payee_type` admits `other` | **Refused.** T3 makes an Asan code a precondition and an Asan code lives on a person. `other` is free-text `payee_name` with no row behind it, and `payment_vouchers_payee_person_requires_payee_chk` forces `payee_person_id` to `NULL` for it. Admitting it would mean skipping T3 or inventing a person. The legacy path keeps its `other` fallback; this RPC does not. |
+| **P3-C3** | `p_source_account_id` — "money leaves an account of ours" | Required on **every** channel because the column is `NOT NULL`, but for a cheque it records which account the cheque is drawn on — **no money moves**. The ledger credits a cheque account, never `bank`. |
+| **P3-C4** | — | **Both cash views count a cheque voucher as money leaving the bank.** `vw_account_balances` and `get_account_ledger` filter on `status='approved'` with **no channel predicate**. Pre-existing (`pay_purchase_with_voucher` can already write a cheque voucher) and **not fixed here** — raised as **OG-18**. The ledger is right; those two views are not. |
+| **P3-C5** | Fix the `supplier_payable` sign convention in phase 3 | **The convention is already correct and coherent.** See *Sign convention* below. |
+| **P3-C6** | — | `payment_vouchers` already had its **own** numbering trigger minting `PV-YYYY-NNNNN` from a sequence — a second identity for one document. `create_payment` supplies the `PAY-…` number as `voucher_number`, which suppresses it (the trigger only fills a `NULL`). |
+| **P3-C7** | `p_channel` is `bank｜cash｜cheque` | `payment_vouchers.document_channel` is `NOT NULL` and its CHECK has **no `bank` value** — only `card_to_card｜paya｜pol｜satna｜cash｜cheque｜other`. A bank payment is stored as `other` until the phase-6 wizard collects the real sub-channel. The mirror of the receipt side's C6. |
+| **P3-C8** | — | Date bounds added, mirroring migration 351 (Gate A M6): not future, not older than the previous Jalali year. |
+| **P3-C9** | `p_endorsed_cheque_id` must reference "a cheque we hold" | **There is no cheque register** — 0 tables match `cheque` (A2 defers the lifecycle). A cheque we hold **is** a `payment_receipts` row with `document_channel='cheque'`. Migration 354 adds `payment_vouchers.endorsed_receipt_id` and a partial UNIQUE index so a second endorsement raises. |
+| **P3-C10** | `doc_kind='payment'` | Written, but the export ignores it — see above. |
+
+## Sign-convention warning — measured, and **not** inverted
+
+This section originally instructed phase 3 to fix the convention because
+`person_settlement_position` computes payable as `SUM(credit − debit)` "while the only writer
+debits it, so a paid supplier reads negative". Measured before acting, the premise does not hold:
+
+```
+person_settlement_position          receivable = SUM(debit − credit) on customer_credit
+                                    payable    = SUM(credit − debit) on supplier_payable
+list_mutual_settlement_candidates   identical, both kinds
+post_mutual_settlement              settles by DEBITing supplier_payable and CREDITing customer_credit
+```
+
+For a two-sided party account that is correct — a liability rises on credit and falls on debit — and
+all three agree. A payment must debit `supplier_payable`, and under `credit − debit` that lowers
+what we owe, which **is** the phase-3 exit criterion. Inverting the arithmetic would invert three
+functions and turn every future settlement the wrong way round.
+
+A paid supplier reads negative for a different reason: **nothing ever credits `supplier_payable`**,
+because purchases are never posted to the ledger. It is the exact mirror of what the T9 research
+found for `customer_credit` — nothing ever debits it because no sales posting exists. The cause is
+an **absent counter-posting, not a sign**. Phase 3 does not build purchase posting and does not
+claim to have fixed it. Raised as **OG-19**.
+
+**The convention this programme uses**, stated once so phases 4 and 5 cannot invert it:
+
+| Kind | Outstanding |
+|---|---|
+| `supplier_payable`, `cheque_payable` (liability side) | `SUM(credit − debit)` |
+| `customer_credit`, `cheque_receivable`, `external_party` (party-receivable side) | `SUM(debit − credit)` |
+
+`new_balance` is returned in this convention. On a database where no purchase has ever been posted
+it comes back **negative** for a supplier — that is the OG-19 symptom, reported honestly rather than
+clamped to zero.
 
 ## Endorsed cheque
 
-`p_endorsed_cheque_id` must reference a cheque we hold that has not already been endorsed or
-cleared. A second endorsement raises `P0001`. The user selects the cheque from a list; they never
-retype its details.
+`p_endorsed_cheque_id` references a `payment_receipts` row with `document_channel='cheque'` — that
+is what "a cheque we hold" means, because no cheque register exists (P3-C9). The amount must equal
+the cheque's amount: a partial endorsement would leave a remainder nothing tracks.
+
+A second endorsement raises `P0001`. Two things enforce it: an explicit `EXISTS` check that produces
+a Persian sentence, and `payment_vouchers_endorsed_receipt_unique_idx` from migration 354, which is
+the real guarantee because it holds against a concurrent second endorsement the `EXISTS` would not
+see. The index excludes `status='rejected'` only, so a mistaken endorsement can be corrected while a
+`draft` one still holds the cheque.
+
+## Role gate and grants
+
+`admin`, `accountant`, `manager` (OG-13 answer (a)), via `public.has_any_role` with an explicit
+`::app_role[]` cast — both overloads match an uncast array. `EXECUTE` is revoked from `PUBLIC` and
+`anon`, granted to `authenticated` and `service_role`.
+
+Proved end to end: `sales` → `42501`; `accountant` → succeeds; **`manager` → succeeds and can read
+back the numbering row** (the surface phase 1's M3 broke and migration 352 closed).
 
 ---
 
