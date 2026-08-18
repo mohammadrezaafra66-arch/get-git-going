@@ -10,11 +10,11 @@ Phase:                1 - Shared foundations
 Status:               in progress
 Branch:               feature/backend-phase-1
 Base:                 staging @ 7197c190
-Tasks:                1 of 7
-Current task:         1.2
+Tasks:                2 of 7
+Current task:         1.3
 Blocked by:           nothing
-Migrations applied:   336
-REST restarted after: 336 = yes
+Migrations applied:   336, 337, 338, 339
+REST restarted after: 336=yes 337=yes 338=yes 339=yes
 Backup taken:         D:/AfraKalaBackups/pre-phase1-20260818-144648.dump (16,773,020 bytes)
 Typecheck:            not yet run this phase (run once at phase exit)
 Last commit:          <pending>
@@ -152,6 +152,123 @@ Lead decision on the Observer CHANGE:  NOT ACTIONED - deferred to the owner as O
   function now that its only trigger is gone. Its definition is captured above, so the drop
   is a one-line follow-up whenever the owner approves.
   >>> OG-8 (new): may trg_post_receipt_on_approve() also be dropped?
+```
+
+
+### Task 1.2 - document_numbers + assign_document_number
+```
+Scope:      supabase/migrations/
+Effort:     M
+Migrations: 20260818151000_337_jalali_year_helper.sql
+            20260818152000_338_document_numbers.sql
+            20260818153000_339_lock_down_burn_document_number.sql  (reviewer fix)
+Rollback:   docs/verification/337-down.sql, 338-down.sql, 339-down.sql
+Started:    2026-08-18
+Finished:   2026-08-18
+
+Acceptance command (verbatim from MASTER-CHECKLIST):
+  SELECT assign_document_number('receipt','<uuid>') = assign_document_number('receipt','<uuid>');
+
+Expected:
+  t
+
+Actual:
+  t
+
+Verdict:    PASS
+```
+
+#### Additional acceptance evidence (run inside BEGIN..ROLLBACK with a simulated JWT)
+
+```
+A1 idempotency, same source_id twice            -> t
+A2 number produced                              -> RCP-1405-000001     (D3 format confirmed)
+A3 different source_id                          -> RCP-1405-000002     (distinct)
+A4 per-type series                              -> PAY-1405-000001 | DUAL-1405-000001
+A5 invalid doc_type                             -> refused, SQLSTATE 22023
+A6 null source_id                               -> refused, SQLSTATE 22023
+A7 rows persisted after ROLLBACK                -> 0
+```
+
+`auth.uid()` is NULL in psql (ground-truth section 9), so the role-gated function was exercised
+with `SET LOCAL "request.jwt.claims"` per CLAUDE.md safety rule 7, inside a transaction that was
+rolled back. Nothing was written to the database.
+
+#### Unplanned prerequisite: migration 337, public.jalali_year(date)
+
+decisions.md D3 fixes the number format as `<PREFIX>-<jalali year>-<6 digits>`. The database had
+**no Gregorian to Jalali conversion of any kind**: the only date helper is `tehran_today()`, and
+`market_rate_ticks.jalali_date_label` is caller-supplied text, not a conversion. Task 1.2 could not
+produce its specified format without this primitive, so it was built first as its own migration.
+
+Standard Khayyam/Birashk civil algorithm, IMMUTABLE, pure integer arithmetic. The migration carries
+assertions that refuse to apply if the conversion is wrong. Verified independently after apply:
+
+```
+2026-08-18 -> 1405     2026-03-20 -> 1404     2026-03-21 -> 1405   (Nowruz boundary)
+2021-03-21 -> 1400     2024-03-19 -> 1402     2024-03-20 -> 1403   (Nowruz boundary)
+2000-01-01 -> 1378     2030-12-31 -> 1409     1979-02-11 -> 1357   (22 Bahman 1357)
+```
+
+This is infrastructure the checklist did not list. Recorded rather than silently absorbed.
+
+#### Series-scope decision, raised as OG-9
+
+The serial is `max+1` per `doc_type` **globally**, exactly as `asan_assign_document_number` does,
+because the checklist says "mirror it exactly". Consequence: numbering runs
+`RCP-1405-000042 -> RCP-1406-000043` across a year boundary; the Jalali year is a label, not a
+reset point. The common accounting alternative is a per-year reset (`RCP-1406-000001`).
+This is an accountant-visible convention, not a technical choice.
+>>> OG-9: should the serial reset each Jalali year?
+
+#### Reviewers
+
+```
+Observer (code quality):   PASS
+  Not a second implementation of an existing thing: asan_assign_document_number numbers Asan
+  export documents (sales_invoice/purchase_invoice/accounting_document); this numbers source
+  documents (receipt/payment/dual). Different registers, deliberately the same proven shape.
+  No dead branch. burn_document_number's UPDATE affecting 0 rows when no number was ever
+  assigned is correct behaviour, not a swallowed error - there is nothing to burn.
+
+Software Engineer:         PASS
+  Idempotency is enforced twice: check-before-lock and re-check under the lock, plus
+  UNIQUE (doc_type, source_id) as the backstop if both reads race. Single-table write, so
+  atomicity is trivial. Not bypassable from PostgREST: document_numbers has RLS on with a
+  SELECT-only policy and no insert/update/delete policy at all, so the SECURITY DEFINER
+  function is the only write path. No sequence, so a rolled-back transaction leaves no gap
+  (D4). Burned rows are retained, so MAX(serial) still counts them and a burned number is
+  never reissued - verified empirically below.
+
+Security Engineer:         CHANGE  -> FIXED in migration 339
+  Objection: burn_document_number was created SECURITY DEFINER with NO role gate, and new
+  functions here inherit the Supabase default grants. The catalog confirmed:
+    burn_document_number | =X/supabase_admin ... anon=X/... authenticated=X/...
+  Any caller, including anon, could call
+    SELECT burn_document_number('receipt','<uuid>','anything');
+  and permanently burn a live document's number. Burned numbers are never reissued, so this
+  corrupts the numbering ledger irreversibly.
+  Also: assign_document_number retained anon EXECUTE (its in-body role gate stops anon, but
+  the grant had no business existing).
+
+Lead decision: CHANGE accepted and fixed before proceeding, in migration 339.
+  The execute path was revoked rather than a role gate added. A gate was rejected deliberately:
+  the burn runs inside an AFTER DELETE trigger and auth.uid() is NULL for service_role and for
+  any background deletion, so a gate would block legitimate deletes instead of protecting
+  anything. The two callers are SECURITY DEFINER trigger functions owned by supabase_admin,
+  which keep EXECUTE as owner.
+
+  Grants after the fix:
+    assign_document_number | postgres, supabase_admin, authenticated, service_role   (no anon)
+    burn_document_number   | postgres, supabase_admin, service_role                  (no anon,
+                                                                                      no authenticated)
+
+  Regression check that the fix did not break the feature (BEGIN..ROLLBACK):
+    assign number to a real receipt        -> RCP-1405-000001
+    burned_at before DELETE                -> NULL
+    DELETE the receipt (fires the trigger) -> burned=t, has_reason=t
+    next receipt number                    -> RCP-1405-000002  (burned serial NOT reissued)
+    after ROLLBACK                         -> 0 document_numbers, 7 receipts intact
 ```
 
 ### Task <id> — <title>
