@@ -15,9 +15,11 @@ Migrations added:     350, 351, 352, 353  (all applied to the TEST database, all
 Typecheck:            70 / 70 baseline — unchanged (no TypeScript was touched)
 Owner-Gates open:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-16, **OG-17 (new)**
                       OG-10 and OG-13 CLOSED
-Defects closed:       B1, M2, M3, M6, M7, M8, m2, m4, m5, m6      (10 of 16)
-Defects with owner:   M1 → OG-17, M5* (see below)
-Defects still open:   M4, M5, m1, m3, m7                          (5 of 16)
+Defects closed:       B1, M2, M3, M4, M5, M6, M7, M8, m2, m4, m5, m6   (12 of 16)
+Defects with owner:   M1 → OG-17                                       (1 of 16)
+Defects deferred:     m1 → phase 6, m3 → phase 5, m7 → phase 6         (3 of 16)
+Cleanup:              M4 + M5 closed 2026-08-18 — the owner ran the script by hand,
+                      14 of 14 verifier metrics PASS, independently re-measured (§3)
 Production touched:   NO
 Live APP_GIT_SHA:     87c1a921 vs staging 9b837306 — 2 commits behind, both docs+SQL only.
                       Rebuild attempted and deliberately not forced (shared tree not clean).
@@ -192,9 +194,16 @@ was graded MAJOR rather than BLOCKER. Phase 6 is where it becomes reachable.
 
 ---
 
-## 3. M4 and M5 — still open, and the live risk
+## 3. M4 and M5 — CLOSED 2026-08-18
 
-### What is wrong
+**Status: both closed.** The owner ran the cleanup script by hand on the test computer on
+2026-08-18. It succeeded, the verifier returned **14 of 14 PASS**, and the result was then
+independently re-measured against the live database (§ *Independent re-measurement* below). The Asan
+bank-deposit export at `/admin/asan-export` is clean and the warning to the team has been lifted.
+
+The subsections below are kept as the record of what was wrong, what was run, and what came back.
+
+### What was wrong
 
 Phase 2's stress test committed 50 receipts marked `description='PHASE2_STRESS_do_not_keep'`. They
 are not inert test noise:
@@ -232,13 +241,13 @@ What 353 does change is that **the script's step order is now load-bearing.** Be
 the receipts first would merely have orphaned the entries (that was M8). After 353, deleting the
 receipts first is *refused outright*. Do not reorder the steps, and do not run only part of the file.
 
-### Why the owner has to run it, and not an agent
+### Why the owner ran it, and not an agent
 
-The script was written and its dry run succeeds, but the real run was **blocked by a safety
+The script was written and dry-run by an agent, but the real run was **blocked by a safety
 classifier** — it deletes rows from business tables and temporarily disables two immutability
-triggers. That block was not circumvented and must not be. The script is therefore a hand-run
-operation, recorded here with its measured effect so the owner can see exactly what it will do
-before authorising it.
+triggers. That block was **not circumvented**. The script was handed to the owner as a documented
+hand-run with its measured effect stated in advance, and the owner executed it. That is the correct
+division: an agent proves what a destructive operation will do; a human authorises it.
 
 Note also that the script is deliberately **not** a migration and must never become one
 (`docs/verification/`, not `supabase/migrations/`). Shipping a `DELETE` over business tables into the
@@ -346,51 +355,125 @@ It **burns** the number rather than deleting it, which is what Gate A M5 asked f
 census: `RCP51_burned` goes `false → true`. So one hand-run closes both M4 and M5; there is no
 separate command for M5.
 
-### THE COMMAND THE OWNER MUST RUN — by hand, on the test computer
+### THE RUN — executed by the owner, by hand, 2026-08-18
 
-Run from `D:\AfraKalaTest\app` in PowerShell on the **test computer**. This is the test database
-(`afrakala`), never production (`postgres`).
-
-```powershell
-$pw = (Select-String -Path deploy\lan\.env.lan -Pattern '^POSTGRES_PASSWORD=').Line -replace '^POSTGRES_PASSWORD=',''
-
-docker cp "docs\verification\phase-2-remediation-testdata-cleanup.sql" afrakala-lan-db:/tmp/cleanup.sql
-
-docker exec -e PGPASSWORD=$pw afrakala-lan-db psql -U supabase_admin -d afrakala `
-  -v ON_ERROR_STOP=1 --single-transaction -f /tmp/cleanup.sql
-```
-
-`docker cp` is mandatory — the file contains Persian, and piping Persian SQL through PowerShell
-replaces every non-ASCII byte with `?`. That is the mistake that destroyed the Persian text inside
-44 database functions on 2026-07-11 (CLAUDE.md, database safety rule 1).
-
-`--single-transaction` with `-v ON_ERROR_STOP=1` is mandatory too: if any step fails, the two
-immutability triggers come back with the rollback rather than being left disabled on a shared
-database.
-
-**Expected output** — the same statement tags as the dry run above, ending with the
-`burn_document_number` row, and **exit code 0**. Ignore a PowerShell exit code of 1 caused purely by
-`NOTICE:` lines on stderr (CLAUDE.md, "Note on PowerShell") and verify the real outcome with the
-check below.
-
-**Confirm it worked:**
+Run from `D:\AfraKalaTest\app` in PowerShell on the **test computer**, against the test database
+(`afrakala`) — never production (`postgres`). `docker cp` rather than a pipe because the file
+contains Persian, and a PowerShell pipe replaces every non-ASCII byte with `?` (the mistake that
+destroyed the Persian text inside 44 database functions on 2026-07-11, CLAUDE.md database safety
+rule 1). `--single-transaction` with `-v ON_ERROR_STOP=1` so a partial failure restores the two
+immutability triggers instead of leaving them disabled on a shared database.
 
 ```powershell
-docker cp "docs\verification\phase-2-remediation-verify-cleanup.sql" afrakala-lan-db:/tmp/vc.sql
-docker exec -e PGPASSWORD=$pw afrakala-lan-db psql -U supabase_admin -d afrakala -f /tmp/vc.sql
+docker cp docs\verification\phase-2-remediation-testdata-cleanup.sql afrakala-lan-db:/tmp/cleanup.sql
+docker exec ... psql -U supabase_admin -d afrakala -v ON_ERROR_STOP=1 --single-transaction -f /tmp/cleanup.sql
 ```
 
-Expect `stress_receipts = 0`, `stress_journal_entries = 0`, `journal_entries_total = 1`,
-`receipt_numbers_live = 0`, `RCP51_burned = t`, and — the one that matters to the accountant —
-`asan_export_rows = 1`.
+**Real output, verbatim:**
 
-**If the safety gate refuses**, with `expected 50 stress receipts and 50 stress entries, found X and
-Y`: stop. It means the shared test database moved under the script — another mission's work, or a
-partial earlier run. Re-take the census before doing anything else. Do not edit the gate to make it
-pass.
+```
+SET
+SELECT 50
+SELECT 50
+DO
+ALTER TABLE
+ALTER TABLE
+DELETE 100
+DELETE 50
+ALTER TABLE
+ALTER TABLE
+SELECT 1
+DELETE 50
+UPDATE 1
+DELETE 50
+ burn_document_number
+----------------------
+(1 row)
+```
 
-**Until this is run, M4 and M5 stay open**, and the accountant's export at `/admin/asan-export`
-continues to show 50 fabricated bank deposits of 1,000 Toman as clean and submittable.
+Statement for statement, this is the dry run's output: the safety gate passed (`DO`), the 50 journal
+entries and their 100 lines went first, the two immutability triggers were re-enabled before the
+receipts were touched, the 50 credit-ledger rows and the one balance were backed out, the 50 receipts
+were deleted with migration 353's guard armed, and `RCP-1405-000051` was burned.
+
+**Verifier output, verbatim — `docs/verification/phase-2-remediation-verify-cleanup.sql`, 14 of 14 PASS:**
+
+```
+ asan_export_rows                    | 1     | 1     | PASS
+ available_credit_person_f144680e    | 0.00  | 0.00  | PASS
+ credit_ledger_stress_rows           | 0     | 0     | PASS
+ journal_entries_total               | 1     | 1     | PASS
+ journal_lines_total                 | 2     | 2     | PASS
+ payment_receipts_total              | 7     | 7     | PASS
+ RCP51_burned                        | true  | true  | PASS
+ receipt_numbers_live                | 0     | 0     | PASS
+ receipt_numbers_total               | 51    | 51    | PASS
+ stress_journal_entries              | 0     | 0     | PASS
+ stress_receipts                     | 0     | 0     | PASS
+ trg_delete_guard_enabled            | O     | O     | PASS
+ trg_journal_entry_immutable_enabled | O     | O     | PASS
+ trg_journal_line_immutable_enabled  | O     | O     | PASS
+
+ audit_logs kept | credit_payment  | 51
+ audit_logs kept | receipt_created | 50
+```
+
+**The bypass window is closed.** All three triggers report `tgenabled='O'` — both immutability
+triggers and 353's delete guard. `audit_logs` is untouched by design: the stress test really did
+happen, and an audit trail edited to hide activity is worse than one that references a deleted
+document.
+
+### Independent re-measurement — not trusting the paste
+
+Re-measured directly against the live database after the fact, as a separate exercise from the
+owner's verifier run, under a simulated admin JWT (the export gates on `has_any_role` in its own
+body). Every metric agrees.
+
+| Check | Measured | Agrees with the owner's run |
+|---|---|---|
+| `journal_entries` total | 1 | yes |
+| `journal_lines` total | 2 | yes |
+| `payment_receipts` total | 7 | yes |
+| stress receipts remaining | 0 | yes |
+| `receipt_numbers_live` | 0 | yes |
+| `RCP-1405-000051` burned | `true` | yes |
+| `available_credit` person `f144680e…` | 0.00 | yes |
+| `trg_journal_entry_immutable` | `O` | yes |
+| `trg_journal_line_immutable` | `O` | yes |
+| `trg_payment_receipts_block_delete_when_posted` | `O` | yes |
+| `audit_logs` `receipt_created` / `credit_payment` | 50 / 51 | yes |
+
+Three checks the verifier does not make were added, because they are the failure mode M8 described —
+a delete that leaves an immutable orphan behind:
+
+| Extra check | Measured |
+|---|---|
+| `journal_entries` with `source_type='payment_receipt'` and no surviving receipt | **0** |
+| `document_numbers` (`receipt`) pointing at no receipt and still unburned | **0** |
+| Surviving receipts that are test data | **0** — all 7 are pre-existing business rows |
+
+**No orphan was created.** That is the point of deleting the entries before the receipts, and it held.
+
+#### One number differs from the instruction, and it is better news, not worse
+
+The record-keeping instruction asked for confirmation that the export "returns **1 row for
+2026-08-18**". It returns **0 for 2026-08-18**, and **1 for the wider range** `2026-01-01 … 2027-12-31`.
+This is a date-window difference, not a disagreement about the cleanup:
+
+- Every one of the 50 stress receipts carried `payment_date = 2026-08-18`, and **no genuine receipt
+  exists for that day**. So the contaminated day is now completely empty — 0 rows, not 3.
+- The single row the export still returns is a **legitimate pre-existing business receipt dated
+  2026-07-25** (`status='approved'`, `posting_status='posted'`). It is outside the 2026-08-18 window,
+  which is why the narrow query returns 0 and the wide one returns 1.
+- The other six surviving receipts are all `pending_review`, so the export does not select them at
+  all.
+
+**Correction to a Gate A figure, recorded rather than quietly dropped.** `phase-2-GATE-A.md` states
+the stress rows were "50 of the 53 rows `asan_list_bank_deposit_export` returns for that day". If the
+day held 53 genuine-plus-stress rows, removing 50 would leave 3 — it leaves 0. The remaining 3 in
+Gate A's census were receipts created inside its own `BEGIN … ROLLBACK` test transaction and never
+existed outside it. The defect Gate A reported is unaffected; only that one count was inflated by its
+own fixtures.
 
 ---
 
@@ -405,8 +488,8 @@ was corrected. "With owner" means the fix is a business decision, not an enginee
 | **M1** | MAJOR | The same money settles a proforma *and* becomes spendable credit; `hold_credit` spends it again | **WITH OWNER → OG-17** | Raised as OG-17 above with Gate A's reproduction (62,200,000 → 61,200,000 outstanding; 0 → 1,000,000 available; `hold_credit(1,000,000)` succeeded) and confirmed statically at `351:542`. Not fixed: the correction depends on what `available_credit` is defined to mean. Must be answered before phase 6 wires the RPC. |
 | **M2** | MAJOR | The contract told the front end retry was safe; a retry is a second permanent document | **CLOSED** | `rpc-contracts.md` corrected in three places — Conventions `23505` row, Conventions **Idempotency** (rewritten with the measurement and the four client-side rules), §5 items 1 and 5 — plus a banner at the top of §5 for cached copies. §1 already said the right thing; the contradiction is gone. |
 | **M3** | MAJOR | OG-13 recorded closed; two of its four surfaces still carried the old answer | **CLOSED** | **352**. Surface 2: `document_numbers_select_finance` now `admin, accountant, manager` — verified in live `pg_policies`. Surface 4: `role_permissions('ledger-documents','manager')` now `can_view=t, can_create=t` and everything else `f` — verified live. All four surfaces now carry answer (a). OG-13 is genuinely closed. |
-| **M4** | MAJOR | 50 stress receipts are exportable documents on `/admin/asan-export` | **OPEN — awaiting the owner's hand-run** | Script written, dry run passes (real output in §3), before/after measured, exact command documented. Confirmed still live this session: 50 receipts, all posted, all in the export; export returns 51 rows where it should return 1. 350 does not hide them — they are `document_channel = NULL`. |
-| **M5** | MAJOR | `RCP-1405-000051` — a committed, unburned number with no document behind it | **OPEN — same hand-run** | Confirmed live: `receipt_behind_it = 0`, `burned_at` NULL. Covered by step 4 of the same cleanup script, which **burns** it rather than deleting it (per m3's objection). Census shows `false → true`. No separate command. |
+| **M4** | MAJOR | 50 stress receipts are exportable documents on `/admin/asan-export` | **CLOSED 2026-08-18** | The owner ran `docs/verification/phase-2-remediation-testdata-cleanup.sql` by hand; verifier returned **14 of 14 PASS**; independently re-measured (§3). All 50 receipts, their 50 posted journal entries, their 100 journal lines and their 50 credit-ledger rows are gone, and the 50,000 Toman of spendable credit is back to 0.00. The Asan export is clean: **0 rows for 2026-08-18** (the contaminated day) and 1 row overall — a legitimate 2026-07-25 business receipt. **No orphan was created**: 0 journal entries and 0 unburned numbers point at a missing receipt. `audit_logs` deliberately intact (50 + 51 rows). |
+| **M5** | MAJOR | `RCP-1405-000051` — a committed, unburned number with no document behind it | **CLOSED 2026-08-18** | Closed by step 4 of the same hand-run, which **burned** the number rather than deleting it (per m3's objection that numbers must not be removed by hand). Verified live and independently re-measured: `RCP51_burned = true`, `receipt_numbers_live = 0`, `receipt_numbers_total` still 51 — every serial is present and accounted for. The receipt series on this database resumes at `RCP-1405-000052`. |
 | **M6** | MAJOR | `create_receipt` accepts any `p_payment_date` and posts an immutable entry on it | **CLOSED** | **351** adds two bounds, refused separately so the message names the rule: `p_payment_date > tehran_today()` rejected, and `jalali_year(p_payment_date) < jalali_year(tehran_today()) - 1` rejected. Both verified in the live function body. Recorded in the contract, §1 step 2 and §5 item 7. The one-year window exists so an accountant entering a 29 Esfand receipt on 2 Farvardin is not pushed back to the legacy form. **Not done:** mirroring the bounds into `create_payment` / `create_dual_document` — those functions do not exist yet; it belongs to phases 3 and 4. |
 | **M7** | MAJOR | The recorded proof that the rollback files run cannot have happened as written | **CLOSED** | `docs/verification/rollback-dryrun.sql` now defines the rule — *a rollback file contains statements only; the caller owns the transaction* — and its header records the mechanism Gate A measured (inner `COMMIT` commits the outer transaction; both markers survived). 350-down through 353-down all comply. The harness proves itself on every use: `public_functions` 835 → 835 across the run in §3. |
 | **M8** | MAJOR | Deleting a receipt leaves an orphaned immutable posted entry and inflated credit | **CLOSED as a stopgap; root cause is OG-14** | **353** adds `BEFORE DELETE` trigger `trg_payment_receipts_block_delete_when_posted` on `payment_receipts`, refusing with `P0001` when a posted `journal_entries` row references the row — so the orphan can no longer be created. Trigger and function both verified live. This is a guard, not a cure: the real fix is `reverse_document`, which is **OG-14** and must close before phase 9 (Gate A argues before phase 6). |
@@ -418,8 +501,10 @@ was corrected. "With owner" means the fix is a business decision, not an enginee
 | **m6** | MINOR | Contract said `auth.uid()` is NULL in psql and these functions must never be invoked | **CLOSED** | Replaced with the CLAUDE.md rule 7 JWT-simulation recipe plus `SET LOCAL ROLE authenticated` for RLS, and a note that the advice it replaced ("replicate the body") is the anti-pattern that let phase 1's blocker through three reviewers. Disproved again in this session: every measurement above, including the export census, ran by setting `request.jwt.claims` in psql. |
 | **m7** | MINOR | `bank_name` and `receipt_time` are never written; `get_receivable_detail` reads `bank_name` | **OPEN** | Not addressed. Requires deciding which of `bank_name` / `source_bank` is canonical and changing `get_receivable_detail` or the writer to match. That is a front-end-visible data-shape decision that lands in phase 6's wizard either way. **Carry to phase 6.** |
 
-**Totals: 10 closed, 1 with the owner (OG-17), 5 open** — of which M4 and M5 need only the owner's
-hand-run, and m1, m3, m7 are deliberately carried to the phase that owns the surface.
+**Totals: 12 closed, 1 with the owner (OG-17), 3 deferred.** M4 and M5 closed on 2026-08-18 by the
+owner's hand-run. The remaining three — m1, m3, m7 — are deliberately carried to the phase that owns
+the surface (m1 → phase 6 task 6.9, m3 → phase 5, m7 → phase 6), not forgotten. Only **M1 → OG-17**
+needs a decision, and it blocks phase 6.
 
 ---
 
@@ -441,13 +526,14 @@ untracked, and is never printed.
 
 ## Remaining manual steps — a human must do these
 
-1. **Run the cleanup script** (§3, "THE COMMAND THE OWNER MUST RUN"). Until then M4 and M5 are open
-   and the accountant's Asan export shows 50 fabricated deposits as clean.
+1. ~~Run the cleanup script.~~ **Done 2026-08-18 by the owner** — §3 carries the real output, the
+   14-of-14 verifier result, and an independent re-measurement. M4 and M5 are closed.
 2. **Answer OG-17.** Blocks phase 6.
 3. **Answer OG-14** (`reverse_document`). 353 is only a guard; Gate A argues the real fix must land
    before phase 6, not phase 9.
-4. **Browser check of `/admin/asan-export`** after the cleanup — confirm the page shows one row, not
-   51. No agent can do this.
+4. ~~Browser check of `/admin/asan-export`.~~ **Done** — the owner confirmed the page and lifted the
+   warning to the team. Measured server-side too: 0 rows for 2026-08-18, 1 row overall (a genuine
+   2026-07-25 receipt).
 5. **Rebuild the web image** to bring `APP_GIT_SHA` up to `HEAD`. Attempted and **deliberately not
    forced** — see below.
 6. **Confirm cash receipts.** Once the owner creates a `bank_accounts` row with

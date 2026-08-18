@@ -17,9 +17,12 @@ Migrations applied:   18 (336-353)
 Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-16, OG-17 (OG-10 and OG-13 CLOSED).
                       OG-14 must close before phase 9; OG-17 before phase 6
 Blocked tasks:        none
-Gate A defects:       16 raised, 10 closed, 1 with the owner (OG-17), 5 open (M4, M5, m1, m3, m7).
-                      M4 + M5 need one hand-run by the owner — the exact command is in
-                      docs/execution/phase-2-REMEDIATION-PROGRESS.md
+Gate A defects:       16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred (m1, m7 -> phase 6;
+                      m3 -> phase 5). M4 + M5 CLOSED 2026-08-18: the owner ran the cleanup script by
+                      hand, verifier 14/14 PASS, independently re-measured. The Asan bank-deposit
+                      export is clean (0 rows for the contaminated 2026-08-18, 1 genuine row overall)
+                      and the warning to the team is lifted. Detail and real output in
+                      docs/execution/phase-2-REMEDIATION-PROGRESS.md § 3
 Production touched:   NO
 ```
 
@@ -60,7 +63,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 |---|---|---|---|---|---|
 | 0 Ground and decisions | complete | | 2026-08-18 | n/a | OG-1 confirmed |
 | 1 Shared foundations | **complete** | 2026-08-18 | 2026-08-18 | Gate B PASS, Gate A FAIL then remediated | 12 migrations; OG-10 closed, 1 risk open (OG-14) |
-| 2 Receipts post | **complete** | 2026-08-18 | 2026-08-18 | 8/8 accept PASS; stress PASS; Gate A FAIL then remediated | migrations 348-349 + remediation 350-353; OG-16 and OG-17 raised; OG-13 fully closed. 10 of 16 Gate A defects closed — `phase-2-REMEDIATION-PROGRESS.md` |
+| 2 Receipts post | **complete** | 2026-08-18 | 2026-08-18 | 8/8 accept PASS; stress PASS; Gate A FAIL then remediated; cleanup verifier 14/14 PASS | migrations 348-349 + remediation 350-353; OG-16 and OG-17 raised; OG-13 fully closed. 12 of 16 Gate A defects closed, 1 with the owner (OG-17), 3 deferred — `phase-2-REMEDIATION-PROGRESS.md` |
 | 3 Payments post | not started | | | | |
 | 4 Dual documents | not started | | | | |
 | 5 Asan exports live | not started | | | | OG-3 answered (989) — 5.4 unblocked |
@@ -169,3 +172,13 @@ transaction it owns, asserts, and discards; if a down file ever carries its own 
 `20260811180000`; nothing from 336 onward is recorded there. The table above is the real ledger. This
 predates phase 1 and is flagged here because a phase-9 replay tool that trusts that table would skip
 eighteen migrations.
+
+**Test-data cleanup, 2026-08-18 (Gate A M4 + M5) — not a migration.** The 50
+`PHASE2_STRESS_do_not_keep` receipts and the orphaned number `RCP-1405-000051` were removed by
+`docs/verification/phase-2-remediation-testdata-cleanup.sql`, run **by hand by the owner** on the test
+computer. It is deliberately not in `supabase/migrations/` and must never be moved there: it holds a
+`DELETE` over business tables, and phase 9 replays that directory against production. Verifier
+returned 14 of 14 PASS and the result was independently re-measured — 0 stress receipts,
+`journal_entries` back to 1, all 51 receipt serials burned and none live, credit back to 0.00, and all
+three triggers (both immutability guards and 353's delete guard) armed at `tgenabled='O'`. `audit_logs`
+was left intact on purpose. Real output in `phase-2-REMEDIATION-PROGRESS.md` § 3.
