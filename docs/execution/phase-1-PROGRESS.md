@@ -10,11 +10,11 @@ Phase:                1 - Shared foundations
 Status:               in progress
 Branch:               feature/backend-phase-1
 Base:                 staging @ 7197c190
-Tasks:                2 of 7
-Current task:         1.3
+Tasks:                3 of 7
+Current task:         1.4
 Blocked by:           nothing
-Migrations applied:   336, 337, 338, 339
-REST restarted after: 336=yes 337=yes 338=yes 339=yes
+Migrations applied:   336, 337, 338, 339, 340
+REST restarted after: 336=yes 337=yes 338=yes 339=yes 340=yes
 Backup taken:         D:/AfraKalaBackups/pre-phase1-20260818-144648.dump (16,773,020 bytes)
 Typecheck:            not yet run this phase (run once at phase exit)
 Last commit:          <pending>
@@ -269,6 +269,77 @@ Lead decision: CHANGE accepted and fixed before proceeding, in migration 339.
     DELETE the receipt (fires the trigger) -> burned=t, has_reason=t
     next receipt number                    -> RCP-1405-000002  (burned serial NOT reissued)
     after ROLLBACK                         -> 0 document_numbers, 7 receipts intact
+```
+
+
+### Task 1.3 - require_asan_code(p_person_id uuid)
+```
+Scope:      supabase/migrations/
+Effort:     S
+Migration:  20260818154000_340_require_asan_code.sql
+Rollback:   docs/verification/340-down.sql
+Started:    2026-08-18
+Finished:   2026-08-18
+
+Acceptance (verbatim from MASTER-CHECKLIST):
+  for a person known to lack a code, the call raises;
+  for one with a code it returns the code. Record both outputs.
+
+Actual - CASE A, person WITH a code:
+  code=90019001  len=8            (returned, not raised)
+
+Actual - CASE B, person WITHOUT a code:
+  sqlstate    : P0001
+  names party : t                 (the message interpolates persons.display_name)
+
+Verdict:    PASS
+```
+
+#### Extra cases run beyond the checklist
+
+```
+CASE C  require_asan_code(NULL)                       -> 22023 (argument error, not P0001)
+CASE D  customer whose customers.accounting_code is
+        set but who has NO person_identifiers row     -> P0001  ** D6 upheld **
+```
+
+CASE D is the one that matters. ground-truth section 12 records a customer carrying
+`customers.accounting_code = 114067` with no identifier row, and the Asan export reads the
+identifier, not the mirror. Had `require_asan_code` fallen back to the mirror, that customer's
+document would have been created and then silently withheld by the export. The function refuses
+it instead, which is exactly what D6 requires.
+
+Status is deliberately not filtered: all 11 existing codes are `status='provisional'` and the
+export does not filter on status either. Existence is the rule.
+
+#### Self-test defect caught before the migration was applied
+
+The first draft of the migration's own `DO $verify$` block asserted failure with a bare
+`RAISE EXCEPTION`, which defaults to SQLSTATE P0001 - the very code the surrounding handler
+catches. The assertion could therefore never fail: a broken `require_asan_code` would have been
+reported as passing. Rewritten to record the outcome in a flag and assert outside the handler,
+with ERRCODE 39000. Fixed before apply, not after.
+
+#### Reviewers
+
+```
+Observer (code quality):   PASS
+  No existing function does this, so it is not a second implementation. No dead branch. The
+  one swallowed-error risk was in the migration's self-test and was fixed before apply
+  (above).
+
+Software Engineer:         PASS
+  STABLE + read-only, so no transaction-boundary or idempotency surface. Correctly a single
+  enforcement point rather than a rule copied into each RPC. NOTE, not an objection: this
+  function only enforces anything once the create RPCs call it in phases 2-4. D13 requires
+  both halves (form and database); the database half is now available, the form half is
+  phase 6.
+
+Security Engineer:         PASS
+  secdef=true, cfg=search_path=public. anon revoked, authenticated granted. The error text
+  names the party's display_name, which is required by the task ("naming the party") and is
+  not in the prohibited set - audit-trigger-spec forbids Asan code, phone and national id in
+  the AUDIT payload, which this is not. No code value is leaked on the failure path.
 ```
 
 ### Task <id> — <title>
