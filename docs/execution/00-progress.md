@@ -18,28 +18,50 @@ Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-17 (OG-10, OG-13, OG-
                       OG-14 must close before phase 9. OG-17 stays open with a CHANGED question -
                       the owner confirmed the intended credit model, but the hold/release symmetry
                       it depends on is unmeasured. See ledger-decisions.md Part 4.
-Owner decisions:      T9-T12 recorded 2026-08-18 in ledger-decisions.md. T9 (one person, one file,
-                      one balance) and T10 contradict what the schema assumes today.
-BLOCKING:             T9 needs a READ-ONLY RESEARCH MISSION to size the change BEFORE phase 3 or
-                      phase 4 is dispatched. Scope is unmeasured and must not be guessed.
-Blocked tasks:        none
+Owner decisions:      T9-T13 in ledger-decisions.md. T9-T12 recorded 2026-08-18; T13 recorded
+                      2026-08-19. T9 (one person, one file, one balance) and T10 contradict what the
+                      schema assumes today. T13 adopts the T9 research's recommendation (b).
+Blocked tasks:        none - phase 3 is UNBLOCKED, subject to T13's four constraints.
+                      T9 itself must be RESOLVED BEFORE PHASE 5.
 Gate A defects:       16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred (m1, m7 -> phase 6;
                       m3 -> phase 5). M4 + M5 CLOSED 2026-08-18: the owner ran the cleanup script by
                       hand, verifier 14/14 PASS, independently re-measured. The Asan bank-deposit
                       export is clean (0 rows for the contaminated 2026-08-18, 1 genuine row overall)
                       and the warning to the team is lifted. Detail and real output in
                       docs/execution/phase-2-REMEDIATION-PROGRESS.md § 3
-Production touched:   NO
+Production touched:   NO - and the T9 production-count question was CLOSED BY OWNER DECISION
+                      without contacting it (T13). CLAUDE.md rule 10 stands unweakened.
 ```
 
-**T9 blocks the next dispatch.** Owner decision **T9** — one person, one file, one balance — was
-recorded on 2026-08-18 and its **scope is unmeasured**. A **read-only research mission must size the
-change before phase 3 or phase 4 is dispatched**: the ledger keeps three balances per person
-(`customer_credit` → `customers`, `supplier_payable` → `suppliers`, `external_party` →
-`external_parties`) where the owner keeps one, so a person who is both a customer and a supplier has
-no single correct figure today. Dispatching phase 3 on an assumed answer builds the payment RPC to
-the model T9 replaces. Do not estimate that scope here and do not guess it —
-`ledger-decisions.md` § T9 lists the readers the research must account for.
+**T9 research complete; phase 3 is unblocked, subject to four constraints.** This entry previously
+read "T9 blocks the next dispatch … scope is unmeasured". The research was run
+(`docs/research/T9-one-person-one-balance-RESEARCH.md`, merged as `bc0ddafc`) and recommended **(b)**
+— *phase 3 may proceed, but must be written so it does not deepen the split*. **The owner adopted (b)
+as T13 on 2026-08-19.**
+
+**Phase 3 must respect all four of T13's constraints:** (1) no new `account_kind` → table mapping —
+`validate_journal_line_ref` has 6 and needs 0 more; (2) resolve the party to a `person_id` at the
+boundary and store it in `payment_vouchers.payee_person_id`, which already exists and is already in
+the person-FK registry; (3) **do not copy `pay_purchase_with_voucher`'s unconditional supplier
+keying** — it posts `('supplier_payable', _purchase.supplier_id)` even when the payee is an
+`external_party`, which is the exact failure T10 forbids; (4) **T9 must be resolved before phase 5**,
+because `asan_list_journal_export` and `person_settlement_position` both read all three kinds and
+phase 5 is where they become the accountant's numbers.
+
+**The production-count question is closed without contacting production.** The research flagged,
+correctly, that its confidence in (b) over (c) rested on how many persons on production are both a
+customer and a supplier. The owner answered the model instead of the number: being both is **part of
+this business's model, not an anomaly** — the count is low today and will grow. That is a stronger
+answer than a count, and the practical decision is identical either way, because `journal_entries`
+holds 1 row and `journal_lines` 2, so the contradiction stays **latent at any count**. Production
+(`192.168.170.10`) was **not queried, not pinged, not contacted**. Full reasoning in
+`ledger-decisions.md` § T13.
+
+**Two corrections the research forced, recorded in `ledger-decisions.md`:** T9's assumption that
+`external_parties` might lack a `person_id` was **wrong** — it exists, is `NOT NULL`, all three role
+tables carry one, and 29 of 29 persons-referencing FKs are registered `ok`; and T9's claim that the
+split is the root cause of `person_settlement_position`'s misleading numbers was **also wrong** — the
+cause is that nothing ever debits `customer_credit`, and resolving T9 would not fix it.
 
 **APP_GIT_SHA note — corrected 2026-08-18.** This entry previously read `bfcc723a`, "which
 predates the phase-1 merge". That is no longer true: the `afrakala-lan-web` container now reports
@@ -106,7 +128,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | OG-14 build reverse_document, or an audited escape hatch? | 2026-08-18 | | Gate A M5 - MUST close before phase 9 |
 | OG-15 add viewer_restricted to the two new tables? | 2026-08-18 | | Gate A m7 - changes task 1.5 acceptance count |
 | OG-16 what does a receipt from a non-customer credit? | 2026-08-18 | **2026-08-18** | **ANSWERED — CLOSED. Superseded by owner decision T10.** The gate offered three options (a) `external_party`, (b) a new `person_credit` kind, (c) require promotion to a customer first. T10 replaces all three: **a person has one file and one balance (T9), and the sign of that balance decides the direction.** If they owe us, a receipt reduces what they owe; if we owe them, it increases what we owe. The user is never asked what the money is for. A friend or relative lending money is not a special case — they become a creditor under the same rule. **Consequence recorded, not patched:** `create_receipt` takes `p_customer_id` and always credits `customer_credit`, which is now known to be too narrow. The fix belongs to the T9 research, not to a patch on the RPC — a second narrow path is worse than one. Full text in `ledger-decisions.md` § T10. |
-| OG-17 is the credit hold/release symmetry actually maintained? | 2026-08-18 | | **STILL OPEN — the question has CHANGED.** Originally "a receipt allocated to a proforma is counted twice" (Gate A **M1**). **The owner has confirmed the intended model and the behaviour is correct:** credit in AfraKala is a **revolving limit, not a wallet**. A proforma can only be finalised if the customer has paid or has credit available; finalising **consumes** the limit (200,000,000 becomes 150,000,000 when 50,000,000 is committed) and paying **restores** it. So a receipt raising available credit is **releasing a consumed limit, not creating money**. The reviewer was not wrong to raise it — the model was simply not written down; it now is, in `ledger-decisions.md` **Part 4**. **What remains open is the caveat, and it must not be closed quietly:** the model is correct only if the symmetry holds — every finalised proforma must consume limit, and every payment must release exactly what was consumed. **Gate A measured the release half only** (0 → 1,000,000 available, `hold_credit(1,000,000)` succeeded). The **hold half is unmeasured**, and Gate A's census found `customer_credit_ledger` holds only `payment` rows — nothing has ever held, released or consumed credit, so the mechanism that makes the model correct has never been exercised. **The symmetry must be verified before OG-17 closes.** Revised question: not "is this behaviour wrong" but "is the hold/release symmetry actually maintained". |
+| OG-17 the credit hold half was never built - should it be? | 2026-08-18 | | **STILL OPEN. Question restated a SECOND time on 2026-08-19, now from measurement.** It began as "a receipt allocated to a proforma is counted twice" (Gate A **M1**), became "is the hold/release symmetry actually maintained" once the owner confirmed the model, and is now: **given that the hold half was never built - should it be built, and if so, in which phase?** **The owner's model stands and the behaviour is correct:** credit is a **revolving limit, not a wallet** - finalising a proforma consumes the limit and paying restores it, so a receipt raising available credit is releasing a consumed limit, not creating money (`ledger-decisions.md` **Part 4**). **What the T9 research measured (`bc0ddafc`) is that one side of the symmetry does not exist.** CHECK: built and running - `create_sales_quote_with_items` reads `get_customer_dynamic_credit`, and `audit_logs` holds **6** `credit_limit_blocked` rows. **HOLD: never built** - `hold_credit` has **zero** SQL callers and appears in `src/` only in generated `types.ts`; all **11** `customer_credit_balance` rows have `held_credit = 0.00` with **0** rows holding anything; **none of the 9 `sales_quotes` triggers touches credit**; `create_sales_quote_with_items` writes a jsonb snapshot but never calls `hold_credit`, never writes `held_credit`, never writes `customer_credit_ledger`. RELEASE: built and running - `increase_credit`. So the system **checks the limit, never reserves against it, then releases against it on payment**. That is why `available_credit` behaves as a monotonically increasing total of receipts, and why M1's measurement looked like a double count. **Not a defect to fix - a decision about what the limit should do.** Deliberately NOT answered. |
 
 ## Contradictions found against ground-truth.md
 

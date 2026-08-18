@@ -1,10 +1,14 @@
 # Locked ledger decisions
 
-Two classes of decision. **Owner decisions (T1–T12)** were made by the owner and are not reopenable.
+Two classes of decision. **Owner decisions (T1–T13)** were made by the owner and are not reopenable.
 **Architecture decisions (A1–A4)** were taken by the execution architect from the options in the
 roadmap; they become binding once OG-1 is answered.
 
-**T9–T12 were added on 2026-08-18**, after phase 2 closed. T9 and T10 contradict what the current
+**T9–T12 were added on 2026-08-18**, after phase 2 closed. **T13 was added on 2026-08-19**: it adopts
+the T9 research's recommendation **(b)**, records the four constraints binding on phase 3, and closes
+the production-count question **by decision rather than by contacting production**. The same research
+corrected two claims inside T9 itself and replaced Part 4's "unmeasured caveat" with a measurement —
+each correction is marked in place with its date. T9 and T10 contradict what the current
 schema assumes — the ledger keeps three balances per person where the owner keeps one — so they are
 not bookkeeping: they are what stops phases 3 and 4 being built to the wrong model. T10 answers
 **OG-16**. Part 4 records what "credit" means in this business, which nothing in the repository stated
@@ -70,21 +74,38 @@ their money is kept. The same person may be in both groups at once and still has
 *State of the ledger today:* the ledger splits this across three account kinds, each keyed to a
 different table — `customer_credit` → `customers`, `supplier_payable` → `suppliers`,
 `external_party` → `external_parties`. A person who is both a customer and a supplier therefore has
-their true position spread across two of them, and **no single figure is correct**. This is the same
-root cause as the already-recorded finding that `person_settlement_position` returns misleading
-numbers (`docs/execution/deferred.md` § *The `person_settlement_position` sign bug*; measured again
-as check 14 of `phase-2-GATE-A.md`).
+their true position spread across two of them, and **no single figure is correct**.
+
+> **Corrected 2026-08-19 (T9 research).** This paragraph originally continued: "This is the same root
+> cause as the already-recorded finding that `person_settlement_position` returns misleading numbers."
+> **That was wrong, and the two problems must not be conflated.** The research read the function body
+> from the live catalogue: its sign convention is correct, and its numbers are misleading because
+> **nothing ever debits `customer_credit`** — there is no sales posting path at all — so a customer who
+> has only ever paid reads as a party *we* owe. **Resolving T9 would leave that untouched.** The two
+> have been discussed as one throughout this programme, and fixing the wrong one would look like
+> progress without being progress. See Part 4 § *Two problems that are not one*.
 
 *What already exists:* `persons` and `person_identifiers` are in place, and `customers.person_id` and
 `suppliers.person_id` are **both `NOT NULL`** — so every customer and every supplier already has a
 file. The identity layer is not the missing piece; the balance layer is.
 
-**Scope unmeasured. Do not build on this yet.** A read-only research mission must size the change
-first — how many readers compute a position from one of the three account kinds, what
-`vw_account_balances`, `vw_customer_receivables`, `person_settlement_position`,
-`list_mutual_settlement_candidates`, `get_customer_credit` and the credit-limit path each assume, and
-what a single balance would have to replace. That size is **not** estimated here and must not be
-guessed. Nothing in phase 3 or phase 4 may be dispatched on an assumed answer.
+> **Corrected 2026-08-19 (T9 research) — the identity layer is *more* complete than this assumed.**
+> T9 was recorded anticipating that `external_parties` might lack a `person_id`, and that this would
+> be "the gap". **It is not a gap: `external_parties.person_id` exists and is `NOT NULL`**, measured
+> from `information_schema.columns`. **All three** role tables carry a `NOT NULL person_id`, so every
+> one of the three account kinds already resolves to a person in a single join. Further,
+> `person_fk_registry_report()` returns **29** persons-referencing foreign keys, **every one**
+> `exists_as_fk = t`, `in_registry = t`, `verdict = ok` — and every document table
+> (`purchases`, `payment_receipts` twice, `payment_vouchers`, `sales_quotes`, `delivery_receipts`,
+> both credit tables) already carries its own denormalised `person_id`. **`journal_lines.account_ref_id`
+> is the only place in the measured surface where a person is reached through a role row rather than
+> directly.** This is good news: the work T9 implies is narrower than T9 assumed.
+
+~~**Scope unmeasured. Do not build on this yet.**~~ **Superseded 2026-08-19 — the scope was measured
+and T9 is adopted as (b). See T13.** The research mission this paragraph demanded was run
+(`docs/research/T9-one-person-one-balance-RESEARCH.md`, merged as `bc0ddafc`), and phase 3 is
+unblocked **subject to the four constraints recorded in T13**. T9 itself must still be resolved
+before phase 5.
 
 ## T10 — A receipt or a payment moves that one balance, and asks nothing
 For a receipt or a payment the counterparty is always **us**, so there is exactly one other party and
@@ -153,6 +174,54 @@ whose balance moves, and T11 does not settle it.
 ## T12 — The boundary between a plain receipt and a dual document
 * money reached us **and stayed** → **plain receipt**
 * money reached us **and went straight out** to someone else → **dual document**
+
+## T13 — T9 is adopted as (b); the production count is not required
+The T9 research (`docs/research/T9-one-person-one-balance-RESEARCH.md`, merged as `bc0ddafc`)
+measured the scope and recommended **(b)** — *phase 3 may proceed, but must be written so it does not
+deepen the split*. **Recommendation (b) is adopted.**
+
+The research was **right to flag** that its confidence in (b) over (c) rested on one number it could
+not measure: how many persons on **production** are both a customer and a supplier. **That gap is
+closed by a decision, not by a measurement.**
+
+*The owner's answer:* the count is low today and **will grow**, because being both a customer and a
+supplier is **part of this business's model, not an anomaly**.
+
+*Why that settles it — the reasoning matters more than the number, and is recorded so the question is
+not reopened:*
+
+1. **The count was only ever a proxy** for one thing: whether the contradiction is realised today or
+   latent. The owner's answer makes the model explicit, which is a **stronger** answer than any count
+   — a count tells you about today, the model tells you about every tomorrow.
+2. **The practical decision is identical either way.** `journal_entries` holds **1 row** and
+   `journal_lines` **2**. No affected person has a ledger line, *regardless of how many of them there
+   are*. The contradiction stays **latent at any count**.
+3. Therefore **CLAUDE.md rule 10 stands unweakened**: production (`192.168.170.10`) is **not queried,
+   not pinged, not contacted** — outside phase 9, for this or any other question. A question that
+   would only have confirmed a decision already made is not a reason to touch the company's real
+   records.
+
+### The four constraints phase 3 must respect — binding
+
+The research states these as measured constraints. They are binding on phase 3.
+
+1. **No new `account_kind` → table mapping.** `validate_journal_line_ref`'s `CASE` has **6** mapped
+   kinds; phase 3 needs **0** new ones.
+2. **Resolve the party to a `person_id` at the boundary and store it.** `payment_vouchers` already has
+   `payee_person_id`, already registered in the person-FK registry — populating it **costs nothing**
+   and makes the line re-keyable when T9 is resolved.
+3. **Do not copy `pay_purchase_with_voucher`'s unconditional supplier keying.** It posts
+   `('supplier_payable', _purchase.supplier_id)` **regardless of payee type**, including when the
+   payee is an `external_party`. That is the exact failure **T10** forbids, and phase 3 must not write
+   it fresh into the one function **A4** designates as where the rule holds for every caller.
+4. **T9 must be resolved before phase 5.** `asan_list_journal_export` and
+   `person_settlement_position` both read all three kinds, and **phase 5 is where they become the
+   accountant's numbers**.
+
+*Why phase 3 is the hinge:* `supplier_payable` has **never been written** — `payment_vouchers` is
+empty, so `pay_purchase_with_voucher` has never run. The split is cheap to change now *because* it is
+empty, and `create_payment` is the function that stops it being empty. Constraint 2 is what keeps it
+cheap.
 
 ---
 
@@ -271,23 +340,73 @@ as a limit it is exactly right.
 wallet reading the measurement is a genuine double count. That is why this section exists: the next
 reviewer must not have to rediscover it, and must not "fix" it.
 
-## The caveat — open, and not to be closed quietly
+## The caveat — measured 2026-08-19. The holding half was never built.
 
-**This is only correct if the symmetry holds.** Every finalised proforma must consume limit, and every
-payment must release **exactly** the amount that was consumed. If a finalisation ever fails to
-consume, or a payment releases more than was held, the revolving-limit reading stops protecting
-anything and the double count becomes real.
+The model above is correct **only if the symmetry holds**: every finalised proforma must consume
+limit, and every payment must release exactly what was consumed.
 
-**Gate A measured the release half only.** It proved that a receipt raises `available_credit` and that
-`hold_credit` can then spend it. **The hold half is unmeasured** — no test has shown that finalising a
-proforma consumes the limit by the matching amount, and Gate A's own census found that
-`customer_credit_ledger` holds **only** `payment` rows: nothing in the system's history has ever held,
-released or consumed credit. So the mechanism that makes the model correct has never been exercised.
+> **This section previously read "the hold half is unmeasured" and asked for the symmetry to be
+> verified. It has now been measured** (T9 research, `bc0ddafc`), and the answer is not a degree of
+> compliance — **one side of the symmetry does not exist.**
 
-**The symmetry must be verified before OG-17 is closed.** OG-17 therefore stays **OPEN**, with a
-changed question — not *"is this behaviour wrong"* but **"is the hold/release symmetry actually
-maintained"**. The owner has confirmed the intended model; what is unconfirmed is whether the
-implementation keeps to it.
+| Half of the model | Built? | Evidence, from the live catalogue |
+|---|---|---|
+| **Check** — a proforma may only be finalised if credit is available | **yes** | `create_sales_quote_with_items` calls `get_customer_dynamic_credit` and compares `available_credit` against the quote total. It runs in anger: **6** `credit_limit_blocked` rows in `audit_logs`. |
+| **Hold** — finalising consumes the limit | **NO** | `hold_credit` has **zero** SQL callers and appears in `src/` **only** in the generated `src/integrations/supabase/types.ts`. All **11** `customer_credit_balance` rows have `held_credit = 0.00`, and **0** rows hold anything. **None of the 9 `sales_quotes` triggers touches credit.** `create_sales_quote_with_items` writes a `_credit_snapshot jsonb` but never calls `hold_credit`, never writes `held_credit`, never writes `customer_credit_ledger`. |
+| **Release** — paying restores the limit | **yes** | `increase_credit`, called by `create_receipt` and `post_receipt_accounting`. |
+
+**So the system checks the limit, never reserves against it, and then releases against it on
+payment.** `release_credit` and `hold_capital_allocation` are equally unreachable — zero callers in
+SQL, generated types only in `src/`.
+
+This does **not** make the owner's model wrong. It makes it **half-implemented**: the intent is a
+revolving limit, and what exists is a gate with nothing behind it. Because nothing is ever consumed,
+`available_credit` today behaves as a monotonically increasing total of receipts — which is exactly
+what a wallet reading would predict, and why Gate A's M1 measurement looked like a double count.
+
+**OG-17 stays OPEN, with its question restated a second time.** It is no longer *"is this behaviour
+wrong"*, and no longer *"is the hold/release symmetry actually maintained"*. It is:
+
+> **Given that the hold half was never built — should it be built, and if so, in which phase?**
+
+**Not answered here.** That is a decision about what the business wants the limit to do, not a
+measurement.
+
+## Two problems that are not one
+
+Recorded because they have been discussed as one throughout this programme, and **fixing the wrong
+one would look like progress without being progress.**
+
+**`person_settlement_position` returns misleading numbers because nothing ever debits
+`customer_credit`** — there is no sales posting path at all — **not because the three-account split
+exists.** Its sign convention, read from the live body, is correct: `receivable = SUM(debit − credit)`
+on `customer_credit`. A receipt *credits* that account, and the offsetting *debit* would come from
+posting a sale. No such posting exists (`ground-truth.md` §1; `invoice_ar` is a control account with
+no writer). So a customer who has only ever paid reads as a party **we** owe — Gate A check 14,
+`receivable=-8827000 payable=0 net=-8827000 direction=we_pay`. **Resolving T9 would leave this exactly
+as it is.**
+
+## The gap that is larger than the split, and that no phase owns
+
+**No balance a user can see comes from the ledger.** Measured across every balance reader:
+
+| Reader | Actually reads | Reads `journal_lines`? |
+|---|---|---|
+| `vw_account_balances` | `payment_receipts` + `payment_vouchers` + `bank_accounts` | **no** |
+| `vw_customer_receivables` | `sales_quotes` + `payment_receipt_links` | **no** |
+| `vw_supplier_payables` | `purchases` | **no** |
+| `get_payables_summary` / `_list` / `_detail` | `vw_supplier_payables` | **no** |
+| `customer_credit_balance` / `_ledger` | their own tables | **no** |
+| `person_settlement_position` | `journal_lines` | **yes — 1 of 6** |
+
+`journal_entries` holds **1** row and `journal_lines` **2**, having ever used **2 of 9** account
+kinds, against **101** purchases, **57** sales quotes and **7** receipts. The consequence, measured:
+`get_payables_summary()` reports **50,530,370,424.94 Toman outstanding across 101 items** while
+`person_settlement_position` reports every person `balanced` — including one party carrying
+**13,000,000,000 Toman** of received purchases.
+
+**This gap is larger than the three-account split, and no phase currently owns it.** Stated as a fact
+for the owner to place; **not assigned to a phase here.**
 
 ---
 
