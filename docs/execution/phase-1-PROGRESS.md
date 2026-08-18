@@ -10,10 +10,10 @@ Phase:                1 - Shared foundations
 Status:               in progress
 Branch:               feature/backend-phase-1
 Base:                 staging @ 7197c190
-Tasks:                5 of 7
-Current task:         1.6
+Tasks:                7 of 7
+Current task:         phase exit (Gate A / Gate B)
 Blocked by:           nothing
-Migrations applied:   336..342
+Migrations applied:   336..344
 REST restarted after: 336..341 all yes
 Backup taken:         D:/AfraKalaBackups/pre-phase1-20260818-144648.dump (16,773,020 bytes)
 Typecheck:            not yet run this phase (run once at phase exit)
@@ -499,6 +499,140 @@ Security Engineer:         PASS
   rule audit-trigger-spec sets for actor_id. DELETE is admin-only. ocr_payload will hold OCR
   text in phase 7 and is readable only by the three finance roles. No sensitive data in error
   text: the messages name the document type and uuid, never party data.
+```
+
+
+### Task 1.6 - immutability on posted entries
+```
+Scope:      supabase/migrations/
+Effort:     M
+Migration:  20260818157000_343_posted_entry_immutability.sql
+Rollback:   docs/verification/343-down.sql  (WARNING: re-opens editing of posted entries)
+Started/Finished: 2026-08-18
+
+Acceptance (verbatim from MASTER-CHECKLIST):
+  UPDATE journal_entries SET description='x' WHERE status='posted';   -> raises P0001
+
+Actual:
+  ERROR (Persian): "a posted document cannot be changed; issue a reversing document"
+  SQLSTATE P0001, raised by tg_journal_entry_immutable()
+
+Verdict:    PASS
+```
+
+#### Full behaviour matrix (BEGIN..ROLLBACK)
+
+```
+UPDATE a posted entry                 -> P0001
+DELETE a posted entry                 -> P0001
+UPDATE a LINE of a posted entry       -> P0001   (line trigger reads the parent's status)
+DELETE a LINE of a posted entry       -> P0001
+UPDATE a DRAFT entry                  -> allowed
+draft -> posted transition            -> allowed (the check reads OLD.status, not NEW.status)
+UPDATE after that transition          -> P0001   (frozen from the moment it is posted)
+rows persisted after ROLLBACK         -> 1 entry, 2 lines (unchanged)
+```
+
+#### KNOWN INTERACTION with post_receipt_accounting - recorded, not worked around
+
+`post_receipt_accounting` has an idempotent ELSE branch that UPDATEs an EXISTING journal entry's
+`payer_accounting_code` / `receiver_accounting_code`. That entry is `posted`, so that branch now
+raises P0001. It is reachable only when a journal entry exists while the receipt's
+`posting_status` is not yet 'posted' - i.e. after a partial failure. The normal path INSERTs a
+new entry and is unaffected.
+
+It was NOT exempted. audit-trigger-spec contemplates no exemptions, and an exemption would be a
+bypass path around the guarantee this task exists to create. Phase 2 replaces this function
+anyway (D12 keeps the old path alive only until task 6.9).
+
+>>> OG-11: remove that back-fill branch, or allow it to edit a posted entry?
+
+#### Note on the mandatory-audit half of this task
+
+The task title pairs immutability with mandatory audit. Immutability is enforced here, in the
+database. The audit half is per-RPC and in-transaction (audit-trigger-spec section 2), so it is
+realised by create_receipt / create_payment / create_dual_document in phases 2-4 and is verified
+there, not here. Recorded so the gap is visible rather than assumed done.
+
+#### Reviewers
+
+```
+Observer:            PASS - two small triggers, no duplication of an existing mechanism, no
+                     dead branch. The RETURN CASE TG_OP handles DELETE correctly (returning
+                     OLD), which a naive RETURN NEW would have got wrong on DELETE.
+Software Engineer:   PASS - a trigger, not RLS, precisely because an RLS UPDATE matching no
+                     rows returns success and the caller reads it as done; this database
+                     already has that failure mode on payment_receipts. The line trigger reads
+                     the PARENT status, so a line cannot be edited out from under a posted
+                     entry. draft->posted still works, so nothing legitimate is blocked.
+Security Engineer:   PASS - both functions carry SET search_path TO 'public'. SECURITY INVOKER
+                     is correct here: the rule must apply to every caller, and making it
+                     DEFINER would not add protection. No data in the error text.
+```
+
+### Task 1.7 - seed role_permissions for the new module
+```
+Scope:      supabase/migrations/
+Effort:     S
+Migration:  20260818158000_344_seed_ledger_documents_module.sql
+Rollback:   docs/verification/344-down.sql  (CAUTION: deleting the rows re-OPENS the module)
+Started/Finished: 2026-08-18
+
+Acceptance (verbatim from MASTER-CHECKLIST):
+  SELECT count(DISTINCT role_name) FROM role_permissions WHERE module='<new>';
+  equals the total distinct role count
+
+Actual:
+  module 'ledger-documents' -> 7
+  total distinct roles      -> 7        EQUAL
+
+Verdict:    PASS
+```
+
+#### Seeded matrix
+
+```
+role                 view create update delete export
+admin                 t     t      f      t      t
+accountant            t     t      f      f      t
+manager               f     f      f      f      f
+purchase_specialist   f     f      f      f      f
+sales                 f     f      f      f      f
+site                  f     f      f      f      f
+viewer                f     f      f      f      f
+```
+
+`can_update` is false for everyone including admin, because posted documents are immutable (D11)
+and correction is by reversal. `can_approve` is false for everyone because approval was removed
+(T1). Rows are inserted for every role that exists, from
+`SELECT DISTINCT role_name FROM role_permissions`, so the set cannot drift from reality.
+
+#### The module name is my choice - it needs confirming
+
+MASTER-CHECKLIST 1.7 and audit-trigger-spec section 5 both write the module name as a
+placeholder. Nothing in the programme docs fixes it. 'ledger-documents' follows the existing
+kebab-case convention (asan-export, audit-logs, price-lists).
+
+>>> OG-12: is 'ledger-documents' correct? This matters more than it looks: an unseeded module is
+OPEN to every role, so if phase 6's wizard registers a different string, THAT string is open
+until it too is seeded.
+
+>>> OG-13: audit-trigger-spec section 4 lets `manager` SELECT document_attachments, while
+section 5 gives manager nothing here. Different mechanisms, so they can legitimately differ -
+but should manager get can_view to match?
+
+#### Reviewers
+
+```
+Observer:            PASS - seeds from the live role list rather than a hardcoded array, so it
+                     cannot drift. Idempotent via NOT EXISTS, so re-running is safe.
+Software Engineer:   PASS - the INSERT..SELECT is a single statement, so partial seeding is
+                     impossible. The verify block asserts equality with the live role count
+                     rather than the literal 7.
+Security Engineer:   PASS - this task IS the security control: an unseeded module is open to
+                     all roles, so seeding closes a default-open hole. Explicit all-false rows
+                     rather than absence, exactly as section 5 requires. The down file carries
+                     a caution that rolling back re-opens the module.
 ```
 
 ### Task <id> — <title>
