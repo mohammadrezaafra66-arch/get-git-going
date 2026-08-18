@@ -10,10 +10,10 @@ Phase:                1 - Shared foundations
 Status:               in progress
 Branch:               feature/backend-phase-1
 Base:                 staging @ 7197c190
-Tasks:                4 of 7
-Current task:         1.5
+Tasks:                5 of 7
+Current task:         1.6
 Blocked by:           nothing
-Migrations applied:   336, 337, 338, 339, 340, 341
+Migrations applied:   336..342
 REST restarted after: 336..341 all yes
 Backup taken:         D:/AfraKalaBackups/pre-phase1-20260818-144648.dump (16,773,020 bytes)
 Typecheck:            not yet run this phase (run once at phase exit)
@@ -431,6 +431,74 @@ Security Engineer:         PASS
   cannot be used to probe rows the caller cannot see. Its EXECUTE format() interpolates only
   a literal from a fixed CASE list, never user input, so there is no injection path. Error
   text names the account kind and the missing uuid, not party data.
+```
+
+
+### Task 1.5 - document_attachments + RLS
+```
+Scope:      supabase/migrations/
+Effort:     M
+Migration:  20260818156000_342_document_attachments.sql
+Rollback:   docs/verification/342-down.sql
+Started/Finished: 2026-08-18
+
+Acceptance (verbatim from MASTER-CHECKLIST):
+  SELECT relrowsecurity FROM pg_class WHERE relname='document_attachments';   -> t
+  SELECT count(*) FROM pg_policies WHERE tablename='document_attachments';    -> 3
+
+Actual:
+  t
+  3
+    document_attachments_select        | SELECT
+    document_attachments_insert        | INSERT
+    document_attachments_delete_admin  | DELETE
+    (no UPDATE policy, as specified)
+
+Verdict:    PASS
+```
+
+#### Existence-trigger functional test (BEGIN..ROLLBACK)
+
+```
+valid receipt attachment                  -> inserted
+document_id pointing at nothing           -> rejected 23503
+document_type='dual'                      -> refused loudly 0A000
+duplicate storage_path                    -> rejected (unique_violation)
+rows persisted after ROLLBACK             -> 0
+```
+
+'dual' is refused rather than accepted-unvalidated because its source table is not chosen until
+task 4.2 (D10). An attachment silently hung on a document that does not exist is worse than a
+blocked upload, and phase 4 must replace this function regardless. Recorded as work phase 4 owns.
+
+#### Why there is no fourth (viewer_restricted) policy
+
+Sibling tables carry a RESTRICTIVE `viewer_restricted` policy. Its absence here is deliberate and
+is not a gap: SELECT is already limited to admin/accountant/manager and a viewer-only user holds
+none of those, so the restrictive policy would exclude nobody who is not already excluded. Adding
+it would also break the acceptance count of 3.
+
+#### Reviewers
+
+```
+Observer (code quality):   PASS
+  One polymorphic table as A3 requires, not one per document kind. The existing
+  payment_receipt_documents is left alone rather than migrated, so there is no half-finished
+  second store. No dead branch: the 'dual' arm raises rather than falling through.
+
+Software Engineer:         PASS
+  No FK is possible (document_id points into a different table per document_type), so the
+  BEFORE INSERT/UPDATE trigger is the integrity mechanism and it fires on exactly the two
+  columns that matter. UNIQUE(storage_path) stops the same uploaded object being attached
+  twice. UPDATE is impossible by construction rather than by convention. The format() call
+  interpolates only a literal from a fixed CASE, never user input.
+
+Security Engineer:         PASS
+  RLS enabled, 3 policies, no UPDATE path at all. INSERT additionally requires
+  uploaded_by = auth.uid(), so a caller cannot attribute an upload to someone else - the same
+  rule audit-trigger-spec sets for actor_id. DELETE is admin-only. ocr_payload will hold OCR
+  text in phase 7 and is readable only by the three finance roles. No sensitive data in error
+  text: the messages name the document type and uuid, never party data.
 ```
 
 ### Task <id> — <title>
