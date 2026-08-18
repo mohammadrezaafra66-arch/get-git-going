@@ -13,8 +13,8 @@ Base:                 staging @ 7197c190
 Tasks:                7 of 7
 Current task:         phase exit (Gate A / Gate B)
 Blocked by:           nothing
-Migrations applied:   336..346 (11)
-REST restarted after: 336..346 all yes
+Migrations applied:   336..347 (12)
+REST restarted after: 336..347 all yes
 Backup taken:         D:/AfraKalaBackups/pre-phase1-20260818-144648.dump (16,773,020 bytes)
 Typecheck:            70 / 70 baseline (no regression)
 Last commit:          185ef398
@@ -900,3 +900,132 @@ found it because it swept the existing callers that I did not.
 | 2 | audit-trigger-spec section 4: INSERT/UPDATE = none on the ledger tables | Both tables carried INSERT and UPDATE policies; an accountant could fabricate a posted entry | Gate A M2 | Immutability guarded the wrong door until 346 |
 | 3 | ground-truth section 5: deleting a source orphans its journal entry (an admin could clean it up) | After 343 that orphan is permanent, and `reverse_document` does not exist | Gate A M5 | Recorded as OG-14; must close before phase 9 |
 | 4 | D12: "the old create path survives until task 6.9" | 341 broke it | Gate A B1 | Restored by 345 |
+
+---
+
+## OG-10 resolution — external parties as cheque counterparties (migration 347)
+
+**Owner's answer, recorded 2026-08-18, both halves:** yes, in both directions. A cheque we
+receive may come from a party who is not a customer; a cheque we issue may go to a party who is
+not a supplier. Normal business practice for this company, not a rare exception.
+
+This closes **OG-10** and, with it, **Gate A defect M6** (the receipt-side mirror, which would
+otherwise have surfaced in phase 2 task 2.6). One migration closes both.
+
+Migration `20260818170000_347_cheque_external_party_counterparties.sql`.
+Rollback `docs/verification/347-down.sql`, written and dry-run validated **before** the forward
+migration was applied.
+
+### What changed
+
+`validate_journal_line_ref` previously allowed exactly one target table per account kind. The
+two cheque kinds now accept two each:
+
+```
+cheque_receivable  ->  customers,  external_parties     (was: customers)
+cheque_payable     ->  suppliers,  external_parties     (was: suppliers)
+```
+
+Every other kind is untouched. This is a pure widening: no reference that was valid before is
+invalid now. Verified 0 cheque rows in `journal_lines` before and after, so no existing row was
+affected in either direction.
+
+### The design decision: option (a), and why it is not the lazy answer
+
+The brief offered (a) existence in either table, or (b) mirror `payment_vouchers`' `payee_type`
+and store the intended target explicitly. **Chosen: (a).** Three measured reasons.
+
+**1. Option (b) would repeat the exact defect Gate A caught in this phase.** A discriminator
+enforces nothing unless it is NOT NULL. `journal_lines` is written by three existing functions:
+
+```
+pay_purchase_with_voucher
+post_mutual_settlement
+post_receipt_accounting
+```
+
+Migration 341 added a NOT NULL column to `journal_entries` without sweeping its writers and
+broke all three — Gate A BLOCKER B1, the worst defect of phase 1. Adding a mandatory column to
+`journal_lines` now would break the same three functions again, for a problem that (see 2) does
+not exist. A nullable discriminator would enforce nothing and be worse than either option.
+
+**2. The ambiguity (b) protects against cannot occur here.** A discriminator earns its cost when
+one id could name rows in two tables. Measured on this database:
+
+```
+customers vs external_parties  = 0 shared ids
+suppliers vs external_parties  = 0 shared ids
+customers vs suppliers         = 0 shared ids
+```
+
+Ids are v4 uuids from `gen_random_uuid()`. A collision is not merely absent today; it is not a
+thing that happens. So `account_ref_id` resolves to at most one row across all three tables, and
+"which table was meant" is answerable by lookup rather than needing to be stored.
+
+**3. `payment_vouchers` is not the precedent it appears to be.** I read it before deciding. It
+does **not** disambiguate one polymorphic column with a text discriminator. It uses *separate
+typed columns* — `payee_supplier_id`, `payee_party_id`, `payee_customer_id` — each carrying a
+real foreign key, with `payee_type` and a XOR CHECK keeping them consistent:
+
+```
+payment_vouchers_payee_matches_type_chk ::
+  CHECK (((payee_type='supplier'       AND payee_supplier_id IS NOT NULL AND payee_party_id IS NULL AND payee_customer_id IS NULL)
+       OR (payee_type='external_party' AND payee_party_id    IS NOT NULL AND payee_supplier_id IS NULL AND payee_customer_id IS NULL)
+       OR (payee_type='customer'       AND payee_customer_id IS NOT NULL AND payee_supplier_id IS NULL AND payee_party_id IS NULL)
+       OR (payee_type='other'          AND all three NULL AND payee_name IS NOT NULL)))
+```
+
+That buys referential integrity the database itself enforces. `journal_lines` has **one** column,
+`account_ref_id`, and no FK is possible on it. Copying only the discriminator half of that
+pattern copies its bookkeeping cost without its benefit.
+
+**Where the intent will be recorded instead.** A2 defers the cheque lifecycle (cleared / bounced
+/ endorsed). When that is built it needs a cheque register table, and that is where a cheque's
+counterparty identity belongs — typed columns and real FKs, exactly as `payment_vouchers` does
+it. `journal_lines` records the accounting fact; the register records the cheque. Putting
+identity into `journal_lines` now would have to be undone then.
+
+### What (a) still refuses — this is not "accept anything"
+
+The validator was widened by exactly one table per cheque kind. Proven in cases 5-7 below: an
+unknown uuid is refused, a supplier id on a receivable is refused, a customer id on a payable is
+refused. A validator that accepted anything would be worse than one that is too narrow, and this
+one is neither.
+
+### Acceptance — all four required combinations, plus five more
+
+Run inside `BEGIN … ROLLBACK` against a draft entry (a posted one is immutable per 343).
+Real output:
+
+```
+ids: customer=t supplier=t external_party=t
+CASE 1 PASS: cheque_receivable -> customer         accepted
+CASE 2 PASS: cheque_receivable -> external_party   accepted  [NEW]
+CASE 3 PASS: cheque_payable    -> supplier         accepted
+CASE 4 PASS: cheque_payable    -> external_party   accepted  [NEW]
+CASE 5 PASS: unknown uuid                        refused 23503
+CASE 6 PASS: supplier id on cheque_receivable    refused 23503
+CASE 7 PASS: customer id on cheque_payable       refused 23503
+CASE 8 PASS: customer_credit  -> customer          still accepted
+CASE 9 PASS: customer_credit -> external_party    still refused (not widened)
+
+lines written inside the transaction:
+ line_no |   account_kind
+       1 | cheque_receivable
+       2 | cheque_receivable
+       3 | cheque_payable
+       4 | cheque_payable
+       8 | customer_credit
+ (5 rows — the four refused inserts wrote nothing)
+
+after ROLLBACK: entries=1 lines=2 cheque_lines=0   (database unchanged)
+```
+
+Cases 6, 7 and 9 are the ones worth noting: they prove the widening is targeted. A supplier
+cannot be a receivable counterparty, a customer cannot be a payable counterparty, and
+`customer_credit` was not widened by accident.
+
+### Not touched
+
+The Asan export. D8 says cheque lines are **skipped**, not resolved, so no account code is ever
+looked up for a cheque line and this change has no export consequence.
