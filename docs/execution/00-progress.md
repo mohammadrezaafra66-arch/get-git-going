@@ -14,8 +14,14 @@ Last commit SHA:      Gate A remediation (350-353) — see the migration ledger 
 Live APP_GIT_SHA:     87c1a921   Match: NO — 2 commits behind, both docs+SQL only. See note below
 Typecheck:            70 / 70 baseline
 Migrations applied:   18 (336-353)
-Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-16, OG-17 (OG-10 and OG-13 CLOSED).
-                      OG-14 must close before phase 9; OG-17 before phase 6
+Open Owner-Gates:     OG-8, OG-11, OG-12, OG-14, OG-15, OG-17 (OG-10, OG-13, OG-16 CLOSED).
+                      OG-14 must close before phase 9. OG-17 stays open with a CHANGED question -
+                      the owner confirmed the intended credit model, but the hold/release symmetry
+                      it depends on is unmeasured. See ledger-decisions.md Part 4.
+Owner decisions:      T9-T12 recorded 2026-08-18 in ledger-decisions.md. T9 (one person, one file,
+                      one balance) and T10 contradict what the schema assumes today.
+BLOCKING:             T9 needs a READ-ONLY RESEARCH MISSION to size the change BEFORE phase 3 or
+                      phase 4 is dispatched. Scope is unmeasured and must not be guessed.
 Blocked tasks:        none
 Gate A defects:       16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred (m1, m7 -> phase 6;
                       m3 -> phase 5). M4 + M5 CLOSED 2026-08-18: the owner ran the cleanup script by
@@ -25,6 +31,15 @@ Gate A defects:       16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred
                       docs/execution/phase-2-REMEDIATION-PROGRESS.md § 3
 Production touched:   NO
 ```
+
+**T9 blocks the next dispatch.** Owner decision **T9** — one person, one file, one balance — was
+recorded on 2026-08-18 and its **scope is unmeasured**. A **read-only research mission must size the
+change before phase 3 or phase 4 is dispatched**: the ledger keeps three balances per person
+(`customer_credit` → `customers`, `supplier_payable` → `suppliers`, `external_party` →
+`external_parties`) where the owner keeps one, so a person who is both a customer and a supplier has
+no single correct figure today. Dispatching phase 3 on an assumed answer builds the payment RPC to
+the model T9 replaces. Do not estimate that scope here and do not guess it —
+`ledger-decisions.md` § T9 lists the readers the research must account for.
 
 **APP_GIT_SHA note — corrected 2026-08-18.** This entry previously read `bfcc723a`, "which
 predates the phase-1 merge". That is no longer true: the `afrakala-lan-web` container now reports
@@ -90,8 +105,8 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | OG-13 should manager get can_view on ledger-documents? | 2026-08-18 | **2026-08-18** | **ANSWERED — option (a). CLOSED.** The boundary stands as migration 346 applied it: create = `admin`, `accountant`, `manager`; read the numbering ledger = `admin`, `accountant`. No migration needed. `create_receipt` uses `has_any_role(_uid, ARRAY['admin','accountant','manager'])`, matching `assign_document_number`. Proved end to end in task 2.8: manager creates successfully through gate → numbering → receipt → links → entry → credit → audit, which is what Gate A's M3 said would break. **Correction 2026-08-18 (Gate A M3):** this row was premature — two of OG-13's four surfaces still carried the old answer when it was written. Migration **352** applied answer (a) to both: `document_numbers_select_finance` now admits `manager`, and `role_permissions('ledger-documents','manager')` is `can_view=t, can_create=t`. Both verified in the live catalogue. OG-13 is closed on all four surfaces. |
 | OG-14 build reverse_document, or an audited escape hatch? | 2026-08-18 | | Gate A M5 - MUST close before phase 9 |
 | OG-15 add viewer_restricted to the two new tables? | 2026-08-18 | | Gate A m7 - changes task 1.5 acceptance count |
-| OG-16 what does a receipt from a non-customer credit? | 2026-08-18 | | Raised in task 2.1 (contradiction C2). `create_receipt` takes `p_customer_id` and always credits `customer_credit`, which resolves only through `customers.person_id`. OG-10 confirmed a cheque may arrive from a non-customer, and T7 searches `persons`. Options (a) `external_party`, (b) a new `person_credit` kind, (c) require promotion to a customer first. **Blocks nothing** — phase 2 built the customer path exactly as the contract specifies. Full text in `phase-2-PROGRESS.md` § OWNER-GATE. |
-| OG-17 a receipt allocated to a proforma is counted twice | 2026-08-18 | | Gate A **M1**. An allocated receipt reduces the proforma's `outstanding_amount` (via `payment_receipt_links` → `vw_customer_receivables`) **and** calls `increase_credit` for the **full** receipt amount, so the same money becomes spendable credit that `hold_credit` can commit to a different order. Reproduced: 62,200,000 → 61,200,000 outstanding, 0 → 1,000,000 available credit, `hold_credit(1,000,000)` **succeeded**. Confirmed statically at `351:542` — `PERFORM public.increase_credit(p_customer_id, p_amount, …)`, no allocation term. Options: (a) `available_credit` is prepayment credit → add only `p_amount − sum(allocations)`; (b) it is "total ever received" → it must not be what `hold_credit` spends, nor be labelled اعتبار قابل استفاده in the UI. **Not fixed — business decision.** Predates phase 2 (`post_receipt_accounting` does the same) and `hold_credit` has no call site in `src/` yet, which is why it is not a blocker. **Must be answered before phase 6 wires the RPC.** Full text in `phase-2-REMEDIATION-PROGRESS.md` § OWNER-GATE. |
+| OG-16 what does a receipt from a non-customer credit? | 2026-08-18 | **2026-08-18** | **ANSWERED — CLOSED. Superseded by owner decision T10.** The gate offered three options (a) `external_party`, (b) a new `person_credit` kind, (c) require promotion to a customer first. T10 replaces all three: **a person has one file and one balance (T9), and the sign of that balance decides the direction.** If they owe us, a receipt reduces what they owe; if we owe them, it increases what we owe. The user is never asked what the money is for. A friend or relative lending money is not a special case — they become a creditor under the same rule. **Consequence recorded, not patched:** `create_receipt` takes `p_customer_id` and always credits `customer_credit`, which is now known to be too narrow. The fix belongs to the T9 research, not to a patch on the RPC — a second narrow path is worse than one. Full text in `ledger-decisions.md` § T10. |
+| OG-17 is the credit hold/release symmetry actually maintained? | 2026-08-18 | | **STILL OPEN — the question has CHANGED.** Originally "a receipt allocated to a proforma is counted twice" (Gate A **M1**). **The owner has confirmed the intended model and the behaviour is correct:** credit in AfraKala is a **revolving limit, not a wallet**. A proforma can only be finalised if the customer has paid or has credit available; finalising **consumes** the limit (200,000,000 becomes 150,000,000 when 50,000,000 is committed) and paying **restores** it. So a receipt raising available credit is **releasing a consumed limit, not creating money**. The reviewer was not wrong to raise it — the model was simply not written down; it now is, in `ledger-decisions.md` **Part 4**. **What remains open is the caveat, and it must not be closed quietly:** the model is correct only if the symmetry holds — every finalised proforma must consume limit, and every payment must release exactly what was consumed. **Gate A measured the release half only** (0 → 1,000,000 available, `hold_credit(1,000,000)` succeeded). The **hold half is unmeasured**, and Gate A's census found `customer_credit_ledger` holds only `payment` rows — nothing has ever held, released or consumed credit, so the mechanism that makes the model correct has never been exercised. **The symmetry must be verified before OG-17 closes.** Revised question: not "is this behaviour wrong" but "is the hold/release symmetry actually maintained". |
 
 ## Contradictions found against ground-truth.md
 
