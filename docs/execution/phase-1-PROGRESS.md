@@ -10,11 +10,11 @@ Phase:                1 - Shared foundations
 Status:               in progress
 Branch:               feature/backend-phase-1
 Base:                 staging @ 7197c190
-Tasks:                3 of 7
-Current task:         1.4
+Tasks:                4 of 7
+Current task:         1.5
 Blocked by:           nothing
-Migrations applied:   336, 337, 338, 339, 340
-REST restarted after: 336=yes 337=yes 338=yes 339=yes 340=yes
+Migrations applied:   336, 337, 338, 339, 340, 341
+REST restarted after: 336..341 all yes
 Backup taken:         D:/AfraKalaBackups/pre-phase1-20260818-144648.dump (16,773,020 bytes)
 Typecheck:            not yet run this phase (run once at phase exit)
 Last commit:          <pending>
@@ -340,6 +340,97 @@ Security Engineer:         PASS
   names the party's display_name, which is required by the task ("naming the party") and is
   not in the prohibited set - audit-trigger-spec forbids Asan code, phone and national id in
   the AUDIT payload, which this is not. No code value is leaked on the failure path.
+```
+
+
+### Task 1.4 - cheque account kinds + journal_entries.doc_kind
+```
+Scope:      supabase/migrations/
+Effort:     M
+Migration:  20260818155000_341_cheque_kinds_and_doc_kind.sql
+Rollback:   docs/verification/341-down.sql
+Started:    2026-08-18
+Finished:   2026-08-18
+
+Acceptance (verbatim from MASTER-CHECKLIST):
+  SELECT count(*) FROM journal_entries WHERE doc_kind IS NULL;      -> 0
+  inserting a line with account_kind='cheque_receivable' succeeds in a rolled-back transaction
+
+Actual:
+  doc_kind_nulls = 0
+  cheque_receivable inserted = 1 row   (inside BEGIN..ROLLBACK)
+
+Verdict:    PASS
+```
+
+#### Backfill result
+
+```
+doc_kind | source_type     | count
+receipt  | payment_receipt | 1
+```
+
+A1 specifies the backfill value 'other'; branches for `payment_voucher` -> 'payment' and
+`mutual_settlement` -> 'settlement' were written too, but both matched 0 rows because those
+tables are empty (ground-truth section 1). Recorded so the zero is not mistaken for a bug.
+
+#### Extra cases run beyond the checklist
+
+```
+cheque_payable against a supplier                    -> inserted
+cheque_receivable pointing at a non-customer uuid    -> rejected, 23503 (validator works)
+account_kind = 'not_a_real_kind'                     -> rejected by CHECK
+INSERT into journal_entries omitting doc_kind        -> rejected, not_null_violation
+rows persisted after ROLLBACK                        -> journal_lines still 2
+```
+
+#### Target tables for the cheque kinds - a decision A2 requires but does not name
+
+```
+cheque_receivable -> customers    (a cheque WE HOLD, received from a customer)
+cheque_payable    -> suppliers    (a cheque WE ISSUED, owed to a supplier)
+```
+
+Mirrors the existing customer_credit->customers / supplier_payable->suppliers mapping, and is the
+shape phases 2 and 3 need: a receipt's cheque branch debits cheque_receivable against the paying
+customer, and an endorsed cheque later credits that same customer's line.
+
+>>> OG-10: payment_vouchers.payee_type also allows external_party and customer. An own cheque
+issued to an external party rather than a supplier would fail this validation. No such document
+can exist yet (payment_vouchers holds 0 rows, the payment RPC is phase 3), so this is a boundary
+phase 3 must confirm or widen - not deferred breakage.
+
+#### Hardening beyond the checklist: doc_kind carries NO default
+
+A1 specifies 'other' as the *backfill* value. It was applied as a backfill and the DEFAULT was
+then dropped. Had the default remained, a future INSERT that forgot doc_kind would silently
+become 'other' - the one value the export treats as belonging to no menu option, so the document
+would disappear from every export with no error anywhere. Requiring the value turns that omission
+into a loud NOT NULL failure. Verified above.
+
+#### Reviewers
+
+```
+Observer (code quality):   PASS
+  The validator is edited in place rather than a second validator being added (A1 explicitly
+  warns against leaving two implementations). No dead branch. The three backfill UPDATEs that
+  matched 0 rows are correct-by-construction, not dead code - they exist so the migration is
+  right on a database where those tables are populated.
+
+Software Engineer:         PASS
+  Whole migration is one transaction, so a failure leaves neither the widened CHECK nor a
+  half-populated column. Ordering is deliberate and load-bearing: backfill runs BEFORE the
+  CHECK and BEFORE SET NOT NULL, so neither can fail on legacy rows. Dropping the DEFAULT
+  closes the silent-'other' hole described above. The rollback narrows the CHECK again, so
+  341-down.sql carries an explicit warning that it must not run while cheque lines exist or
+  after phase 5 rewires the export.
+
+Security Engineer:         PASS
+  No new table, so no RLS surface. validate_journal_line_ref keeps SET search_path TO 'public'
+  and remains SECURITY INVOKER, which is correct - it must run with the caller's rights so it
+  cannot be used to probe rows the caller cannot see. Its EXECUTE format() interpolates only
+  a literal from a fixed CASE list, never user input, so there is no injection path. Error
+  text names the account kind and the missing uuid, not party data.
 ```
 
 ### Task <id> — <title>
