@@ -7,14 +7,14 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        1 — Shared foundations (starting)
-Current task:         1.1
-Branch:               fix/og2-and-checklist-corrections (doc fixes), then feature/backend-phase-1
-Last commit SHA:      <fill>
+Current phase:        1 COMPLETE — phase 2 not started
+Current task:         2.1 (not started)
+Branch:               feature/backend-phase-1
+Last commit SHA:      b62c9f03
 Live APP_GIT_SHA:     <fill>   Match: <yes/no>
 Typecheck:            70 / 70 baseline
-Migrations applied:   0 of ~20
-Open Owner-Gates:     none for phases 1-5 (OG-1/2/3 all answered)
+Migrations applied:   11 (336-346)
+Open Owner-Gates:     OG-8..OG-15. OG-10 BLOCKS task 2.6; OG-14 must close before phase 9
 Blocked tasks:        none
 Production touched:   NO
 ```
@@ -23,8 +23,8 @@ Production touched:   NO
 
 | Phase | Status | Started | Finished | Tests | Notes |
 |---|---|---|---|---|---|
-| 0 Ground and decisions | in progress | | | n/a | Documents written; OG-1 open |
-| 1 Shared foundations | in progress | 2026-08-18 | | | OG-1 + OG-2 confirmed |
+| 0 Ground and decisions | complete | | 2026-08-18 | n/a | OG-1 confirmed |
+| 1 Shared foundations | **complete** | 2026-08-18 | 2026-08-18 | Gate B PASS, Gate A FAIL then remediated | 11 migrations; 2 risks recorded |
 | 2 Receipts post | not started | | | | |
 | 3 Payments post | not started | | | | |
 | 4 Dual documents | not started | | | | |
@@ -39,11 +39,19 @@ Production touched:   NO
 | Gate | Asked | Answered | Answer |
 |---|---|---|---|
 | OG-1 A1–A4 confirmed | | 2026-08-18 | CONFIRMED — ledger-decisions.md:155 |
-| OG-2 delete dead posting path | | 2026-08-18 | CONFIRMED — ledger-decisions.md, owner authorised the drop |
-| OG-3 `invoice_ar` Asan code | | 2026-08-18 | ANSWERED — already present: `asan_control_accounts.invoice_ar = 989` (verified live). Task 5.4 unblocked |
+| OG-2 delete dead posting path | | 2026-08-18 | CONFIRMED — owner authorised the drop |
+| OG-3 `invoice_ar` Asan code | | 2026-08-18 | ANSWERED — asan_control_accounts.invoice_ar = 989 (verified live) |
 | OG-4 canonical phone format | | | |
 | OG-5 HTTPS live | | | |
 | OG-6 production authorised | | | |
+| OG-8 drop orphaned trg_post_receipt_on_approve? | 2026-08-18 | | raised in task 1.1 |
+| OG-9 should the document serial reset each Jalali year? | 2026-08-18 | | raised in task 1.2 |
+| OG-10 can an own cheque be issued to an external party? | 2026-08-18 | | raised in task 1.4 |
+| OG-11 post_receipt_accounting back-fill vs immutability | 2026-08-18 | | raised in task 1.6 |
+| OG-12 is 'ledger-documents' the right module string? | 2026-08-18 | | raised in task 1.7 |
+| OG-13 should manager get can_view on ledger-documents? | 2026-08-18 | | refined by Gate A M3; create=admin+accountant+manager, read=admin+accountant |
+| OG-14 build reverse_document, or an audited escape hatch? | 2026-08-18 | | Gate A M5 - MUST close before phase 9 |
+| OG-15 add viewer_restricted to the two new tables? | 2026-08-18 | | Gate A m7 - changes task 1.5 acceptance count |
 
 ## Contradictions found against ground-truth.md
 
@@ -73,3 +81,14 @@ Every migration applied, in order. The rollback column must be filled **before**
 
 | # | File | Phase | Applied | Rollback file | REST restarted |
 |---|---|---|---|---|---|
+| 336 | 20260818150000_336_drop_dead_receipt_posting_path.sql | 1 | 2026-08-18 | docs/verification/336-down.sql | yes |
+| 337 | 20260818151000_337_jalali_year_helper.sql | 1 | 2026-08-18 | docs/verification/337-down.sql | yes |
+| 338 | 20260818152000_338_document_numbers.sql | 1 | 2026-08-18 | docs/verification/338-down.sql | yes |
+| 339 | 20260818153000_339_lock_down_burn_document_number.sql | 1 | 2026-08-18 | docs/verification/339-down.sql | yes |
+| 340 | 20260818154000_340_require_asan_code.sql | 1 | 2026-08-18 | docs/verification/340-down.sql | yes |
+| 341 | 20260818155000_341_cheque_kinds_and_doc_kind.sql | 1 | 2026-08-18 | docs/verification/341-down.sql | yes |
+| 342 | 20260818156000_342_document_attachments.sql | 1 | 2026-08-18 | docs/verification/342-down.sql | yes |
+| 343 | 20260818157000_343_posted_entry_immutability.sql | 1 | 2026-08-18 | docs/verification/343-down.sql | yes |
+| 344 | 20260818158000_344_seed_ledger_documents_module.sql | 1 | 2026-08-18 | docs/verification/344-down.sql | yes |
+| 345 | 20260818160000_345_writers_supply_doc_kind.sql | 1 | 2026-08-18 | docs/verification/345-down.sql | yes |
+| 346 | 20260818161000_346_gate_a_major_fixes.sql | 1 | 2026-08-18 | docs/verification/346-down.sql | yes |
