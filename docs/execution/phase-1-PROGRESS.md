@@ -16,8 +16,8 @@ Blocked by:           nothing
 Migrations applied:   336..344
 REST restarted after: 336..341 all yes
 Backup taken:         D:/AfraKalaBackups/pre-phase1-20260818-144648.dump (16,773,020 bytes)
-Typecheck:            not yet run this phase (run once at phase exit)
-Last commit:          <pending>
+Typecheck:            70 / 70 baseline (no regression)
+Last commit:          185ef398
 PR:                   none (mission forbids)
 ```
 
@@ -710,3 +710,61 @@ git status --short:                       <n> lines — clean of programme files
 - [ ] PR merged and verified: `gh pr view <N> --json state,mergedAt` → `MERGED` + timestamp
 - [ ] `APP_GIT_SHA` matches HEAD
 - [ ] `00-progress.md` updated
+
+---
+
+## PHASE 1 EXIT EVIDENCE
+
+### Typecheck (phase exit requirement)
+
+```
+DISABLE_LOVABLE_MCP=1 npx tsc --noEmit
+error TS count: 70
+```
+
+70 / 70 baseline — no regression. Phase 1 changed only SQL, so this is the expected result;
+it is recorded as measured rather than assumed. (D14: a count above 70 is a real failure.)
+
+### GATE B — E2E: 50 concurrent assign_document_number calls
+
+Run inside the database container so all 50 clients are genuinely separate backends, each in its
+own transaction with a simulated JWT. Script: 50 background `psql` processes, then `wait`.
+
+```
+--- launching 50 concurrent transactions ---
+--- all 50 finished ---
+errors logged: 0
+
+rows_created      = 50
+distinct_numbers  = 50
+distinct_serials  = 50
+min_serial        = 1
+max_serial        = 50
+gaps              = 0
+duplicate_numbers = 0
+```
+
+**Verdict: PASS.** The required properties all hold:
+- 50 distinct numbers (no two transactions got the same one)
+- no gaps: serials are exactly 1..50 contiguous, which is the property a sequence could NOT have
+  given (D4 — a sequence burns a value on rollback)
+- no duplicates
+- no errors: not one of the 50 transactions failed or deadlocked
+
+This is the test that proves the advisory-lock + max+1 pattern actually works under contention,
+rather than only looking correct.
+
+### Gate B cleanup
+
+The 50 synthetic rows referenced fake source uuids (`aaaaaaaa-bbbb-cccc-dddd-*`) that match no
+real document, so they were deleted afterwards to leave the receipt series starting at 1 for
+phase 2:
+
+```
+DELETE FROM public.document_numbers
+ WHERE doc_type='receipt' AND source_id::text LIKE 'aaaaaaaa-bbbb-cccc-dddd-%';   -- 50 rows
+SELECT count(*) FROM public.document_numbers;                                      -- 0
+```
+
+Recorded because deleting numbering rows is normally forbidden (a burned number is never
+reissued). These were never issued against a real document, and this is the test database.
