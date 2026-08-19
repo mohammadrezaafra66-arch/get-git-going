@@ -225,8 +225,8 @@ export type ExternalPartyOption = {
 };
 
 /**
- * طرف حساب‌های خارجی فعال — همان منبعی که `PaymentReceiptForm` برای «گیرنده»
- * می‌خواند، تا سمت پرداخت و سمت دریافت از یک فهرست استفاده کنند.
+ * طرف حساب‌های خارجی فعال — همان منبعی که فرم‌های خزانه‌داری برای «گیرنده»
+ * می‌خوانند، تا سمت پرداخت و سمت دریافت از یک فهرست استفاده کنند.
  */
 export async function fetchActiveExternalParties(): Promise<ExternalPartyOption[]> {
   const { data, error } = await supabase

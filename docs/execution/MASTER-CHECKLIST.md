@@ -207,21 +207,21 @@ sample in Asan before phase 9** — nothing here can verify Asan accepts the fil
 
 ## Phase 6 — The three-branch wizard
 
-- [ ] **6.1** `stepper-spec.md` — Scope: `docs/frontend/` — S
-- [ ] **6.2** `Stepper` component — Scope: `src/components/ui/stepper.tsx` — M
+- [x] **6.1** `stepper-spec.md` — Scope: `docs/frontend/` — S
+- [x] **6.2** `Stepper` component — Scope: `src/components/ui/stepper.tsx` — M
   Does not exist today. No browser storage — state in React only.
-- [ ] **6.3** Step 1, document-type selection — Scope: `src/routes/`, `src/features/` — S
-- [ ] **6.4** Receipt branch wired to `create_receipt` — Scope: `src/features/` — M
-- [ ] **6.5** Payment branch wired to `create_payment` — Scope: `src/features/` — M
-- [ ] **6.6** Dual branch wired to `create_dual_document` — Scope: `src/features/` — M
+- [x] **6.3** Step 1, document-type selection — Scope: `src/routes/`, `src/features/` — S
+- [x] **6.4** Receipt branch wired to `create_receipt` — Scope: `src/features/` — M
+- [x] **6.5** Payment branch wired to `create_payment` — Scope: `src/features/` — M
+- [x] **6.6** Dual branch wired to `create_dual_document` — Scope: `src/features/` — M
 - [ ] **6.7** Party lookup by Asan code or mobile over `persons` — Scope: `src/features/` — M —
-  **needs `normalize_identifier`; gated by OG-4**
+  **needs `normalize_identifier`; gated by OG-4** — **BLOCKED.** Exact-match fallback shipped.
   **Accept:** the same person is found by `09121234567`, `9121234567` and `+989121234567`.
-- [ ] **6.8** Open-proforma list replaces `receipt_type` — Scope: `src/features/` — M
-- [ ] **6.9** Delete the security-warning UI and the old create path — Scope:
+- [x] **6.8** Open-proforma list replaces `receipt_type` — Scope: `src/features/` — M
+- [x] **6.9** Delete the security-warning UI and the old create path — Scope:
   `src/shared/components/PaymentReceiptForm.tsx`, `src/routes/` — M
   Check every importer of `PaymentReceiptForm` before deleting; other routes may render it.
-- [ ] **6.10** Missing-Asan-code message in the form — Scope: `src/features/` — S
+- [x] **6.10** Missing-Asan-code message in the form — Scope: `src/features/` — S
   A clear Persian message, never a raw database error.
 
 **Phase 6 exit:** all three branches create documents from the browser. Deploy, then confirm

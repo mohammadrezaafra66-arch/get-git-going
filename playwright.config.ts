@@ -30,6 +30,7 @@ export default defineConfig({
     /asan\/.*\.spec\.ts/,
     /branding\/.*\.spec\.ts/,
     /updates\/.*\.spec\.ts/,
+    /phase6\/.*\.spec\.ts/,
   ],
   timeout: 45_000,
   expect: {

@@ -152,9 +152,9 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
       // stays on a keyed provider, enforced by the registry, not by a branch.
       //
       // The safety property is unchanged either way: this output is only ever
-      // a SUGGESTION. PaymentReceiptForm fills empty fields with it, leaves
-      // anything the accountant typed alone, and nothing is written to a
-      // financial record until the accountant submits the form.
+      // a SUGGESTION. The ledger wizard (phase 6) may pre-fill empty fields
+      // from OCR in phase 7; until then nothing is written to a financial
+      // record until the accountant submits.
       const vision = await aiVision({
         usageKey: "receipt_ocr.vision",
         prompt: RECEIPT_OCR_PROMPT,

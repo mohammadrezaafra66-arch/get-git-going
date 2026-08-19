@@ -7,14 +7,14 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        5 COMPLETE + Gate A remediated (366, 367); phase 6 not started
-Current task:         6.1 (not started)
-Branch:               staging (this mission phase 5 remediation)
+Current phase:        6 COMPLETE (wizard UI); 6.7 BLOCKED by OG-4
+Current task:         none — do not start phase 7 (OG-5 HTTPS)
+Branch:               feature/phase6-wizard
 Last commit SHA:      see git log on staging after this PR merges
-Live APP_GIT_SHA:     87c1a921   Match: NO — docs+SQL only behind. See note below
-Typecheck:            70 / 70 baseline (D14) — phase 5 remediation
-Migrations applied:   32 (336-367)
-Open Owner-Gates:     OG-8, OG-11, OG-12, OG-15, OG-17, OG-23
+Live APP_GIT_SHA:     pending deploy
+Typecheck:            70 / 70 baseline (D14) — phase 6
+Migrations applied:   32 (336-367) — phase 6 added 0
+Open Owner-Gates:     OG-4, OG-8, OG-11, OG-12, OG-15, OG-17, OG-23
                       (OG-10, OG-13, OG-14, OG-16, OG-18, OG-19, OG-20, OG-21, OG-22 CLOSED).
 BLOCKING BEFORE PHASE 6: reverse_document CLOSED (363–365).
 BINDING ON PHASE 5:   T14 honoured. T15 (2026-08-19): bank automatic; cash/cheque/reversal
@@ -116,7 +116,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 4 Dual documents | **complete — corrected; Gate A PASS** | 2026-08-19 | 2026-08-19 | 7/7 accept PASS then owner correction accept PASS; stress PASS; cleanup proved clean; Gate A 0 BLOCKER / 1 MAJOR / 3 MINOR | migrations 360-361 plus **362** (no fee). Gate A M1 **closed** (`361-down` gate). New `dual_documents` table (task 4.2). T11 four roles. C-c / OG-21 **overturned by the owner 2026-08-19: no fee exists.** Always exactly two journal lines. Phase 5 not started. `phase-4-PROGRESS.md`, `phase-4-GATE-A.md` |
 | **reverse_document** | **complete (OG-14) + Gate A remediated** | 2026-08-19 | 2026-08-19 | accept + Gate A re-probes PASS | 363–364 plus **365** (M2 credit from journal line; M3 admin+accountant only, interim). M1 deferred to phase 5 as required input. m1 leftover recorded for phase 8. OG-22 closed. OG-23 raised (source-row freeze). `asan_list_journal_export` not touched. |
 | 5 Asan exports live | **complete** | 2026-08-19 | 2026-08-19 | 5/5 Accept; typecheck 70 | migration **366**. Classifier reads stored `doc_kind`. M1/C-d/C-e/C10/C7 closed. Cheque skip (D8). invoice_ar already 989. Samples in `docs/verification/asan/phase-5-asan-*.xlsx`. Owner must open one in Asan before phase 9. Phase 6 not started. |
-| 6 Wizard front end | not started | | | | Needs OG-4 + `normalize_identifier` |
+| 6 Wizard front end | **complete except 6.7** | 2026-08-19 | 2026-08-19 | RPC accept 3/3; typecheck 70 | No migration. Dual fee step removed from spec. `PaymentReceiptForm` deleted. OG-4 still open. Do not start phase 7. |
 | 7 OCR | not started | | | | Needs OG-5 (HTTPS) |
 | 8 Integrated verification | not started | | | | |
 | 9 Production | not started | | | | Needs OG-6 |
