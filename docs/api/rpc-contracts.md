@@ -312,14 +312,9 @@ The credit side — where the money comes from:
 
 `doc_kind='payment'`, `source_type='payment_voucher'`, `status='posted'`.
 
-> **P3-C10 — the export does not read `doc_kind`.** `asan_list_journal_export` classifies by a
-> **bank-sign heuristic**: `has_external` → `third_party`; `bank_net > 0` → `receipt`;
-> `bank_net < 0` → `payment`; otherwise `unclassified`. So a payment to an `external_party`
-> classifies as **`third_party`**, and a **cheque payment has no bank line at all** and classifies
-> as **`unclassified`**, dropping out of every filtered export. `doc_kind='payment'` is still
-> written — task 3.4 requires it and it is the only non-heuristic signal phase 5 will have — but
-> writing it does **not** make the document appear under the `payment` filter today. Phase 5 owns
-> the export.
+> **P3-C10 — CLOSED phase 5 / migration 366.** `asan_list_journal_export` filters on stored
+> `journal_entries.doc_kind` (`dual` → `_filter='third_party'`). The bank-sign heuristic is gone.
+> A reversal keeps the original kind. Cheque lines are omitted (D8 / 5.2).
 
 ## What changed against the original draft
 
@@ -484,13 +479,8 @@ document, two journal lines.**
 > **exactly phase 3's C1**, and it takes phase 3's solution. **The direction, not the kind, is what
 > makes a party the payer or the beneficiary.**
 
-> **P4-C6 — the export does not know this document type.** `asan_list_journal_export` has branches
-> for `payment_receipt`, `payment_voucher` and `mutual_settlement` and **none for `dual_document`**,
-> so a dual document gets the plainer label and `description_quality = 'simple'`. Its **classifier**
-> matters more: it is a bank-sign heuristic, and a dual document has **no bank line at all**, so
-> `bank_net = 0` — the document classifies as `third_party` if either party is an `external_party`
-> and `unclassified` otherwise. It still exports. **Phase 5 owns the export**; this is recorded, not
-> fixed.
+> **P4-C6 — CLOSED phase 5 / migration 366.** Stored `doc_kind='dual'` maps to `_filter='third_party'`.
+> There is a `dual_document` description branch. The bank-sign heuristic is gone.
 
 ## There is no fee (P4-C11 — owner 2026-08-19, OG-21 CLOSED)
 

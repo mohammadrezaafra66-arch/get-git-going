@@ -1,0 +1,41 @@
+BEGIN
+                              set_config                               
+-----------------------------------------------------------------------
+ {"sub":"1a15e8c6-3a83-49c2-9531-db9046d30968","role":"authenticated"}
+(1 row)
+
+    step    |                doc_id                |  doc_date  | doc_kind | blocked | line_no | account_code |     debit      |     credit     
+------------+--------------------------------------+------------+----------+---------+---------+--------------+----------------+----------------
+ FILTER_ALL | 6d6b1896-d7ce-433e-9908-27bae8b6c003 | 2026-07-25 | receipt  | t       |       1 | 8            | 10100000000.00 |              0
+ FILTER_ALL | 6d6b1896-d7ce-433e-9908-27bae8b6c003 | 2026-07-25 | receipt  | t       |       2 |              |              0 | 10100000000.00
+ FILTER_ALL | 2c972cd3-c440-4d76-9776-2c339b969f00 | 2026-08-19 | receipt  | f       |       1 | 8            |          10000 |              0
+ FILTER_ALL | 2c972cd3-c440-4d76-9776-2c339b969f00 | 2026-08-19 | receipt  | f       |       2 | 1125623      |              0 |          10000
+ FILTER_ALL | 51e00e30-b55e-4851-ae00-036a6930d29d | 2026-08-19 | payment  | f       |       1 | 8            |              0 |          10000
+ FILTER_ALL | 51e00e30-b55e-4851-ae00-036a6930d29d | 2026-08-19 | payment  | f       |       2 | 1125623      |          10000 |              0
+(6 rows)
+
+      step      |                doc_id                | doc_kind | line_no |     debit      |     credit     
+----------------+--------------------------------------+----------+---------+----------------+----------------
+ FILTER_RECEIPT | 2c972cd3-c440-4d76-9776-2c339b969f00 | receipt  |       1 |          10000 |              0
+ FILTER_RECEIPT | 2c972cd3-c440-4d76-9776-2c339b969f00 | receipt  |       2 |              0 |          10000
+ FILTER_RECEIPT | 6d6b1896-d7ce-433e-9908-27bae8b6c003 | receipt  |       1 | 10100000000.00 |              0
+ FILTER_RECEIPT | 6d6b1896-d7ce-433e-9908-27bae8b6c003 | receipt  |       2 |              0 | 10100000000.00
+(4 rows)
+
+       step       | n 
+------------------+---
+ FILTER_PAYMENT_N | 2
+(1 row)
+
+      step      | n 
+----------------+---
+ FILTER_THIRD_N | 0
+(1 row)
+
+    step     | doc_kind | docs | lines 
+-------------+----------+------+-------
+ KIND_COUNTS | payment  |    1 |     2
+ KIND_COUNTS | receipt  |    2 |     4
+(2 rows)
+
+ROLLBACK

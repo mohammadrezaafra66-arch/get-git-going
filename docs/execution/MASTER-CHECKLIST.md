@@ -182,7 +182,7 @@ Record the sign convention chosen in the progress file.
 
 ## Phase 5 — Asan exports go live
 
-- [ ] **5.1** `asan_list_journal_export` filters on `doc_kind` — Scope: `supabase/migrations/` — M
+- [x] **5.1** `asan_list_journal_export` filters on `doc_kind` — Scope: `supabase/migrations/` — M
   Replace the classifier CTE; keep `_filter` values `all|receipt|payment|third_party`
   (`third_party` → `doc_kind='dual'`). Do not leave both implementations in place.
   **REQUIRED INPUT (OG-14 Gate A M1, not optional):** the live classifier still infers from
@@ -191,13 +191,13 @@ Record the sign convention chosen in the progress file.
   listed as a payment (`EXPORT_PAYMENT_REVERSAL n=2`). **`_filter='receipt'` must not be shipped as
   "deposits that still stand"** until 5.1 reads the stored column. See `00-progress.md`.
   **Accept:** replicating the body for each filter returns ≥1 exportable document.
-- [ ] **5.2** Cheque kinds are **skipped**, not blocked — Scope: `supabase/migrations/` — S
+- [x] **5.2** Cheque kinds are **skipped**, not blocked — Scope: `supabase/migrations/` — S
   **Accept:** a cheque document is not withheld with "code not registered".
-- [ ] **5.3** Verify the export gates still hold — Scope: none (read-only) — S
+- [x] **5.3** Verify the export gates still hold — Scope: none (read-only) — S
   The migration-294 `DO $chk$` block asserts the unresolvable kinds, the balance invariant and
   `journal_lines_one_side`. All must still pass.
-- [ ] **5.4** `invoice_ar` control-account code — Scope: `supabase/migrations/` — S — **gated by OG-3**
-- [ ] **5.5** Produce a sample file per branch — Scope: `docs/verification/` — S
+- [x] **5.4** `invoice_ar` control-account code — Scope: `supabase/migrations/` — S — **gated by OG-3**
+- [x] **5.5** Produce a sample file per branch — Scope: `docs/verification/` — S
   **Accept:** three `.xlsx` files exist with Persian headers including بدهکار and بستانکار.
 
 **Phase 5 exit:** all three ledger-backed exports return real rows. **The owner must open one
