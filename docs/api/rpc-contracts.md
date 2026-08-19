@@ -396,22 +396,38 @@ back the numbering row** (the surface phase 1's M3 broke and migration 352 close
 
 # 3. `create_dual_document`
 
-One document, two parties, both balances move. Money never touches our accounts — we only record it.
+One document, **four roles**, two balances move. Money never touches our accounts — we only record
+it (T12). Implemented by migrations **360** (the `dual_documents` table and its guards) and **361**
+(the function).
+
+> **Reconciled against the live schema on 2026-08-19 (task 4.1).** This section was written before
+> T11 existed and before the function was built. **Seven** of its statements were contradicted by
+> the database or by owner decisions T9–T14. Each is marked **P4-Cn** below and the evidence is in
+> `docs/execution/phase-4-PROGRESS.md` § *Contradictions found*. Unlike phases 2 and 3, this phase
+> was told to **extend** the signature — T11 requires two roles the contract had no fields for.
 
 ```sql
 create_dual_document(
-  p_payer_id           uuid,     -- owed us; they paid
-  p_beneficiary_id     uuid,     -- we owed them; they were paid
-  p_amount             numeric,  -- Toman, > 0, integral. One amount, both sides.
-  p_document_date      date,
-  p_tracking_number    text,     -- from the transfer slip
-  p_source_bank        text    DEFAULT NULL,
-  p_destination_bank   text    DEFAULT NULL,
-  p_intermediary_id    uuid    DEFAULT NULL,  -- صراف, optional
-  p_intermediary_fee   numeric DEFAULT 0,     -- Toman; > 0 adds a third line
-  p_fee_borne_by       text    DEFAULT NULL,  -- 'us' | 'payer' | 'beneficiary'
-  p_description        text,                  -- REQUIRED, see below
-  p_attachment_ids     uuid[]  DEFAULT NULL
+  p_payer_type             text,      -- 'customer' | 'supplier' | 'external_party'   (P4-C2)
+  p_payer_id               uuid,      -- owed us; they paid
+  p_beneficiary_type       text,      -- same three values                            (P4-C2)
+  p_beneficiary_id         uuid,      -- we owed them; they were paid
+  p_amount                 numeric,   -- Toman, > 0, integral. ONE amount (D9).
+  p_document_date          date,      -- not future, not older than the previous Jalali year (P4-C5)
+  p_tracking_number        text,      -- from the transfer slip; required
+  p_description            text,      -- REQUIRED, see below
+  p_source_bank            text    DEFAULT NULL,
+  p_destination_bank       text    DEFAULT NULL,
+  -- T11's record-only roles. New in phase 4 (P4-C1).
+  p_transferrer_name       text    DEFAULT NULL,
+  p_transferrer_account_no text    DEFAULT NULL,
+  p_recipient_name         text    DEFAULT NULL,
+  p_recipient_account_no   text    DEFAULT NULL,
+  -- Intermediary (صراف).
+  p_intermediary_id        uuid    DEFAULT NULL,  -- an external_parties row
+  p_intermediary_fee       numeric DEFAULT 0,     -- > 0 adds a third line
+  p_fee_borne_by           text    DEFAULT NULL,  -- 'payer' | 'beneficiary'; 'us' is REFUSED (P4-C4)
+  p_attachment_ids         uuid[]  DEFAULT NULL   -- NOT WIRED: a non-empty array raises 0A000
 ) RETURNS TABLE (
   document_id      uuid,
   document_number  text,
@@ -419,31 +435,128 @@ create_dual_document(
 )
 ```
 
-**`p_description` is mandatory here and optional elsewhere.** In the accounting-document layout the
-tracking number and payer name are buried inside the شرح column, so the description is the only
-context an accountant sees in Asan for this document.
+## The four roles (T11)
 
-**One amount, not two.** The roadmap's wizard shows an allocated amount per party; the contract takes
-a single amount because the two must be equal for the entry to balance, and an unbalanced document is
-dropped from the Asan export entirely. The UI may present two fields, but it must reconcile them
-before calling, and the RPC rejects any attempt to do otherwise.
+| Role | Asan code | Journal line | Balance moves | Stored as |
+|---|---|---|---|---|
+| **payer** — owed us, paid | **required** | yes, credited | **yes** | type + one FK |
+| **beneficiary** — we owed, was paid | **required** | yes, debited | **yes** | type + one FK |
+| **transferrer** — actually made the transfer | **no** | **no** | **no** | name + account number, plain text |
+| **recipient** — whose account received it | **no** | **no** | **no** | name + account number, plain text |
+
+> **P4-C1 — the contract had no transferrer and no recipient.** §3 carried `p_source_bank`,
+> `p_destination_bank` and `p_intermediary_id` — bank *names* and the صراف — but nothing for the two
+> people T11 requires. Four parameters and four columns were added. They are **plain text with no
+> foreign key and no `person_id`**, deliberately: T11 says these people need no file, and CLAUDE.md
+> rule 9 makes every persons-referencing FK a registry obligation that would abort the DDL if missed.
+
+The owner's worked example is the acceptance shape: Khan-Mohammadi (payer) and Zeinab (beneficiary)
+are the account holders; the father is the transferrer, Mitra the recipient. **Four people, one
+document, two journal lines.**
 
 ## The journal entry
 
-| | account_kind | account_ref_id |
+**The account kind of each party is chosen from that party's TYPE**, using only mappings
+`validate_journal_line_ref` already has — **zero new mappings** (T13 constraint 1).
+
+| Party type | `account_kind` | `validate_journal_line_ref` target |
 |---|---|---|
-| Debit | `supplier_payable` | beneficiary — what we owe falls |
-| Credit | `customer_credit` | payer — what they owe us falls |
-| Third line (only when fee > 0) | per `p_fee_borne_by` | see below |
+| `customer` | `customer_credit` | `ARRAY['customers']` |
+| `supplier` | `supplier_payable` | `ARRAY['suppliers']` |
+| `external_party` | `external_party` | `ARRAY['external_parties']` |
+
+| Line | Side | Keyed to |
+|---|---|---|
+| 1 | **debit** the beneficiary's kind | the beneficiary — what we owe them falls |
+| 2 | **credit** the payer's kind | the payer — what they owe us falls |
+| 3 *(only when fee > 0)* | **debit** `external_party` | the intermediary — see below |
 
 `doc_kind='dual'`, `source_type='dual_document'`, `status='posted'`.
 
-Fee handling: `'us'` debits an expense-bearing account and credits the intermediary; `'payer'` /
-`'beneficiary'` adjust that party's line instead. **Whichever is chosen, `sum(debit)` must still
-equal `sum(credit)`** — verify before insert and raise `P0001` on any mismatch.
+> **P4-C3 — corrected.** This table originally read *debit `supplier_payable` (beneficiary), credit
+> `customer_credit` (payer)*. That is true only when the beneficiary is a supplier and the payer is a
+> customer. T10 and OG-16 establish that either party may be any person, and `supplier_payable` maps
+> to `suppliers` alone — so for any other party the line would be refused by
+> `validate_journal_line_ref` (`23503`) or mis-keyed to someone who was not involved. This is
+> **exactly phase 3's C1**, and it takes phase 3's solution. **The direction, not the kind, is what
+> makes a party the payer or the beneficiary.**
 
-When the fee is zero the intermediary is metadata only: recorded on the source row, no journal line,
-no balance effect.
+> **P4-C6 — the export does not know this document type.** `asan_list_journal_export` has branches
+> for `payment_receipt`, `payment_voucher` and `mutual_settlement` and **none for `dual_document`**,
+> so a dual document gets the plainer label and `description_quality = 'simple'`. Its **classifier**
+> matters more: it is a bank-sign heuristic, and a dual document has **no bank line at all**, so
+> `bank_net = 0` — the document classifies as `third_party` if either party is an `external_party`
+> and `unclassified` otherwise. It still exports. **Phase 5 owns the export**; this is recorded, not
+> fixed.
+
+## The intermediary and the fee (P4-C4)
+
+**T11, `MASTER-CHECKLIST` 4.6 and requirement 207 cannot all be true at once.** T11 makes the
+record-only roles Asan-code-free; 4.6 wants a third journal line; a journal line needs an
+`account_ref_id` the validator accepts; 207 made the صراف's Asan code optional.
+
+**The reading adopted — raised as OG-21 for confirmation:**
+
+* **Fee = 0** → the intermediary is **metadata only**. No line, no balance effect, **no code
+  required**. Exactly T11 and requirement 207.
+* **Fee > 0** → the intermediary is **a party we are paying**. Money is recorded against them, so
+  under T10 they are a counterparty whose balance moves and under T3 they need a code — like any
+  other paid party. The record-only class covers the transferrer and the recipient, who *receive
+  nothing*; it need not cover someone we pay a fee to.
+
+This needs no new `account_kind` (the صراف is an `external_parties` row), satisfies 4.6's Accept, and
+keeps the document exportable.
+
+| `p_fee_borne_by` | Effect | Balanced? |
+|---|---|---|
+| `'payer'` | payer is credited `amount + fee`; beneficiary debited `amount`; intermediary debited `fee` | yes |
+| `'beneficiary'` | payer credited `amount`; beneficiary debited `amount − fee`; intermediary debited `fee` | yes — and `fee < amount` is enforced, or the beneficiary's line would be zero or negative and violate `journal_lines_one_side` |
+| **`'us'`** | **REFUSED, `P0001`** | — |
+
+> **`'us'` is unrepresentable, not merely unimplemented.** If we bear the fee, the entry needs a
+> credit to the intermediary and a **debit to an expense of ours** — and there is **no expense
+> `account_kind`**. The live CHECK admits only `customer_credit, bank, external_party, invoice_ar,
+> clearing, other, supplier_payable, cheque_receivable, cheque_payable`. Posting to `other` or
+> `clearing` would use a control account with no Asan code, which blocks the **whole document** from
+> the export (Part 3 rule 2) — silently and permanently. Inventing a kind is forbidden by T13
+> constraint 1. **OG-21 carries the question.**
+
+## One amount, not two — D9, owner-confirmed
+
+The contract takes a **single** amount. The owner confirmed on 2026-08-18 that the two sides of a
+dual document are always equal, and that 100 owed with 60 to the creditor and 40 to us is **two
+documents** — one dual for 60 and one ordinary receipt for 40 — never one dual with unequal sides.
+**D9 is not reopenable.**
+
+Task 4.4's *"unequal amounts raise `P0001`"* is therefore **unreachable through the parameter by
+construction**, which is the point of D9. What remains reachable is an imbalance produced by the fee
+arithmetic, and the balance assertion catches it: `sum(debit)` must equal `sum(credit)` before
+anything is returned, or `P0001`.
+
+## `p_description` is mandatory here and optional elsewhere
+
+In the accounting-document layout the tracking number and the party name are buried inside the شرح
+column, so the description is the only context an accountant sees in Asan for this document.
+
+## What T14 forbids this function from checking
+
+T14 records that the ledger holds **money movements only** — purchases and sales never post, so a
+party's ledger position is **not** their balance. `create_dual_document` therefore does **not** refuse
+a document because the payer's ledger position fails to show them owing us. It usually will not, and
+that is evidence of nothing. **No such check exists, and none should be added.**
+
+## Role gate and grants
+
+`admin`, `accountant`, `manager` (OG-13 answer (a)), via `public.has_any_role` with an explicit
+`::app_role[]` cast — both overloads match an uncast array. `EXECUTE` revoked from `PUBLIC` and
+`anon`, granted to `authenticated` and `service_role`.
+
+Proved end to end: `sales` → `42501`; `accountant` → succeeds; **`manager` → succeeds and can read
+back the numbering row**.
+
+Both parties' Asan codes are checked **before the number is minted**, so a document refused for a
+missing code burns no serial. Measured: after nine refusal tests, `document_numbers` for `doc_type`
+`dual` held exactly the 50 rows the successful stress run created.
 
 ---
 
