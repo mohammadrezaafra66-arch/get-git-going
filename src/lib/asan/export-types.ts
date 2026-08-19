@@ -26,6 +26,7 @@ export type AsanExportKey =
   | "receipts"
   | "payments"
   | "third_party"
+  | "purchase_settlement"
   | "bank_deposits";
 
 /** One exportable source document, as shown in the preview. */

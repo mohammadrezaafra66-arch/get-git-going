@@ -48,11 +48,17 @@ it, so it posts then. Clearing and bouncing are lifecycle events for a later pro
 *Overturned by:* the accountant preferring cheques off-ledger until cleared, which would mean cheque
 branches record without posting.
 
-## D8 — Cheque lines are **skipped** by the Asan export, not blocked
-`cheque_receivable` / `cheque_payable` have no Asan account code yet. The export must ignore those
-lines rather than withhold the document. Blocking would silently hide every cheque document.
-*Overturned by:* the owner supplying Asan codes for cheque accounts, after which they resolve
-normally.
+## D8 — Cheque documents are **excluded** from the Asan export (amended 2026-08-19)
+Originally (phase 0): cheque lines were to be *skipped* rather than blocking the document, because
+`cheque_receivable` / `cheque_payable` had no Asan account code yet.
+
+**Owner 2026-08-19:** cheques are entered into Asan **by hand**, like cash. They do not appear in
+the export at all — not as a skipped line, not as a blocked row, not as a zero-toman empty
+document (Gate A M3). Migration **367** drops the whole document. Cash remains excluded from the
+bank-deposit export (350). Reversals follow the same manual path (T15).
+
+*Overturned by:* the owner supplying Asan codes for cheque accounts *and* asking for them to go
+through the automatic file, which would restore a skip-or-resolve behaviour.
 
 ## D9 — `create_dual_document` takes one amount, not two
 The two sides must be equal or the entry does not balance, and an unbalanced document is dropped
@@ -97,10 +103,14 @@ the test machine.
 are covered by acceptance tests.
 *Overturned by:* nothing.
 
-## D17 — `_filter` values stay `all|receipt|payment|third_party`
-Task 5.1 changes what the filter means internally (`third_party` → `doc_kind='dual'`) but keeps the
-external values so the front end and any other caller keep working.
-*Overturned by:* nothing.
+## D17 — `_filter` values (amended 2026-08-19)
+Originally: `all|receipt|payment|third_party` so the front end would not break when 5.1 rewired
+the classifier.
+
+**Owner 2026-08-19:** a fourth menu for `purchase_payment` and `settlement`. Live values are
+`all|receipt|payment|third_party|settlement|purchase_and_settlement`. `settlement` alone remains
+accepted for callers that already passed it; the page uses `purchase_and_settlement`.
+*Overturned by:* nothing further.
 
 ## D18 — Test data is not repaired as part of this programme
 13 of 23 customers lack an Asan code. That is data entry on production data (phase 9.6), not

@@ -25,7 +25,13 @@ import type {
   AsanExportRange,
 } from "@/lib/asan/export-types";
 
-export type JournalFilter = "all" | "receipt" | "payment" | "third_party" | "settlement";
+export type JournalFilter =
+  | "all"
+  | "receipt"
+  | "payment"
+  | "third_party"
+  | "settlement"
+  | "purchase_and_settlement";
 
 export async function listJournalDocuments(
   range: AsanExportRange,
@@ -67,8 +73,8 @@ function makeJournalExport(
 }
 
 const CONTROL_ACCOUNT_NOTE =
-  "سندی که ردیف «invoice_ar» یا «other» داشته باشد مسدود می‌شود: کد حساب آسان آن‌ها هنوز اعلام " +
-  "نشده است و حدس زده نمی‌شود. حساب واسط («clearing») در آسان وجود ندارد و هرگز نوشته نمی‌شود.";
+  "سندی که ردیف «سایر حساب‌ها» داشته باشد مسدود می‌شود: کد حساب آسان آن اعلام نشده و حدس زده " +
+  "نمی‌شود. حساب واسط در آسان وجود ندارد و هرگز نوشته نمی‌شود.";
 
 /** Export 3 — money coming in. */
 export const RECEIPTS_EXPORT = makeJournalExport(
@@ -93,4 +99,12 @@ export const THIRD_PARTY_EXPORT = makeJournalExport(
   "third_party",
   CONTROL_ACCOUNT_NOTE +
     " برای اسناد دوبل، اگر «شخص واسط» کد آسان نداشته باشد سند مسدود می‌شود و نام او اعلام می‌گردد.",
+);
+
+/** Export 6 — purchase payments and mutual settlements (owner 2026-08-19). */
+export const PURCHASE_SETTLEMENT_EXPORT = makeJournalExport(
+  "purchase_settlement",
+  "پرداخت‌های خرید و تسویه",
+  "purchase_and_settlement",
+  CONTROL_ACCOUNT_NOTE,
 );

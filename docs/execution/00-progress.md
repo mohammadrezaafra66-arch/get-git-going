@@ -7,22 +7,22 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        5 COMPLETE — asan_list_journal_export reads stored doc_kind (366); phase 6 not started
+Current phase:        5 COMPLETE + Gate A remediated (366, 367); phase 6 not started
 Current task:         6.1 (not started)
-Branch:               staging (this mission phase 5)
+Branch:               staging (this mission phase 5 remediation)
 Last commit SHA:      see git log on staging after this PR merges
 Live APP_GIT_SHA:     87c1a921   Match: NO — docs+SQL only behind. See note below
-Typecheck:            70 / 70 baseline (D14) — phase 5
-Migrations applied:   31 (336-366)
+Typecheck:            70 / 70 baseline (D14) — phase 5 remediation
+Migrations applied:   32 (336-367)
 Open Owner-Gates:     OG-8, OG-11, OG-12, OG-15, OG-17, OG-23
                       (OG-10, OG-13, OG-14, OG-16, OG-18, OG-19, OG-20, OG-21, OG-22 CLOSED).
 BLOCKING BEFORE PHASE 6: reverse_document CLOSED (363–365).
-BINDING ON PHASE 5:   T14 honoured — export does not label a ledger sum as a party's total
-                      balance or debt. Gate A M1 CLOSED: stored doc_kind; reversal pair stays
-                      receipt/receipt. `_filter='receipt'` is not "deposits that still stand".
-Owner decisions:      T9-T14 in ledger-decisions.md. T14 (2026-08-19) answers OG-19. T9-T12 recorded 2026-08-18; T13 recorded
-                      2026-08-19. T9 (one person, one file, one balance) and T10 contradict what the
-                      schema assumes today. T13 adopts the T9 research's recommendation (b).
+BINDING ON PHASE 5:   T14 honoured. T15 (2026-08-19): bank automatic; cash/cheque/reversal
+                      manual — both legs of a reversed pair and every cheque document are
+                      absent from the journal export (367). Fourth menu
+                      `پرداخت‌های خرید و تسویه` for purchase_payment + settlement.
+Owner decisions:      T9-T15 in ledger-decisions.md. T15 recorded 2026-08-19. D8 and D17
+                      amended the same day.
 Blocked tasks:        none. Phase 3 is COMPLETE and honoured all four T13 constraints - proved,
                       not asserted (phase-3-PROGRESS.md, task 3.3/3.4 and the T13-c3 proof).
                       T9 itself must still be RESOLVED BEFORE PHASE 5.
@@ -35,6 +35,11 @@ Gate A defects:       OG-14 reverse_document Gate A: **PASS** then remediated �
                       / D12 → phase 6).
                       Phase 2 Gate A: 16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred
                       (m1, m7 -> phase 6; m3 -> phase 5). M4 + M5 CLOSED 2026-08-18.
+                      Phase 5 Gate A: **PASS** 0 BLOCKER / 4 MAJOR / 3 MINOR then remediated
+                      (367). M1–M4 and m1–m3 CLOSED. Report: `phase-5-GATE-A.md`.
+                      Progress: `phase-5-remediation-PROGRESS.md`.
+                      **Do not import the old concatenated sample xlsx into Asan.** Trial from
+                      `/admin/asan-export`. OG-23 still open (source-row freeze).
 Production touched:   NO - and the T9 production-count question was CLOSED BY OWNER DECISION
                       without contacting it (T13). CLAUDE.md rule 10 stands unweakened.
 ```
