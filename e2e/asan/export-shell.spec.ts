@@ -410,8 +410,8 @@ test.describe("the export catalogue", () => {
   });
 
   test("every export names a real layout and its numbering register", () => {
-    expect(ASAN_EXPORT_ORDER.length).toBe(6);
-    expect(new Set(ASAN_EXPORT_ORDER).size).toBe(6);
+    expect(ASAN_EXPORT_ORDER.length).toBe(7);
+    expect(new Set(ASAN_EXPORT_ORDER).size).toBe(7);
     for (const key of ASAN_EXPORT_ORDER) {
       const def = ASAN_EXPORTS[key];
       expect(def.key).toBe(key);
@@ -429,7 +429,7 @@ test.describe("the export catalogue", () => {
   test("the accounting-document layout is one document per file, and the invoice layouts are not", () => {
     // Layout 3 carries `شماره سند` on the Asan screen rather than in a column, so two documents
     // in one file would be silently merged under a single voucher number.
-    for (const key of ["receipts", "payments", "third_party"] as const) {
+    for (const key of ["receipts", "payments", "third_party", "purchase_settlement"] as const) {
       expect(ASAN_EXPORTS[key].layout).toBe("journal");
       expect(ASAN_EXPORTS[key].oneDocumentPerFile, `${key}`).toBe(true);
     }

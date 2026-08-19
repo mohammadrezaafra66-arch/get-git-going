@@ -288,6 +288,29 @@ balance. **Where the complete figure comes from is not decided.** A report combi
 The owner has **deferred this explicitly**, along with the purchase and sales work. It is recorded as
 **open and unassigned** — no phase owns it, and this decision deliberately proposes no design for it.
 
+## T15 — What the Asan file may contain (owner 2026-08-19)
+
+The ledger holds every posted money movement. **The Asan export does not.** Some documents are
+entered into Asan by hand. Anything with a manual path is **absent from the file entirely** — never
+shown with a zero amount, an empty line set, or a partial row (Gate A M3 was that failure).
+
+| Branch | To Asan |
+|---|---|
+| Bank | **automatic**, via the journal export |
+| Cash | **manual** — excluded from the bank-deposit export by migration 350 |
+| Cheque | **manual** — excluded from the journal export by migration 367 |
+| Reversal | **manual** — both legs excluded by migration 367 |
+
+A document exported *before* it was reversed is already in the accountant's books. Removing it from
+a later file does not undo that; the owner's manual path does. Exclusion is not a correction
+mechanism.
+
+**Binding on any later export:** if a new document type has a manual Asan path, it is omitted from
+the file the same way. Do not invent a blocked/empty row for it.
+
+D8 originally said skip cheque *lines*. This rule supersedes D8 for the export; D8 is amended in
+place in `decisions.md`.
+
 ## OG-22 — who may reverse a posted document (interim)
 
 **Answered 2026-08-19:** reversal is limited to `accountant` and `admin`. `manager` is excluded.
