@@ -288,6 +288,17 @@ balance. **Where the complete figure comes from is not decided.** A report combi
 The owner has **deferred this explicitly**, along with the purchase and sales work. It is recorded as
 **open and unassigned** — no phase owns it, and this decision deliberately proposes no design for it.
 
+## OG-22 — who may reverse a posted document (interim)
+
+**Answered 2026-08-19:** reversal is limited to `accountant` and `admin`. `manager` is excluded.
+Implemented in migration **365**.
+
+**This is a deliberate interim position, not the final architecture.** The owner stated that access
+control will be built properly in a **separate, dedicated phase**, where permissions for every
+module are set by role. The future access-control phase must treat the `reverse_document` role
+array as a **decision to revisit**, not as a fixed constant. Create remains the wider OG-13 set
+(`admin`, `accountant`, `manager`); only reversal was narrowed.
+
 ---
 
 

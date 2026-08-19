@@ -185,6 +185,11 @@ Record the sign convention chosen in the progress file.
 - [ ] **5.1** `asan_list_journal_export` filters on `doc_kind` — Scope: `supabase/migrations/` — M
   Replace the classifier CTE; keep `_filter` values `all|receipt|payment|third_party`
   (`third_party` → `doc_kind='dual'`). Do not leave both implementations in place.
+  **REQUIRED INPUT (OG-14 Gate A M1, not optional):** the live classifier still infers from
+  bank-line sign and **ignores stored `doc_kind`**. A reversed bank receipt stays `_filter='receipt'`
+  (`EXPORT_RECEIPT_FILTER n=2`); its reversal is absent there (`EXPORT_RECEIPT_REVERSAL n=0`) and
+  listed as a payment (`EXPORT_PAYMENT_REVERSAL n=2`). **`_filter='receipt'` must not be shipped as
+  "deposits that still stand"** until 5.1 reads the stored column. See `00-progress.md`.
   **Accept:** replicating the body for each filter returns ≥1 exportable document.
 - [ ] **5.2** Cheque kinds are **skipped**, not blocked — Scope: `supabase/migrations/` — S
   **Accept:** a cheque document is not withheld with "code not registered".

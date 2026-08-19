@@ -1,5 +1,13 @@
 # Phase 8 — Integrated verification — PROGRESS
 
+> **Test-database leftover (do not DELETE — 343).** OG-14 concurrency committed one reversed
+> bank receipt: `tracking_number='OG14-CONC'`, `description='OG14_CONC_do_not_keep'`, amount
+> 10,000. Posted journals: seed + original + reversal → **`journal_entries` = 3** (not 1),
+> `journal_lines` = 6. Excluded from `asan_list_bank_deposit_export`. Present in
+> `asan_list_journal_export` (original classified `receipt`, reversal `payment` until 5.1).
+> `numbers_live` includes the pair. Baselines that count posted journal rows must allow **+2**.
+> Same class as phase-2 M4 at smaller scale. Owner-run cleanup is the only removal path.
+
 Copy to `phase-<N>-PROGRESS.md` at phase start. One per phase. **Fill as you go, not at the end** —
 a phase that hits its context limit mid-run must be resumable from this file alone.
 
