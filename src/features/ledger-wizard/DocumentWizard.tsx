@@ -1,0 +1,740 @@
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { Lock } from "lucide-react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Stepper } from "@/components/ui/stepper";
+import { Textarea } from "@/components/ui/textarea";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
+
+import { ChoiceButton } from "./ChoiceButton";
+import { MissingAsanMessage } from "./MissingAsanMessage";
+import { ProformaList } from "./ProformaList";
+import { lookupParty } from "./lookup";
+import { listBankAccounts, listHeldCheques, listOpenProformas } from "./queries";
+import { callLedgerRpc } from "./rpc";
+import type {
+  ChequeKind,
+  DocBranch,
+  LookupState,
+  MoneyChannel,
+  PartyHit,
+  PartyKind,
+  ProformaAllocation,
+} from "./types";
+
+function tehranDate(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran" }).format(new Date());
+}
+
+function tehranTime(): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Tehran",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(new Date());
+}
+
+const BRANCH_STEPS: Record<DocBranch, string[]> = {
+  receipt: ["نوع سند", "نحوهٔ دریافت", "پرداخت‌کننده", "جزئیات", "بازبینی"],
+  payment: ["نوع سند", "نحوهٔ پرداخت", "گیرنده", "جزئیات", "بازبینی"],
+  dual: ["نوع سند", "فیش", "پرداخت‌کننده", "ذینفع", "بازبینی"],
+};
+
+const KIND_LABEL: Record<string, string> = {
+  customer: "مشتری",
+  supplier: "تأمین‌کننده",
+  external_party: "طرف حساب",
+};
+
+const emptyLookup: LookupState = {
+  status: "idle",
+  query: "",
+  party: null,
+  missingName: null,
+  message: null,
+};
+
+export function DocumentWizard() {
+  const navigate = useNavigate();
+  const [step, setStep] = useState(1);
+  const [branch, setBranch] = useState<DocBranch | null>(null);
+  const [channel, setChannel] = useState<MoneyChannel | null>(null);
+  const [chequeKind, setChequeKind] = useState<ChequeKind | null>(null);
+  const [payerLookup, setPayerLookup] = useState<LookupState>(emptyLookup);
+  const [payeeLookup, setPayeeLookup] = useState<LookupState>(emptyLookup);
+  const [beneficiaryLookup, setBeneficiaryLookup] = useState<LookupState>(emptyLookup);
+  const [amountText, setAmountText] = useState("");
+  const [date, setDate] = useState(tehranDate);
+  const [time, setTime] = useState(tehranTime);
+  const [tracking, setTracking] = useState("");
+  const [sourceBank, setSourceBank] = useState("");
+  const [destinationBank, setDestinationBank] = useState("");
+  const [accountId, setAccountId] = useState("");
+  const [chequeNumber, setChequeNumber] = useState("");
+  const [chequeDue, setChequeDue] = useState<string | null>(null);
+  const [chequeBank, setChequeBank] = useState("");
+  const [endorsedId, setEndorsedId] = useState("");
+  const [description, setDescription] = useState("");
+  const [transferrerName, setTransferrerName] = useState("");
+  const [transferrerAccount, setTransferrerAccount] = useState("");
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientAccount, setRecipientAccount] = useState("");
+  const [allocations, setAllocations] = useState<ProformaAllocation[]>([]);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ["ledger-wizard-accounts"],
+    queryFn: listBankAccounts,
+    staleTime: 60_000,
+  });
+  const { data: heldCheques = [] } = useQuery({
+    queryKey: ["ledger-wizard-held-cheques"],
+    queryFn: listHeldCheques,
+    enabled: branch === "payment" && channel === "cheque" && chequeKind === "endorsed",
+    staleTime: 30_000,
+  });
+
+  const payer = payerLookup.party;
+  const payee = payeeLookup.party;
+  const beneficiary = beneficiaryLookup.party;
+
+  const customerIdForProformas = branch === "receipt" ? (payer?.customerId ?? null) : null;
+  const { data: proformas = [] } = useQuery({
+    queryKey: ["ledger-wizard-proformas", customerIdForProformas],
+    queryFn: () => listOpenProformas(customerIdForProformas as string),
+    enabled: Boolean(customerIdForProformas),
+    staleTime: 30_000,
+  });
+
+  const bankAccounts = useMemo(() => accounts.filter((a) => a.account_type === "bank"), [accounts]);
+  const cashBoxes = useMemo(() => accounts.filter((a) => a.account_type === "cash"), [accounts]);
+  const accountChoices = channel === "cash" ? cashBoxes : bankAccounts;
+
+  const amountOk = /^\d+$/.test(amountText) && Number(amountText) > 0;
+  const amountFraction =
+    amountText.includes(".") || amountText.includes("٫") || amountText.includes("/");
+
+  const steps = branch ? BRANCH_STEPS[branch] : ["نوع سند"];
+
+  const resetLater = () => {
+    setChannel(null);
+    setChequeKind(null);
+    setPayerLookup(emptyLookup);
+    setPayeeLookup(emptyLookup);
+    setBeneficiaryLookup(emptyLookup);
+    setAmountText("");
+    setTracking("");
+    setSourceBank("");
+    setDestinationBank("");
+    setAccountId("");
+    setChequeNumber("");
+    setChequeDue(null);
+    setChequeBank("");
+    setEndorsedId("");
+    setDescription("");
+    setTransferrerName("");
+    setTransferrerAccount("");
+    setRecipientName("");
+    setRecipientAccount("");
+    setAllocations([]);
+    setSubmitError(null);
+    setSuccess(null);
+  };
+
+  const chooseBranch = (next: DocBranch) => {
+    if (branch && branch !== next && step > 1) {
+      setConfirmReset(true);
+      setBranch(next);
+      return;
+    }
+    setBranch(next);
+    resetLater();
+    setStep(2);
+    setConfirmReset(false);
+  };
+
+  useEffect(() => {
+    if (confirmReset && branch) {
+      resetLater();
+      setStep(2);
+      setConfirmReset(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [confirmReset, branch]);
+
+  const endorsed = heldCheques.find((c) => c.id === endorsedId) ?? null;
+
+  const canNext = (): boolean => {
+    if (step === 1) return Boolean(branch);
+    if (step === 2) {
+      if (branch === "dual") {
+        return (
+          amountOk && Boolean(date) && tracking.trim().length > 0 && description.trim().length > 0
+        );
+      }
+      if (!channel) return false;
+      if (branch === "payment" && channel === "cheque") return Boolean(chequeKind);
+      return true;
+    }
+    if (step === 3) {
+      if (branch === "receipt") return payerLookup.status === "ok";
+      if (branch === "payment") return payeeLookup.status === "ok";
+      return payerLookup.status === "ok";
+    }
+    if (step === 4) {
+      if (branch === "dual") return beneficiaryLookup.status === "ok";
+      if (!amountOk || !date) return false;
+      if (channel === "bank")
+        return Boolean(accountId) && tracking.trim().length > 0 && Boolean(time);
+      if (channel === "cash") return Boolean(accountId) && Boolean(time);
+      if (channel === "cheque") {
+        if (branch === "payment" && chequeKind === "endorsed")
+          return Boolean(endorsedId) && Boolean(accountId);
+        return Boolean(chequeNumber) && Boolean(chequeDue) && Boolean(time) && Boolean(accountId);
+      }
+      return true;
+    }
+    return true;
+  };
+
+  const runLookup = async (
+    value: string,
+    required: PartyKind | "any",
+    setter: (s: LookupState) => void,
+  ) => {
+    setter({ ...emptyLookup, status: "loading", query: value });
+    try {
+      setter(await lookupParty(value, required));
+    } catch (err) {
+      setter({
+        status: "not_found",
+        query: value,
+        party: null,
+        missingName: null,
+        message: err instanceof Error ? err.message : "جستجو ناموفق بود.",
+      });
+    }
+  };
+
+  const submit = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      let result;
+      if (branch === "receipt" && payer) {
+        result = await callLedgerRpc("create_receipt", {
+          p_channel: channel,
+          p_customer_id: payer.customerId,
+          p_amount: Number(amountText),
+          p_payment_date: date,
+          p_payment_time: time,
+          p_destination_bank_account_id: channel === "cheque" ? null : accountId || null,
+          p_tracking_number: channel === "bank" ? tracking.trim() : null,
+          p_source_bank: sourceBank.trim() || null,
+          p_cheque_number: channel === "cheque" ? chequeNumber.trim() : null,
+          p_cheque_due_date: channel === "cheque" ? chequeDue : null,
+          p_cheque_bank: channel === "cheque" ? chequeBank.trim() || null : null,
+          p_description: description.trim() || null,
+          p_allocations: allocations,
+        });
+      } else if (branch === "payment" && payee && channel) {
+        result = await callLedgerRpc("create_payment", {
+          p_channel: channel,
+          p_payee_type: payee.kind,
+          p_payee_id: payee.roleId,
+          p_amount: chequeKind === "endorsed" && endorsed ? endorsed.amount : Number(amountText),
+          p_payment_date: date,
+          p_source_account_id: accountId,
+          p_tracking_number: channel === "bank" ? tracking.trim() : null,
+          p_cheque_kind: channel === "cheque" ? chequeKind : null,
+          p_cheque_number:
+            channel === "cheque" && chequeKind === "own" ? chequeNumber.trim() : null,
+          p_cheque_due_date: channel === "cheque" && chequeKind === "own" ? chequeDue : null,
+          p_endorsed_cheque_id: chequeKind === "endorsed" ? endorsedId : null,
+          p_description: description.trim() || null,
+        });
+      } else if (branch === "dual" && payer && beneficiary) {
+        result = await callLedgerRpc("create_dual_document", {
+          p_payer_type: payer.kind,
+          p_payer_id: payer.roleId,
+          p_beneficiary_type: beneficiary.kind,
+          p_beneficiary_id: beneficiary.roleId,
+          p_amount: Number(amountText),
+          p_document_date: date,
+          p_tracking_number: tracking.trim(),
+          p_description: description.trim(),
+          p_source_bank: sourceBank.trim() || null,
+          p_destination_bank: destinationBank.trim() || null,
+          p_transferrer_name: transferrerName.trim() || null,
+          p_transferrer_account_no: transferrerAccount.trim() || null,
+          p_recipient_name: recipientName.trim() || null,
+          p_recipient_account_no: recipientAccount.trim() || null,
+        });
+      } else {
+        setSubmitError("اطلاعات سند کامل نیست.");
+        return;
+      }
+      if (!result.ok) {
+        setSubmitError(result.message);
+        return;
+      }
+      setSuccess(result.documentNumber ?? "ثبت شد");
+      if (branch === "payment") {
+        await navigate({ to: "/accounting/payment-vouchers" });
+      } else {
+        await navigate({ to: "/accounting/receipts" });
+      }
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error
+          ? "نتیجه ثبت مشخص نیست. دوباره ارسال نکنید؛ ابتدا فهرست اسناد را بررسی کنید."
+          : "خطای ناشناخته.",
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6" dir="rtl" data-testid="document-wizard">
+      <Stepper steps={steps} current={step} onStepClick={(n) => n < step && setStep(n)} />
+
+      {step === 1 ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <ChoiceButton
+            testId="wizard-branch-receipt"
+            title="دریافت"
+            subtitle="پول مستقیم به دست ما رسیده"
+            selected={branch === "receipt"}
+            onClick={() => chooseBranch("receipt")}
+          />
+          <ChoiceButton
+            testId="wizard-branch-payment"
+            title="پرداخت"
+            subtitle="پول مستقیم از دست ما رفته"
+            selected={branch === "payment"}
+            onClick={() => chooseBranch("payment")}
+          />
+          <ChoiceButton
+            testId="wizard-branch-dual"
+            title="سند دوبل"
+            subtitle="پول از یکی به دیگری، ما فقط ثبت‌کننده"
+            selected={branch === "dual"}
+            onClick={() => chooseBranch("dual")}
+          />
+        </div>
+      ) : null}
+
+      {step === 2 && branch !== "dual" ? (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <ChoiceButton
+            testId="wizard-channel-bank"
+            title="بانکی"
+            selected={channel === "bank"}
+            onClick={() => {
+              setChannel("bank");
+              setChequeKind(null);
+            }}
+          />
+          <ChoiceButton
+            testId="wizard-channel-cash"
+            title="نقدی"
+            selected={channel === "cash"}
+            onClick={() => {
+              setChannel("cash");
+              setChequeKind(null);
+            }}
+          />
+          <ChoiceButton
+            testId="wizard-channel-cheque"
+            title="چکی"
+            selected={channel === "cheque"}
+            onClick={() => setChannel("cheque")}
+          />
+          {branch === "payment" && channel === "cheque" ? (
+            <div className="sm:col-span-3 grid gap-3 sm:grid-cols-2">
+              <ChoiceButton
+                testId="wizard-cheque-own"
+                title="چک خودمان"
+                selected={chequeKind === "own"}
+                onClick={() => setChequeKind("own")}
+              />
+              <ChoiceButton
+                testId="wizard-cheque-endorsed"
+                title="چک مشتری"
+                selected={chequeKind === "endorsed"}
+                onClick={() => setChequeKind("endorsed")}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {step === 2 && branch === "dual" ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <AmountField value={amountText} onChange={setAmountText} fraction={amountFraction} />
+          <Field label="تاریخ" required>
+            <PersianDatePicker value={date} onChange={(v) => setDate(v ?? tehranDate())} />
+          </Field>
+          <Field label="شماره پیگیری" required>
+            <Input
+              value={tracking}
+              onChange={(e) => setTracking(e.target.value)}
+              data-testid="wizard-tracking"
+            />
+          </Field>
+          <Field label="بانک مبدأ">
+            <Input value={sourceBank} onChange={(e) => setSourceBank(e.target.value)} />
+          </Field>
+          <Field label="بانک مقصد">
+            <Input value={destinationBank} onChange={(e) => setDestinationBank(e.target.value)} />
+          </Field>
+          <Field label="شرح" required>
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+          </Field>
+          <Field label="نام انتقال‌دهنده (فقط روی سند، بدون کد آسان)">
+            <Input value={transferrerName} onChange={(e) => setTransferrerName(e.target.value)} />
+          </Field>
+          <Field label="شماره حساب انتقال‌دهنده">
+            <Input
+              value={transferrerAccount}
+              onChange={(e) => setTransferrerAccount(e.target.value)}
+            />
+          </Field>
+          <Field label="نام گیرندهٔ حساب (فقط روی سند)">
+            <Input value={recipientName} onChange={(e) => setRecipientName(e.target.value)} />
+          </Field>
+          <Field label="شماره حساب گیرنده">
+            <Input value={recipientAccount} onChange={(e) => setRecipientAccount(e.target.value)} />
+          </Field>
+        </div>
+      ) : null}
+
+      {step === 3 && (branch === "receipt" || branch === "dual") ? (
+        <PartyStep
+          label="کد آسان یا شمارهٔ موبایل"
+          state={payerLookup}
+          onSearch={(q) => runLookup(q, branch === "receipt" ? "customer" : "any", setPayerLookup)}
+        />
+      ) : null}
+      {step === 3 && branch === "payment" ? (
+        <PartyStep
+          label="کد آسان یا شمارهٔ موبایل"
+          state={payeeLookup}
+          onSearch={(q) => runLookup(q, "any", setPayeeLookup)}
+        />
+      ) : null}
+
+      {step === 4 && branch === "dual" ? (
+        <PartyStep
+          label="کد آسان یا شمارهٔ موبایل ذینفع"
+          state={beneficiaryLookup}
+          onSearch={(q) => runLookup(q, "any", setBeneficiaryLookup)}
+        />
+      ) : null}
+
+      {step === 4 && branch !== "dual" ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {channel === "cheque" && chequeKind === "endorsed" ? (
+            <div className="sm:col-span-2 space-y-2">
+              <Label>چک‌های در اختیار *</Label>
+              {heldCheques.length === 0 ? (
+                <p className="text-sm text-muted-foreground">چک قابل ظهرنویسی در فهرست نیست.</p>
+              ) : (
+                <ul className="space-y-2" data-testid="wizard-held-cheques">
+                  {heldCheques.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEndorsedId(c.id);
+                          setAmountText(String(Math.trunc(c.amount)));
+                        }}
+                        className={`flex w-full justify-between rounded-md border px-3 py-2 text-sm ${
+                          endorsedId === c.id ? "border-primary bg-primary/5" : "border-input"
+                        }`}
+                      >
+                        <span>
+                          {c.cheque_number ?? c.id.slice(0, 8)} — {c.customer_name}
+                        </span>
+                        <span>{c.amount.toLocaleString("fa-IR")}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {endorsed ? (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Lock className="h-4 w-4" /> جزئیات چک از فهرست خوانده شد و قابل بازنویسی نیست.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {!(channel === "cheque" && chequeKind === "endorsed") ? (
+            <AmountField value={amountText} onChange={setAmountText} fraction={amountFraction} />
+          ) : null}
+
+          <Field label="تاریخ" required>
+            <PersianDatePicker value={date} onChange={(v) => setDate(v ?? tehranDate())} />
+          </Field>
+
+          {channel !== "cheque" || chequeKind !== "endorsed" ? (
+            <Field label="ساعت" required>
+              <Input value={time} onChange={(e) => setTime(e.target.value)} />
+            </Field>
+          ) : null}
+
+          {channel === "bank" ||
+          channel === "cash" ||
+          (branch === "payment" && channel === "cheque") ? (
+            <Field label={channel === "cash" ? "صندوق" : "حساب"} required>
+              {accountChoices.length === 0 ? (
+                <p className="text-sm text-destructive">
+                  {channel === "cash"
+                    ? "صندوقی با نوع نقدی ثبت نشده است."
+                    : "حساب بانکی فعالی یافت نشد."}
+                </p>
+              ) : (
+                <select
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                  value={accountId}
+                  onChange={(e) => setAccountId(e.target.value)}
+                  data-testid="wizard-account"
+                >
+                  <option value="">انتخاب کنید</option>
+                  {accountChoices.map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.title} — {a.bank_name}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          ) : null}
+
+          {channel === "bank" ? (
+            <>
+              <Field label="شماره پیگیری" required>
+                <Input
+                  value={tracking}
+                  onChange={(e) => setTracking(e.target.value)}
+                  data-testid="wizard-tracking"
+                />
+              </Field>
+              <Field label="بانک مبدأ">
+                <Input value={sourceBank} onChange={(e) => setSourceBank(e.target.value)} />
+              </Field>
+            </>
+          ) : null}
+
+          {channel === "cash" ? (
+            <p
+              className="sm:col-span-2 text-sm text-muted-foreground"
+              data-testid="wizard-no-tracking"
+            >
+              شماره پیگیری بانکی برای نقدی پرسیده نمی‌شود؛ سامانه شمارهٔ داخلی می‌سازد.
+            </p>
+          ) : null}
+
+          {channel === "cheque" && chequeKind !== "endorsed" ? (
+            <>
+              <Field label="شماره چک" required>
+                <Input value={chequeNumber} onChange={(e) => setChequeNumber(e.target.value)} />
+              </Field>
+              <Field label="تاریخ سررسید" required>
+                <PersianDatePicker value={chequeDue} onChange={setChequeDue} />
+              </Field>
+              <Field label="بانک صادرکننده">
+                <Input value={chequeBank} onChange={(e) => setChequeBank(e.target.value)} />
+              </Field>
+              <p
+                className="sm:col-span-2 text-sm text-muted-foreground"
+                data-testid="wizard-no-tracking"
+              >
+                شماره پیگیری بانکی برای چک پرسیده نمی‌شود.
+              </p>
+            </>
+          ) : null}
+
+          <Field label="شرح">
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+          </Field>
+
+          {branch === "receipt" && payer?.customerId ? (
+            <div className="sm:col-span-2">
+              <ProformaList items={proformas} allocations={allocations} onChange={setAllocations} />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {step === 5 ? (
+        <div className="space-y-3 rounded-xl border p-4 text-sm" data-testid="wizard-review">
+          <p>
+            نوع: {branch === "receipt" ? "دریافت" : branch === "payment" ? "پرداخت" : "سند دوبل"}
+          </p>
+          {channel ? (
+            <p>نحوه: {channel === "bank" ? "بانکی" : channel === "cash" ? "نقدی" : "چکی"}</p>
+          ) : null}
+          <PartySummary label="طرف" party={branch === "payment" ? payee : payer} />
+          {branch === "dual" ? <PartySummary label="ذینفع" party={beneficiary} /> : null}
+          <p>
+            مبلغ:{" "}
+            {(chequeKind === "endorsed" && endorsed
+              ? endorsed.amount
+              : Number(amountText) || 0
+            ).toLocaleString("fa-IR")}{" "}
+            تومان
+          </p>
+          <p>تاریخ: {date}</p>
+          <p className="text-muted-foreground">
+            پیش‌نمایش سند حسابداری از سرور می‌آید؛ اینجا فقط ورودی‌ها نمایش داده می‌شود.
+          </p>
+          {submitError ? (
+            <Alert variant="destructive">
+              <AlertDescription>{submitError}</AlertDescription>
+            </Alert>
+          ) : null}
+          {success ? <p className="text-green-700">{success}</p> : null}
+        </div>
+      ) : null}
+
+      <div className="flex gap-2">
+        {step > 1 ? (
+          <Button type="button" variant="outline" onClick={() => setStep((s) => s - 1)}>
+            قبلی
+          </Button>
+        ) : null}
+        {step < 5 && branch ? (
+          <Button
+            type="button"
+            onClick={() => setStep((s) => s + 1)}
+            disabled={!canNext()}
+            data-testid="wizard-next"
+          >
+            بعدی
+          </Button>
+        ) : null}
+        {step === 5 ? (
+          <Button
+            type="button"
+            onClick={() => void submit()}
+            disabled={submitting}
+            data-testid="wizard-submit"
+          >
+            {submitting ? "در حال ثبت…" : "ثبت سند"}
+          </Button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>
+        {label}
+        {required ? " *" : ""}
+      </Label>
+      {children}
+    </div>
+  );
+}
+
+function AmountField({
+  value,
+  onChange,
+  fraction,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  fraction: boolean;
+}) {
+  return (
+    <Field label="مبلغ (تومان صحیح)" required>
+      <Input
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}
+        data-testid="wizard-amount"
+      />
+      {fraction ? (
+        <p className="text-sm text-destructive">
+          مبلغ باید عدد صحیح تومان باشد؛ اعشار پذیرفته نمی‌شود.
+        </p>
+      ) : null}
+    </Field>
+  );
+}
+
+function PartyStep({
+  label,
+  state,
+  onSearch,
+}: {
+  label: string;
+  state: LookupState;
+  onSearch: (q: string) => void;
+}) {
+  const [q, setQ] = useState(state.query);
+  return (
+    <div className="space-y-3">
+      <Field label={label} required>
+        <Input
+          className="border-primary"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          data-testid="wizard-lookup-input"
+        />
+      </Field>
+      <Button type="button" onClick={() => onSearch(q)} data-testid="wizard-lookup-search">
+        جستجو
+      </Button>
+      {state.status === "missing_asan" && state.missingName ? (
+        <MissingAsanMessage name={state.missingName} />
+      ) : null}
+      {state.message && state.status !== "missing_asan" ? (
+        <Alert variant="destructive">
+          <AlertDescription>{state.message}</AlertDescription>
+        </Alert>
+      ) : null}
+      {state.status === "ok" && state.party ? (
+        <PartySummary label="یافته" party={state.party} />
+      ) : null}
+    </div>
+  );
+}
+
+function PartySummary({ label, party }: { label: string; party: PartyHit | null }) {
+  if (!party) return null;
+  return (
+    <div className="rounded-md bg-muted/50 p-3 text-sm" data-testid="wizard-party-hit">
+      <p>
+        {label}: {party.displayName}
+      </p>
+      <p>نوع پرونده: {KIND_LABEL[party.kind] ?? party.kind}</p>
+      <p>کد آسان: {party.asanCode}</p>
+    </div>
+  );
+}

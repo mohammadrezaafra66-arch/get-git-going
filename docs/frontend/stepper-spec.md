@@ -34,10 +34,10 @@ beneficiary field in those branches. The dual branch is the only one with three 
 
 Three large buttons. No other field.
 
-| Option | Sub-label | Goes to |
-|---|---|---|
-| دریافت | پول مستقیم به دست ما رسیده | `create_receipt` |
-| پرداخت | پول مستقیم از دست ما رفته | `create_payment` |
+| Option   | Sub-label                             | Goes to                |
+| -------- | ------------------------------------- | ---------------------- |
+| دریافت   | پول مستقیم به دست ما رسیده            | `create_receipt`       |
+| پرداخت   | پول مستقیم از دست ما رفته             | `create_payment`       |
 | سند دوبل | پول از یکی به دیگری، ما فقط ثبت‌کننده | `create_dual_document` |
 
 Selecting a branch resets every later answer. Changing branch mid-flow discards, with a confirm.
@@ -47,9 +47,11 @@ Selecting a branch resets every later answer. Changing branch mid-flow discards,
 ## Receipt branch
 
 ### Step 2 — How did the money arrive?
+
 `بانکی` (bank) · `نقدی` (cash) · `چکی` (cheque). Determines which fields exist in step 4.
 
 ### Step 3 — Who paid us?
+
 One primary input: **کد آسان یا شمارهٔ موبایل**. Everything else is read-only and auto-filled:
 name, file type, current balance.
 
@@ -63,19 +65,20 @@ what to do. Never a raw database error. This is T3's front-end half; the databas
 
 ### Step 4 — Document details
 
-| Bank | Cash | Cheque |
-|---|---|---|
-| destination account (ours) * | cash box * | cheque number * |
-| amount * | amount * | issuing bank * |
-| date *, time * | date *, time * | due date * |
-| tracking number * | tracking number: **none** — minted internally | amount * |
-| source bank | note | drawer |
-| slip upload → OCR pre-fill | | cheque image |
+| Bank                          | Cash                                          | Cheque           |
+| ----------------------------- | --------------------------------------------- | ---------------- |
+| destination account (ours) \* | cash box \*                                   | cheque number \* |
+| amount \*                     | amount \*                                     | issuing bank \*  |
+| date _, time _                | date _, time _                                | due date \*      |
+| tracking number \*            | tracking number: **none** — minted internally | amount \*        |
+| source bank                   | note                                          | drawer           |
+| slip upload → OCR pre-fill    |                                               | cheque image     |
 
 `*` = required. Amount must be a whole Toman number — block fractions in the field, because the
 Asan export rejects them and the RPC raises.
 
 ### Step 5 — Review and submit
+
 Show the party, amount, channel and the resulting journal entry.
 
 **The preview must come from the server, not be assembled in the form.** The current form hardcodes
@@ -92,6 +95,7 @@ immediately and the balance moves.
 ## Payment branch
 
 ### Step 2 — How did the money leave?
+
 `بانکی` · `نقدی` · `چکی`. Cheque opens a **sub-question**: `چک خودمان` (our own cheque book) or
 `چک مشتری` (endorsing a cheque we hold).
 
@@ -99,17 +103,20 @@ For an endorsed cheque the user **selects from a list of held cheques** and ever
 auto-filled and locked. They never retype cheque details.
 
 ### Step 3 — Who did we pay?
+
 Same code-or-mobile lookup. Payee type (supplier / external party / customer / other) is derived from
 the person's file, not asked.
 
 ### Step 4 — Document details
-Bank: source account (ours) *, amount *, date *, tracking number *, destination bank, destination
+
+Bank: source account (ours) _, amount _, date _, tracking number _, destination bank, destination
 IBAN (auto-filled from the party's file), receipt upload.
-Cash: source cash box *, amount *, date *, no tracking number.
-Cheque (own): cheque book *, cheque number *, our bank (auto), due date *, amount *.
-Cheque (endorsed): select cheque * — everything else locked.
+Cash: source cash box _, amount _, date _, no tracking number.
+Cheque (own): cheque book _, cheque number _, our bank (auto), due date _, amount _.
+Cheque (endorsed): select cheque _ — everything else locked.
 
 ### Step 5 — Review and submit
+
 Calls `create_payment`.
 
 ---
@@ -117,21 +124,25 @@ Calls `create_payment`.
 ## Dual-document branch
 
 ### Step 2 — Slip details
-Amount *, date, time, tracking number *, source bank, destination bank, slip upload → OCR.
+
+Amount _, date, time, tracking number _, source bank, destination bank, slip upload → OCR.
 
 The money never reaches our accounts; the slip is evidence of a transfer between two other parties.
 
 ### Step 3 — The payer
-Code or mobile *. Someone who owed us. Shows their receivable balance.
+
+Code or mobile \*. Someone who owed us. Shows their receivable balance.
 
 ### Step 4 — The beneficiary
-Code or mobile *. Someone we owed. Shows their payable balance.
 
-### Step 5 — The intermediary (صراف)
-Optional. Code or mobile, fee, who bears the fee. With a zero fee this is metadata only; with a fee
-it becomes a third journal line.
+Code or mobile \*. Someone we owed. Shows their payable balance.
 
-### Step 6 — Review and submit
+No intermediary fee exists in this programme. Transferrer and recipient names are
+recorded on the document only (no Asan code, no journal line). Optional name and
+account-number fields for those two roles belong on the slip-details step, not as a
+fifth party step.
+
+### Step 5 — Review and submit
 
 **Two things are stricter here than elsewhere:**
 
@@ -145,28 +156,28 @@ it becomes a third journal line.
 
 ## Field-level rules across all branches
 
-| Rule | Behaviour |
-|---|---|
-| Locked field | Grey background, lock icon, not focusable |
-| Primary lookup field | Accent border — the one field the user actually types |
-| Required | Persian label + `*` |
-| Amount | Integer Toman only; reject fractions in-field with an explanatory message |
-| Date | Jalali picker; stored as a date |
-| Server error `P0001` | Show the Persian message verbatim — it is written for the user |
-| Server error `23505` | Treat as success — the document already exists; navigate to it |
-| Server error `42501` | "no permission" — never an empty state |
+| Rule                 | Behaviour                                                                 |
+| -------------------- | ------------------------------------------------------------------------- |
+| Locked field         | Grey background, lock icon, not focusable                                 |
+| Primary lookup field | Accent border — the one field the user actually types                     |
+| Required             | Persian label + `*`                                                       |
+| Amount               | Integer Toman only; reject fractions in-field with an explanatory message |
+| Date                 | Jalali picker; stored as a date                                           |
+| Server error `P0001` | Show the Persian message verbatim — it is written for the user            |
+| Server error `23505` | Treat as success — the document already exists; navigate to it            |
+| Server error `42501` | "no permission" — never an empty state                                    |
 
 ---
 
 ## What is removed and why
 
-| Removed | Reason |
-|---|---|
-| `receipt_type` (4 options) | Dead for accounting — all four post identically and no function reads it. Replaced by always listing the customer's open proformas. (T5) |
-| `has_perforation`, `is_typed_receipt`, `is_mobile_bank_screenshot` | Never enforced server-side; removing them loses no control that existed. (T4) |
-| `beneficiary_accounting_code` in receipt/payment | Its only reader was neutered; the value never reached the ledger. Reappears as a real step in the dual branch, where it belongs. (T1/A1) |
-| The hardcoded journal preview | Materially false — see step 5. |
-| The approval step | Removed by T1; role gates replace it. |
+| Removed                                                            | Reason                                                                                                                                   |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `receipt_type` (4 options)                                         | Dead for accounting — all four post identically and no function reads it. Replaced by always listing the customer's open proformas. (T5) |
+| `has_perforation`, `is_typed_receipt`, `is_mobile_bank_screenshot` | Never enforced server-side; removing them loses no control that existed. (T4)                                                            |
+| `beneficiary_accounting_code` in receipt/payment                   | Its only reader was neutered; the value never reached the ledger. Reappears as a real step in the dual branch, where it belongs. (T1/A1) |
+| The hardcoded journal preview                                      | Materially false — see step 5.                                                                                                           |
+| The approval step                                                  | Removed by T1; role gates replace it.                                                                                                    |
 
 ## Acceptance
 

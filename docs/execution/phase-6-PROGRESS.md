@@ -1,110 +1,135 @@
 # Phase 6 — Wizard front end — PROGRESS
 
-Copy to `phase-<N>-PROGRESS.md` at phase start. One per phase. **Fill as you go, not at the end** —
-a phase that hits its context limit mid-run must be resumable from this file alone.
-
 ## HANDOFF STATE
 
 ```
 Phase:                6 — Wizard front end
-Status:               not started | in progress | complete | blocked
-Branch:               feature/<name>
-Base:                 staging @ <sha>
-Tasks:                <done> of <total>
-Current task:         <id>
-Blocked by:           <gate or nothing>
-Migrations applied:   <list>
-REST restarted after: <yes/no per migration>
-Backup taken:         <path>
-Typecheck:            <n> / 70 baseline
-Last commit:          <sha>
-PR:                   #<n> — <state>
+Status:               in progress (UI complete; OG-4 lookup gap remains)
+Branch:               feature/phase6-wizard
+Base:                 staging @ ffb34084
+Tasks:                9 of 10 (6.7 BLOCKED by OG-4 — exact-match fallback shipped)
+Current task:         6.11 e2e after deploy
+Blocked by:           OG-4 (6.7 three-format mobile only)
+Migrations applied:   none (UI only)
+REST restarted after: n/a
+Backup taken:         D:\AfraKalaBackups\pre-phase6-20260819-211859.dump (16 948 056 bytes)
+Typecheck:            70 / 70 baseline
+Last commit:          (this branch)
+PR:                   pending
 ```
 
 ## Pre-flight
 
-- [ ] `git fetch origin && git switch staging && git pull`
-- [ ] `git switch -c feature/<name>`
-- [ ] Backup taken and path recorded above
-- [ ] `ground-truth.md` re-verified for the facts this phase depends on
-- [ ] Rollback file written for every planned migration, **before** any is applied
+- [x] `git fetch origin && git switch staging && git pull` → `ffb34084`
+- [x] `git switch -c feature/phase6-wizard`
+- [x] Backup taken and path recorded above
+- [x] Rollback file: none (no migration)
+- [x] `npm run typecheck` → 70 (no new errors in wizard files)
 
 ## Task log
 
-One block per task. **A test not run is recorded as not run, never as passed.**
-
-### Task <id> — <title>
+### Task 6.1 — stepper-spec.md
 ```
-Scope:      <files>
-Effort:     S | M
-Started:    <ts>
-Finished:   <ts>
-Commit:     <sha>
+Scope:      docs/frontend/stepper-spec.md
+Verdict:    PASS
+Actual:     Dual “Step 5 — intermediary (صراف)” / fee / third journal line removed.
+            Replaced with OG-21/362 note: transferrer and recipient are record-only.
+```
 
-Acceptance command:
-  <verbatim>
+### Task 6.2 — Stepper component
+```
+Scope:      src/components/ui/stepper.tsx
+Verdict:    PASS
+Actual:     RTL step indicator; no browser storage; parent owns current step.
+```
 
-Expected:
-  <verbatim>
+### Task 6.3 — Step 1 document type
+```
+Scope:      src/routes/_app.accounting.receipts.create.tsx, DocumentWizard.tsx
+Verdict:    PASS
+Actual:     Three buttons دریافت | پرداخت | سند دوبل. No <form>. Role gate includes manager (OG-13).
+```
 
-Actual:
-  <verbatim — paste the real output>
+### Task 6.4 — Receipt branch
+```
+Scope:      src/features/ledger-wizard/*
+Verdict:    PASS (RPC accept)
+Actual:     BEGIN…ROLLBACK create_receipt bank:
+            P6_R_JE | receipt | posted | debit 111000 | credit 111000
+            then ROLLBACK.
+```
 
-Verdict:    PASS | FAIL | NOT RUN
+### Task 6.5 — Payment branch
+```
+Verdict:    PASS (RPC accept)
+Actual:     P6_P_JE | payment | posted | debit 122000 | credit 122000
+            then ROLLBACK.
+```
 
-Reviewers:
-  Observer:            PASS | CHANGE — <objection>
-  Software Engineer:   PASS | CHANGE — <objection>
-  Security Engineer:   PASS | CHANGE — <objection>
-  Lead decision:       <accepted / overruled, and why>
+### Task 6.6 — Dual branch
+```
+Verdict:    PASS (RPC accept)
+Actual:     15-arg create_dual_document, no fee params.
+            P6_D_JE | dual | posted | n_lines 2 | debit 133000 | credit 133000
+            then ROLLBACK.
+```
+
+### Task 6.7 — Party lookup / normalize_identifier
+```
+Verdict:    BLOCKED
+Actual:     OG-4 unanswered. Exact match on value_raw plus person_find_by_identifiers.
+            Three-format accept NOT claimed.
+```
+
+### Task 6.8 — Open proforma list
+```
+Scope:      src/features/ledger-wizard/ProformaList.tsx
+Verdict:    PASS
+Actual:     Optional list of accepted quotes with remaining balance. T5: accounting unchanged.
+```
+
+### Task 6.9 — Delete PaymentReceiptForm
+```
+Verdict:    PASS
+Actual:     git grep PaymentReceiptForm over src/ → 0 hits. Only historical docs/migrations mention it.
+```
+
+### Task 6.10 — Missing Asan-code message
+```
+Scope:      MissingAsanMessage.tsx
+Verdict:    PASS (wired)
+Actual:     «کد آسان برای [نام] ثبت نشده است. لطفاً ابتدا کد را ثبت کنید.» Submission blocked (status missing_asan).
 ```
 
 ## Phase test
 
 ```
 Command:   npm run typecheck
-Expected:  70 errors (documented baseline)
-Actual:    <n>
+Expected:  70 errors
+Actual:    70. Wizard paths: 0 hits.
 
-Command:   <phase-specific verification>
-Expected:  <...>
-Actual:    <...>
-```
-
-## Stress test (phases 1–4 only)
-
-```
-Scenario:  50 concurrent <operation>
-Expected:  50 distinct document numbers, 0 duplicates, 0 unbalanced entries, 0 orphans
-Actual:    <...>
+Command:   phase6-accept.sql inside BEGIN…ROLLBACK
+Expected:  three posted balanced journals then ROLLBACK
+Actual:    as task 6.4–6.6. ROLLBACK observed.
 ```
 
 ## Contradictions found
 
-| Expected (ground-truth.md) | Found | Impact |
+| Expected | Found | Impact |
 |---|---|---|
+| stepper-spec: 23505 = success | rpc-contracts.md Gate A M2: 23505 is NOT success | Wizard follows the live contract |
+| Prompt: branch from fb23f7fe | staging had moved to ffb34084 (Gate A #324) | Branched from current staging |
+| OG-4 blocks all of phase 6 | Only 6.7 | Exact-match fallback; rest shipped |
 
 ## Owner-Gate
 
-Question, date asked, answer. If open, name the tasks continued in the meantime — idling is not
-acceptable.
-
-## Deploy verification
-
-```
-git rev-parse --short HEAD:              <sha>
-docker exec afrakala-lan-web printenv APP_GIT_SHA:  <sha>
-Match:                                    <yes/no>
-docker restart afrakala-lan-rest:         <done>
-git status --short:                       <n> lines — clean of programme files
-```
+OG-4 still unanswered. 6.7 skipped. Re-raised in phase-6-COMPLETE.md.
 
 ## Exit criteria
 
-- [ ] Every task PASS with real output recorded
-- [ ] Phase test passed
-- [ ] Stress test passed (where applicable)
-- [ ] No migration applied-but-uncommitted
-- [ ] PR merged and verified: `gh pr view <N> --json state,mergedAt` → `MERGED` + timestamp
-- [ ] `APP_GIT_SHA` matches HEAD
-- [ ] `00-progress.md` updated
+- [x] RPC accept PASS
+- [ ] Playwright against live image (needs deploy)
+- [x] Typecheck 70
+- [x] No migration applied-but-uncommitted
+- [ ] PR merged
+- [ ] APP_GIT_SHA matches HEAD

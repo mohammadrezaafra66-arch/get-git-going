@@ -889,8 +889,8 @@ const NAVIGATION_SEEDS = [
   // were dropped by 323 and the invoices table they hung off by 332. Its table
   // waybill_custom_fields held 0 rows and nothing else read it.
   // NOTE: the component WaybillCustomFieldsInput SURVIVES and must not be deleted — despite
-  // the name it is generic, and the live PaymentReceiptForm renders it against
-  // payment_receipt_custom_fields.
+  // the name it is generic (custom field editor). The receipts create path is the
+  // three-branch wizard; it does not render this input.
   {
     to: "/admin/receipt-fields",
     label: "فیلدهای فیش واریزی",
