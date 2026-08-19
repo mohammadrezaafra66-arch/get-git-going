@@ -579,9 +579,33 @@ the identifier. Two sources of truth for an account code is how they drift.
 
 ## `reverse_document(p_doc_kind text, p_source_id uuid, p_reason text) RETURNS uuid`
 
-Because posted entries are immutable (task 1.6), correction is by reversal: a new entry with debit
-and credit swapped, linked to the original. Required for phase 8 negative tests and for any real
-correction workflow.
+Built 2026-08-19 (OG-14, migrations 363–364). Correction is a **new posted journal entry** with
+debit and credit swapped, linked via `journal_entries.reverses_entry_id`. The original entry is
+never updated (343). Returns the **new** entry id.
+
+`p_doc_kind` ∈ `receipt | payment | dual` (maps to `payment_receipts` / `payment_vouchers` /
+`dual_documents`). `p_source_id` is that source row's id. `p_reason` is mandatory (whitespace
+refused, `22023`).
+
+The reversing entry reuses the original's `doc_kind` (`receipt` / `payment` / `dual`), never
+`other`. It has its own document number (`RCP`/`PAY`/`DUAL`). The original number is left, not
+burned.
+
+Side effects, in the same transaction:
+
+- Receipt: subtract the receipt amount from `customer_credit_balance`; delete `payment_receipt_links`
+  for that receipt (proforma outstanding restored).
+- Endorsed payment: set `payment_vouchers.reversed_at`. The unique index and `create_payment`'s
+  EXISTS both ignore reversed vouchers, so the cheque is usable again. `endorsed_receipt_id` stays
+  on the original voucher.
+- Dual: mark the source row; still exactly two swapped lines.
+
+A second reverse of the same source raises `P0001`. A reversal cannot be reversed (no source row
+for the reversing journal). Role gate: `admin, accountant, manager` (OG-13); `sales` → `42501`.
+Whether manager should be excluded is **OG-22** (open); the wider gate is what is implemented.
+
+Audit: one `document_reversed` row in the same transaction. No Asan code, phone or national id in
+the payload.
 
 ---
 
