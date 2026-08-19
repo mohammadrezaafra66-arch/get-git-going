@@ -1,5 +1,8 @@
 # Phase 4 — Gate A — independent supervising engineer review
 
+**M1 closed** by the follow-up PR on `feature/gate-a-m1-and-collaboration-rule`: `361-down.sql` now refuses with `P0001` while the 15-arg / migration-362 form is live. The 18-arg `DROP` is unchanged and is the reverse of 361 only after `362-down`.
+
+
 **Reviewed:** 2026-08-19, against `staging @ ebbaafb8` (PR #315 merged; PR #314 / `ae4b70bb` is the
 uncorrected shape and is **not** the object under review).
 **Scope:** phase 4 as **corrected** — tasks 4.1–4.7, migrations 360, 361, **362**. The fee / third

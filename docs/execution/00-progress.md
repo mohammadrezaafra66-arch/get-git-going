@@ -7,12 +7,12 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        4 COMPLETE (corrected 2026-08-19) — awaiting independent Gate A review of the corrected shape; phase 5 not started
+Current phase:        4 COMPLETE (corrected 2026-08-19) — Gate A PASS; phase 5 not started
 Current task:         5.1 (not started)
-Branch:               staging (PRs #300, #301, #303 merged; Gate A remediation 350-353 merged)
-Last commit SHA:      Gate A remediation (350-353) — see the migration ledger below
-Live APP_GIT_SHA:     87c1a921   Match: NO — 2 commits behind, both docs+SQL only. See note below
-Typecheck:            70 / 70 baseline
+Branch:               staging (PRs #300, #301, #303, #315, #316 merged; Gate A M1 follow-up this mission)
+Last commit SHA:      see git log on staging after this PR merges
+Live APP_GIT_SHA:     87c1a921   Match: NO — docs+SQL only behind. See note below
+Typecheck:            not run this mission (no TypeScript in scope; do not read as pass)
 Migrations applied:   27 (336-362)
 Open Owner-Gates:     OG-8, OG-11, OG-12, OG-15, OG-17
                       (OG-10, OG-13, OG-16, OG-18, OG-19, OG-20, OG-21 CLOSED; OG-14 ANSWERED & SCHEDULED).
@@ -29,11 +29,15 @@ Owner decisions:      T9-T14 in ledger-decisions.md. T14 (2026-08-19) answers OG
 Blocked tasks:        none. Phase 3 is COMPLETE and honoured all four T13 constraints - proved,
                       not asserted (phase-3-PROGRESS.md, task 3.3/3.4 and the T13-c3 proof).
                       T9 itself must still be RESOLVED BEFORE PHASE 5.
-Gate A defects:       16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred (m1, m7 -> phase 6;
-                      m3 -> phase 5). M4 + M5 CLOSED 2026-08-18: the owner ran the cleanup script by
-                      hand, verifier 14/14 PASS, independently re-measured. The Asan bank-deposit
-                      export is clean (0 rows for the contaminated 2026-08-18, 1 genuine row overall)
-                      and the warning to the team is lifted. Detail and real output in
+Gate A defects:       Phase 4 Gate A (corrected shape): **PASS** — 0 BLOCKER, 1 MAJOR, 3 MINOR.
+                      Report: `docs/execution/phase-4-GATE-A.md`. **M1 closed** this mission
+                      (`361-down` pre-flight: refuse while 362's 15-arg RPC is live; keep the 18-arg
+                      DROP). Remaining deferred from that review: **m1** (reader-table completeness
+                      in `phase-4-PROGRESS.md` — not this brief), **m2** (root `PROGRESS.md` SHA
+                      placeholder `(this PR)` — shared file, not edited here), **m3** (INSERT policy
+                      vs RPC / D12 — deferred to phase 6 as Gate A recommended).
+                      Phase 2 Gate A: 16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred
+                      (m1, m7 -> phase 6; m3 -> phase 5). M4 + M5 CLOSED 2026-08-18. Detail in
                       docs/execution/phase-2-REMEDIATION-PROGRESS.md § 3
 Production touched:   NO - and the T9 production-count question was CLOSED BY OWNER DECISION
                       without contacting it (T13). CLAUDE.md rule 10 stands unweakened.
@@ -108,7 +112,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 1 Shared foundations | **complete** | 2026-08-18 | 2026-08-18 | Gate B PASS, Gate A FAIL then remediated | 12 migrations; OG-10 closed, 1 risk open (OG-14) |
 | 2 Receipts post | **complete** | 2026-08-18 | 2026-08-18 | 8/8 accept PASS; stress PASS; Gate A FAIL then remediated; cleanup verifier 14/14 PASS | migrations 348-349 + remediation 350-353; OG-16 and OG-17 raised; OG-13 fully closed. 12 of 16 Gate A defects closed, 1 with the owner (OG-17), 3 deferred — `phase-2-REMEDIATION-PROGRESS.md` |
 | 3 Payments post | **complete** | 2026-08-19 | 2026-08-19 | 9/9 accept PASS; stress PASS; Gate A FAIL then remediated | migrations 354-355 + remediation 356-358. Gate A: 1 BLOCKER, 2 MAJOR, 3 MINOR -> 4 closed (B1, M2, m1, OG-20), 1 with the owner (M1 -> OG-18), 2 deferred to phase 6 (m2, m3). `phase-3-GATE-A.md`, `phase-3-REMEDIATION-PROGRESS.md` |
-| 4 Dual documents | **complete — corrected** | 2026-08-19 | 2026-08-19 | 7/7 accept PASS then owner correction accept PASS; stress PASS; cleanup proved clean | migrations 360-361 plus **362** (no fee). New `dual_documents` table (task 4.2). T11 four roles. C-c / OG-21 **overturned by the owner 2026-08-19: no fee exists.** Always exactly two journal lines. Phase 5 not started. `phase-4-PROGRESS.md` |
+| 4 Dual documents | **complete — corrected; Gate A PASS** | 2026-08-19 | 2026-08-19 | 7/7 accept PASS then owner correction accept PASS; stress PASS; cleanup proved clean; Gate A 0 BLOCKER / 1 MAJOR / 3 MINOR | migrations 360-361 plus **362** (no fee). Gate A M1 **closed** (`361-down` gate). New `dual_documents` table (task 4.2). T11 four roles. C-c / OG-21 **overturned by the owner 2026-08-19: no fee exists.** Always exactly two journal lines. Phase 5 not started. `phase-4-PROGRESS.md`, `phase-4-GATE-A.md` |
 | **reverse_document** | **REQUIRED — not started** | | | | **OG-14, answered 2026-08-19 option (b): build AFTER PHASE 4, BEFORE PHASE 6.** Not a numbered phase; it sits between them and must not be skipped when phase 5 is dispatched. Phase 6 gives the accountant and sales staff the forms, and Gate A B1's answer (one cheque is consumed once) makes every mistake permanent until reversal exists. Needs its own dispatch. |
 | 5 Asan exports live | not started | | | | OG-3 answered (989) — 5.4 unblocked |
 | 6 Wizard front end | not started | | | | Needs OG-4 + `normalize_identifier` |
@@ -239,3 +243,69 @@ returned 14 of 14 PASS and the result was independently re-measured — 0 stress
 `journal_entries` back to 1, all 51 receipt serials burned and none live, credit back to 0.00, and all
 three triggers (both immutability guards and 353's delete guard) armed at `tgenabled='O'`. `audit_logs`
 was left intact on purpose. Real output in `phase-2-REMEDIATION-PROGRESS.md` § 3.
+
+## Phase 4 Gate A PASS + M1 closed (2026-08-19)
+
+Independent review: `docs/execution/phase-4-GATE-A.md`. Verdict **PASS** (0 BLOCKER, 1 MAJOR, 3 MINOR).
+Phase 5 was not started. `npm run typecheck` was **not run** (this mission has no TypeScript).
+
+**M1 (MAJOR) closed here, not by rewriting the 18-arg DROP.** After 362, live
+`create_dual_document` is the 15-arg form
+`create_dual_document(text,uuid,text,uuid,numeric,date,text,text,text,text,text,text,text,text,uuid[])`.
+`DROP FUNCTION IF EXISTS` of the 18-arg list was a silent no-op. The file now **refuses**
+(`P0001`) while identity arguments lack `p_intermediary_fee`, then keeps the original 18-arg DROP
+so a dry-run that has already run `362-down` in the same transaction can still complete.
+
+Honest reverse order: `362-down` → `361-down` → `360-down`. `360-down.sql` was not changed.
+
+### Proof (every write inside `BEGIN … ROLLBACK`; DB left as found)
+
+Census before and after: `dual_documents=0`, `journal_entries=1`, `journal_lines=2`,
+`public_functions=840`, one 15-arg `create_dual_document`.
+
+1. **Current state (362 live).** `\i 361-down` → `ERROR` `P0001` (captured `sqlstate=P0001`), not
+   `NOTICE: does not exist, skipping`. `pg_proc` still one 15-arg function. Harness
+   `rollback-dryrun.sql` against **361-down** aborts (`ON_ERROR_STOP`, exit 3) — expected.
+2. **Honest reverse in one txn.** `BEGIN;` `\i 362-down.sql;` `\i 361-down.sql;` →
+   `count(*)=0` for `proname='create_dual_document'`; `ROLLBACK` restored the 15-arg function.
+3. **Harness.** `rollback-dryrun.sql` against **362-down**: public functions **840 → 840**.
+
+### Sweep: `docs/verification/*-down.sql` `DROP FUNCTION` vs live `pg_proc`
+
+Compared named signatures to `oid::regprocedure` / `to_regprocedure` on the live catalogue.
+**Signature-stale while a different arity of the same name is live** (the 361 class):
+
+| File | Function | Down signature | Live | Class |
+|---|---|---|---|---|
+| `361-down.sql` | `create_dual_document` | 18-arg (`… uuid, numeric, text, uuid[]`) | 15-arg (`… text, uuid[]`) | **stale** — gated this mission (`P0001` while 362 live) |
+| `362-down.sql` | `create_dual_document` | 15-arg | 15-arg | **match** (then the file recreates 18-arg) |
+| `349-down.sql` / `351-down.sql` | `create_receipt` | 14-arg list | same 14-arg (`time without time zone` … `jsonb, uuid[]`) | **match**. 351 is `CREATE OR REPLACE`, not a new overload |
+| `355-down.sql` | `create_payment` | 14-arg list | same 14-arg | **match**. 356 patches the body in place (no `DROP FUNCTION`) |
+| `294-down.sql` / `320-down.sql` | `asan_list_journal_export` | `(date, date, text)` | `asan_list_journal_export(date,date,text)` | **match**. 358 is `CREATE OR REPLACE`, same signature |
+| `360-down.sql` | dual trigger fns | `()` | `tg_dual_documents_*()` | **match** |
+| `353-down.sql` / `357-down.sql` | posted-delete triggers | `()` | live `()` | **match** |
+| `338`–`346` trigger / helper DROPs sampled | `jalali_year(date)`, `require_asan_code(uuid)`, `assign_document_number(text,uuid)`, `burn_document_number(text,uuid,text)`, attachment/immutability/cleanup triggers | as named | live `oid::regprocedure` agrees | **match** |
+| `307-down.sql` | `auto_publish_release` | 7-arg including `timestamptz` | `auto_publish_release(text,timestamp with time zone,text,text,text,text,jsonb)` | **match** |
+| `313-down.sql` | `pay_purchase_with_voucher` | 11-arg list | same 11-arg `oid::regprocedure` | **match** |
+| `232-down.sql` | `person_create_inline` | 9-arg | `person_create_inline(text,text,text,jsonb,text,text,text,text,jsonb)` | **match** |
+| `299-down.sql` | `search_visible_persons` | 7-arg + leftover 4-arg | live is the 7-arg only | 7-arg **match**; 4-arg **N/A (object gone)** |
+| `229-down.sql` | `person_create_inline` | 8-arg (`text, text, text, jsonb, text, text, text, text`) | 9-arg (232 added a `jsonb`) | **stale — same class as 361**. Recorded, **not fixed** (out of scope) |
+| `298-down.sql` | `search_visible_persons` | 4-arg and 3-arg | live 7-arg only | **stale DROPs of gone overloads**; running the file would not drop the live RPC. Recorded, **not fixed** |
+
+Other `*-down.sql` `DROP FUNCTION` lines (person-FK registry, Asan batch, product video, marketing,
+score, messenger, platform release, …) name objects that still exist under the listed 0-arg or
+simple signatures, or they are older rollbacks whose objects were replaced later (**N/A — object
+gone** for a dropped overload). None of those were a silent no-op against a **live** same-name
+function except **361**, **229**, and **298**. Scope stops at recording 229 and 298.
+
+**Not this defect class:** `349-down.sql` still contains `BEGIN;` / `COMMIT;` (phase-2 Gate A M7).
+Left untouched.
+
+### Root `PROGRESS.md` — looked, not edited (m2 deferred)
+
+`git diff ae4b70bb ebbaafb8 -- PROGRESS.md` (PR #315): **one inserted history row** (2026-08-19,
+Cursor, dual-document correction / migration 362 / OG-21 closed / typecheck 70 / phase 5 not
+started). Commit cell is the placeholder `(this PR)`, not `ebbaafb8` / `41c0e534`. Harmless
+additive; does not conflict with other agents' untracked files; does not duplicate this ledger.
+Filling the SHA is a shared-file change — owner can do it by hand. That is **m2**, not this PR.
+

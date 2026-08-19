@@ -27,8 +27,9 @@ accounting-document exports return real files.
 | 10 | `docs/execution/deferred.md` | What is deliberately out of scope. Do not build these. |
 
 Progress is written to `docs/execution/00-progress.md` (programme level) and
-`docs/execution/phase-<N>-PROGRESS.md` (per phase). The final deliverable is
-`docs/execution/FINAL-REPORT.md`.
+`docs/execution/phase-<N>-PROGRESS.md` (per phase). Root `PROGRESS.md` is **shared product
+history** for every agent in this checkout — not the programme ledger and not a mission
+scratchpad. The final deliverable is `docs/execution/FINAL-REPORT.md`.
 
 ---
 
@@ -60,6 +61,16 @@ is a stop-the-line event.
 11. **`schema_full_export.sql` is unreliable.** Use live `pg_get_functiondef`, `pg_policies`,
     `pg_constraint`, `pg_trigger` output only.
 12. **Never use `/autofix-pr`** — it cancels work in progress.
+13. **Shared working tree.** This checkout is used by more than one mission at once.
+    Commit only on **this** mission's `feature/` branch — never to `staging`, `main`, or another
+    mission's branch. Change **only** the paths named in the brief's Scope; if a file outside
+    that scope needs changing, record it and report it rather than editing it (the same
+    discipline as raising an Owner-Gate). Rule 8 stands: every path in `git add --` and
+    `git commit --`. Leave other missions' untracked files alone. Do **not** force
+    `deploy/lan/build.ps1` past a dirty tree — `-Force` stamps a SHA onto an image that
+    contains uncommitted work, which is the drift the phase-2 remediation existed to close.
+    Write programme state to `docs/execution/00-progress.md`. Root `PROGRESS.md` is shared
+    history; treat it as out of scope unless the brief names it.
 
 ---
 
