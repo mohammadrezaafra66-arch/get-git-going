@@ -7,24 +7,19 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        4 COMPLETE; reverse_document BUILT and Gate A remediated (365); phase 5 not started
-Current task:         5.1 (not started) — **required input M1 below**
-Branch:               staging (PRs through #319; this mission OG-14 Gate A remediation)
+Current phase:        5 COMPLETE — asan_list_journal_export reads stored doc_kind (366); phase 6 not started
+Current task:         6.1 (not started)
+Branch:               staging (this mission phase 5)
 Last commit SHA:      see git log on staging after this PR merges
 Live APP_GIT_SHA:     87c1a921   Match: NO — docs+SQL only behind. See note below
-Typecheck:            70 / 70 baseline (D14) — OG-14 Gate A remediation
-Migrations applied:   30 (336-365)
-Open Owner-Gates:     OG-8, OG-11, OG-12, OG-15, OG-17, **OG-23**
-                      (OG-10, OG-13, OG-14, OG-16, OG-18, OG-19, OG-20, OG-21, **OG-22** CLOSED).
+Typecheck:            70 / 70 baseline (D14) — phase 5
+Migrations applied:   31 (336-366)
+Open Owner-Gates:     OG-8, OG-11, OG-12, OG-15, OG-17, OG-23
+                      (OG-10, OG-13, OG-14, OG-16, OG-18, OG-19, OG-20, OG-21, OG-22 CLOSED).
 BLOCKING BEFORE PHASE 6: reverse_document CLOSED (363–365).
-BINDING ON PHASE 5:   T14 - no export or report may present a ledger-derived figure as a party's
-                      total balance or total debt.
-                      **Gate A M1 (required, not optional):** live `asan_list_journal_export`
-                      ignores stored `doc_kind`. Reversed bank receipt measured
-                      `EXPORT_RECEIPT_FILTER n=2`, `EXPORT_RECEIPT_REVERSAL n=0`,
-                      `EXPORT_PAYMENT_REVERSAL n=2`. **`_filter='receipt'` must not be shipped as
-                      "deposits that still stand"** until 5.1 reads the stored column.
-                      T9 still unresolved before phase 5 numbers become the accountant's.
+BINDING ON PHASE 5:   T14 honoured — export does not label a ledger sum as a party's total
+                      balance or debt. Gate A M1 CLOSED: stored doc_kind; reversal pair stays
+                      receipt/receipt. `_filter='receipt'` is not "deposits that still stand".
 Owner decisions:      T9-T14 in ledger-decisions.md. T14 (2026-08-19) answers OG-19. T9-T12 recorded 2026-08-18; T13 recorded
                       2026-08-19. T9 (one person, one file, one balance) and T10 contradict what the
                       schema assumes today. T13 adopts the T9 research's recommendation (b).
@@ -115,7 +110,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 3 Payments post | **complete** | 2026-08-19 | 2026-08-19 | 9/9 accept PASS; stress PASS; Gate A FAIL then remediated | migrations 354-355 + remediation 356-358. Gate A: 1 BLOCKER, 2 MAJOR, 3 MINOR -> 4 closed (B1, M2, m1, OG-20), 1 with the owner (M1 -> OG-18), 2 deferred to phase 6 (m2, m3). `phase-3-GATE-A.md`, `phase-3-REMEDIATION-PROGRESS.md` |
 | 4 Dual documents | **complete — corrected; Gate A PASS** | 2026-08-19 | 2026-08-19 | 7/7 accept PASS then owner correction accept PASS; stress PASS; cleanup proved clean; Gate A 0 BLOCKER / 1 MAJOR / 3 MINOR | migrations 360-361 plus **362** (no fee). Gate A M1 **closed** (`361-down` gate). New `dual_documents` table (task 4.2). T11 four roles. C-c / OG-21 **overturned by the owner 2026-08-19: no fee exists.** Always exactly two journal lines. Phase 5 not started. `phase-4-PROGRESS.md`, `phase-4-GATE-A.md` |
 | **reverse_document** | **complete (OG-14) + Gate A remediated** | 2026-08-19 | 2026-08-19 | accept + Gate A re-probes PASS | 363–364 plus **365** (M2 credit from journal line; M3 admin+accountant only, interim). M1 deferred to phase 5 as required input. m1 leftover recorded for phase 8. OG-22 closed. OG-23 raised (source-row freeze). `asan_list_journal_export` not touched. |
-| 5 Asan exports live | not started | | | | **Required input M1:** `_filter='receipt'` still lists undone bank receipts. Do not start until 5.1 is written to stored `doc_kind`. OG-3 answered (989) — 5.4 unblocked |
+| 5 Asan exports live | **complete** | 2026-08-19 | 2026-08-19 | 5/5 Accept; typecheck 70 | migration **366**. Classifier reads stored `doc_kind`. M1/C-d/C-e/C10/C7 closed. Cheque skip (D8). invoice_ar already 989. Samples in `docs/verification/asan/phase-5-asan-*.xlsx`. Owner must open one in Asan before phase 9. Phase 6 not started. |
 | 6 Wizard front end | not started | | | | Needs OG-4 + `normalize_identifier` |
 | 7 OCR | not started | | | | Needs OG-5 (HTTPS) |
 | 8 Integrated verification | not started | | | | |
@@ -207,6 +202,7 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 363 | 20260819150000_363_reverse_document_schema.sql | OG-14 | 2026-08-19 | docs/verification/363-down.sql | yes |
 | 364 | 20260819151000_364_reverse_document.sql | OG-14 | 2026-08-19 | docs/verification/364-down.sql | yes |
 | 365 | 20260819160000_365_reverse_document_gate_a.sql | OG-14 Gate A (M2, M3) | 2026-08-19 | docs/verification/365-down.sql | yes |
+| 366 | 20260819170000_366_asan_journal_export_doc_kind.sql | 5 (5.1, 5.2) | 2026-08-19 | docs/verification/366-down.sql | yes |
 
 Both phase-2 rollback files were written **before** their forward migration and then executed
 (349-down then 348-down, one `BEGIN … ROLLBACK`, exit 0). `348-down` restores a CHECK that is

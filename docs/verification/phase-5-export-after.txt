@@ -1,0 +1,86 @@
+BEGIN
+                              set_config                               
+-----------------------------------------------------------------------
+ {"sub":"1a15e8c6-3a83-49c2-9531-db9046d30968","role":"authenticated"}
+(1 row)
+
+   step    |                doc_id                | doc_kind | blocked | line_no |     debit      |     credit     
+-----------+--------------------------------------+----------+---------+---------+----------------+----------------
+ AFTER_ALL | 2c972cd3-c440-4d76-9776-2c339b969f00 | receipt  | f       |       1 |          10000 |              0
+ AFTER_ALL | 2c972cd3-c440-4d76-9776-2c339b969f00 | receipt  | f       |       2 |              0 |          10000
+ AFTER_ALL | 51e00e30-b55e-4851-ae00-036a6930d29d | receipt  | f       |       1 |              0 |          10000
+ AFTER_ALL | 51e00e30-b55e-4851-ae00-036a6930d29d | receipt  | f       |       2 |          10000 |              0
+ AFTER_ALL | 6d6b1896-d7ce-433e-9908-27bae8b6c003 | receipt  | t       |       1 | 10100000000.00 |              0
+ AFTER_ALL | 6d6b1896-d7ce-433e-9908-27bae8b6c003 | receipt  | t       |       2 |              0 | 10100000000.00
+(6 rows)
+
+     step      |                doc_id                | doc_kind | line_no 
+---------------+--------------------------------------+----------+---------
+ AFTER_RECEIPT | 2c972cd3-c440-4d76-9776-2c339b969f00 | receipt  |       1
+ AFTER_RECEIPT | 2c972cd3-c440-4d76-9776-2c339b969f00 | receipt  |       2
+ AFTER_RECEIPT | 51e00e30-b55e-4851-ae00-036a6930d29d | receipt  |       1
+ AFTER_RECEIPT | 51e00e30-b55e-4851-ae00-036a6930d29d | receipt  |       2
+ AFTER_RECEIPT | 6d6b1896-d7ce-433e-9908-27bae8b6c003 | receipt  |       1
+ AFTER_RECEIPT | 6d6b1896-d7ce-433e-9908-27bae8b6c003 | receipt  |       2
+(6 rows)
+
+      step       | n 
+-----------------+---
+ AFTER_PAYMENT_N | 0
+(1 row)
+
+     step      | n 
+---------------+---
+ AFTER_THIRD_N | 0
+(1 row)
+
+     step     | docs 
+--------------+------
+ RECEIPT_DOCS |    3
+(1 row)
+
+    step    |              receipt_id              
+------------+--------------------------------------
+ CHQ_CREATE | 48e4588f-887a-4451-96cb-88d87b5618ee
+(1 row)
+
+    step    | doc_kind |                                            blocked_reason                                             | line_no | account_code 
+------------+----------+-------------------------------------------------------------------------------------------------------+---------+--------------
+ CHQ_EXPORT | receipt  | ردیف چک در فایل آسان نیست چون کد حساب ندارد؛ بقیهٔ ردیف‌ها هم صادر نمی‌شوند تا سند در آسان ناتراز نشود |         | 
+(1 row)
+
+        step        | n 
+--------------------+---
+ CHQ_RECEIPT_FILTER | 1
+(1 row)
+
+    step     |             document_id              
+-------------+--------------------------------------
+ DUAL_CREATE | 869e4dac-b503-4228-8288-4a80de24de47
+(1 row)
+
+    step     |  doc_kind   | blocked | line_no | account_code |  debit  | credit  
+-------------+-------------+---------+---------+--------------+---------+---------
+ DUAL_EXPORT | third_party | f       |       1 | 90019001     | 2000000 |       0
+ DUAL_EXPORT | third_party | f       |       2 | 1125623      |       0 | 2000000
+(2 rows)
+
+    step    |              voucher_id              
+------------+--------------------------------------
+ PAY_CREATE | 2cc900e4-6624-4ffb-9aa9-3a9421a1b2c8
+(1 row)
+
+     step     | n | docs 
+--------------+---+------
+ PAY_EXPORT_N | 2 |    1
+(1 row)
+
+    step    |    filt     | docs 
+------------+-------------+------
+ FILTER_GE1 | all         |    6
+ FILTER_GE1 | payment     |    1
+ FILTER_GE1 | receipt     |    4
+ FILTER_GE1 | third_party |    1
+(4 rows)
+
+ROLLBACK
