@@ -152,21 +152,29 @@ Record the sign convention chosen in the progress file.
 
 ## Phase 4 — Dual documents
 
-- [ ] **4.1** `rpc-contracts.md` entry for `create_dual_document` — Scope: `docs/api/` — S
-- [ ] **4.2** `create_dual_document`: two mandatory parties, optional intermediary — Scope:
+- [x] **4.1** `rpc-contracts.md` entry for `create_dual_document` — Scope: `docs/api/` — S
+  Ticked 2026-08-19 after PR #314; contract corrected again the same day (P4-C11..C13, OG-21 closed).
+- [x] **4.2** `create_dual_document`: two mandatory account holders — Scope:
   `supabase/migrations/` — M
   Source table: reuse `mutual_settlements` if its shape fits, otherwise a new `dual_documents`
-  table. Decide by reading it first; record the choice in the progress file.
-- [ ] **4.3** Post the entry: `doc_kind='dual'`, debit `supplier_payable` (beneficiary), credit
+  table. Decide by reading it first; record the choice in the progress file. **Decision: new table.**
+- [x] **4.3** Post the entry: `doc_kind='dual'`, debit `supplier_payable` (beneficiary), credit
   `customer_credit` (payer) — Scope: `supabase/migrations/` — M
-- [ ] **4.4** Balance invariant: the two allocated amounts must be equal — Scope:
+  Kind is chosen from each party's type (P4-C3); those two kinds are the owner-example case.
+- [x] **4.4** Balance invariant: the two allocated amounts must be equal — Scope:
   `supabase/migrations/` — S
-  **Accept:** unequal amounts raise `P0001`; zero rows created.
-- [ ] **4.5** Asan-code precondition for both parties — Scope: `supabase/migrations/` — S
-- [ ] **4.6** Optional intermediary (صراف): metadata when fee is zero, third line when not — Scope:
+  **Accept:** unequal amounts raise `P0001`; zero rows created. Unreachable through the parameter
+  after D9; the assertion remains as a tripwire. Always exactly two lines after 362.
+- [x] **4.5** Asan-code precondition for both parties — Scope: `supabase/migrations/` — S
+- [x] **4.6** Record-only names from the bank slip (transferrer and recipient) — Scope:
   `supabase/migrations/` — M
-  **Accept:** with a fee, the entry has three lines and still balances.
-- [ ] **4.7** Role gate + grants — Scope: `supabase/migrations/` — S
+  **Rewritten 2026-08-19.** The previous text ("Optional intermediary (صراف): metadata when fee is
+  zero, third line when not") and its Accept ("with a fee, the entry has three lines") are
+  **retired**. They described a rule that does not exist. Owner: there is no fee. The two extra
+  people are whoever's name appears on the slip; optional plain text; no FK; no journal line.
+  **Accept (replacement):** a document with both names supplied posts exactly two lines, neither
+  keyed to those names; the same document with both names omitted also succeeds.
+- [x] **4.7** Role gate + grants — Scope: `supabase/migrations/` — S
 
 **Phase 4 exit:** all three document types post. Stress test as above.
 

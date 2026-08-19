@@ -174,6 +174,21 @@ owns the contract. Note also that `MASTER-CHECKLIST.md` task 4.6 has the interme
 third journal line when a fee is non-zero; a fee is **our** expense and is a separate question from
 whose balance moves, and T11 does not settle it.
 
+**Amendment 2026-08-19 — owner, same day as OG-21 closed.** The four roles above are unchanged.
+What this decision did not record, and which caused OG-21:
+
+* The record-only class exists for **evidentiary** reasons, not accounting ones. A year later a
+  party may claim the slip was for a different amount. Everything on the slip must be enterable:
+  transferrer name, recipient name, date, tracking number, banks, account numbers. AfraKala does
+  not know those people; they have no file, no Asan code, no balance, no journal line.
+* Those fields are **optional**, because slips vary. Some carry the names; some do not. Omitting
+  them must succeed.
+* **صراف / واسط / شخص ثالث / نفر سوم / طرف سوم name the same record-only class.** The owner used
+  different words in different places. They are never account holders. There is **no fee**.
+  Task 4.6's old Accept (three lines when a fee is charged) is retired. The contract's
+  `p_intermediary_id` gap noted above was closed by phase 4 as transferrer/recipient columns, then
+  the remaining fee columns were dropped by migration 362.
+
 ## T12 — The boundary between a plain receipt and a dual document
 * money reached us **and stayed** → **plain receipt**
 * money reached us **and went straight out** to someone else → **dual document**
