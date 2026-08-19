@@ -1,5 +1,15 @@
 # Phase 5 — Asan exports live — PROGRESS
 
+> **REQUIRED INPUT before 5.1 — OG-14 Gate A M1 (do not skip).**
+> Live `asan_list_journal_export` classifies by bank-line sign, not stored `doc_kind`.
+> Reversed bank receipt: stored pair `receipt`/`receipt`; inferred original `receipt`,
+> reversal `payment`. Measured: `EXPORT_RECEIPT_FILTER n=2`, `EXPORT_RECEIPT_REVERSAL n=0`,
+> `EXPORT_PAYMENT_REVERSAL n=2`. **`_filter='receipt'` must not be shipped as "deposits that
+> still stand"** until the classifier reads the stored column (or nets/hides reversal pairs).
+> Also T14: no ledger-derived figure as a party's total balance or total debt.
+> Phase 4 C-d/C-e: dual documents export as `unclassified` under `_filter='all'` and are
+> invisible under `receipt`/`payment`/`third_party`.
+
 Copy to `phase-<N>-PROGRESS.md` at phase start. One per phase. **Fill as you go, not at the end** —
 a phase that hits its context limit mid-run must be resumable from this file alone.
 

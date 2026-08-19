@@ -593,16 +593,19 @@ burned.
 
 Side effects, in the same transaction:
 
-- Receipt: subtract the receipt amount from `customer_credit_balance`; delete `payment_receipt_links`
-  for that receipt (proforma outstanding restored).
+- Receipt: subtract the receipt amount from `customer_credit_balance` of the customer on the
+  posted `customer_credit` journal line (`account_ref_id`), not from `payment_receipts.customer_id`
+  (Gate A M2, migration 365); delete `payment_receipt_links` for that receipt (proforma outstanding
+  restored).
 - Endorsed payment: set `payment_vouchers.reversed_at`. The unique index and `create_payment`'s
   EXISTS both ignore reversed vouchers, so the cheque is usable again. `endorsed_receipt_id` stays
   on the original voucher.
 - Dual: mark the source row; still exactly two swapped lines.
 
 A second reverse of the same source raises `P0001`. A reversal cannot be reversed (no source row
-for the reversing journal). Role gate: `admin, accountant, manager` (OG-13); `sales` → `42501`.
-Whether manager should be excluded is **OG-22** (open); the wider gate is what is implemented.
+for the reversing journal). Role gate (migration 365, **OG-22 closed**): `admin` and `accountant`
+only. `manager` → `42501`. `sales` → `42501`. This is an **interim** gate pending the dedicated
+access-control phase; it is not the final permission model (`ledger-decisions.md`).
 
 Audit: one `document_reversed` row in the same transaction. No Asan code, phone or national id in
 the payload.

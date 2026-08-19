@@ -7,38 +7,39 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        4 COMPLETE (corrected 2026-08-19) — Gate A PASS; **reverse_document BUILT (OG-14)**; phase 5 not started
-Current task:         5.1 (not started)
-Branch:               staging (PRs through #317; reverse_document this mission)
+Current phase:        4 COMPLETE; reverse_document BUILT and Gate A remediated (365); phase 5 not started
+Current task:         5.1 (not started) — **required input M1 below**
+Branch:               staging (PRs through #319; this mission OG-14 Gate A remediation)
 Last commit SHA:      see git log on staging after this PR merges
 Live APP_GIT_SHA:     87c1a921   Match: NO — docs+SQL only behind. See note below
-Typecheck:            70 / 70 baseline (D14) — reverse_document mission
-Migrations applied:   29 (336-364)
-Open Owner-Gates:     OG-8, OG-11, OG-12, OG-15, OG-17, OG-22
-                      (OG-10, OG-13, OG-14, OG-16, OG-18, OG-19, OG-20, OG-21 CLOSED).
-BLOCKING BEFORE PHASE 6: **reverse_document (OG-14) CLOSED 2026-08-19** — migrations 363–364.
-                      Available before phase 6 as the owner scheduled. Phase 5 not started.
+Typecheck:            70 / 70 baseline (D14) — OG-14 Gate A remediation
+Migrations applied:   30 (336-365)
+Open Owner-Gates:     OG-8, OG-11, OG-12, OG-15, OG-17, **OG-23**
+                      (OG-10, OG-13, OG-14, OG-16, OG-18, OG-19, OG-20, OG-21, **OG-22** CLOSED).
+BLOCKING BEFORE PHASE 6: reverse_document CLOSED (363–365).
 BINDING ON PHASE 5:   T14 - no export or report may present a ledger-derived figure as a party's
-                      total balance or total debt. A task needing a full position raises a gate.
-                      OG-14 is closed (363–364). OG-17 stays open with a CHANGED question -
-                      the owner confirmed the intended credit model, but the hold/release symmetry
-                      it depends on is unmeasured. See ledger-decisions.md Part 4.
+                      total balance or total debt.
+                      **Gate A M1 (required, not optional):** live `asan_list_journal_export`
+                      ignores stored `doc_kind`. Reversed bank receipt measured
+                      `EXPORT_RECEIPT_FILTER n=2`, `EXPORT_RECEIPT_REVERSAL n=0`,
+                      `EXPORT_PAYMENT_REVERSAL n=2`. **`_filter='receipt'` must not be shipped as
+                      "deposits that still stand"** until 5.1 reads the stored column.
+                      T9 still unresolved before phase 5 numbers become the accountant's.
 Owner decisions:      T9-T14 in ledger-decisions.md. T14 (2026-08-19) answers OG-19. T9-T12 recorded 2026-08-18; T13 recorded
                       2026-08-19. T9 (one person, one file, one balance) and T10 contradict what the
                       schema assumes today. T13 adopts the T9 research's recommendation (b).
 Blocked tasks:        none. Phase 3 is COMPLETE and honoured all four T13 constraints - proved,
                       not asserted (phase-3-PROGRESS.md, task 3.3/3.4 and the T13-c3 proof).
                       T9 itself must still be RESOLVED BEFORE PHASE 5.
-Gate A defects:       Phase 4 Gate A (corrected shape): **PASS** — 0 BLOCKER, 1 MAJOR, 3 MINOR.
-                      Report: `docs/execution/phase-4-GATE-A.md`. **M1 closed** this mission
-                      (`361-down` pre-flight: refuse while 362's 15-arg RPC is live; keep the 18-arg
-                      DROP). Remaining deferred from that review: **m1** (reader-table completeness
-                      in `phase-4-PROGRESS.md` — not this brief), **m2** (root `PROGRESS.md` SHA
-                      placeholder `(this PR)` — shared file, not edited here), **m3** (INSERT policy
-                      vs RPC / D12 — deferred to phase 6 as Gate A recommended).
+Gate A defects:       OG-14 reverse_document Gate A: **PASS** then remediated — M2/M3/m2 closed
+                      (365); M1 deferred to phase 5 as required input; m1 recorded for phase 8;
+                      OG-23 raised. Report: `og14-reverse-document-GATE-A.md`.
+                      Phase 4 Gate A: **PASS** — 0 BLOCKER, 1 MAJOR, 3 MINOR (`phase-4-GATE-A.md`).
+                      Phase 4 M1 (`361-down` gate) already closed. Remaining from that review:
+                      **m1** (reader-table), **m2** (root `PROGRESS.md` SHA), **m3** (INSERT policy
+                      / D12 → phase 6).
                       Phase 2 Gate A: 16 raised, 12 closed, 1 with the owner (OG-17), 3 deferred
-                      (m1, m7 -> phase 6; m3 -> phase 5). M4 + M5 CLOSED 2026-08-18. Detail in
-                      docs/execution/phase-2-REMEDIATION-PROGRESS.md § 3
+                      (m1, m7 -> phase 6; m3 -> phase 5). M4 + M5 CLOSED 2026-08-18.
 Production touched:   NO - and the T9 production-count question was CLOSED BY OWNER DECISION
                       without contacting it (T13). CLAUDE.md rule 10 stands unweakened.
 ```
@@ -113,8 +114,8 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 2 Receipts post | **complete** | 2026-08-18 | 2026-08-18 | 8/8 accept PASS; stress PASS; Gate A FAIL then remediated; cleanup verifier 14/14 PASS | migrations 348-349 + remediation 350-353; OG-16 and OG-17 raised; OG-13 fully closed. 12 of 16 Gate A defects closed, 1 with the owner (OG-17), 3 deferred — `phase-2-REMEDIATION-PROGRESS.md` |
 | 3 Payments post | **complete** | 2026-08-19 | 2026-08-19 | 9/9 accept PASS; stress PASS; Gate A FAIL then remediated | migrations 354-355 + remediation 356-358. Gate A: 1 BLOCKER, 2 MAJOR, 3 MINOR -> 4 closed (B1, M2, m1, OG-20), 1 with the owner (M1 -> OG-18), 2 deferred to phase 6 (m2, m3). `phase-3-GATE-A.md`, `phase-3-REMEDIATION-PROGRESS.md` |
 | 4 Dual documents | **complete — corrected; Gate A PASS** | 2026-08-19 | 2026-08-19 | 7/7 accept PASS then owner correction accept PASS; stress PASS; cleanup proved clean; Gate A 0 BLOCKER / 1 MAJOR / 3 MINOR | migrations 360-361 plus **362** (no fee). Gate A M1 **closed** (`361-down` gate). New `dual_documents` table (task 4.2). T11 four roles. C-c / OG-21 **overturned by the owner 2026-08-19: no fee exists.** Always exactly two journal lines. Phase 5 not started. `phase-4-PROGRESS.md`, `phase-4-GATE-A.md` |
-| **reverse_document** | **complete (OG-14)** | 2026-08-19 | 2026-08-19 | accept 1–8 PASS (concurrency: exactly one of two sessions) | migrations **363** (metadata + cheque unique predicate) and **364** (`reverse_document` + readers). Cheque is usable again after reversing an endorsement. `asan_list_journal_export` not touched. OG-22 open (manager on the wider gate). |
-| 5 Asan exports live | not started | | | | OG-3 answered (989) — 5.4 unblocked |
+| **reverse_document** | **complete (OG-14) + Gate A remediated** | 2026-08-19 | 2026-08-19 | accept + Gate A re-probes PASS | 363–364 plus **365** (M2 credit from journal line; M3 admin+accountant only, interim). M1 deferred to phase 5 as required input. m1 leftover recorded for phase 8. OG-22 closed. OG-23 raised (source-row freeze). `asan_list_journal_export` not touched. |
+| 5 Asan exports live | not started | | | | **Required input M1:** `_filter='receipt'` still lists undone bank receipts. Do not start until 5.1 is written to stored `doc_kind`. OG-3 answered (989) — 5.4 unblocked |
 | 6 Wizard front end | not started | | | | Needs OG-4 + `normalize_identifier` |
 | 7 OCR | not started | | | | Needs OG-5 (HTTPS) |
 | 8 Integrated verification | not started | | | | |
@@ -136,7 +137,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | OG-11 post_receipt_accounting back-fill vs immutability | 2026-08-18 | | raised in task 1.6 |
 | OG-12 is 'ledger-documents' the right module string? | 2026-08-18 | | raised in task 1.7 |
 | OG-13 should manager get can_view on ledger-documents? | 2026-08-18 | **2026-08-18** | **ANSWERED — option (a). CLOSED.** The boundary stands as migration 346 applied it: create = `admin`, `accountant`, `manager`; read the numbering ledger = `admin`, `accountant`. No migration needed. `create_receipt` uses `has_any_role(_uid, ARRAY['admin','accountant','manager'])`, matching `assign_document_number`. Proved end to end in task 2.8: manager creates successfully through gate → numbering → receipt → links → entry → credit → audit, which is what Gate A's M3 said would break. **Correction 2026-08-18 (Gate A M3):** this row was premature — two of OG-13's four surfaces still carried the old answer when it was written. Migration **352** applied answer (a) to both: `document_numbers_select_finance` now admits `manager`, and `role_permissions('ledger-documents','manager')` is `can_view=t, can_create=t`. Both verified in the live catalogue. OG-13 is closed on all four surfaces. |
-| OG-14 build reverse_document, or an audited escape hatch? | 2026-08-18 | **2026-08-19** | **ANSWERED — option (b), and CLOSED 2026-08-19 by migrations 363 and 364.** Built after phase 4 and before phase 6 as scheduled. `reverse_document(p_doc_kind, p_source_id, p_reason)` posts a new opposite entry; original stays posted and immutable. Endorsing a cheque, reversing that payment, then endorsing again succeeds (B1's urgent case). Double reverse → `P0001`. Role gate is OG-13's wider set; see OG-22. |
+| OG-14 build reverse_document, or an audited escape hatch? | 2026-08-18 | **2026-08-19** | **ANSWERED — option (b), and CLOSED 2026-08-19 by migrations 363 and 364** (Gate A remediations in **365**). Opposite posted entry; original immutable. Role gate narrowed by OG-22 / 365. |
 | OG-15 add viewer_restricted to the two new tables? | 2026-08-18 | | Gate A m7 - changes task 1.5 acceptance count |
 | OG-16 what does a receipt from a non-customer credit? | 2026-08-18 | **2026-08-18** | **ANSWERED — CLOSED. Superseded by owner decision T10.** The gate offered three options (a) `external_party`, (b) a new `person_credit` kind, (c) require promotion to a customer first. T10 replaces all three: **a person has one file and one balance (T9), and the sign of that balance decides the direction.** If they owe us, a receipt reduces what they owe; if we owe them, it increases what we owe. The user is never asked what the money is for. A friend or relative lending money is not a special case — they become a creditor under the same rule. **Consequence recorded, not patched:** `create_receipt` takes `p_customer_id` and always credits `customer_credit`, which is now known to be too narrow. The fix belongs to the T9 research, not to a patch on the RPC — a second narrow path is worse than one. Full text in `ledger-decisions.md` § T10. |
 | OG-17 the credit hold half was never built - should it be? | 2026-08-18 | | **STILL OPEN. Question restated a SECOND time on 2026-08-19, now from measurement.** It began as "a receipt allocated to a proforma is counted twice" (Gate A **M1**), became "is the hold/release symmetry actually maintained" once the owner confirmed the model, and is now: **given that the hold half was never built - should it be built, and if so, in which phase?** **The owner's model stands and the behaviour is correct:** credit is a **revolving limit, not a wallet** - finalising a proforma consumes the limit and paying restores it, so a receipt raising available credit is releasing a consumed limit, not creating money (`ledger-decisions.md` **Part 4**). **What the T9 research measured (`bc0ddafc`) is that one side of the symmetry does not exist.** CHECK: built and running - `create_sales_quote_with_items` reads `get_customer_dynamic_credit`, and `audit_logs` holds **6** `credit_limit_blocked` rows. **HOLD: never built** - `hold_credit` has **zero** SQL callers and appears in `src/` only in generated `types.ts`; all **11** `customer_credit_balance` rows have `held_credit = 0.00` with **0** rows holding anything; **none of the 9 `sales_quotes` triggers touches credit**; `create_sales_quote_with_items` writes a jsonb snapshot but never calls `hold_credit`, never writes `held_credit`, never writes `customer_credit_ledger`. RELEASE: built and running - `increase_credit`. So the system **checks the limit, never reserves against it, then releases against it on payment**. That is why `available_credit` behaves as a monotonically increasing total of receipts, and why M1's measurement looked like a double count. **Not a defect to fix - a decision about what the limit should do.** Deliberately NOT answered. |
@@ -144,7 +145,8 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | OG-19 nothing posts the OTHER side of supplier_payable or customer_credit | 2026-08-19 | **2026-08-19** | **ANSWERED — option (b): THE LEDGER RECORDS MONEY MOVEMENTS ONLY. Purchases and sales do NOT post.** Recorded as owner decision **T14** in `ledger-decisions.md`. The owner will complete the purchase and sales side later, **separately from this programme**. So `supplier_payable` accumulating debits with no credits, and `customer_credit` credits with no debits, is **by design — not an absent counter-posting, and not to be "fixed"**. It follows that `person_settlement_position` and every ledger-derived balance shows **money moved, not the party's full position**: the party with 13,000,000,000 Toman of received purchases reads `balanced` because the purchase was never a ledger event. **This confirms two earlier judgements:** phase 3's contradiction **C5** and its **refusal to invert the sign convention** were both correct — the convention was never inverted and the one-sided accumulation is intended. **BINDING ON PHASE 5:** no phase-5 export or report may present a ledger-derived figure as a party's total balance or total debt; a task needing a full position must raise an Owner-Gate rather than sum the ledger. **STILL OPEN AND UNASSIGNED:** where the complete figure comes from (T9 says one balance; T14 says the ledger holds only part of it) is deferred with the purchase/sales work — no phase owns it. |
 | OG-20 payment_vouchers has no delete guard while payment_receipts does | 2026-08-19 | **2026-08-19** | **ANSWERED - CLOSED. Built, not deferred.** Phase 3 deferred this to OG-14 on the grounds that a second stopgap is not the cure; phase-3 Gate A pushed back - it is migration 353's trigger with two identifiers changed, and phase 3 opened the path that made the failure reachable. The owner agreed with Gate A. **Migration 357** adds `trg_payment_vouchers_block_delete_when_posted`, mirroring 353 exactly. Verified with the same M8 probe used on the receipt side: `DELETE REFUSED sqlstate=P0001`, orphaned voucher entries **0**, and `phase-3-stress-cleanup.sql`'s entries-before-vouchers ordering re-proved to still work. This does not pre-empt **OG-14** - `reverse_document` remains the cure for both sides; it stops one more orphan being creatable in the meantime. |
 | OG-21 is a صراف who is paid a fee an account holder? | 2026-08-19 | **2026-08-19** | **ANSWERED and CLOSED, 2026-08-19: there is no fee at all.** AfraKala does not charge or record one. The question as asked does not arise. Phase 4's C-c reading (a paid صراف is a third account holder, third journal line on `('external_party', intermediary_id)`) is **overturned**, not because the implementation was faulty but because the business rule it implemented does not exist. صراف / واسط / شخص ثالث / نفر سوم / طرف سوم are the same **record-only** class as the transferrer and recipient. Migration **362** dropped the fee columns, the fee parameters, and the third line. The original C-c write-up is kept in `phase-4-PROGRESS.md`. |
-| OG-22 may a manager reverse a posted document? | 2026-08-19 | | **OPEN.** Reversal is stronger than create. Implemented on OG-13 answer (a): `admin, accountant, manager`. `sales` is refused (`42501`). Continue; do not idle. |
+| OG-22 may a manager reverse a posted document? | 2026-08-19 | **2026-08-19** | **ANSWERED and CLOSED by migration 365: accountant and admin only; manager excluded (`42501`).** Create stays OG-13's wider set. **Interim, not final:** the owner said access control will be built in a dedicated phase where every module's permissions are set by role. Recorded in `ledger-decisions.md` so that phase revisits this array. |
+| OG-23 freeze party/amount on a posted source row? | 2026-08-19 | | **OPEN.** Migration 343 made the journal immutable; UPDATE policies on `payment_receipts`, `payment_vouchers` and `dual_documents` have **no column list**. Accountants still UPDATE posted receipts (OCR apply of amount; approve/reject `status`; `reverse_document` metadata). Credit unwind no longer reads the mutable party (365). Freezing is a business question — continue; do not idle. |
 
 ## Contradictions found against ground-truth.md
 
@@ -204,6 +206,7 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 362 | 20260819140000_362_dual_document_no_fee.sql | 4 correction (OG-21) | 2026-08-19 | docs/verification/362-down.sql | yes |
 | 363 | 20260819150000_363_reverse_document_schema.sql | OG-14 | 2026-08-19 | docs/verification/363-down.sql | yes |
 | 364 | 20260819151000_364_reverse_document.sql | OG-14 | 2026-08-19 | docs/verification/364-down.sql | yes |
+| 365 | 20260819160000_365_reverse_document_gate_a.sql | OG-14 Gate A (M2, M3) | 2026-08-19 | docs/verification/365-down.sql | yes |
 
 Both phase-2 rollback files were written **before** their forward migration and then executed
 (349-down then 348-down, one `BEGIN … ROLLBACK`, exit 0). `348-down` restores a CHECK that is

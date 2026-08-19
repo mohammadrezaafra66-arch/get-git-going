@@ -35,6 +35,33 @@ SELECT 'LINK_AFTER_CREATE' AS step, coalesce(sum(l.amount),0) AS linked
   FROM public.payment_receipt_links l
  WHERE l.quote_id = '2a38bcc3-e7e0-48d5-95ef-725a75047b85';
 
+-- m2: empty and whitespace reason must refuse before any reverse
+DO $t$
+DECLARE _sqlstate text;
+BEGIN
+  BEGIN
+    PERFORM public.reverse_document(
+      'receipt',
+      (SELECT id FROM public.payment_receipts WHERE tracking_number = 'OG14-R1'),
+      '');
+    RAISE NOTICE 'EMPTY_REASON unexpected success';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS _sqlstate = RETURNED_SQLSTATE;
+    RAISE NOTICE 'EMPTY_REASON sqlstate=%', _sqlstate;
+  END;
+  BEGIN
+    PERFORM public.reverse_document(
+      'receipt',
+      (SELECT id FROM public.payment_receipts WHERE tracking_number = 'OG14-R1'),
+      '   ');
+    RAISE NOTICE 'WS_REASON unexpected success';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS _sqlstate = RETURNED_SQLSTATE;
+    RAISE NOTICE 'WS_REASON sqlstate=%', _sqlstate;
+  END;
+END;
+$t$;
+
 SELECT 'R1_REVERSE' AS step, public.reverse_document(
   'receipt',
   (SELECT id FROM public.payment_receipts WHERE tracking_number = 'OG14-R1'),
@@ -250,11 +277,22 @@ SELECT 'MGR_CREATE' AS step, r.receipt_id
     p_description := 'آزمون مدیر'
   ) r;
 
-SELECT 'MGR_REV' AS step, public.reverse_document(
-  'receipt',
-  (SELECT id FROM public.payment_receipts WHERE tracking_number = 'OG14-MGR'),
-  'برگشت توسط مدیر'
-) AS reversal_entry_id;
+-- OG-22 / M3: manager may create, must not reverse (42501)
+DO $t$
+DECLARE _sqlstate text;
+BEGIN
+  BEGIN
+    PERFORM public.reverse_document(
+      'receipt',
+      (SELECT id FROM public.payment_receipts WHERE tracking_number = 'OG14-MGR'),
+      'برگشت توسط مدیر');
+    RAISE NOTICE 'MGR_REV unexpected success';
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS _sqlstate = RETURNED_SQLSTATE;
+    RAISE NOTICE 'MGR_REV sqlstate=%', _sqlstate;
+  END;
+END;
+$t$;
 
 SELECT 'AUDIT' AS step, count(*) AS n
   FROM public.audit_logs WHERE action = 'document_reversed';
