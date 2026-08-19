@@ -397,8 +397,8 @@ back the numbering row** (the surface phase 1's M3 broke and migration 352 close
 # 3. `create_dual_document`
 
 One document, **four roles**, two balances move. Money never touches our accounts — we only record
-it (T12). Implemented by migrations **360** (the `dual_documents` table and its guards) and **361**
-(the function).
+it (T12). Implemented by migrations **360** (the `dual_documents` table and its guards), **361**
+(the original function), and **362** (owner correction 2026-08-19: no fee, no third line).
 
 > **Reconciled against the live schema on 2026-08-19 (task 4.1).** This section was written before
 > T11 existed and before the function was built. **Seven** of its statements were contradicted by
@@ -423,11 +423,8 @@ create_dual_document(
   p_transferrer_account_no text    DEFAULT NULL,
   p_recipient_name         text    DEFAULT NULL,
   p_recipient_account_no   text    DEFAULT NULL,
-  -- Intermediary (صراف).
-  p_intermediary_id        uuid    DEFAULT NULL,  -- an external_parties row
-  p_intermediary_fee       numeric DEFAULT 0,     -- > 0 adds a third line
-  p_fee_borne_by           text    DEFAULT NULL,  -- 'payer' | 'beneficiary'; 'us' is REFUSED (P4-C4)
-  p_attachment_ids         uuid[]  DEFAULT NULL   -- NOT WIRED: a non-empty array raises 0A000
+  p_attachment_ids         uuid[]  DEFAULT NULL   -- NOT WIRED: a non-empty array raises 0A000 (P4-C13)
+  -- P4-C11 — p_intermediary_id, p_intermediary_fee, p_fee_borne_by REMOVED. There is no fee.
 ) RETURNS TABLE (
   document_id      uuid,
   document_number  text,
@@ -469,7 +466,13 @@ document, two journal lines.**
 |---|---|---|
 | 1 | **debit** the beneficiary's kind | the beneficiary — what we owe them falls |
 | 2 | **credit** the payer's kind | the payer — what they owe us falls |
-| 3 *(only when fee > 0)* | **debit** `external_party` | the intermediary — see below |
+
+**Always exactly two lines.** The `sum(debit) = sum(credit)` assertion remains as a regression tripwire; after 362 it is trivially satisfied.
+
+> **P4-C12 — the third journal line is retired.** Phase 4 posted a line keyed to
+> `('external_party', intermediary_id)` when a fee was non-zero. The owner closed OG-21 on
+> 2026-08-19: **there is no fee at all.** Migration **362** dropped that construct. The 18-arg
+> signature no longer exists (`42883` if called). `pg_proc` holds exactly one `create_dual_document`.
 
 `doc_kind='dual'`, `source_type='dual_document'`, `status='posted'`.
 
@@ -489,37 +492,27 @@ document, two journal lines.**
 > and `unclassified` otherwise. It still exports. **Phase 5 owns the export**; this is recorded, not
 > fixed.
 
-## The intermediary and the fee (P4-C4)
+## There is no fee (P4-C11 — owner 2026-08-19, OG-21 CLOSED)
 
-**T11, `MASTER-CHECKLIST` 4.6 and requirement 207 cannot all be true at once.** T11 makes the
-record-only roles Asan-code-free; 4.6 wants a third journal line; a journal line needs an
-`account_ref_id` the validator accepts; 207 made the صراف's Asan code optional.
+> **P4-C4 is overturned, not deleted.** The 2026-08-19 contract treated a paid صراف as a third
+> account holder. That reading is recorded in `phase-4-PROGRESS.md` as C-c. The owner answered the
+> same day: **AfraKala does not charge or record a fee.** صراف / واسط / شخص ثالث / نفر سوم / طرف سوم
+> are the **same record-only class** as the transferrer and the recipient — names on the slip, never
+> an account holder, never an Asan code, never a journal line.
 
-**The reading adopted — raised as OG-21 for confirmation:**
+The parameters `p_intermediary_id`, `p_intermediary_fee`, and `p_fee_borne_by` **do not exist**.
+The fee arithmetic, the `fee < amount` check, and the `fee_borne_by='us'` refusal are gone with
+them. Columns and CHECKs on `dual_documents` that named a fee were dropped in migration **362**.
 
-* **Fee = 0** → the intermediary is **metadata only**. No line, no balance effect, **no code
-  required**. Exactly T11 and requirement 207.
-* **Fee > 0** → the intermediary is **a party we are paying**. Money is recorded against them, so
-  under T10 they are a counterparty whose balance moves and under T3 they need a code — like any
-  other paid party. The record-only class covers the transferrer and the recipient, who *receive
-  nothing*; it need not cover someone we pay a fee to.
+The transferrer and recipient fields are **optional** because slips vary. A document with both names
+omitted is valid.
 
-This needs no new `account_kind` (the صراف is an `external_parties` row), satisfies 4.6's Accept, and
-keeps the document exportable.
-
-| `p_fee_borne_by` | Effect | Balanced? |
-|---|---|---|
-| `'payer'` | payer is credited `amount + fee`; beneficiary debited `amount`; intermediary debited `fee` | yes |
-| `'beneficiary'` | payer credited `amount`; beneficiary debited `amount − fee`; intermediary debited `fee` | yes — and `fee < amount` is enforced, or the beneficiary's line would be zero or negative and violate `journal_lines_one_side` |
-| **`'us'`** | **REFUSED, `P0001`** | — |
-
-> **`'us'` is unrepresentable, not merely unimplemented.** If we bear the fee, the entry needs a
-> credit to the intermediary and a **debit to an expense of ours** — and there is **no expense
-> `account_kind`**. The live CHECK admits only `customer_credit, bank, external_party, invoice_ar,
-> clearing, other, supplier_payable, cheque_receivable, cheque_payable`. Posting to `other` or
-> `clearing` would use a control account with no Asan code, which blocks the **whole document** from
-> the export (Part 3 rule 2) — silently and permanently. Inventing a kind is forbidden by T13
-> constraint 1. **OG-21 carries the question.**
+**Evidence vs attachments.** The owner's reason for recording slip names is evidentiary: a year later
+the document must stand against a disputed amount. The table already stores transferrer name,
+recipient name, both account numbers, date, tracking number, source bank, destination bank.
+`p_attachment_ids` still raises `0A000` (**P4-C13**, C8, **phase 6**). A document whose purpose is
+evidence and which cannot yet hold the scanned slip is an incomplete answer to that purpose; that is
+context for phase 6, not scope here. No extra slip fields were invented.
 
 ## One amount, not two — D9, owner-confirmed
 
@@ -529,9 +522,9 @@ documents** — one dual for 60 and one ordinary receipt for 40 — never one du
 **D9 is not reopenable.**
 
 Task 4.4's *"unequal amounts raise `P0001`"* is therefore **unreachable through the parameter by
-construction**, which is the point of D9. What remains reachable is an imbalance produced by the fee
-arithmetic, and the balance assertion catches it: `sum(debit)` must equal `sum(credit)` before
-anything is returned, or `P0001`.
+construction**, which is the point of D9. After 362 there is no fee arithmetic either. The balance
+assertion still runs on every path (`sum(debit)` must equal `sum(credit)` or `P0001`) as a
+regression tripwire.
 
 ## `p_description` is mandatory here and optional elsewhere
 

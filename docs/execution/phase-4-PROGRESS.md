@@ -3,19 +3,102 @@
 ## HANDOFF STATE
 
 ```
-Phase:                4 — Dual documents
-Status:               complete — awaiting independent Gate A review
-Branch:               feature/phase-4-dual-documents
-Base:                 staging @ ffda9b42
-Tasks:                7 of 7
-Blocked by:           nothing. OG-21 raised (the intermediary fee); it does not block the phase.
-Migrations applied:   360, 361
-REST restarted after: yes after each
+Phase:                4 — Dual documents (CORRECTED 2026-08-19)
+Status:               complete — awaiting independent Gate A review of the CORRECTED shape
+Branch:               feature/phase-4-dual-document-correction
+Base:                 staging @ ae4b70bb (PR #314 already merged)
+Tasks:                7 of 7 ticked; 4.6 rewritten (old Accept retired)
+Blocked by:           nothing. OG-21 ANSWERED and CLOSED 2026-08-19: no fee exists.
+Migrations applied:   360, 361, 362
+REST restarted after: yes after each, including 362
 Backup taken:         D:\AfraKalaBackups\pre-phase4-20260819-110903.dump (16,887,465 bytes)
-                      Taken BEFORE the first migration.
+                      plus D:\AfraKalaBackups\pre-362-20260819.dump (16,943,637 bytes) before 362
 Typecheck:            70 / 70 baseline
-Stress data:          CLEANED UP INSIDE THIS PHASE. 0 rows left, proved below.
+Stress data:          CLEANED UP INSIDE THIS PHASE. 0 rows left. Correction probes inside BEGIN…ROLLBACK.
 ```
+
+---
+
+## Correction 2026-08-19 — owner overturns C-c (do not delete the original reading)
+
+The owner defined a dual document on 2026-08-19. That definition **supersedes** the C-c reading
+this phase adopted and implemented in 361. The original C-c write-up, the OG-21 options, and the
+task-4.6 Accept that asked for three lines **stay in this file**. A wrong turn recorded is worth
+more than a clean file.
+
+**What a dual document is (owner):** exactly two account holders, both with a file and an Asan
+code. The party who owes us (example: Khan-Mohammadi) and the party we owe (example: Zeinab). We
+give Zeinab's account number to Khan-Mohammadi. The money never enters our account. Doing both
+sides in one document is what makes it dual.
+
+**The two extra names:** whoever appears on the bank slip (the father; Mitra). AfraKala does not
+know them. Optional plain text. Evidentiary — a year later the slip must be reconstructable.
+**صراف / واسط / شخص ثالث / نفر سوم / طرف سوم = that same record-only class.** Never an account
+holder. **There is no fee.**
+
+### §H for migration 362, answered before writing it
+
+1. **What writes or depends on the object?** Only `create_dual_document` writes `dual_documents`.
+   Grep: no frontend caller of the fee parameters. `dual_documents` = **0 rows**. The function was
+   never called outside a rolled-back transaction. Blast radius is genuinely small — unused objects,
+   not a data migration.
+2. **What will read the rows?** Same as 361: export has no `dual_document` branch (C-d/C-e, phase
+   5). Cash views ignore dual documents (correct, T12).
+3. **What does a rule I am inventing permit that it should not?** 362 invents nothing. It removes
+   a rule that does not exist. The remaining tripwire is still `sum(debit)=sum(credit)` with
+   exactly two lines.
+
+**Column names kept, and why.** `transferrer_name` / `transferrer_account_no` /
+`recipient_name` / `recipient_account_no`. They name the two roles in the owner's own example.
+They do not reintroduce صراف, واسط, intermediary, or third_party as a column — that naming is
+what caused OG-21. `intermediary_party_id` and the fee columns were dropped. No FK, no
+`person_id` (T11 + CLAUDE.md rule 9).
+
+**Slip fields vs the owner's list.** Already present: transferrer name, recipient name, both
+account numbers, `document_date`, `tracking_number`, `source_bank`, `destination_bank`. Gap
+reported, not invented: the scanned slip. `p_attachment_ids` still `0A000` (C8, phase 6). A
+document whose purpose is evidence and which cannot yet hold the slip is an incomplete answer;
+phase 6 owns it.
+
+**Migration 362.** `DROP FUNCTION` of the full 18-arg signature, then `CREATE` the 15-arg one.
+`pg_proc` holds exactly one `create_dual_document`. Rollback `docs/verification/362-down.sql`
+written first; dry-run 840 → 840. REST restarted. Persian 22023 messages no longer contain
+`customer` / `supplier` / `external_party`.
+
+Rollback proof:
+
+```
+STATE BEFORE public_functions | 840
+down completed still_in_txn   | t
+STATE AFTER ROLLBACK          | 840
+```
+
+### Owner-example acceptance (real RPC, admin JWT, BEGIN … ROLLBACK)
+
+Payer = customer `ce69632d-…` (owed us). Beneficiary = supplier `26d7b2e9-…` (we owe). Both have
+Asan codes. Admin `1a15e8c6-…`.
+
+```
+A1_named  document DUAL-1405-000052  entry e28e9c52-…
+A1_row    transferrer=پدر خان‌محمدی  recipient=میترا  tracking=CORR-362-A1
+          source=ملت dest=صادرات amount=20000000
+A1_lines  line_count=2  every_line_is_an_account_holder=t
+          debit_sum=20000000 credit_sum=20000000 balanced=t
+A1_kinds  1 supplier_payable / 26d7b2e9-… D20000000
+          2 customer_credit  / ce69632d-… C20000000
+A2_omitted DUAL-1405-000053  (names omitted entirely)
+A2_row    transferrer_null=t recipient_null=t
+A2_lines  2
+A5        sqlstate=42883  18-arg function does not exist
+A5        pg_proc_count=1
+ROLLBACK  dual_documents=0  journal_entries=1  journal_lines=2
+```
+
+Reviewers of 362: Observer PASS (0 rows, DROP full old signature, C-c kept in this file).
+Software Engineer PASS (always two lines; tripwire kept; names optional).
+Security Engineer PASS (grants on the new signature only; no persons FK added).
+
+---
 
 ## Pre-flight
 
@@ -194,7 +277,7 @@ Reviewers: Observer PASS. Software Engineer PASS — "the fee<amount rule is the
 |---|---|---|---|
 | **C-a** | Contract §3 covers the dual document | It has **no transferrer and no recipient** — T11 requires two record-only roles the signature had no fields for | **Signature extended** (this phase was told to). Four parameters, four columns, plain text, **no FK and no `person_id`** — T11 says these people need no file, and rule 9 makes every persons FK a registry obligation. |
 | **C-b** | Debit `supplier_payable`, credit `customer_credit` | Those map to `suppliers`/`customers` **only**; T10 and OG-16 allow either party to be any person. **Exactly phase 3's C1.** | **The account kind is chosen from the party's TYPE**, using only existing mappings — **zero new mappings** (T13 c1). Direction, not kind, makes a party the payer or beneficiary. |
-| **C-c** | T11 (record-only, no code) + 4.6 (third line) + req 207 (code optional) | **Cannot all be true.** A journal line needs a ref the validator accepts. | **Reading adopted and raised as OG-21:** a صراف with a **zero** fee is metadata (T11, 207); a صراف with a **non-zero** fee is a party **we are paying**, so under T10/T3 they need a code. `'us'` is **refused** — no expense `account_kind` exists and inventing one is forbidden. |
+| **C-c** | T11 (record-only, no code) + 4.6 (third line) + req 207 (code optional) | **Cannot all be true.** A journal line needs a ref the validator accepts. | **Reading adopted and raised as OG-21 (kept for the record).** **OVERTURNED by the owner 2026-08-19:** there is no fee. The third-line construct was wrong because the business rule does not exist. Migration 362 removed it. See the Correction section above. |
 | **C-d** | The export handles all three document types | `asan_list_journal_export` has **no `dual_document` branch** — the document gets the plainer label, `description_quality='simple'` | **Recorded, not fixed.** Phase 5 owns the export. |
 | **C-e** | `doc_kind='dual'` makes it a dual document for the export | The export classifies by a **bank-sign heuristic**; a dual document has **no bank line**, so `bank_net=0` → `third_party` or `unclassified` | **Recorded.** `doc_kind` is still written (4.3 requires it, and it is the only non-heuristic signal phase 5 will have). |
 | **C-f** | `mutual_settlements` may fit (checklist 4.2) | A **one-party netting table**; reusing it would break `person_settlement_position` and `post_mutual_settlement` or add meaningless columns | **New `dual_documents` table.** D10 anticipated this. |
@@ -234,8 +317,9 @@ Function-level (migration 361):
  delete guard on a posted dual doc     | P0001 | این سند دوطرفه سند حسابداری ثبت‌شده دارد و حذف نمی‌شود …
 ```
 
-**No English identifier appears in any message** — the defect that shipped in phase 2 (m3) and phase
-3 (M2).
+**No English identifier appears in any message of migration 362.** Migration 361 shipped
+`customer / supplier / external_party` inside two 22023 sentences — the same defect as phase 2
+(m3) and phase 3 (M2). 362 replaced those with مشتری / تأمین‌کننده / طرف بیرونی.
 
 ---
 
@@ -323,7 +407,10 @@ script says so in its header.
 ## OWNER-GATE
 
 ### OG-21 — is a صراف who is paid a fee an account holder?
-**Asked:** 2026-08-19. **Status:** OPEN. **Blocks:** nothing — phase 4 is complete either way.
+**Asked:** 2026-08-19. **Status:** CLOSED 2026-08-19. **Answer:** there is no fee.
+
+The original options (a)/(b)/(c) and the C-c reading are **left below as written**. The owner did
+not pick among them: the premise (that a fee exists) is false.
 
 **The contradiction, measured.** Three documents disagree and cannot all hold:
 
@@ -364,7 +451,7 @@ and drop the parameter value. **Not decided here.**
 git rev-parse --short HEAD:                         see 00-progress.md
 docker exec afrakala-lan-web printenv APP_GIT_SHA:  trails HEAD
 Match:                                              NO
-docker restart afrakala-lan-rest:                   DONE after 360 and after 361
+docker restart afrakala-lan-rest:                   DONE after 360, 361, and 362
 git status --short:                                 clean of programme files; only other missions'
                                                     untracked files remain
 ```
