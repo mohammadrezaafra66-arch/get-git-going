@@ -573,6 +573,11 @@ zero for the route path, because the route is deliberately kept; it is zero for 
 which is what the task was actually closing. Both are shown above rather than reporting the one that
 looks tidier.
 
+> Original acceptance assumed full deletion; owner decision D22 changed this to read-only history.
+> Corrected acceptance: `createPaymentVoucher` count = 0 (PASS); the route path string remaining in
+> registry.ts / primary-modules.ts / DocumentWizard.tsx / routeTree.gen.ts is expected under D22, not
+> a defect.
+
 ---
 
 ## Release-note trailer correction (2026-08-21)

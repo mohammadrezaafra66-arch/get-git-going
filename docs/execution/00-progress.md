@@ -123,7 +123,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 7 OCR | not started | | | | Needs OG-5 (HTTPS) |
 | 8 Integrated verification | not started | | | | |
 | 9 Production | not started | | | | Needs OG-6 |
-| **PV-remediation** — close legacy payment-voucher write path | **Phase 2 PARTIAL — T-2.4 blocked on owner decision; Phase 3 T-3.1–T-3.3 PASS** | 2026-08-21 | | T-3.1 6/6, T-3.2 PASS, T-3.3 4/4; T-3.4/T-3.5 blocked | **Migrations 368 and 369 applied and proven.** 368 drops `payment_vouchers_insert_finance` (direct INSERT now `42501`; `create_payment` unaffected). 369 re-points `vw_account_balances` + `get_account_ledger` at `journal_lines` (a journal-less voucher now moves the figure by 0.00). **T-2.4 is blocked:** `_app.accounting.payment-vouchers.tsx` is the only list of payment vouchers in the app, which bears on execution-document §13 open question 1 — owner must choose full deletion vs read-only history. Separate REMEDIATE mission, not a programme phase. `createPaymentVoucher` inserts with no journal; `vw_account_balances` / `get_account_ledger` never read `journal_lines`. Ground truth `ground-truth.md` §13; decisions **D19/D20/D21**; evidence `payment-voucher-remediation-PROGRESS.md`. **T-0.2 measured 0 legacy rows** — Owner-Gate 8 does not trigger. **T-1.4 zero-diff proven** (old vs journal-derived: diff 0 on every column incl. counts). Next: Phase 2 build — two migrations plus the frontend deletion. |
+| **PV-remediation** — close legacy payment-voucher write path | **Phases 0–2 COMPLETE; Phase 3 T-3.1–T-3.3 PASS, T-3.4/T-3.5 run on the merged tip** | 2026-08-21 | | T-3.1 6/6, T-3.2 PASS, T-3.3 4/4; typecheck 70; build passes | **Migrations 368 and 369 applied and proven.** **T-2.4 resolved by owner decision D22 — read-only history, not deletion**; its original acceptance assumed full deletion and is corrected in `payment-voucher-remediation-PROGRESS.md` next to T-2.4. **Phase 4 (independent Gate A) is a separate dispatch on its own branch and has NOT been started.** 368 drops `payment_vouchers_insert_finance` (direct INSERT now `42501`; `create_payment` unaffected). 369 re-points `vw_account_balances` + `get_account_ledger` at `journal_lines` (a journal-less voucher now moves the figure by 0.00). **T-2.4 is blocked:** `_app.accounting.payment-vouchers.tsx` is the only list of payment vouchers in the app, which bears on execution-document §13 open question 1 — owner must choose full deletion vs read-only history. Separate REMEDIATE mission, not a programme phase. `createPaymentVoucher` inserts with no journal; `vw_account_balances` / `get_account_ledger` never read `journal_lines`. Ground truth `ground-truth.md` §13; decisions **D19/D20/D21**; evidence `payment-voucher-remediation-PROGRESS.md`. **T-0.2 measured 0 legacy rows** — Owner-Gate 8 does not trigger. **T-1.4 zero-diff proven** (old vs journal-derived: diff 0 on every column incl. counts). Next: Phase 2 build — two migrations plus the frontend deletion. |
 
 ## Owner-Gate log
 
@@ -212,6 +212,13 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 364 | 20260819151000_364_reverse_document.sql | OG-14 | 2026-08-19 | docs/verification/364-down.sql | yes |
 | 365 | 20260819160000_365_reverse_document_gate_a.sql | OG-14 Gate A (M2, M3) | 2026-08-19 | docs/verification/365-down.sql | yes |
 | 366 | 20260819170000_366_asan_journal_export_doc_kind.sql | 5 (5.1, 5.2) | 2026-08-19 | docs/verification/366-down.sql | yes |
+| 368 | 20260821120000_368_close_payment_voucher_insert_path.sql | PV-remediation T-2.2 | 2026-08-21 | docs/verification/368-down.sql | yes — dry-run proved before the forward file existed |
+| 369 | 20260821121000_369_ledger_derived_balance_readers.sql | PV-remediation T-2.3 | 2026-08-21 | docs/verification/369-down.sql | yes — dry-run proved; bodies captured verbatim from the live catalogue |
+
+> **367 is missing from this table and that is a pre-existing record defect, not an omission by the
+> PV-remediation mission.** It is live (`asan_list_journal_export` filters, T15) and is recorded in
+> `docs/research/PROGRAMME-AUDIT.md` and `docs/research/DEEP-AUDIT-2.md`. It is left alone here
+> rather than silently back-filled by a mission that did not write it.
 
 Both phase-2 rollback files were written **before** their forward migration and then executed
 (349-down then 348-down, one `BEGIN … ROLLBACK`, exit 0). `348-down` restores a CHECK that is
