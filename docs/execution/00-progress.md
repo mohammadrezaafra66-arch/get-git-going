@@ -8,8 +8,11 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 ```
 Programme:            AfraKala Live Ledger
 Current phase:        6 COMPLETE (wizard UI); 6.7 BLOCKED by OG-4
+                      ACTIVE SIDE-MISSION 2026-08-21: PV-remediation, Phase 0 COMPLETE.
+                      Next: Phase 1 (Decision & Design), documents only.
+                      Resume point for that mission is its row in the Phase status table.
 Current task:         none — do not start phase 7 (OG-5 HTTPS)
-Branch:               feature/phase6-wizard
+Branch:               feature/phase6-wizard  (PV-remediation: feature/close-legacy-payment-voucher-path)
 Last commit SHA:      see git log on staging after this PR merges
 Live APP_GIT_SHA:     pending deploy
 Typecheck:            70 / 70 baseline (D14) — phase 6
@@ -120,6 +123,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 7 OCR | not started | | | | Needs OG-5 (HTTPS) |
 | 8 Integrated verification | not started | | | | |
 | 9 Production | not started | | | | Needs OG-6 |
+| **PV-remediation** — close legacy payment-voucher write path | **Phase 0 complete** | 2026-08-21 | | Phase 0 is read-only; no tests yet | Separate REMEDIATE mission, not a programme phase. `createPaymentVoucher` inserts with no journal; `vw_account_balances` / `get_account_ledger` never read `journal_lines`. Ground truth in `ground-truth.md` §13; evidence in `payment-voucher-remediation-PROGRESS.md`. **T-0.2 measured 0 legacy rows** — Owner-Gate 8 does not trigger. |
 
 ## Owner-Gate log
 
