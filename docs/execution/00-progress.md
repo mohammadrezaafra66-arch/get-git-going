@@ -123,7 +123,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 7 OCR | not started | | | | Needs OG-5 (HTTPS) |
 | 8 Integrated verification | not started | | | | |
 | 9 Production | not started | | | | Needs OG-6 |
-| **PV-remediation** — close legacy payment-voucher write path | **Phase 0 complete** | 2026-08-21 | | Phase 0 is read-only; no tests yet | Separate REMEDIATE mission, not a programme phase. `createPaymentVoucher` inserts with no journal; `vw_account_balances` / `get_account_ledger` never read `journal_lines`. Ground truth in `ground-truth.md` §13; evidence in `payment-voucher-remediation-PROGRESS.md`. **T-0.2 measured 0 legacy rows** — Owner-Gate 8 does not trigger. |
+| **PV-remediation** — close legacy payment-voucher write path | **Phase 1 complete** | 2026-08-21 | | Phase 0–1 are read-only / documents only | Separate REMEDIATE mission, not a programme phase. `createPaymentVoucher` inserts with no journal; `vw_account_balances` / `get_account_ledger` never read `journal_lines`. Ground truth `ground-truth.md` §13; decisions **D19/D20/D21**; evidence `payment-voucher-remediation-PROGRESS.md`. **T-0.2 measured 0 legacy rows** — Owner-Gate 8 does not trigger. **T-1.4 zero-diff proven** (old vs journal-derived: diff 0 on every column incl. counts). Next: Phase 2 build — two migrations plus the frontend deletion. |
 
 ## Owner-Gate log
 

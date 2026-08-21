@@ -241,3 +241,57 @@ followed by its own debit = credit assertion. It posts a real bank line and must
 **Phase 0 exit:** all six tasks PASS. Findings in `ground-truth.md` §13. No code changed.
 
 ---
+
+## Phase 1 — Decision & Design  ✅ COMPLETE
+
+Decisions recorded as **D19**, **D20**, **D21** in `docs/execution/decisions.md`.
+
+### T-1.1 — retirement mechanism  ✅ PASS → D19
+
+Both halves, per the pre-existing **D13** ("form and database — a form-only check is bypassed by a
+direct PostgREST call"). DB half: drop `payment_vouchers_insert_finance`, replace with nothing
+(A4/G6 pattern). Frontend half: full deletion of four named paths. `fetchPaymentVouchers` is kept —
+it only reads and two surviving routes need it.
+
+### T-1.2 — legacy data  ✅ PASS → D20 — no remediation needed
+
+T-0.2 measured `COUNT = 0`. Owner-Gate item 8 does not trigger. Nothing to decide.
+
+### T-1.3 — corrected bodies drafted  ✅ PASS → D21
+
+Two design inputs measured live rather than assumed:
+
+```
+journal lines with account_kind=bank belonging to a cheque-channel receipt = 0
+journal lines with account_kind=bank belonging to a cheque-channel voucher = 0
+
+bank lines total = 6
+bank lines whose account_ref_id is NOT a bank_accounts id = 0
+```
+
+The first pair proves reading from the ledger cannot reintroduce the OG-18 / 359 cheque defect: a
+cheque never posts to `account_kind='bank'`. The second proves `account_ref_id` is a sound join key.
+
+The reversal predicate is copied from the live `asan_list_journal_export` (367 / T15), not invented.
+
+### T-1.4 — zero-diff proof  ✅ PASS — difference is 0 on every column
+
+Old (live view) vs new (proposed journal-derived formula), run side by side in one rolled-back
+transaction:
+
+```
+account 12
+    total_in        OLD=10225000000.00  NEW=10225000000.00  diff=0.00
+    total_out       OLD=36000000        NEW=36000000        diff=0
+    current_balance OLD=10289000000.00  NEW=10289000000.00  diff=0.00
+    in_count        OLD=3               NEW=3
+    out_count       OLD=1               NEW=1
+```
+
+Every legitimately-posted document produces an identical figure under both formulas. The counts
+match too, which is the stricter test — it proves the 367 reversal predicate excludes the
+OG14-CONC pair exactly as the old `reversed_at IS NULL` filter did.
+
+**Phase 1 exit:** D19, D20, D21 recorded; zero-diff proven. No migration written yet.
+
+---
