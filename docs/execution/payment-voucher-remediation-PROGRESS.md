@@ -574,3 +574,15 @@ which is what the task was actually closing. Both are shown above rather than re
 looks tidier.
 
 ---
+
+## Release-note trailer correction (2026-08-21)
+
+Commit `cd3922be` ("feat(ledger): migrations 368-369 …") shipped without a `Release-note-fa:`
+trailer. It should have carried one: migration 369 changes what a user sees in the bank account
+ledger — the `document_number` column now shows the minted `RCP-`/`PAY-` number instead of the
+tracking number. Per AGENTS.md, a commit that changes anything a user can see must carry the
+trailer, and commits without one are not published.
+
+History is not rewritten to fix this — no rebase, no force-push. This follow-up commit carries the
+trailer instead, with the wording already used on the frontend commit `fba9874d`.
+
