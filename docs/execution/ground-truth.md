@@ -223,3 +223,216 @@ used against production data in phase 9.
 | Q3 | Should a cheque post on receipt or on clearing? | Safe default D7 in `decisions.md` |
 | Q4 | Will the `other` account kind ever be defined? | `UNKNOWN`, deferred |
 | Q5 | Does production ledger state match test? | `UNKNOWN` — production not contacted; phase 9 |
+
+---
+
+## 13. Payment-voucher remediation — Phase 0 ground truth (2026-08-21)
+
+Established for the mission "close the legacy payment-voucher write path and fix the ledger-detached
+balance readers". Read-only. Every claim below is a pasted command result, not a reading of intent.
+
+### 13.1 (T-0.1) Every reader of the three objects
+
+`vw_account_balances` has **zero** direct references in `src/`. The UI reaches it through one RPC.
+
+**Acceptance command and its real output:**
+
+```
+$ git grep -c "vw_account_balances\|get_account_ledger" -- src/
+src/lib/treasury/queries.ts:1
+```
+
+One file, one line — `src/lib/treasury/queries.ts:93`, the `get_account_ledger` call. Matched 1:1
+against the list below.
+
+**The reader chain, corrected.** The mission scope names `vw_account_balances` and
+`get_account_ledger`. The object the UI actually calls for balances is a third one:
+
+| Layer | Object | Evidence |
+|---|---|---|
+| UI | `fetchAccountBalances` | `src/lib/treasury/queries.ts:62` |
+| RPC | **`get_account_balances`** | `src/lib/treasury/queries.ts:66` |
+| View | `vw_account_balances` | `get_account_balances` body contains `FROM public.vw_account_balances v` |
+| UI | `fetchAccountLedger` | `src/lib/treasury/queries.ts:88` |
+| RPC | `get_account_ledger` | `src/lib/treasury/queries.ts:93` |
+
+`get_account_balances` reads the view and nothing else, so correcting the view corrects the displayed
+figure. **No change to `get_account_balances` is required**, but it must be named in any acceptance
+probe, because it — not the view — is what the browser calls.
+
+**SQL objects whose body references any of the three** (`pg_proc` sweep, `public` schema):
+
+```
+asan_list_journal_export          [payment_vouchers]
+create_payment                    [payment_vouchers, vw_account_balances, get_account_ledger]
+create_receipt                    [vw_account_balances, get_account_ledger]
+get_account_balances              [vw_account_balances]
+get_account_ledger                [payment_vouchers]
+pay_purchase_with_voucher         [payment_vouchers]
+person_fk_drift_report            [payment_vouchers]
+person_merge                      [payment_vouchers]
+reverse_document                  [payment_vouchers]
+validate_document_attachment_ref  [payment_vouchers]
+```
+
+The `vw_account_balances` / `get_account_ledger` hits inside `create_payment` and `create_receipt`
+are **comment-only** (migration 359's explanatory notes), not code paths.
+
+**Views referencing `payment_vouchers`:** `vw_account_balances` — that one only.
+
+**`src/` references to `payment_vouchers`:**
+
+```
+src/integrations/supabase/types.ts:9306,9321,9351,9380   generated types + comments
+src/lib/treasury/queries.ts:131                          SELECT  (fetchPaymentVouchers)
+src/lib/treasury/queries.ts:195                          INSERT  (createPaymentVoucher — the defect)
+src/lib/treasury/queries.ts:246                          comment
+src/routes/_app.accounting.purchase-payments.tsx:115     comment
+```
+
+**Routes that display `current_balance`:** `_app.accounting.treasury.tsx:80,205,208,213,216`,
+`_app.accounting.payment-vouchers.tsx:382`, `_app.accounting.purchase-payments.tsx:528`,
+`_app.accounting.mutual-settlement.tsx:332`. All four go through `fetchAccountBalances`.
+
+### 13.2 (T-0.2) Legacy-path data on the test database — **COUNT = 0**
+
+```sql
+SELECT count(*) FROM payment_vouchers pv
+WHERE NOT EXISTS (SELECT 1 FROM journal_entries je
+                  WHERE je.source_type='payment_voucher' AND je.source_id=pv.id);
+```
+
+```
+COUNT = 0
+DETAIL ROWS:
+(0 rows)
+
+payment_vouchers total = 1
+with journal entry     = 1
+```
+
+G7 is resolved: **no voucher created by the raw-insert path exists.** The single live voucher
+(`PAY-1405-000052`) has its journal entry. Owner-Gate item 8 (section ۹) therefore **does not
+trigger**, and T-1.2 records "no existing-data remediation needed".
+
+### 13.3 (T-0.3) Live bodies captured before redesign
+
+Both full bodies are captured verbatim in
+`docs/execution/payment-voucher-remediation-PROGRESS.md` §T-0.3. Confirmed live:
+
+```
+vw_account_balances references journal_lines: false
+get_account_ledger  references journal_lines: false
+```
+
+**`vw_account_balances` shape.** Two CTEs over the source tables, then arithmetic:
+
+- `inflow`  ← `payment_receipts` WHERE `destination_bank_account_id IS NOT NULL` AND `status='approved'` AND `document_channel IS DISTINCT FROM 'cheque'` AND `reversed_at IS NULL`
+- `outflow` ← `payment_vouchers` WHERE `status='approved'` AND `document_channel IS DISTINCT FROM 'cheque'` AND `reversed_at IS NULL`
+- `current_balance = ba.opening_balance + total_in − total_out`
+- whole thing wrapped in `WHERE NOT is_viewer_only(uid())`
+
+**`get_account_ledger` shape.** `STABLE SECURITY DEFINER`, role-gated to admin/manager/accountant.
+Returns **per-document detail** the journal does not carry in the same shape:
+`document_number`, `counterparty`, `document_channel`, `description`, plus a windowed
+`running_balance` seeded from `opening_balance` plus all approved movement before `p_from_date`.
+Both legs (`in` from receipts, `out` from vouchers) carry the same three filters as the view.
+
+**Design consequence, recorded now so Phase 1 cannot forget it:** re-pointing the *view* at
+`journal_lines` is a small, closed change. Re-pointing *`get_account_ledger`* is not — the journal
+holds no `document_number` (that lives in `document_numbers`), no `document_channel` (source table
+only), and its counterparty is an `account_ref_id` that must be resolved per `account_kind`. This is
+§13's third open question and it is real.
+
+### 13.4 (T-0.4) RLS and grants on `payment_vouchers`
+
+```
+RLS enabled = true | forced = false
+
+payment_vouchers_delete_admin   | DELETE | USING  has_role(uid(),'admin')
+payment_vouchers_insert_finance | INSERT | CHECK  has_any_role(uid(), ARRAY['admin','accountant'])
+payment_vouchers_select_finance | SELECT | USING  has_any_role(uid(), ARRAY['admin','manager','accountant'])
+payment_vouchers_update_finance | UPDATE | USING/CHECK has_any_role(uid(), ARRAY['admin','accountant'])
+```
+
+**Which roles bypass the RPC today:** a logged-in **`admin`** or **`accountant`** can `INSERT`
+straight into `payment_vouchers` through PostgREST, with no journal entry, because
+`payment_vouchers_insert_finance` permits it. `manager` cannot insert (it is absent from that
+policy) although the page is offered to managers by the navigation gate — a pre-existing mismatch,
+noted, not this mission's target.
+
+**Table grants — a finding the mission's section ۱۰ predicted:**
+
+```
+anon           : DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+authenticated  : DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+postgres       : …  service_role : …  supabase_admin : …
+```
+
+`anon` holds a full table-level grant. RLS is enabled, and every policy tests
+`has_any_role(uid(), …)` which is false for an anonymous caller, so no row passes today — the grant
+is not currently exploitable. It is still the exact ACL shape section ۱۰ names as the failure point
+of two prior missions, and T-2.2 must leave it verified.
+
+**`relforcerowsecurity = false`** — the table owner bypasses RLS entirely. This is what makes the
+A4/G6 pattern work: dropping the INSERT policy does **not** disable the `SECURITY DEFINER` writers.
+
+### 13.5 (T-0.5) What "retire" meant for D12 — frontend-only
+
+```
+$ git show --name-status e7dc789
+D  src/shared/components/PaymentReceiptForm.tsx
+M  src/lib/treasury/queries.ts        ← comment text only; createPaymentVoucher untouched
+M  src/lib/navigation/registry.ts
+A  src/features/ledger-wizard/*  (7 files)
+A  docs/verification/phase6-accept.sql
+…  no supabase/migrations/ file in this commit
+```
+
+**Answer: frontend-only.** `PaymentReceiptForm.tsx` was removed by full deletion, not deprecated in
+place. **No DB-level guard accompanied it**, and the commit did not touch `createPaymentVoucher` or
+`_app.accounting.payment-vouchers.tsx`. G5 confirmed, commit `e7dc789`.
+
+This is precisely why this mission cannot copy D12 wholesale: mirroring its *deletion* style is
+right, mirroring its *frontend-only scope* would leave the PostgREST path in §13.4 wide open.
+
+### 13.6 (T-0.6) Every writer of `payment_vouchers`
+
+Three, and **no forgotten fourth**:
+
+| Writer | Kind | Posts a journal entry? |
+|---|---|---|
+| `create_payment` | `SECURITY DEFINER` RPC | yes — the intended path |
+| `pay_purchase_with_voucher` | `SECURITY DEFINER` RPC | **yes — reconfirmed here, not assumed** |
+| `createPaymentVoucher` | PostgREST insert from `src/` | **no — the defect** |
+
+`reverse_document` updates existing rows; `person_merge` and `person_fk_drift_report` touch the
+person FK; `validate_document_attachment_ref` and `asan_list_journal_export` only read.
+
+**`pay_purchase_with_voucher` posts a real bank line** — from its live body:
+
+```
+(_journal_id, 1, 'supplier_payable', _purchase.supplier_id,      _amt, 0, _debit_desc),
+(_journal_id, 2, 'bank',             _source_bank_account_id,    0, _amt, 'خروج وجه از حساب بانکی');
+```
+
+followed by its own debit = credit assertion. It is correct and must stay working after T-2.2.
+
+**All three writers are `SECURITY DEFINER`:**
+
+```
+create_payment            : prosecdef=true
+pay_purchase_with_voucher : prosecdef=true
+reverse_document          : prosecdef=true
+```
+
+Combined with `relforcerowsecurity=false`, this is the proof that T-2.2's policy change closes the
+raw path **without** breaking any legitimate writer.
+
+### 13.7 Open questions added by this phase
+
+| # | Question | Status |
+|---|---|---|
+| Q6 | Can `get_account_ledger` reproduce `document_number`, `document_channel` and `counterparty` from `journal_lines` alone? | `UNKNOWN` — T-1.3 must answer before T-2.3 is written. §13.3 shows it cannot do so trivially |
+| Q7 | Should the `anon` table grant on `payment_vouchers` be revoked as part of T-2.2? | `UNKNOWN` — not currently exploitable (RLS holds); mission section ۱۰ asks for it to be verified, not necessarily changed |
+| Q8 | `manager` is offered the payment-vouchers page by navigation but cannot INSERT under RLS | Pre-existing mismatch; moot once the page is deleted, recorded for completeness |
