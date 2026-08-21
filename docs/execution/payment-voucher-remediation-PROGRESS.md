@@ -437,3 +437,90 @@ by a Safe Default.
 independent of it.
 
 ---
+
+## Phase 3 — Test / Self-Test / Red-Team / Verify  🟡 PARTIAL (T-3.1 – T-3.3 PASS; T-3.4/T-3.5 blocked on T-2.4)
+
+### T-3.1 — happy-path regression, all six document types  ✅ 6/6 PASS
+
+Each created through the real RPC inside one `BEGIN … ROLLBACK`, measuring
+`vw_account_balances.current_balance` before and after:
+
+```
+1_bank_receipt        expect +1000000  actual  1000000.00   PASS
+2_cheque_receipt      expect        0  actual        0.00   PASS
+3_bank_payment        expect -3000000  actual -3000000.00   PASS
+4_own_cheque_payment  expect        0  actual        0.00   PASS
+5_endorsed_cheque     expect        0  actual        0.00   PASS
+6_dual_document       expect        0  actual        0.00   PASS
+```
+
+Rows 2, 4 and 5 are the OG-18 / migration-359 behaviour: a cheque must not move the bank figure.
+It still does not — now because a cheque never posts to `account_kind='bank'`, rather than because
+a `document_channel` label says so.
+
+### T-3.2 — red-team: try to recreate the original defect  ✅ PASS
+
+```
+A_direct_insert_redteam       42501 :: new row violates row-level security policy for table "payment_vouchers"
+A2_update_path                UPDATE allowed but matched 0 rows — UPDATE cannot create a voucher, only alter one
+B_pay_purchase_with_voucher   INVOKED on a real purchase.
+                              ledger bank net delta = -1000000.00
+                              view current_balance delta = -1000000.00
+                              PASS — still posts a real bank line, and the new reader sees it
+```
+
+`A2` is an addition to the specified steps: having closed INSERT, the obvious next attack is to
+smuggle a voucher in through the UPDATE policy, which is still open to admin and accountant. It
+cannot — `UPDATE` alters existing rows and creates none.
+
+`B` was invoked for real on one of the 101 unpaid purchases, not inferred from its body. The second
+legitimate writer is neither stranded by 368 nor invisible to 369.
+
+### T-3.3 — concurrency and malformed input  ✅ 4/4 PASS
+
+```
+C_fractional_amount   22023 :: مبلغ پرداخت باید عدد صحیح (تومان) باشد
+D_missing_tracking    22023 :: شمارهٔ پیگیری برای پرداخت بانکی الزامی است
+E_non_finance_role    42501 :: اجازهٔ ثبت سند پرداخت را ندارید
+```
+
+Concurrency, two real sessions against the same document type:
+
+```
+A got: PAY-1405-000053
+B got: PAY-1405-000053     Time: 3021.757 ms
+```
+
+Session B blocked for 3,021 ms — the remainder of session A's five-second advisory lock — then
+minted. Both report the same number because A rolled back and released the serial; only one could
+ever commit, and `UNIQUE (doc_type, serial)` is the backstop. The pre-existing idempotency mechanism
+is re-confirmed intact; neither 368 nor 369 touched numbering.
+
+### T-3.4 / T-3.5  ⛔ BLOCKED
+
+Both require T-2.4 merged. Not started.
+
+### Database left as found
+
+```
+                     before (2026-08-20)   after all probes
+journal_entries              7                     7
+journal_lines               14                    14
+payment_receipts            10                    10
+payment_vouchers             1                     1
+dual_documents               1                     1
+document_numbers           159                   159
+document_attachments         0                     0
+payment_receipt_links        3                     3
+audit_logs               43509                 43514
+```
+
+Every ledger table is unchanged. `audit_logs` gained five rows, and they are **not from this
+mission**: all five are dated 2026-08-21 10:34–10:37 UTC from actor `8ff55610` — a person creating a
+person and a customer through the UI — which predates this session's first probe at roughly 11:10
+UTC. The shared test database is in ordinary daily use, which is itself a fact phase 8 needs.
+
+Object changes made deliberately by this mission: one RLS policy dropped (368), one view and one
+function replaced (369). Both have proved rollback files.
+
+---
