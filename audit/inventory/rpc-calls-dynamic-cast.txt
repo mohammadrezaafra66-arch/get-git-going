@@ -1,0 +1,7 @@
+﻿create_sales_quote_with_items
+calculate_customer_realtime_credit
+get_my_rejected_quotes
+set_gamification_sales_source
+upsert_staff_daily_performance_metric
+set_quote_accounting_marker
+get_recent_purchase_labels

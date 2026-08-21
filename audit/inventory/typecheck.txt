@@ -1,0 +1,126 @@
+---
+pid: 34004
+cwd: "d:\\AfraKalaTest\\app"
+command: "npm run typecheck"
+title: "Run read-only TypeScript typecheck"
+status: failed   
+started_at: 2026-08-17T14:48:06.345Z
+running_for_ms: 134442   
+---
+
+> typecheck
+> tsc --noEmit
+
+src/lib/accounting/functions.ts(16,34): error TS2307: Cannot find module '@/integrations/supabase/server' or its corresponding type declarations.
+src/lib/accounting/functions.ts(53,15): error TS2345: Argument of type '({ next }: { next: any; }) => Promise<any>' is not assignable to parameter of type 'readonly (AnyRequestMiddleware | AnyFunctionMiddleware | AnyServerFn)[]'.
+src/lib/accounting/functions.ts(53,24): error TS7031: Binding element 'next' implicitly has an 'any' type.
+src/lib/accounting/functions.ts(74,47): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+src/lib/accounting/functions.ts(80,28): error TS2349: This expression is not callable.
+  Type 'FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { academy_courses: { Row: { created_at: string; created_by: string | null; description: string | null; id: string; is_published: boolean; title: string; updated_at: string; }; Insert: { ...; }; Up...' has no call signatures.
+src/lib/accounting/functions.ts(157,15): error TS2345: Argument of type '({ next }: { next: any; }) => Promise<any>' is not assignable to parameter of type 'readonly (AnyRequestMiddleware | AnyFunctionMiddleware | AnyServerFn)[]'.
+src/lib/accounting/functions.ts(157,24): error TS7031: Binding element 'next' implicitly has an 'any' type.
+src/lib/accounting/functions.ts(178,47): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+src/lib/accounting/functions.ts(184,28): error TS2349: This expression is not callable.
+  Type 'FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { academy_courses: { Row: { created_at: string; created_by: string | null; description: string | null; id: string; is_published: boolean; title: string; updated_at: string; }; Insert: { ...; }; Up...' has no call signatures.
+src/lib/accounting/functions.ts(219,15): error TS2345: Argument of type '({ next }: { next: any; }) => Promise<any>' is not assignable to parameter of type 'readonly (AnyRequestMiddleware | AnyFunctionMiddleware | AnyServerFn)[]'.
+src/lib/accounting/functions.ts(219,24): error TS7031: Binding element 'next' implicitly has an 'any' type.
+src/lib/accounting/functions.ts(233,12): error TS2345: Argument of type '(paymentId: string) => Promise<{ success: true; }>' is not assignable to parameter of type 'ServerFn<Register, "POST", unknown, undefined, Promise<{ success: true; }>, true>'.
+  Types of parameters 'paymentId' and 'ctx' are incompatible.
+    Type 'ServerFnCtx<Register, "POST", unknown, undefined>' is not assignable to type 'string'.
+src/lib/accounting/functions.ts(240,28): error TS2349: This expression is not callable.
+  Type 'FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { academy_courses: { Row: { created_at: string; created_by: string | null; description: string | null; id: string; is_published: boolean; title: string; updated_at: string; }; Insert: { ...; }; Up...' has no call signatures.
+src/lib/audit/index.ts(16,34): error TS2307: Cannot find module '@/integrations/supabase/server' or its corresponding type declarations.
+src/lib/audit/index.ts(27,21): error TS2554: Expected 2-3 arguments, but got 1.
+src/lib/audit/index.ts(47,21): error TS2554: Expected 2-3 arguments, but got 1.
+src/lib/audit/index.ts(142,26): error TS7006: Parameter 'log' implicitly has an 'any' type.
+src/lib/audit/index.ts(161,35): error TS7006: Parameter 'log' implicitly has an 'any' type.
+src/lib/audit/index.ts(197,34): error TS7006: Parameter 'log' implicitly has an 'any' type.
+src/lib/invoices/functions.ts(17,34): error TS2307: Cannot find module '@/integrations/supabase/server' or its corresponding type declarations.
+src/lib/invoices/functions.ts(76,15): error TS2345: Argument of type '({ next }: { next: any; }) => Promise<any>' is not assignable to parameter of type 'readonly (AnyRequestMiddleware | AnyFunctionMiddleware | AnyServerFn)[]'.
+src/lib/invoices/functions.ts(76,24): error TS7031: Binding element 'next' implicitly has an 'any' type.
+src/lib/invoices/functions.ts(97,47): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+src/lib/invoices/functions.ts(103,28): error TS2349: This expression is not callable.
+  Type 'FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { academy_courses: { Row: { created_at: string; created_by: string | null; description: string | null; id: string; is_published: boolean; title: string; updated_at: string; }; Insert: { ...; }; Up...' has no call signatures.
+src/lib/invoices/functions.ts(170,15): error TS2345: Argument of type '({ next }: { next: any; }) => Promise<any>' is not assignable to parameter of type 'readonly (AnyRequestMiddleware | AnyFunctionMiddleware | AnyServerFn)[]'.
+src/lib/invoices/functions.ts(170,24): error TS7031: Binding element 'next' implicitly has an 'any' type.
+src/lib/invoices/functions.ts(191,47): error TS2339: Property 'errors' does not exist on type 'ZodError<unknown>'.
+src/lib/invoices/functions.ts(197,28): error TS2349: This expression is not callable.
+  Type 'FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { academy_courses: { Row: { created_at: string; created_by: string | null; description: string | null; id: string; is_published: boolean; title: string; updated_at: string; }; Insert: { ...; }; Up...' has no call signatures.
+src/lib/invoices/functions.ts(245,15): error TS2345: Argument of type '({ next }: { next: any; }) => Promise<any>' is not assignable to parameter of type 'readonly (AnyRequestMiddleware | AnyFunctionMiddleware | AnyServerFn)[]'.
+src/lib/invoices/functions.ts(245,24): error TS7031: Binding element 'next' implicitly has an 'any' type.
+src/lib/invoices/functions.ts(259,12): error TS2345: Argument of type '(invoiceId: string) => Promise<{ success: true; }>' is not assignable to parameter of type 'ServerFn<Register, "POST", unknown, undefined, Promise<{ success: true; }>, true>'.
+  Types of parameters 'invoiceId' and 'ctx' are incompatible.
+    Type 'ServerFnCtx<Register, "POST", unknown, undefined>' is not assignable to type 'string'.
+src/lib/invoices/functions.ts(266,28): error TS2349: This expression is not callable.
+  Type 'FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { academy_courses: { Row: { created_at: string; created_by: string | null; description: string | null; id: string; is_published: boolean; title: string; updated_at: string; }; Insert: { ...; }; Up...' has no call signatures.
+src/routes/_app.admin.automation.tsx(95,28): error TS2367: This comparison appears to be unintentional because the types 'false | undefined' and 'true' have no overlap.
+src/routes/_app.admin.automation.tsx(106,26): error TS2367: This comparison appears to be unintentional because the types 'false | undefined' and 'true' have no overlap.
+src/routes/_app.admin.automation.tsx(124,11): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"automation_jobs"' is not assignable to parameter of type '"profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"'.
+  Overload 2 of 2, '(relation: "publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"automation_jobs"' is not assignable to parameter of type '"publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"'.
+src/routes/_app.admin.automation.tsx(126,9): error TS2345: Argument of type '"job_type"' is not assignable to parameter of type 'never'.
+src/routes/_app.admin.automation.tsx(135,15): error TS2352: Conversion of type 'SelectQueryError<"column 'id' does not exist on 'profiles'."> | SelectQueryError<"column 'id' does not exist on 'academy_courses'."> | ... 190 more ... | SelectQueryError<...>' to type 'TorobTableRow | null' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'SelectQueryError<"column 'id' does not exist on 'waybill_number_counter'.">' is not comparable to type 'TorobTableRow | null'.
+src/routes/_app.admin.sales-reminders.tsx(59,15): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"'.
+  Overload 2 of 2, '(relation: "publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"'.
+src/routes/_app.admin.sales-reminders.tsx(64,14): error TS2352: Conversion of type '(SelectQueryError<"column 'id' does not exist on 'profiles'."> | SelectQueryError<"column 'id' does not exist on 'academy_courses'."> | ... 190 more ... | SelectQueryError<...>)[]' to type 'Reminder[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+  Type 'SelectQueryError<"column 'id' does not exist on 'profiles'."> | SelectQueryError<"column 'id' does not exist on 'academy_courses'."> | ... 190 more ... | SelectQueryError<...>' is not comparable to type 'Reminder'.
+    Type '{ error: true; } & String' is missing the following properties from type 'Reminder': id, text, sort_order, is_active, created_at
+src/routes/_app.admin.sales-reminders.tsx(95,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"'.
+  Overload 2 of 2, '(relation: "publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"'.
+src/routes/_app.admin.sales-reminders.tsx(97,13): error TS2322: Type 'string' is not assignable to type 'never'.
+src/routes/_app.admin.sales-reminders.tsx(98,13): error TS2322: Type 'number' is not assignable to type 'never'.
+src/routes/_app.admin.sales-reminders.tsx(99,13): error TS2322: Type 'boolean' is not assignable to type 'never'.
+src/routes/_app.admin.sales-reminders.tsx(100,13): error TS2322: Type 'string' is not assignable to type 'never'.
+src/routes/_app.admin.sales-reminders.tsx(102,15): error TS2345: Argument of type '"id"' is not assignable to parameter of type 'never'.
+src/routes/_app.admin.sales-reminders.tsx(107,17): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"'.
+  Overload 2 of 2, '(relation: "publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"'.
+src/routes/_app.admin.sales-reminders.tsx(123,13): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"'.
+  Overload 2 of 2, '(relation: "publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"'.
+src/routes/_app.admin.sales-reminders.tsx(124,17): error TS2322: Type 'boolean' is not assignable to type 'never'.
+src/routes/_app.admin.sales-reminders.tsx(124,42): error TS2322: Type 'string' is not assignable to type 'never'.
+src/routes/_app.admin.sales-reminders.tsx(125,11): error TS2345: Argument of type '"id"' is not assignable to parameter of type 'never'.
+src/routes/_app.admin.sales-reminders.tsx(135,43): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(relation: "profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"profiles" | "academy_courses" | "academy_quizzes" | "academy_lessons" | "messenger_groups" | "penalty_appeals" | "asan_import_batches" | "persons" | "products" | "bot_api_keys" | ... 182 more ... | "waybill_number_counter"'.
+  Overload 2 of 2, '(relation: "publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"): PostgrestQueryBuilder<...>', gave the following error.
+    Argument of type '"sales_reminders"' is not assignable to parameter of type '"publish_recipients_view" | "effective_currencies_view" | "vw_customer_receivables" | "v_promotion_suggestions" | "v_latest_active_purchase_prices" | "vw_purchase_float" | ... 7 more ... | "v_pricing_recompute_queue_summary"'.
+src/routes/_app.admin.sales-reminders.tsx(135,74): error TS2345: Argument of type '"id"' is not assignable to parameter of type 'never'.
+src/routes/_app.products.index.tsx(219,43): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/routes/_app.products.index.tsx(220,66): error TS7006: Parameter 'l' implicitly has an 'any' type.
+src/routes/_app.products.index.tsx(315,60): error TS7006: Parameter 'r' implicitly has an 'any' type.
+src/routes/_app.products.index.tsx(576,66): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/routes/_app.products.index.tsx(643,46): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/routes/_app.products.index.tsx(643,49): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/routes/_app.products.index.tsx(673,46): error TS7006: Parameter 'l' implicitly has an 'any' type.
+src/routes/_app.products.index.tsx(694,28): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"iranian" | "foreign", string>'.
+src/routes/_app.products.index.tsx(699,43): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"available" | "unavailable" | "limited" | "unknown", "default" | "destructive" | "outline" | "secondary">'.
+src/routes/_app.products.index.tsx(700,30): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"available" | "unavailable" | "limited" | "unknown", string>'.
+src/routes/_app.products.index.tsx(714,43): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"active" | "inactive" | "discontinued", "default" | "destructive" | "outline" | "secondary">'.
+src/routes/_app.products.index.tsx(715,30): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"active" | "inactive" | "discontinued", string>'.
+src/routes/_app.products.index.tsx(777,38): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/routes/_app.products.index.tsx(810,39): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"active" | "inactive" | "discontinued", "default" | "destructive" | "outline" | "secondary">'.
+src/routes/_app.products.index.tsx(811,26): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"active" | "inactive" | "discontinued", string>'.
+src/routes/_app.products.index.tsx(825,24): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"iranian" | "foreign", string>'.
+src/routes/_app.products.index.tsx(832,39): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"available" | "unavailable" | "limited" | "unknown", "default" | "destructive" | "outline" | "secondary">'.
+src/routes/_app.products.index.tsx(833,26): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"available" | "unavailable" | "limited" | "unknown", string>'.
+
+---
+exit_code: 2
+elapsed_ms: 134442
+ended_at: 2026-08-17T14:50:20.787Z
+---

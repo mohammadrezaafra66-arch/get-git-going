@@ -1,0 +1,47 @@
+﻿cache-buster.ts:184:console.warn(`[cache-buster] Dev/preview import failed (attempt ${count}): ${reason}`);
+cache-buster.ts:204:console.warn(`[cache-buster] DEV mode — skipping hard reload: ${reason}`);
+cache-buster.ts:212:console.error(
+cache-buster.ts:219:console.warn(`[cache-buster] Hard reloading (attempt ${count}): ${reason}`);
+market-rates-ingestion.functions.ts:251:console.error("[market-rates] insert failed:", recErr.message);
+market-rates-ingestion.functions.ts:281:console.error(`[market-rates] ${code} failed:`, msg);
+receipt-ocr-bytes.functions.ts:68:console.error("[ocr-bytes] role check failed:", roleErr.message);
+receipt-ocr.functions.ts:78:console.error("[ocr] role check failed:", roleErr.message);
+receipt-ocr.functions.ts:95:console.error("[ocr] document lookup failed:", docErr.message);
+receipt-ocr.functions.ts:108:console.error("[ocr] signed URL failed:", signErr?.message ?? "no URL");
+api.public.bot.market-matches.candidates.upsert.ts:232:console.error("[bot-market-matches] upsert error:", error.message);
+api.public.bot.market-matches.resolve.ts:150:console.error("[bot-market-matches] resolve error:", error.message);
+index.tsx:24:console.error("[index] auth check failed", err);
+login.tsx:42:console.error("[login] beforeLoad auth check failed", err);
+login.tsx:133:console.error("[login] copy diagnostics failed", err);
+pending-approval.tsx:27:console.error("[pending-approval] beforeLoad auth check failed", err);
+register.tsx:28:console.error("[register] beforeLoad auth check failed", err);
+register.tsx:133:console.warn("[register] failed to save dynamic fields", e);
+_app.academy_.$courseId_.$lessonId.tsx:79:if (aErr) console.warn("audit insert failed:", aErr);
+_app.academy_.manage.tsx:101:if (error) console.warn("audit insert failed:", error);
+_app.admin.automation.tsx:131:console.warn("[automation] latest job lookup failed", error.message);
+_app.api-keys.tsx:146:if (error) console.error("audit log insert failed:", error.message);
+_app.bot-api-keys.docs.tsx:1496:console.log(p.sku, "→", p.name, p.prices[0]?.amount);
+_app.bot-api-keys.docs.tsx:1502:syncAll(process.env.LAST_SYNC).catch(console.error);
+_app.feedback_.$feedbackId.tsx:145:console.error(e);
+_app.feedback_.create.tsx:66:console.error(e);
+_app.knowledge_.$documentId.tsx:86:if (aErr) console.warn("audit insert failed:", aErr);
+_app.knowledge_.manage.tsx:110:if (aErr) console.warn("audit insert failed:", aErr);
+_app.knowledge_.manage.tsx:153:if (aErr) console.warn("audit insert failed:", aErr);
+_app.operations.api-keys.tsx:131:if (error) console.error("audit insert failed:", error.message);
+_app.pricing.recompute-prices.tsx:99:console.error("[ui] process queue failed", e);
+_app.pricing.sale-lists_.$listId.publish.tsx:135:if (aErr) console.warn("audit insert failed:", aErr);
+_app.pricing.sale-lists_.$listId.tsx:669:console.warn(
+_app.pricing.sale-lists_.$listId.tsx:699:console.warn("fetch live prices for PDF failed; using snapshot", err);
+_app.pricing.sale-lists_.$listId.tsx:712:console.warn(
+_app.pricing.sale-lists_.$listId.tsx:732:console.warn("fetch USD rate for PDF failed; PDF will omit rate", err);
+_app.pricing.sale-lists_.$listId.tsx:746:console.error(e);
+_app.pricing.sale-lists_.$listId.tsx:885:console.error(e);
+_app.products.$id.tsx:388:console.warn("[product-history] log failed", logErr);
+_app.sales.search.tsx:470:console.warn(
+_app.tsx:82:console.error("[_app] beforeLoad auth check failed", err);
+_app.tsx:131:console.error("[auth] copy diagnostics failed", error);
+__root.tsx:44:console.error(error);
+__root.tsx:238:"(function(){try{var g=globalThis;var c=g.crypto;function mk(src){return function(){var b=new Uint8Array(16);if(src&&typeof src.getRandomValues==='function'){try{src.getRandomValues(b);}catch(e){for(var i=0;i<16;i++)b[i]=Math.floor(Math.random()*256);}}else{for(var i=0;i<16;i++)b[i]=Math.floor(Math.random()*256);}b[6]=(b[6]&0x0f)|0x40;b[8]=(b[8]&0x3f)|0x80;var h=[];for(var i=0;i<16;i++)h.push(b[i].toString(16).padStart(2,'0'));return h.slice(0,4).join('')+'-'+h.slice(4,6).join('')+'-'+h.slice(6,8).join('')+'-'+h.slice(8,10).join('')+'-'+h.slice(10,16).join('');};}if(c&&typeof c.randomUUID==='function'){try{c.randomUUID();return;}catch(e){}}var patched=mk(c);if(c){try{c.randomUUID=patched;return;}catch(e){}try{Object.defineProperty(g,'crypto',{configurable:true,value:{getRandomValues:c.getRandomValues?c.getRandomValues.bind(c):function(b){for(var i=0;i<b.length;i++)b[i]=Math.floor(Math.random()*256);return b;},subtle:c.subtle,randomUUID:patched}});}catch(e){}return;}try{Object.defineProperty(g,'crypto',{configurable:true,value:{getRandomValues:function(b){for(var i=0;i<b.length;i++)b[i]=Math.floor(Math.random()*256);return b;},randomUUID:patched}});}catch(e){}}catch(e){try{console.warn('[crypto-uuid] polyfill install failed',e);}catch(_){}}try{console.debug('[crypto-uuid] ready',typeof crypto!=='undefined'&&typeof crypto.randomUUID);}catch(_){}})();",
+bot-api.ts:84:console.error("[bot-api] rate-limit check failed:", error.message);
+bot-api.ts:245:console.error("[bot-api] unmapped error message:", msg);
+bot-api.ts:324:if (error) console.error("[bot-api] usage log failed:", error.message);

@@ -1,0 +1,7 @@
+eslint src (no --fix) 2026-08-17
+exit 1
+1133 problems (706 errors, 427 warnings)
+700 errors and 10 warnings potentially fixable with --fix (NOT run)
+
+Full-repo `npx eslint .` hung >7min with no output (likely scanning node_modules/.output); killed PID 10272.
+See agent-tools capture; not copied in full (246 KB).

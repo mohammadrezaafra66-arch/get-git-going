@@ -1,0 +1,17 @@
+ai_provider_health
+ai_providers
+ai_usage_routes
+automation_jobs
+automation_modules
+category_required_services
+delivery
+marketing_task_templates
+messenger
+ocr_receipts
+payments
+person_merge_candidates
+product
+promotion_nominations
+purchase
+sales_quote_item_services
+sales_reminders

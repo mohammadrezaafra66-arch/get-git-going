@@ -1,0 +1,6 @@
+cancel_promotion_nomination
+complete_marketing_task
+generate_marketing_tasks
+get_promotion_nomination_quota
+get_task_kpi_report
+nominate_product_for_promotion
