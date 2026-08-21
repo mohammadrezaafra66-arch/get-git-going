@@ -8,9 +8,12 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 ```
 Programme:            AfraKala Live Ledger
 Current phase:        6 COMPLETE (wizard UI); 6.7 BLOCKED by OG-4
-                      ACTIVE SIDE-MISSION 2026-08-21: PV-remediation, Phase 0 COMPLETE.
-                      Next: Phase 1 (Decision & Design), documents only.
-                      Resume point for that mission is its row in the Phase status table.
+                      SIDE-MISSION 2026-08-21: PV-remediation — phases 0-3 COMPLETE,
+                      merged as PR #328 (merge commit 5b65f60). Phase 4 (independent
+                      Gate A) NOT started; it is a separate dispatch on its own branch.
+                      ONE REMAINING MANUAL STEP: the test web image was not rebuilt.
+                      See T-3.5 below — the database carries 368/369 while the deployed
+                      image does not carry the frontend change.
 Current task:         none — do not start phase 7 (OG-5 HTTPS)
 Branch:               feature/phase6-wizard  (PV-remediation: feature/close-legacy-payment-voucher-path)
 Last commit SHA:      see git log on staging after this PR merges
@@ -123,7 +126,47 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | 7 OCR | not started | | | | Needs OG-5 (HTTPS) |
 | 8 Integrated verification | not started | | | | |
 | 9 Production | not started | | | | Needs OG-6 |
-| **PV-remediation** — close legacy payment-voucher write path | **Phases 0–2 COMPLETE; Phase 3 T-3.1–T-3.3 PASS, T-3.4/T-3.5 run on the merged tip** | 2026-08-21 | | T-3.1 6/6, T-3.2 PASS, T-3.3 4/4; typecheck 70; build passes | **Migrations 368 and 369 applied and proven.** **T-2.4 resolved by owner decision D22 — read-only history, not deletion**; its original acceptance assumed full deletion and is corrected in `payment-voucher-remediation-PROGRESS.md` next to T-2.4. **Phase 4 (independent Gate A) is a separate dispatch on its own branch and has NOT been started.** 368 drops `payment_vouchers_insert_finance` (direct INSERT now `42501`; `create_payment` unaffected). 369 re-points `vw_account_balances` + `get_account_ledger` at `journal_lines` (a journal-less voucher now moves the figure by 0.00). **T-2.4 is blocked:** `_app.accounting.payment-vouchers.tsx` is the only list of payment vouchers in the app, which bears on execution-document §13 open question 1 — owner must choose full deletion vs read-only history. Separate REMEDIATE mission, not a programme phase. `createPaymentVoucher` inserts with no journal; `vw_account_balances` / `get_account_ledger` never read `journal_lines`. Ground truth `ground-truth.md` §13; decisions **D19/D20/D21**; evidence `payment-voucher-remediation-PROGRESS.md`. **T-0.2 measured 0 legacy rows** — Owner-Gate 8 does not trigger. **T-1.4 zero-diff proven** (old vs journal-derived: diff 0 on every column incl. counts). Next: Phase 2 build — two migrations plus the frontend deletion. |
+| **PV-remediation** — close legacy payment-voucher write path | **Phases 0–3 COMPLETE.** Phase 4 NOT started | 2026-08-21 | 2026-08-21 | T-3.1 6/6; T-3.2 PASS; T-3.3 4/4; T-3.4 PASS; **T-3.5 not run — see below** | Separate REMEDIATE mission, not a programme phase. Merged as **PR #328**, merge commit **`5b65f60`**. Migrations **368** (drops `payment_vouchers_insert_finance`; direct INSERT now `42501`, `create_payment` unaffected) and **369** (`vw_account_balances` + `get_account_ledger` read `journal_lines`; a journal-less voucher moves the figure by `0.00`). **T-2.4 resolved by owner decision D22 — read-only history, not deletion**, because the page is the only list of payment vouchers in the app; its original acceptance assumed full deletion and is corrected in `payment-voucher-remediation-PROGRESS.md` next to T-2.4. Ground truth `ground-truth.md` §13; decisions **D19–D22**. **T-0.2 measured 0 legacy rows** — Owner-Gate 8 never triggered. **T-1.4 zero-diff proven** before either migration was written. Deferred items in `deferred.md`. |
+
+### PV-remediation T-3.4 / T-3.5 (2026-08-21)
+
+**T-3.4 — PASS.** On the merged tip (`staging` @ `5b65f60`, confirmed equal to `origin/staging`):
+
+- `npm run typecheck` → **70**, the D14 baseline.
+- CI's failing `Staging Check` was pulled and compared set-by-set against the recorded baseline, not
+  by count: **70 unique errors, identical sets**, and **zero errors in either file this mission
+  touched** (`src/routes/_app.accounting.payment-vouchers.tsx`, `src/lib/treasury/queries.ts`). That
+  comparison mattered here in a way it does not for a docs-only PR, because this branch did change
+  TypeScript.
+- **Boundary Guard: pass** on the merged PR #328.
+- Drift: `git diff --name-only e1fd2ce6 origin/staging` → exactly **11 files**, every one of them
+  this mission's. Nothing outside scope.
+
+**T-3.5 — NOT RUN. Remaining manual step for the owner.**
+
+The shared working tree was not clean: **8 untracked entries, none created by this mission** —
+`audit/`, `scratch/`, `docs/audits/7-eg-checklist-mission.md`, and
+`docs/research/_a_frontend.md` … `_e_export_sql.md`. This mission's own paths were fully committed.
+`deploy/lan/build.ps1` (lines 61-67) refuses to build a dirty tree, and **`-Force` was not used** —
+the same decision recorded for the earlier deploy attempt in this file.
+
+**The consequence is live and worth stating plainly.** The migrations were applied directly to the
+test database, so `192.168.170.8:3100` is currently in a split state:
+
+```
+APP_GIT_SHA on afrakala-lan-web : 477c0eda   (the phase-6 wizard merge)
+staging tip                     : 5b65f608
+
+database, right now:
+  INSERT policies on payment_vouchers      = 0      (368 live)
+  vw_account_balances reads journal_lines  = true   (369 live)
+  get_account_ledger  reads journal_lines  = true   (369 live)
+```
+
+The deployed UI still shows the «سند پرداخت جدید» button on `/accounting/payment-vouchers`, while the
+write path behind it is closed. A user who fills that form gets **`42501`** on submit. This is the
+ordinary migrations-ahead-of-code window, but it is user-visible, so it is recorded here rather than
+left to be discovered. It closes as soon as the tree is clean and the `web` service is rebuilt.
 
 ## Owner-Gate log
 
