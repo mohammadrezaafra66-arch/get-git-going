@@ -137,9 +137,11 @@ the policy therefore closes the raw path **without** touching any legitimate wri
 - remove `src/lib/navigation/registry.ts:481` (route entry) and `:1215` (role gate)
 - remove `src/components/layout/primary-modules.ts:142`
 
-`fetchPaymentVouchers` (`queries.ts:124`) is **kept** — it only reads, and
-`_app.accounting.purchase-payments.tsx` and `_app.accounting.treasury.tsx` still need the list.
-*Overturned by:* nothing.
+`fetchPaymentVouchers` (`queries.ts:124`) is **kept** — it only reads.
+*Overturned by:* **D22, in its frontend half only.** The database half stands exactly as written and
+is applied as migration 368. (Correction to this entry: it claimed
+`_app.accounting.purchase-payments.tsx` needs the voucher list. It does not — it never calls
+`fetchPaymentVouchers`. The page itself is the only consumer, which is precisely what forced D22.)
 
 ## D20 — No existing-data remediation is needed (2026-08-21)
 T-0.2 measured it rather than assuming it:
@@ -250,4 +252,33 @@ The old body returns `pr.tracking_number` as `document_number` for an inflow and
 (`RCP-…` / `PAY-…`). That is a correction, not a regression — but it is user-visible, and T-2.3's
 acceptance must show the before/after per row, not only the balance.
 
+*Overturned by:* nothing.
+
+## D22 — The payment-voucher page survives as read-only history (owner, 2026-08-21)
+Overrides D19's frontend half. D19 specified full deletion, mirroring D12. Phase 2 then measured
+something D19 did not know: `_app.accounting.payment-vouchers.tsx` is not only the create form, it is
+the **only** list of payment vouchers in the application — شماره سند / تاریخ / دریافت‌کننده / نوع /
+کانال / از حساب / مبلغ / چک, fed by `fetchPaymentVouchers`. No other route renders it;
+`_app.accounting.treasury.tsx` only links to it and `_app.accounting.purchase-payments.tsx` does not
+call it at all.
+
+That makes this case unlike D12. There, the wizard **replaced** the deleted form's function. Here,
+deleting the page would remove the only view of a payment document — including the one the wizard has
+just created, since `DocumentWizard.tsx:294` navigates there on success. Execution-document §13 open
+question ۱ named this exact fork and made it the owner's. **Owner chose read-only history.**
+
+**What was removed:** `createPaymentVoucher` and `CreateVoucherInput` from
+`src/lib/treasury/queries.ts`; and from the page, the create dialog, its mutation, its form state,
+the four queries that only fed it (`accountsQ`, `suppliersQ`, `partiesQ`, `customersQ`), the
+`PayeePicker` component, the header's create button, and the now-unused imports.
+
+**What was kept, deliberately:** the page, its route, its date filters, its table, both
+`registry.ts` entries and the `primary-modules.ts` entry. Keeping the route means the wizard's
+success navigation and the treasury link keep working with no edit to either — the two references
+the execution document's T-2.4 scope list did not name.
+
+**Why this is not a weaker outcome than deletion.** The write path is closed in the database by 368,
+not by the absence of a form. A restored form could not create a voucher; it would raise `42501`.
+The page's empty-state copy now says a payment document is created in the wizard and appears here
+afterwards.
 *Overturned by:* nothing.

@@ -524,3 +524,53 @@ Object changes made deliberately by this mission: one RLS policy dropped (368), 
 function replaced (369). Both have proved rollback files.
 
 ---
+
+## T-2.4 — remove the frontend legacy path  ✅ PASS (read-only variant, D22)
+
+Owner answered execution-document §13 open question ۱ on 2026-08-21: **read-only history**, not full
+deletion. Recorded as **D22**; D19's frontend half is overturned, its database half stands.
+
+**Removed**
+
+| Where | What |
+|---|---|
+| `src/lib/treasury/queries.ts` | `createPaymentVoucher` and `CreateVoucherInput` — replaced by a comment naming 368 and D19 so the next reader is not tempted to restore it |
+| `_app.accounting.payment-vouchers.tsx` | the create `<Dialog>`, its `useMutation`, `FormState`/`EMPTY`, the `open`/`form` state, `canCreate`, the header's create button, the `PayeePicker` component, and the four queries that only fed the form (`accountsQ`, `suppliersQ`, `partiesQ`, `customersQ`) |
+| same file | imports left unused by the above: `useMutation`, `useQueryClient`, `toast`, `supabase`, `useAuth`, `Plus`, `Wallet`, `Input`, `Textarea`, all `Dialog*`, all `Select*`, `ACCOUNT_TYPE_FA` |
+
+**Kept, deliberately:** the page, its route, the date filters, the table, both `registry.ts` entries
+and `primary-modules.ts:142`. Keeping the route is what leaves `DocumentWizard.tsx:294` and
+`treasury.tsx:105` working untouched — the two references T-2.4's scope list did not name.
+
+The empty-state copy changed from «… یک سند پرداخت بسازید» to «سند پرداخت از «ثبت سند» در ویزارد
+ساخته می‌شود و پس از ثبت اینجا دیده می‌شود.» — the old wording told the user to do something the page
+no longer offers.
+
+The file went from 577 lines to 170.
+
+**Acceptance**
+
+```
+$ git grep -n "export async function createPaymentVoucher\|createPaymentVoucher(" -- src/
+NONE — the function is gone; only the removal note remains
+
+$ git grep -c "createPaymentVoucher\|_app.accounting.payment-vouchers" -- src/
+src/lib/treasury/queries.ts:1     ← the removal comment
+src/routeTree.gen.ts:1            ← generated, and correct: the route still exists
+
+$ npx tsc --noEmit | grep -c "error TS"
+70                                ← unchanged baseline (D14)
+
+$ npm run build
+✔ built
+
+$ npx eslint <the two touched files>
+exit 0
+```
+
+The specified acceptance was `git grep -c … -> 0`. Under D22 the correct expected value is **not**
+zero for the route path, because the route is deliberately kept; it is zero for the **function**,
+which is what the task was actually closing. Both are shown above rather than reporting the one that
+looks tidier.
+
+---

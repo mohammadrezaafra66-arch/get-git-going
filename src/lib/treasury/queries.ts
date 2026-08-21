@@ -170,52 +170,15 @@ export function voucherPayeeLabel(v: PaymentVoucher): string {
   return v.supplier_name ?? v.party_name ?? v.customer_name ?? v.payee_name ?? "—";
 }
 
-export type CreateVoucherInput = {
-  amount: number;
-  paymentDate: string;
-  payeeType: PayeeType;
-  payeeSupplierId?: string | null;
-  payeePartyId?: string | null;
-  payeeCustomerId?: string | null;
-  payeeName?: string | null;
-  documentChannel: string;
-  sourceBankAccountId: string;
-  trackingNumber?: string | null;
-  chequeNumber?: string | null;
-  chequeDueDate?: string | null;
-  description?: string | null;
-};
-
-export async function createPaymentVoucher(
-  input: CreateVoucherInput,
-  createdBy: string,
-): Promise<string> {
-  const isCheque = input.documentChannel === "cheque";
-  const { data, error } = await supabase
-    .from("payment_vouchers")
-    .insert({
-      amount: input.amount,
-      payment_date: input.paymentDate,
-      payee_type: input.payeeType,
-      // The DB CHECK requires exactly the id matching payee_type, so null the rest.
-      payee_supplier_id: input.payeeType === "supplier" ? input.payeeSupplierId : null,
-      payee_party_id: input.payeeType === "external_party" ? input.payeePartyId : null,
-      payee_customer_id: input.payeeType === "customer" ? input.payeeCustomerId : null,
-      payee_name: input.payeeType === "other" ? input.payeeName?.trim() || null : null,
-      document_channel: input.documentChannel,
-      source_bank_account_id: input.sourceBankAccountId,
-      tracking_number: input.trackingNumber?.trim() || null,
-      cheque_number: isCheque ? input.chequeNumber?.trim() || null : null,
-      cheque_due_date: isCheque ? input.chequeDueDate || null : null,
-      description: input.description?.trim() || null,
-      status: "approved",
-      created_by: createdBy,
-    } as never)
-    .select("id")
-    .single();
-  if (error) throw error;
-  return (data as { id: string }).id;
-}
+// REMOVED 2026-08-21 — `createPaymentVoucher` and its `CreateVoucherInput`.
+//
+// It inserted straight into `payment_vouchers` with status='approved' and wrote no journal
+// entry, so the row moved the bank balance a user sees while being absent from the ledger and
+// from every Asan export. Migration 368 dropped `payment_vouchers_insert_finance`, so that
+// insert now fails with 42501 no matter who calls it; this function is removed so nothing in
+// the app tries. A payment document is created by `create_payment` only, through the wizard.
+// D19 / decisions.md. The read path below is deliberately kept — the payment-vouchers page is
+// the only place a payment document can be viewed.
 
 export type ExternalPartyOption = {
   id: string;
