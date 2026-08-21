@@ -295,3 +295,145 @@ OG14-CONC pair exactly as the old `reversed_at IS NULL` filter did.
 **Phase 1 exit:** D19, D20, D21 recorded; zero-diff proven. No migration written yet.
 
 ---
+
+## Phase 2 — Build  🟡 PARTIAL (T-2.1 – T-2.3 done; T-2.4 blocked on an owner decision)
+
+### T-2.1 — backup  ✅ PASS
+
+```
+$ ls -la /d/AfraKalaBackups/pre-pv-remediation-20260821-161257.dump
+-rw-r--r-- 1 AFRA 197121 16958227 Aug 21 16:13 pre-pv-remediation-20260821-161257.dump
+
+$ pg_restore -l  →  TOC Entries: 5052
+```
+
+Real file, 16,958,227 bytes, valid custom-format archive.
+
+### T-2.2 — migration 368, close the direct-INSERT path  ✅ PASS
+
+Next free number taken from **both** sources before naming: local tree max `367`, `origin/staging`
+max `367`, no untracked migration files. → **368**.
+
+Down file written first and dry-run proved **before** the forward migration existed:
+
+```
+>>>> STATE BEFORE (outside any transaction) | 841 | f
+DROP POLICY / CREATE POLICY
+>>>> down file completed; still inside the transaction | still_in_txn = t
+ROLLBACK
+>>>> STATE AFTER ROLLBACK — must equal STATE BEFORE | 841
+```
+
+Forward migration applied, gate passed:
+
+```
+SET / DROP POLICY
+NOTICE:  368: direct INSERT path closed. 0 INSERT policies, 3 SECURITY DEFINER writers intact,
+         3 other policies untouched.
+DO
+exit=0
+```
+
+**Acceptance — as role `authenticated` with an admin JWT, inside `BEGIN … ROLLBACK`:**
+
+```
+A1_direct_insert
+    42501 :: new row violates row-level security policy for table "payment_vouchers"
+A2_create_payment_rpc
+    STILL SUCCEEDS -> PAY-1405-000053  | journal entries for it = 1
+
+INSERT policies remaining on payment_vouchers: <NONE — path closed>
+```
+
+Definition of Success item ۱ is met: only `create_payment` can create a payment document.
+
+### T-2.3 — migration 369, ledger-derived readers  ✅ PASS
+
+Down file assembled from `pg_get_viewdef()` / `pg_get_functiondef()` output pasted verbatim — the
+original bodies were never retyped, so the rollback cannot drift from what was replaced. Dry-run:
+
+```
+CREATE VIEW / CREATE FUNCTION
+still_in_txn = t
+STATE AFTER ROLLBACK 841  =  STATE BEFORE 841
+```
+
+Forward migration applied, gate passed:
+
+```
+NOTICE:  369: both balance readers now derive from journal_lines, with the 367 reversal predicate.
+```
+
+**Acceptance, both halves, one rolled-back transaction:**
+
+```
+STEP0_baseline                current_balance = 10289000000.00
+
+STEP1_posted_receipt          receipt RCP-1405-000056 for 7,777,000
+                              balance 10289000000.00 -> 10296777000.00   delta=7777000.00
+                              ledger bank net (opening excluded) = 10196777000.00
+                              view = opening + ledger net -> 10296777000.00   MATCHES view: true
+
+STEP2_journal_less_voucher    inserted voucher for 500,000,000 with 0 journal entries
+                              balance 10296777000.00 -> 10296777000.00   delta=0.00
+                              VERDICT: figure did NOT move — defect closed at the reader
+```
+
+Step 2 is the direct proof the defect is closed at the **reader**, not only at the writer: a
+journal-less voucher inserted as the table owner — exactly what the legacy path used to produce —
+now moves nothing.
+
+**`get_account_ledger` after 369**, live data:
+
+```
+in  | 2026-07-25 | docnum=<null>           | مشتری آزمایشی 17 | channel=<empty> | 10100000000.00 | running=10200000000.00
+in  | 2026-08-19 | docnum=RCP-1405-000054  | مشتری آزمایشی 20 | channel=<empty> |   120000000    | running=10320000000.00
+in  | 2026-08-20 | docnum=RCP-1405-000055  | مشتری آزمایشی 8  | channel=<empty> |     5000000    | running=10325000000.00
+out | 2026-08-20 | docnum=PAY-1405-000052  | مشتری آزمایشی 8  | channel=other   |    36000000    | running=10289000000.00
+```
+
+The closing `running_balance` is **10,289,000,000** — identical to `vw_account_balances.current_balance`.
+Two independent readers of the same money now agree, which is the reconciliation the deep audit
+recommended. The July seed shows `docnum=<null>` because it predates document numbering; the
+`RCP-`/`PAY-` numbers are the D21 correction replacing `tracking_number`/`voucher_number`.
+
+### T-2.4 — remove the frontend legacy path  ⛔ BLOCKED — Owner decision required
+
+**Shared-tree gate (section ۹ item ۷) checked first, as required:**
+
+```
+$ git status --short -- <the four paths>
+CLEAN — 0 uncommitted changes on the four paths. Gate not triggered.
+pre-task SHA for rollback: 14078e416a9efc09a1bc3cb3eb2ea7d9dca37ba1
+```
+
+The gate did not trigger. T-2.4 is blocked by a **different** finding, recorded here rather than
+decided: see the note below and `deferred.md`.
+
+**Two references the execution document's scope list does not name:**
+
+```
+src/features/ledger-wizard/DocumentWizard.tsx:294  await navigate({ to: "/accounting/payment-vouchers" });
+src/routes/_app.accounting.treasury.tsx:105        <Link to="/accounting/payment-vouchers">
+src/routeTree.gen.ts                                13 generated references
+```
+
+**And the fact that changes the decision:** `_app.accounting.payment-vouchers.tsx` (577 lines) is not
+only the create form. It is the **only** list of payment vouchers in the application — a full table
+of شماره سند / تاریخ / دریافت‌کننده / نوع / کانال / از حساب / مبلغ / چک, fed by `fetchPaymentVouchers`.
+No other route renders that list; `treasury.tsx` only links to it and `purchase-payments.tsx` does
+not call it.
+
+Full deletion therefore removes the only place a user can see a payment document — including the one
+the wizard has just created, which is where the wizard navigates on success. That is materially
+different from D12, where the wizard **replaced** the deleted form's function.
+
+Execution document §13 open question ۱ pre-declares this exact fork and its condition: *"If the
+read-only-history variant is wanted instead, T-2.4 must be rewritten before Phase 2 starts."* The
+new evidence bears directly on it, so the question goes back to the owner rather than being settled
+by a Safe Default.
+
+**Everything not depending on that answer has been completed** — 368 and 369 are applied, proven and
+independent of it.
+
+---

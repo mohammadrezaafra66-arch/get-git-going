@@ -71,3 +71,28 @@ owner action** — the rules forbid an agent force-pushing.
 ## Production data repair
 Supplier links and Asan codes on production data (phase 9.6) is owner work, not agent work. Only the
 owner knows which supplier a purchase came from and what a person's Asan code is.
+
+## The `anon` table grant is universal, not a `payment_vouchers` property
+Found while closing the legacy payment-voucher write path (2026-08-21). `payment_vouchers` grants
+`anon` the full set — `DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE`. It is not
+special: **216 of this database's 224 public tables carry the same grant**, which is the Supabase
+default. RLS is enabled on the table and every policy tests `has_any_role(auth.uid(), …)`, which is
+false for an anonymous caller, so no row passes today.
+
+Narrowing one table would be cosmetic and would leave 215 others. The real question — should this
+project revoke the default `anon` grants across the schema, and what breaks if it does — is a
+project-wide ACL posture decision, not a payment-voucher defect. Migration 368 therefore left the
+grant untouched and said so in its header.
+
+## `manager` is offered the payment-voucher page but cannot write to it
+Navigation gates `/accounting/payment-vouchers` to `["admin","manager","accountant"]`
+(`src/lib/navigation/registry.ts:1215`) while `payment_vouchers_insert_finance` admitted only
+`admin` and `accountant`. A manager could open the page and be refused on submit. Pre-existing, and
+moot once the create form is gone — recorded only so it is not rediscovered as new.
+
+## `get_account_ledger` and `get_account_balances` carry PUBLIC and `anon` EXECUTE
+Both show `=X/supabase_admin` plus `anon=X`. Pre-existing, and harmless in practice because both
+functions role-gate internally and raise `42501` for anyone outside admin/manager/accountant.
+`CREATE OR REPLACE` in migration 369 preserved the existing ACL rather than widening it. Whether the
+project wants EXECUTE narrowed on role-gated `SECURITY DEFINER` functions belongs with the item
+above.
