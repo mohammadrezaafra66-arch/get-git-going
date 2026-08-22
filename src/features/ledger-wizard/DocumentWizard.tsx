@@ -200,7 +200,20 @@ export function DocumentWizard() {
       if (channel === "cheque") {
         if (branch === "payment" && chequeKind === "endorsed")
           return Boolean(endorsedId) && Boolean(accountId);
-        return Boolean(chequeNumber) && Boolean(chequeDue) && Boolean(time) && Boolean(accountId);
+        // The account requirement follows the RPC, and the two RPCs differ.
+        // create_receipt REFUSES a destination account on the cheque branch
+        // («برای چک، حساب مقصد ثبت نمی‌شود؛ چک پس از وصول به حساب می‌نشیند») and
+        // this wizard's own submit already sends null for it. create_payment
+        // requires a source account for every channel, unconditionally.
+        // Requiring it here for a receipt asked for a value no control renders,
+        // so the step could never be satisfied and, being a disabled button
+        // rather than a failed validation, said nothing (phase-6 Gate A, P6-B1).
+        return (
+          Boolean(chequeNumber) &&
+          Boolean(chequeDue) &&
+          Boolean(time) &&
+          (branch !== "payment" || Boolean(accountId))
+        );
       }
       return true;
     }
