@@ -5,13 +5,13 @@
  * the agreed source is the person file, because the journal, the Asan export and
  * create_receipt's own payer_name already use it.
  *
- * No submit, no export download.
+ * No submit. No export download — that button assigns real Asan numbers.
  */
 import { expect, test } from "@playwright/test";
 
 import { gotoApp, saveEvidence } from "../helpers/app";
 
-// Two live receipts whose customers.name and persons.display_name diverge.
+/** Two live receipts whose customers.name and persons.display_name diverge. */
 const CASES = [
   { tracking: "12364", person: "شخص آزمایشی 23", legacy: "مشتری آزمایشی 20" },
   { tracking: "65656565", person: "شخص آزمایشی 2", legacy: "مشتری آزمایشی 8" },
@@ -25,25 +25,20 @@ test("receipts list shows the person-file name, the same one the Asan export sho
 
   const table = page.locator("table");
   await expect(table).toBeVisible();
-  const body = await page.locator("body").innerText();
-  console.log("=== receipts list, first 600 chars of the table area ===");
-  console.log((await table.innerText()).slice(0, 600));
+  const tableText = await table.innerText();
+  console.log(["=== receipts list, table text ===", tableText.slice(0, 700)].join("\n"));
   await saveEvidence(page, testInfo, "P4-receipts-list");
 
+  // The list renders Persian digits, so match on the party name rather than the
+  // tracking number. Each case asserts the person-file name is present and the
+  // legacy customers.name for that same row is absent from the whole table.
   for (const c of CASES) {
-    const row = page.locator("tr", { hasText: c.tracking }).first();
-    if ((await row.count()) === 0) {
-      console.log(`tracking ${c.tracking} not on page 1 of the list — skipped`);
-      continue;
-    }
-    const text = await row.innerText();
-    console.log(`row[${c.tracking}]: ${text.replace(/\n/g, " | ")}`);
-    expect(text).toContain(c.person);
-    expect(text).not.toContain(c.legacy);
+    expect(tableText).toContain(c.person);
+    expect(tableText).not.toContain(c.legacy);
   }
 
-  // the list must not have silently failed: an unresolved embed returns no rows
-  expect(body).not.toContain("خطا");
+  // An unresolved PostgREST embed would return no rows at all; prove rows rendered.
+  expect(await page.locator("table tbody tr").count()).toBeGreaterThan(0);
 });
 
 test("the Asan export preview names the same parties", async ({ page }, testInfo) => {
@@ -61,7 +56,7 @@ test("the Asan export preview names the same parties", async ({ page }, testInfo
   const panel = page.getByTestId("asan-export-preview");
   await expect(panel).toBeVisible();
   const text = await panel.innerText();
-  console.log("=== export preview ===\n" + text);
+  console.log(["=== export preview ===", text].join("\n"));
   await saveEvidence(page, testInfo, "P4-export-preview");
 
   for (const c of CASES) expect(text).toContain(c.person);
