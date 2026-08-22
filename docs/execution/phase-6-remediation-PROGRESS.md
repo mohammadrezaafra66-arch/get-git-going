@@ -313,3 +313,92 @@ date would require submitting, which this mission may not do. **Recorded for the
 
 Worth noting in the fix's favour: the only reason this was visible at all is that the
 review screen now shows the cheque due date. Before this mission it showed neither.
+
+---
+
+## Final independent review — PASS, and it found a defect I had introduced
+
+It ran every mandated gate itself (`tsc` 70; the repo's own `e2e/phase6/wizard.spec.ts` 3/3, no
+regression; both acceptance suites; `0` migration files in the diff), queried PostgREST directly
+to prove `customers.name` still holds its legacy values on all 22 diverging rows, and instrumented
+hydration with a `MutationObserver` to prove the wizard never flashes for `sales` (42 samples, wizard
+count always 0) and that a legitimate admin never sees a false denial (`checking -> wizard`, deny
+hits `0`).
+
+### The defect it found in my own work — fixed
+
+**The review screen confirmed a tracking number that `submit()` throws away.** Changing channel does
+not clear `tracking`, and the line I added in phase 3 rendered it unconditionally. So: bank branch →
+type a tracking number → back twice → cheque → the review screen confirms it, while
+`p_tracking_number` goes out as `null`, and one step earlier the same wizard says «شماره پیگیری بانکی
+برای چک پرسیده نمی‌شود». Two screens contradicting each other on the last page before money is
+committed — the exact class this phase existed to close, reintroduced by its own fix.
+
+The review line now mirrors `submit()` (`branch === "dual" || channel === "bank"`), with a regression
+test:
+
+```
+stale-tracking review:
+  نوع: دریافت / نحوه: چکی
+  مبلغ: ۱٬۵۰۰٬۰۰۰ تومان
+  تاریخ: ۱۰ مهر ۱۴۰۵
+  شمارهٔ چک: CHQ-STALE-1
+  تاریخ سررسید چک: ۱۰ مهر ۱۴۰۵
+  ✓ STALE-TRK-777 absent
+```
+
+### The second defect it found — fixed
+
+**A failed role load was reported as a permission denial.** `session.ts` has a timeout branch that
+leaves `roles` empty with `rolesLoading` false and `rolesError` set. My check read only `roles` and
+`rolesLoading`, so an **admin** whose role load timed out would be told «دسترسی ندارید… فقط برای مدیر
+کل، حسابدار و مدیر است» — a confident, wrong diagnosis that sends them to the wrong person for help.
+The shared guard already distinguishes the two; now this check does as well, with a separate message
+saying the failure is not about their access.
+
+### What it changed in the Owner-Gate
+
+It declined to let OG-24 close with the wording I gave it, because that wording **named no remedy**.
+Fair. OG-24 now names one: lift the hand-written check into a shared `<RequireRoles>` wrapper or a
+`useRoleGate` hook — the same ~15 lines, generalised — applied in `_app`, covering all 150 routes
+instead of one. Whether a single `_app`-level application works in this TanStack Start version is
+unproven and is the first task of that mission, not a reason to defer again.
+
+Its judgement on the deferral, which I accept in full: **sound decision, unsound justification.**
+Deferring a 150-route refactor out of a four-file remediation is correct scoping — the blast radius
+is real, RLS is the actual boundary, and the copied pattern is idiomatic here. What was not correct
+was arguing for it by refuting a fix nobody proposed, and then leaving `/accounting/receipts` — a
+route this same mission edited — fail-open one directory from the route it hardened.
+
+### Its process finding, which is mine
+
+I briefed it that `24c1e188` was the last commit touching `src/`. `99e62ad4` landed while it was
+reviewing, and it caught the discrepancy the hard way: a probe rendered `شمارهٔ چک: CHQ-STALE-1`, a
+string absent from the source it had just read. It re-ran every gate at the final HEAD. **This is the
+second time I gave a reviewer a stale SHA.** A reviewer who trusted either brief would have reviewed
+source that did not match the binary.
+
+### Corrections it made to my own reporting
+
+- The filter `remediation-accept` matches **both** spec files, so the "13 passed" I reported includes
+  p4's 2. The main spec is 11 tests, now 14 with the two regressions added above.
+- Guard counts are 62 / 74 / 16, not 62 / 73 / 15. The union — ~150 route files — is what the
+  argument rests on and is agreed.
+
+### What it could not verify, added to the list below
+
+- `manager` reaching the wizard — same missing session.
+- The `customer_person_id IS NULL` fallback — zero such rows exist, so that branch has never run.
+- That `create_receipt` accepts a cheque-receipt payload end to end. **Nothing submits, by design.**
+  The verified claim is "reaches the review screen", not "records successfully".
+- The deployed `APP_GIT_SHA` from the browser — there is no such marker in the served HTML and no
+  health endpoint it could find, so it inferred the version from behaviour. (`/api/version` does
+  exist and returns it; the reviewer did not find that endpoint.)
+
+### One defect it raised that I did NOT fix
+
+`formatDateFa` renders the previous day for any viewer west of UTC — measured Tehran `۳۱ مرداد ۱۴۰۵`,
+New York and Honolulu `۳۰ مرداد ۱۴۰۵`. It is a pre-existing shared helper used across the product and
+this mission is what put it on the review screen. Fixing it there changes every date in the app,
+which is the same blast-radius argument that kept me out of the shared route guard. **The submitted
+value is correct; only the display is off, and only outside Iran.** Recorded for the owner.

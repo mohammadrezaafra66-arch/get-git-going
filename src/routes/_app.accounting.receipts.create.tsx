@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_app/accounting/receipts/create")({
 });
 
 function CreateReceiptPage() {
-  const { roles, rolesLoading } = useAuth();
+  const { roles, rolesLoading, rolesError } = useAuth();
 
   // Phase-6 Gate A, P6-B2. `beforeLoad` alone does not hold on a full page load.
   // Measured on 2026-08-22 with a session whose only role is `sales`:
@@ -47,6 +47,20 @@ function CreateReceiptPage() {
     // Hold, never render. A wizard shown while the answer is unknown is the
     // failure this check exists to prevent.
     return <div className="p-6 text-muted-foreground">در حال بررسی دسترسی…</div>;
+  }
+
+  // A failed role load leaves `roles` empty with `rolesLoading` false, which would
+  // otherwise be reported to the user as «دسترسی ندارید» — a confident, wrong
+  // diagnosis that sends an admin to the wrong person for help. The shared guard
+  // already distinguishes these two; this check must too. Raised by the final
+  // independent review.
+  if (rolesError) {
+    return (
+      <div className="p-6 text-destructive" data-testid="create-roles-error">
+        بارگذاری نقش‌های شما ناموفق بود، بنابراین دسترسی قابل بررسی نیست. صفحه را دوباره بارگذاری
+        کنید؛ اگر تکرار شد این خطا مربوط به دسترسی شما نیست و باید به پشتیبانی اطلاع دهید.
+      </div>
+    );
   }
 
   if (!allowed) {

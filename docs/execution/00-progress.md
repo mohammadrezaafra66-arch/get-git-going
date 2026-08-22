@@ -203,12 +203,26 @@ same boundary server-side (`42501`). That is why the review capped it at MEDIUM 
 than HIGH. It does not make the hole acceptable; it means the owner is choosing when to
 fix a visibility defect, not racing a data leak.
 
-**An option the remediation did not consider.** "Fix it in the guard" is not the same as
-"deny during SSR". Deferring re-validation until after hydration — for instance
-invalidating the matched route once auth initialises, in `_app.tsx` — is one file and no
-route changes. It was never evaluated, and the remediation's argument presented a false
-choice between a per-route component check and locking everyone out. Whether it works in
-this TanStack Start version is unproven.
+**The named remedy — added 2026-08-22 after the final independent review refused to let this
+gate close without one.** "Fix it in the guard" is not the same as "deny during SSR", and the
+remediation's argument knocked down a fix nobody proposed. The obvious remedy never touches
+the SSR path at all:
+
+> Lift the hand-written client-side check into a shared `<RequireRoles roles={…}>` wrapper —
+> or a `useRoleGate(roles)` hook — that holds while `rolesLoading`, reports `rolesError` as a
+> load failure rather than a denial, and renders a denial otherwise. Apply it once in the
+> `_app` layout, or per route as a one-line wrapper. It is the same ~15 lines already written
+> by hand in `_app.accounting.receipts.create.tsx` and in `_app.admin.asan-export.tsx`,
+> generalised. Mechanical, and it covers all 150 routes rather than one.
+
+Whether a single `_app`-level application works in this TanStack Start version is **unproven** —
+it needs a prototype. That prototype is the first task of the scoped mission, not a reason to
+defer again.
+
+**The honest summary of the deferral.** Both independent reviewers judged the *decision* sound
+and the *stated reasoning* not: deferring a 150-route refactor out of a four-file remediation is
+correct scoping, but it was argued from a false choice, and it leaves `/accounting/receipts` —
+a route that same remediation edited — fail-open one directory from the route it hardened.
 
 **Still live on a full page load for a sales-only session** (measured):
 

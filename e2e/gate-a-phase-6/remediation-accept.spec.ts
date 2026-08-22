@@ -286,6 +286,42 @@ test.describe("P3 — the review screen tells the truth", () => {
     expect(text).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
+  test("a tracking number typed on the bank branch is not confirmed on a cheque review", async ({
+    page,
+  }, testInfo) => {
+    await gotoApp(page, CREATE);
+    await page.getByTestId("wizard-branch-receipt").click();
+    await page.getByTestId("wizard-channel-bank").click();
+    await page.getByTestId("wizard-next").click();
+    await lookupParty(page, ASAN_CUSTOMER);
+    await page.getByTestId("wizard-next").click();
+    await page.getByTestId("wizard-amount").fill("1500000");
+    await page.getByTestId("wizard-tracking").fill("STALE-TRK-777");
+
+    // back to the channel step and switch to cheque; `tracking` is not cleared
+    await page.getByRole("button", { name: "قبلی" }).click();
+    await page.getByRole("button", { name: "قبلی" }).click();
+    await page.getByTestId("wizard-channel-cheque").click();
+    await page.getByTestId("wizard-next").click();
+    await lookupParty(page, ASAN_CUSTOMER);
+    await page.getByTestId("wizard-next").click();
+    await page.getByTestId("wizard-amount").fill("1500000");
+    await fillByLabel(page, "شماره چک", "CHQ-STALE-1");
+    await fillDatePickers(page, "1405/07/10");
+    await page.getByTestId("wizard-next").click();
+
+    const text = await page.getByTestId("wizard-review").innerText();
+    console.log("stale-tracking review:");
+    console.log(text);
+    await saveEvidence(page, testInfo, "P3-stale-tracking");
+
+    // submit() sends p_tracking_number as null on the cheque branch, so the review
+    // must not confirm one. Showing it contradicted the previous step outright.
+    expect(text).not.toContain("STALE-TRK-777");
+    expect(text).not.toContain("شمارهٔ پیگیری");
+    expect(text).toContain("CHQ-STALE-1");
+  });
+
   test("the proforma empty state no longer promises a file attachment", async ({ page }) => {
     await gotoApp(page, CREATE);
     await page.getByTestId("wizard-branch-receipt").click();

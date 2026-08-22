@@ -619,7 +619,17 @@ export function DocumentWizard() {
               digits. formatDateFa is the same helper the rest of the app uses. */}
           <p>تاریخ: {formatDateFa(date)}</p>
 
-          {tracking.trim() ? <p>شمارهٔ پیگیری: {tracking.trim()}</p> : null}
+          {/* Show the tracking number only when submit() will actually send it.
+              Changing the channel does not clear `tracking`, so a user who typed one
+              on the bank branch and then switched to cheque would otherwise see it
+              confirmed here while p_tracking_number goes out as null — and one step
+              earlier the same wizard says «شماره پیگیری بانکی برای چک پرسیده نمی‌شود».
+              Two screens contradicting each other on the last page before money is
+              committed is the exact defect class this phase set out to close.
+              Mirrors submit(): bank on receipt/payment, always on dual. */}
+          {(branch === "dual" || channel === "bank") && tracking.trim() ? (
+            <p>شمارهٔ پیگیری: {tracking.trim()}</p>
+          ) : null}
 
           {/* The cheque details reach the ledger — cheque_number and cheque_due_date are
               columns on the document, not decoration. Showing the evidence-only fields
