@@ -10,13 +10,37 @@ Base:                 staging @ e209218b
 Tasks:                5 of 7
 Current task:         Phase 4 — independent review dispatched
 Blocked by:           nothing
-Migrations applied:   370 (2026-08-22, psql exit 0, gate NOTICE green)
+Migrations applied:   370 and 371 (2026-08-22, psql exit 0, both gates green)
 REST restarted after: yes — docker restart afrakala-lan-rest, container Up
 Backup taken:         n/a — this mission applies REVOKE/ALTER VIEW only, no data DDL
-Typecheck:            70 / 70 baseline
-Last commit:          c7dd8771 (docs + migration + rollback, before apply)
+Typecheck:            70 / 70 baseline (re-run after the src/ change)
+Last commit:          aa920918
+Web deployed:         yes — APP_GIT_SHA=aa920918 == HEAD, container healthy
 PR:                   not yet opened
 ```
+
+## بازبینی مستقل — و آنچه یافت
+
+فاز ۴ با یک زیرعامل مستقل با دسترسی فایل‌سیستم و پوسته اجرا شد.
+حکم اول: **CHANGE REQUIRED**. سه ایراد پذیرفته و بسته شد:
+
+| # | شدت | یافته | وضعیت |
+|---|---|---|---|
+| ۱ | **BLOCKER** | `/api/public/products` را شکسته بودم؛ ۵۰۰ زنده | بسته — بدون بازگرداندن گرنت anon |
+| ۲ | MAJOR | دروازهٔ ۳۷۰ روی سه حالت پایانی غلط هم سبز می‌شد | بسته — مهاجرت ۳۷۱ |
+| ۳ | MAJOR | ادعای «۵ مصرف‌کننده» و «`publish_recipients_view` مصرف‌کننده ندارد» نادرست بود | بسته — جدول اصلاح شد |
+| ۴ | MINOR | ادعای «نشت بسته شد» بیش از حد فراگیر بود | بسته — بند ۰.۸ب |
+
+بازبین این‌ها را مستقل بازتولید و **تأیید** کرد: بسته‌شدن نشت روی هر هشت view؛
+جدول شمار ردیف هر ۳۲ خانه؛ درستی انتخاب دقیقاً همان دو view برای
+`security_invoker`؛ نبود مسیر جایگزین (هیچ view دیگری روی این هشت ساخته نشده،
+۲۹ تابع `SECURITY DEFINER` مرتبط همه داخلاً `42501` می‌دهند، جاسازی FK در
+PostgREST بسته است، GraphQL اصلاً مسیردهی نشده)؛ دقت فایل بازگشت تا سطح
+`relacl` بایت‌به‌بایت؛ و درستی هشدار OG-25.
+
+آنچه بازبین **نسنجید** و باید ثبت شود: مسیرهای `api.public.bot.*` با کلید واقعی
+ربات، اشتراک‌های Realtime به‌عنوان anon، سطل‌های Storage، و دسترس‌پذیری Kong از
+بیرون LAN (همان `[U]` که خودم ثبت کردم).
 
 ## تصمیم گزینه — و اینکه از کجا آمد
 
