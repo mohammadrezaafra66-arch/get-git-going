@@ -4,11 +4,11 @@
 
 ```
 Phase:                OG-25 — close the anon default-privilege tap
-Status:               in progress
+Status:               complete — independent review PASS on round 5
 Branch:               feature/og25-close-anon-default-privileges
 Base:                 staging @ 1acbd730  (verified — matches the mission document)
-Tasks:                6 of 7
-Current task:         Phase 5 — review round 4 dispatched
+Tasks:                7 of 7
+Current task:         Phase 7 — PR
 Blocked by:           nothing
 Migrations applied:   373-380 — all psql exit 0, gates green
 REST restarted after: yes, after each
@@ -832,6 +832,20 @@ Owner-Gate شدند.
 نشت اثبات‌شدهٔ قیمت خرید، و دروازه ابزاری بود که آن‌ها را بیرون کشید. ولی
 کارش به‌عنوان ابزار بازبینی تمام شده است.
 
+## فاز ۵، دور پنجم — **PASS**
+
+هر سه بند لازم تأیید شد. بازبین معاوضهٔ «اصلاح در دفتر به‌جای ویرایش سربرگ
+۳۸۰» را هم تأیید کرد: قاعدهٔ ۶ استثنا برای کامنت ندارد، و اصلاح در همان ردیفی
+نشسته که ۳۸۰ را مرجع اعلام می‌کند — جایی که هرکس آن مهاجرت را ممیزی کند
+نگاه می‌کند. هزینهٔ باقی‌مانده واقعی است و ثبت شد: کسی که سربرگ ۳۸۰ را جدا
+بخواند، مدل ذهنی غلطی از امتیازهای ستونی PostgreSQL برمی‌دارد.
+
+یک یادداشت رو به جلو از بازبین: اگر روزی OG-30 یا OG-31 به دلیل ماهوی جایگزین
+۳۸۰ شود، همان لحظه جای بردن سربرگ اصلاح‌شده به جلوست — آن‌وقت ارزشش را دارد،
+حالا نه.
+
+**حکم نهایی: PASS.** «این تمام شده است، و دور ششم تشریفات می‌بود.»
+
 ## گام بعدی
 
-تأیید سه بند بستهٔ دور چهارم، سپس PR.
+فاز ۷ — PR.
