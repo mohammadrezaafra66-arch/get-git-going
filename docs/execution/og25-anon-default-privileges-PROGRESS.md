@@ -205,6 +205,162 @@ sale_lists=HTTP 401        sale_list_items=HTTP 401
 | `sale_price_types` برای صفحهٔ عمومی خوانا است | anon ۰ ردیف می‌بیند (RLS) | عنوان نوع‌قیمت روی صفحهٔ عمومی رندر نمی‌شود ⇒ همان Owner-Gate |
 | یک لیست منتشرشده برای خط پایه وجود دارد | **صفر** — هر ۲۰ لیست `draft` | مسیر منتشرشده **NOT BASELINEABLE**؛ داده آزمایشی ساخته نشد |
 
+---
+
+## فاز ۰.۶ب — تصحیح ۰.۴ پس از یک سنجش عمیق‌تر
+
+**نتیجهٔ «دقیقاً دو سطح عمومی» در ۰.۴ ناقص بود، و خودم ردش کردم.**
+
+روش ۰.۴ هر فایل مسیر را بر اساس کلاینتی که **خودش** می‌سازد طبقه‌بندی می‌کرد.
+`register.tsx` کلاینت مرورگر را فقط برای `auth.*` می‌سازد و خواندن جدولش یک
+import آن‌طرف‌تر است. پس از قلم افتاد. این همان کلاس خطای G-1 است — جست‌وجویی
+که یک پرش زودتر می‌ایستد — این‌بار در بُعدی دیگر.
+
+سنجش دوباره با **پیمایش گذرای import** از هر ۳۱ مسیر خارج از `_app`:
+
+```
+register.tsx
+  -> lib/profile-fields/queries.ts   fetchActiveProfileFields({ registerOnly: true })
+     -> supabase.from("profile_field_definitions")
+```
+
+`anon` روی آن جدول **۴ از ۵ ردیف** را می‌بیند، از راه سیاست صریح و عمدی
+«Public can read register form fields» (`is_active AND show_on_register`). پس
+سطح عمومی **سوم** واقعی است، نه نظری. مهاجرت **۳۷۶** گرنتش را ثبت کرد.
+
+پیمایش دو چیز دیگر هم نشان داد:
+
+- **هشت مسیر `api.public.bot.*` تأیید شدند**: همه از راه `server/bot-api.ts` با
+  service role کار می‌کنند (`bot_authenticate_key`, `bot_check_rate_limit`, …).
+  به `anon` وابسته نیستند. **نتیجهٔ تحلیل ورودی درست بود.**
+- `profiles`, `user_roles`, `custom_roles`, `role_permissions`, `log_event` از
+  **هر** صفحهٔ عمومی از راه `lib/auth/*` و `lib/rbac/*` لمس می‌شوند. هر پنج‌تا
+  به‌عنوان `anon` صفر ردیف می‌دهند. عمداً گرنت صریح نگرفتند — دادهٔ منتشرشده
+  نیستند — ولی در ممیزی به‌عنوان پرریسک‌ترین بخش یک REVOKE دسته‌جمعی ثبت شدند.
+- `public.sale-lists` تابع `get_recent_purchase_label` را هم صدا می‌زند
+  (از `components/products/RecentPurchaseBadge.tsx`) که در ۰.۴ ندیده بودم.
+
+---
+
+## فاز ۱ — فایل‌های بازگشت، پیش از هر مهاجرت
+
+هر چهار فایل **پیش از** نوشتن فایل رو به جلوی خودشان نوشته و با
+`rollback-dryrun.sql` اثبات شدند. هیچ‌کدام `BEGIN`/`COMMIT`/`ROLLBACK` ندارند.
+
+مجموعهٔ امتیازها از حافظه یا از «پیش‌فرض Supabase» بازنویسی نشد؛ از
+`pg_default_acl` زندهٔ ۰.۱ خوانده شد: `arwdDxt` برای جدول‌ها (⇒ `GRANT ALL ON
+TABLES`) و `rwU` برای sequenceها (⇒ `GRANT ALL ON SEQUENCES`).
+
+**یک نکتهٔ عدم‌تقارن که باید خوانده شود:** `374-down` و `376-down` اشیا را به
+**زیر** حالت پیش از مأموریت می‌برند، چون گرنت `SELECT` را برمی‌دارند در حالی که
+آن اشیا از قبل گرنت گسترده‌تری داشتند. اجرای تنهای ۳۷۴-down مسیر
+`/api/public/products` را می‌شکند — همان ۵۰۰ی که مهاجرت ۳۷۰ ساخت. برای برگرداندن
+این مأموریت، فقط `373-down` را اجرا کنید و آن دو را دست نزنید. این در سربرگ هر
+دو فایل نوشته شده است.
+
+---
+
+## فاز ۲ — تغییر
+
+| مهاجرت | چه می‌کند | اشیای موجود |
+|---|---|---|
+| **۳۷۳** | `REVOKE ALL ON TABLES` و `ON SEQUENCES` از `anon` در `pg_default_acl` | صفر تغییر |
+| **۳۷۴** | `GRANT SELECT` روی `products`, `brands`, `categories`, `sale_price_types` + `EXECUTE` روی `refresh_sale_list_prices` | صفر تغییر (no-op) |
+| **۳۷۵** | فقط ادعا، هیچ شیئی نمی‌سازد | صفر |
+| **۳۷۶** | `GRANT SELECT` روی `profile_field_definitions` | صفر تغییر (no-op) |
+
+هیچ خط `ON FUNCTIONS` نوشته نشد — مالک صریحاً مستثنا کرده بود.
+
+**اثبات «صفر شیء موجود تغییر کرد» با محاسبه، نه با ادعا.** md5 تمام
+`relacl`های `public` برای `relkind IN ('r','v','S')`:
+
+```
+before 373 : 5e31cb642a399d0370f56da643424a2d
+after  373 : 5e31cb642a399d0370f56da643424a2d
+after  374 : 5e31cb642a399d0370f56da643424a2d
+after  376 : 5e31cb642a399d0370f56da643424a2d
+```
+
+هر چهار یکسان. گرنت‌های ۳۷۴ و ۳۷۶ واقعاً no-op بودند، همان‌طور که سربرگشان
+ادعا می‌کرد — چون `anon` از قبل `arwdDxt` داشت. آنچه عوض شد **ثبت** است، نه
+دسترسی.
+
+پس از هر مهاجرت: `docker restart afrakala-lan-rest`. ترتیب رعایت شد:
+اعمال ← restart ← commit، پیش از مهاجرت بعدی.
+
+### دروازهٔ ۳۷۵ — و اینکه در حالت سالم شکست خورد
+
+سیزده اختلال پیش از اعمال زده شد. **اجرای اول روی پایگاه‌دادهٔ سالم ERROR داد.**
+پیش‌نویس اول ادعا کرده بود `anon` نباید روی چهار جدول عمومی
+`INSERT/UPDATE/DELETE/TRUNCATE` داشته باشد — که هم با مهاجرت ۳۷۴ خودم و هم با
+دامنهٔ مالک در تضاد بود، چون ۳۷۴ عمداً جدولی را که از قبل گرنت گسترده‌تری دارد
+تنگ نمی‌کند. **دروازه غلط بود، نه پایگاه‌داده.** حالا برابری **مجموعه** با
+سنجش پیش از مأموریت را ادعا می‌کند، که سخت‌گیرانه‌تر است: هم افزودن امتیاز را
+می‌گیرد هم حذفش.
+
+نتیجهٔ اختلال‌ها پس از اصلاح:
+
+```
+BASELINE (healthy)            NOTICE: 375 OK …
+P1 re-grant default TABLES    ERROR: 1 default-privilege entry for anon … still exist
+P2 re-grant default SEQUENCES ERROR: 1 default-privilege entry for anon … still exist
+P3 also close FUNCTIONS       ERROR: the FUNCTIONS default privilege … must not have changed it
+P5 a public table loses SELECT ERROR: anon lost SELECT on public.brands
+P6 G-1 via table grant        ERROR: G-1 regressed — anon holds SELECT on public.vw_account_balances
+P7 G-1 via COLUMN grant       ERROR: G-1 regressed — anon holds a column-level SELECT on … .current_balance
+P8 G-1 via PUBLIC grant       ERROR: G-1 regressed — anon holds SELECT on public.publish_recipients_view
+P9b EXECUTE genuinely removed ERROR: anon lost EXECUTE on refresh_sale_list_prices(uuid)
+P10 an existing object REVOKEd ERROR: 210 objects hold an anon grant, but Phase 0.3 measured 211
+P11 a new object gains a grant ERROR: 212 objects hold an anon grant, but Phase 0.3 measured 211
+```
+
+**دو اختلالی که رد شدند و ماست‌مالی نشدند:**
+
+- **P4** (`GRANT INSERT ON products TO anon`) رد شد چون **no-op است** — هر چهار
+  جدول عمومی از قبل ۷ از ۷ امتیاز را دارند، پس چیزی برای افزودن نیست. جهت
+  «افزوده‌شدن» روی این جدول‌ها ذاتاً غیرقابل‌آزمون است؛ جهت «حذف‌شدن» را P5
+  اثبات می‌کند.
+- **P9** (`REVOKE EXECUTE … FROM anon`) رد شد چون `proacl` با
+  `=X/supabase_admin` شروع می‌شود — PostgreSQL توابع را به‌طور پیش‌فرض به
+  `PUBLIC` می‌دهد. پس گرفتنش فقط از `anon` واقعاً توانایی `anon` را حذف
+  نمی‌کند. اثبات: `before=true`, `after revoke anon=true`,
+  `after revoke PUBLIC=false`. **بررسی درست بود؛ اختلال ناکافی بود.** P9b آن را
+  کامل کرد و دروازه گرفت.
+
+---
+
+## فاز ۳ — ممیزی
+
+`docs/research/anon-grant-audit.md`. **هیچ `REVOKE`ای در آن نیست، حتی
+کامنت‌شده** — بررسی شد: هیچ خطی یک دستور SQL نیست؛ هر ذکر «REVOKE» متن فارسی
+دربارهٔ تصمیم آینده است.
+
+عدد سرخط: **از ۲۰۹ شیء که `anon` اجازهٔ `SELECT` دارد، فقط روی ۵ تا واقعاً
+ردیف می‌بیند.**
+
+---
+
+## فاز ۴ — پذیرش A1 تا A12
+
+| # | نتیجه |
+|---|---|
+| **A1** | view تازه: `anon SELECT = false` (خط پایه `true`)؛ `relacl` دیگر ورودی `anon` ندارد — **PASS، نتیجهٔ سرخط مأموریت** |
+| **A2** | sequence تازه: `anon USAGE = false` (خط پایه `true`) — **PASS** |
+| **A3** | `r` و `S` بدون `anon`؛ **`f` دست‌نخورده** با `anon=X` — **PASS** |
+| **A4** | `HTTP 200`، ۱۹۹ محصول، همان ۷ کلید (خط پایه ۲۰۰/۱۹۹) — **PASS** |
+| **A5** | **صفر قیمت غیرصفر** — OG-29 نگه داشته شد — **PASS** |
+| **A6** | `404` برای شناسهٔ draft و برای شناسهٔ ناموجود (خط پایه ۴۰۴/۴۰۴) — **PASS** |
+| **A7** | ۸ از ۸ view رد شدند؛ صفر امتیاز `anon` — G-1 رگرسیون نکرد — **PASS** |
+| **A8** | accountant/admin `355 40 12 3 20 1837`؛ sales `355 40 12 3 0 0` — **دقیقاً برابر خط پایهٔ ۰.۵** — **PASS** |
+| **A9** | acl-hash `5e31cb64…` = خط پایه؛ سرشماری ۲۱۱ = خط پایه — **PASS** |
+| **A10** | هر چهار فایل بازگشت `exit=0`، نشانگر بازگشت دیده شد، صفر دستور تراکنش؛ سرشماری ۲۱۱ → ۲۱۱ — **PASS** |
+| **A11** | `npx tsc --noEmit` = **۷۰** (خط پایهٔ D14) — **PASS** |
+| **A12** | `git status --porcelain` روی مسیرهای این مأموریت: پاک — **PASS** |
+
+**این برنچ هیچ فایل TypeScript تغییر نمی‌دهد** (۱۰ فایل: ۴ مهاجرت، ۴ فایل
+بازگشت، ۲ سند). پس ایمیج وب بازسازی **نشد** و `APP_GIT_SHA` جابه‌جا نشد —
+جابه‌جا کردنش برای تغییری که هرگز به بسته نمی‌رسد، مُهر را دروغ می‌کرد.
+
 ## گام بعدی
 
-فاز ۱ — فایل‌های بازگشت، پیش از هر مهاجرت.
+فاز ۵ — بازبینی مستقل.
