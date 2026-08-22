@@ -7,14 +7,15 @@ Phase:                OG-25 — close the anon default-privilege tap
 Status:               in progress
 Branch:               feature/og25-close-anon-default-privileges
 Base:                 staging @ 1acbd730  (verified — matches the mission document)
-Tasks:                1 of 7
-Current task:         Phase 0 complete, Phase 1 next
+Tasks:                6 of 7
+Current task:         Phase 5 — review round 2 dispatched
 Blocked by:           nothing
-Migrations applied:   none yet (373 reserved; 370/371/372 applied and committed)
-REST restarted after: n/a
+Migrations applied:   373, 374, 375, 376, 377, 378 — all psql exit 0, gates green
+REST restarted after: yes, after each
 Backup taken:         n/a — this mission changes privileges only, no data DDL
-Typecheck:            not yet run (baseline 70)
-Last commit:          1acbd730
+Typecheck:            70 / 70 baseline (branch touches 0 TypeScript files)
+Last commit:          see git log
+Web rebuilt:          NO — deliberately. 0 files under src/, so APP_GIT_SHA was left alone
 PR:                   not yet opened
 ```
 
@@ -86,22 +87,36 @@ v       | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE | 7
 sequenceها: ۶ تا، که **۵** تا به anon `USAGE` و `SELECT` می‌دهند
 (`platform_release_number_seq` تنها استثناست).
 
-#### تناقض ثبت‌شده: عدد «۲۱۶ از ۲۲۴» در `deferred.md`
+#### عدد «۲۱۶ از ۲۲۴» در `deferred.md` — **آشتی می‌کند، و من یک فرضیه زود کوتاه آمدم**
 
-`docs/execution/deferred.md` می‌گوید «۲۱۶ از ۲۲۴ جدول عمومی». امروز عدد
-**۲۱۱** است — و آن ۲۱۱ شامل ۷ **view** هم هست، نه فقط جدول. یعنی جدول‌های
-خالص **۲۰۴** از ۲۲۴ هستند.
+> **این بند پس از بازبینی مستقل بازنویسی شد.** نسخهٔ اول دو فرضیه را آزمود —
+> فقط‌جدول (انتظار ۲۱۶، یافته ۲۰۴) و جدول+view (انتظار ۲۱۰، یافته ۲۱۱) —
+> نتیجه گرفت هیچ‌کدام جا نمی‌افتد و آن را «قابل‌آشتی‌نشدنی» ثبت کرد. فرضیهٔ
+> سوم را نیازموده بودم و دقیقاً جا می‌افتد.
 
-اختلاف را کامل توضیح نمی‌توانم بدهم:
+`docs/execution/deferred.md` می‌گوید «۲۱۶ از ۲۲۴ جدول عمومی». سنجیده امروز:
 
-- مهاجرت ۳۷۰ شش **view** را از این مجموعه بیرون برد. اگر عدد اولیه ۲۱۶ شامل
-  viewها بوده، انتظار ۲۱۰ می‌رفت؛ ۲۱۱ داریم.
-- اگر عدد ۲۱۶ فقط جدول بوده، امروز باید هنوز ۲۱۶ جدول باشد؛ ۲۰۴ داریم.
+```
+r=204  v=7  S=5  TOTAL=216      (اشیای public که anon روی آن‌ها گرنت دارد)
+relkind='r' کل = 224
+```
 
-هیچ‌کدام دقیق جا نمی‌افتد. احتمال قوی این است که `deferred.md` بدون پیوستن به
-`pg_class` شمرده و جدول و view را قاطی کرده، و بین ۲۱ مرداد تا امروز چند
-گرنت دیگر هم برداشته شده. **این را به‌عنوان تناقض ثبت می‌کنم و عدد امروز را
-مبنا می‌گذارم، نه عدد سند.**
+**۲۰۴ + ۷ + ۵ = ۲۱۶.** یعنی کوئری اصلی همهٔ `relkind`ها را شمرده — جدول، view
+و **sequence** — و مجموع را با شمار جدول‌ها مقایسه کرده. عدد سند درست بود؛
+برچسبش («جدول») غلط بود.
+
+علت اینکه من به آن نرسیدم همان نقطهٔ کوری است که MAJOR 4 بازبینی هم رویش
+انگشت گذاشت: **sequenceها را اصلاً نشمرده بودم.** پنج sequence از قبل
+`anon=rwU` دارند:
+
+```
+audit_logs_id_seq   bot_api_usage_logs_id_seq   employee_score_events_id_seq
+payment_voucher_number_seq   score_snapshots_id_seq
+```
+
+پس سرشماری درست این مأموریت **۲۱۶** است، نه ۲۱۱. عدد ۲۱۱ در مهاجرت‌های ۳۷۵ و
+در نسخهٔ اول ممیزی فقط `r`+`v` را می‌شمرد. مهاجرت **۳۷۸** سرشماری را روی هر سه
+`relkind` و به‌صورت **مجموعهٔ نام‌ها** پین می‌کند.
 
 بیست‌ودو جدولی که anon `SELECT` ندارد:
 
@@ -134,9 +149,14 @@ sales_quotes, salesperson_capital_allocations_dynamic, score_level_thresholds
 - `api/public/hooks/ingest-market-rates.ts` — service role.
   `generate-marketing-tasks.ts` و `process-pricing-queue.ts` هیچ کلاینتی
   نمی‌سازند.
-- `api.healthz`, `api.version`, `sitemap[.]xml`, `index`, `unauthorized`,
+- ~~`api.healthz`~~, `api.version`, `sitemap[.]xml`, `index`, `unauthorized`,
   `mcp`, `[.mcp]/*`, `[.well-known]/*`, `__root` — هیچ کوئری پایگاه‌داده‌ای
   ندارند. (`sitemap` صفر ارجاع به `supabase` دارد — بررسی شد.)
+
+  > **`api.healthz` غلط بود.** آن مسیر جدول `shop_settings` را با یک `fetch`
+  > دستی و کلید anon می‌خواند. چون `supabase.from(...)` نمی‌نویسد، از هر دو
+  > روش جست‌وجوی من رد شد. بازبینی مستقل پیدایش کرد؛ مهاجرت **۳۷۷** ثبتش
+  > می‌کند. بند «BLOCKER 1» در فاز ۵ پایین.
 - `login`, `register`, `reset-password`, `pending-approval`,
   `[.]lovable.oauth.consent` — کلاینت مرورگر، ولی فقط برای احراز هویت
   (`auth.*`)، نه خواندن جدول.
@@ -149,7 +169,16 @@ sales_quotes, salesperson_capital_allocations_dynamic, score_level_thresholds
   `sale_price_types`, `sale_list_items`, `products`, `brands`, `categories`،
   و `rpc('refresh_sale_list_prices')`.
 
-**پس فهرست دقیقاً همان دو سطحی است که تحلیل ورودی گفته بود — تأیید شد.**
+~~**پس فهرست دقیقاً همان دو سطحی است که تحلیل ورودی گفته بود — تأیید شد.**~~
+
+> **این نتیجه‌گیری غلط بود، و دو بار غلط بود.** سطح سوم (`register.tsx` →
+> `profile_field_definitions`) را خودم با پیمایش گذرا پیدا کردم — بند ۰.۶ب.
+> سطح چهارم (`api.healthz` → `shop_settings`) و پنجم (دو RPC
+> `get_recent_purchase_label*`) را **بازبینی مستقل** پیدا کرد — فاز ۵.
+>
+> آنچه از تحلیل ورودی **تأیید شد** این است که هر هشت مسیر `api.public.bot.*`
+> با service role کار می‌کنند و به `anon` وابسته نیستند. آنچه **رد شد** این
+> است که سطوح anon-وابسته دقیقاً دوتا باشند؛ **پنج‌تا هستند.**
 
 #### حق anon امروز روی جدول‌های این دو سطح
 
@@ -285,6 +314,15 @@ after  376 : 5e31cb642a399d0370f56da643424a2d
 ادعا می‌کرد — چون `anon` از قبل `arwdDxt` داشت. آنچه عوض شد **ثبت** است، نه
 دسترسی.
 
+کوئری‌ای که این رقم را می‌سازد (بازبینی به‌درستی گفت ثبت نشده بود و بدون آن
+قابل بازتولید نیست):
+
+```sql
+SELECT md5(string_agg(c.relname || '=' || coalesce(c.relacl::text, '~'), '|' ORDER BY c.relname))
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public' AND c.relkind IN ('r','v','S');
+```
+
 پس از هر مهاجرت: `docker restart afrakala-lan-rest`. ترتیب رعایت شد:
 اعمال ← restart ← commit، پیش از مهاجرت بعدی.
 
@@ -361,6 +399,132 @@ P11 a new object gains a grant ERROR: 212 objects hold an anon grant, but Phase 
 بازگشت، ۲ سند). پس ایمیج وب بازسازی **نشد** و `APP_GIT_SHA` جابه‌جا نشد —
 جابه‌جا کردنش برای تغییری که هرگز به بسته نمی‌رسد، مُهر را دروغ می‌کرد.
 
+---
+
+## فاز ۵ — بازبینی مستقل: **CHANGE REQUIRED**، و چهار ایراد واقعی
+
+| # | شدت | یافته | وضعیت |
+|---|---|---|---|
+| ۱ | **BLOCKER** | سطح عمومی چهارم: `/api/healthz` جدول `shop_settings` را به‌عنوان anon می‌خواند | بسته — مهاجرت ۳۷۷ |
+| ۲ | **BLOCKER** | سطح عمومی پنجم: دو RPC `get_recent_purchase_label*` — و افشای **زندهٔ** زمان‌بندی خرید | ثبت شد (۳۷۷) + **OG-33** |
+| ۳ | MAJOR | دروازهٔ ۳۷۵ سرشماری را **می‌شمرد**، پس یک جابه‌جایی یک‌به‌یک از آن رد می‌شود | بسته — مهاجرت ۳۷۸ |
+| ۴ | MAJOR | ۳۷۵ هیچ پوششی روی ACL sequenceهای موجود ندارد؛ ۵ sequence از قبل گرنت anon دارند | بسته — ۳۷۸ + اصلاح سرشماری به ۲۱۶ |
+| ۵ | MINOR | بررسی ۱ نسبت به grantorهای دیگر کور است — ولی قابل بهره‌برداری نیست | پذیرفته، ثبت شد |
+| ۶ | MINOR | «۲۱۶ از ۲۲۴» **آشتی می‌کند**؛ من یک فرضیه زود کوتاه آمدم | بسته — بند ۰.۳ بازنویسی شد |
+| ۷ | MINOR | کوئری acl-hash ثبت نشده بود، پس رقم بازتولیدپذیر نبود | بسته — کوئری ثبت شد |
+| ۸ | MINOR | دو ادعا تهی‌اند و یک کامنت قوت خودش را بزرگ‌نمایی می‌کند | بسته — پایین |
+
+### BLOCKER 1 — `/api/healthz`
+
+`src/routes/api.healthz.ts:57-68` از کلاینت Supabase استفاده **نمی‌کند**؛ URL را
+دستی می‌سازد و `fetch` می‌زند با کلید publishable هم به‌عنوان `apikey` و هم
+`Authorization`. سربرگ خود مسیر هم همین را می‌گوید. سربرگ مهاجرت ۳۷۴ **عکسش را
+ادعا کرده بود** — که «`api.healthz` هیچ کوئری پایگاه‌داده‌ای نمی‌زند». آن ادعا
+غلط است.
+
+از دید روش: پیمایش گذرای من روی `supabase.from(...)` / `.rpc(...)` کلید می‌خورد،
+و یک `fetch` دستی هرگز با آن شکل تطبیق نمی‌کند. **سه روش پشت سر هم هرکدام چیزی
+را از دست دادند** — طبقه‌بندی فایل‌به‌فایل (۳۷۴)، پیمایش گذرا (۳۷۶)، و حالا
+این. ثبتش می‌کنم چون درسِ روش است، نه یک اشتباه منفرد.
+
+چرا فقط دفترداری نیست: `shop_settings` گرنت `anon` را **تنها** از پیش‌فرض شِما
+دارد، و ممیزی فاز ۳ آن را بدون مصرف‌کننده فهرست کرده بود. یک REVOKE دسته‌جمعی —
+همان تصمیمی که کل این مأموریت برای ممکن‌کردنش وجود دارد — آن را می‌گرفت،
+probe ۴۰۱ می‌گرفت، `state: "down"` می‌داد، ۵۰۳ برمی‌گرداند و healthcheck هر
+کانتینر وب روی دستگاه را ری‌استارت می‌کرد.
+
+### BLOCKER 2 — افشای زمان‌بندی خرید، زنده
+
+`public.sale-lists.$listId` → `sale-list-table.tsx` → `RecentPurchaseBadge` /
+`RecentPurchaseGroup` → `rpc('get_recent_purchase_label')`. هر دو تابع
+`SECURITY DEFINER` و برای `anon` اجراشدنی.
+
+برخلاف `sale_lists` که ۴۰۱ می‌دهد (OG-32)، **این مسیر امروز کار می‌کند**:
+
+```
+POST /rest/v1/rpc/get_recent_purchase_label   (anon key, no session)
+ -> {"status":"none","hours_since":967.17,
+     "last_purchase_at":"2026-07-13T10:01:00.667437+00:00","is_today_purchase":false}
+
+GET /rest/v1/purchases?select=id&limit=1      (same caller)
+ -> HTTP 401
+```
+
+یعنی زمینهٔ `SECURITY DEFINER` زمان دقیق آخرین خرید هر محصولی را به تماس ناشناس
+می‌دهد، در حالی که جدول `purchases` برای همان تماس بسته است. **همان کلاس نقص
+G-1، این‌بار در یک تابع به‌جای یک view.**
+
+و باید صریح بگویم: **من این را دیده بودم.** بند ۰.۶ب همین پرونده نوشته بود
+«`public.sale-lists` تابع `get_recent_purchase_label` را هم صدا می‌زند که در ۰.۴
+ندیده بودم» — و بعد هیچ کاری نکردم. دیدن و ننوشتن بدتر از ندیدن است.
+
+مهاجرت ۳۷۷ ثبتش می‌کند. **بستنش را انجام نمی‌دهد** — تصمیم کسب‌وکاری است، و
+`REVOKE … FROM anon` به‌تنهایی هم کاری نمی‌کند چون PostgreSQL توابع را به
+`PUBLIC` هم می‌دهد. **OG-33**.
+
+### MAJOR 3 و 4 — دروازهٔ ۳۷۵ دو بار دور خورد
+
+سربرگ خود ۳۷۵ می‌گوید «با نام ادعا کن، مجموعه را مقایسه کن، هرگز شمار» — و بعد
+بررسی ۶ می‌شمرد. بازبین ثابت کرد:
+
+```
+BEGIN;
+  REVOKE ALL ON TABLE public.payment_vouchers FROM anon;
+  GRANT SELECT ON TABLE public.api_products_pricing TO anon;
+  -- census 211 -> 211، دروازه سبز، در حالی که یک شیء موجود باطل شده بود
+ROLLBACK;
+```
+
+و شیئی که جایش نشسته بی‌ضرر نیست: `api_products_pricing` هیچ
+`security_invoker` ندارد. مستقل بررسی و برگرداندم: با آن گرنت، `anon`
+**۳۵۵ ردیف** شامل قیمت خرید از تأمین‌کننده و قیمت فروش جاری می‌خواند.
+
+و ۳۷۵ هیچ ادعایی روی ACL **sequence**های موجود ندارد، در حالی که ۳۷۳ روی
+sequenceها عمل می‌کند. `information_schema.role_table_grants` اصلاً
+sequence نمی‌بیند.
+
+مهاجرت **۳۷۸** هر دو را می‌بندد: مقایسهٔ **مجموعهٔ ۲۱۶ نام** روی `r`/`v`/`S`
+به‌علاوهٔ آزمون امتیاز مستقیم برای هر sequence. نتیجهٔ حمله‌ها:
+
+```
+R1 swap (defeated 375)      375: OK    378: ERROR lost {r:payment_vouchers} ; gained {v:api_products_pricing}
+R2 GRANT ALL ON SEQUENCES   375: OK    378: ERROR lost {} ; gained {S:platform_release_number_seq}
+R3 revoke one sequence                 378: ERROR lost {S:audit_logs_id_seq} ; gained {}
+R4 re-grant default TABLES             378: ERROR 1 default-privilege entry … still exist
+R5 close FUNCTIONS                     378: ERROR the FUNCTIONS default privilege must be untouched
+R6 shop_settings loses SELECT          378: ERROR anon lost SELECT on public.shop_settings
+R7 G-1 via column grant                378: ERROR anon holds a column-level SELECT on … current_balance
+```
+
+### MINOR 5 — پذیرفته، و بازبین خودش نتوانست به حالت غلط برساندش
+
+بررسی ۱ روی `defaclrole = 'supabase_admin'` فیلتر می‌کند و به
+`pg_namespace` join می‌زند، پس یک `ALTER DEFAULT PRIVILEGES` سراسری بدون
+`IN SCHEMA` (که `defaclnamespace = 0` دارد) هرگز join نمی‌شود. ولی فقط
+`supabase_admin` در `public` اجازهٔ ساخت دارد، و probe شیء تازه نوعِ بی‌شِما را
+می‌گیرد. **شکاف نهفته، نه نقص.** ثبت شد.
+
+### MINOR 8 — دو ادعای تهی
+
+بازبین هر دو توضیح مرا مستقل تأیید کرد، ولی به‌درستی گفت پیامدشان ثبت نشده:
+
+- `GRANT EXECUTE … TO anon` در ۳۷۴ و ادعای تابعِ ۳۷۵ عملاً **هرگز نمی‌توانند
+  شکست بخورند**، چون `PUBLIC` گرنت دارد. در ۳۷۸ همین را در کامنت خود بررسی
+  نوشتم و دلیل نگه‌داشتنش را هم گفتم: دقیقاً همان اشتباهی است که یک مأموریت
+  `FUNCTIONS` (OG-31) ممکن است مرتکب شود.
+- کامنت ۳۷۵ می‌گفت برابری مجموعه «اگر امتیازی افزوده شود شکست می‌خورد» —
+  برای این چهار جدول **نادرست** است، چون هر ۷ امتیاز را دارند و چیزی برای
+  افزودن نیست. اغراق بود.
+
+### یک تخطی ترتیبی که خودم مرتکب شدم
+
+قاعدهٔ فاز ۱ می‌گوید فایل بازگشت باید **پیش از** مهاجرت نوشته و **اثبات** شود.
+`377-down.sql` پیش از مهاجرت نوشته شد، ولی اجرای اول dry-run بی‌صدا هیچ خروجی
+نداد — `rollback-dryrun.sql` از `/tmp` کانتینر پاک شده بود و من خروجی خالی را
+به‌جای شکست خواندم. **پس ۳۷۷ را پیش از اثبات واقعی فایل بازگشتش اعمال کردم.**
+اثبات بعداً اجرا شد و `exit=0` داد و حالت ۸۴۱ → ۸۴۱ برگشت، ولی ترتیب رعایت نشد
+و ثبتش می‌کنم به‌جای اینکه وانمود کنم شد.
+
 ## گام بعدی
 
-فاز ۵ — بازبینی مستقل.
+اجرای دوبارهٔ پذیرش، سپس بازبینی دور دوم.
