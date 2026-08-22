@@ -275,3 +275,41 @@ Both are outside the four files this mission owns.
 It reported the guard counts as 62 / 74 / 16 against my 62 / 73 / 15. The difference is
 immaterial to the argument and I did not re-litigate it; the figure that matters —
 roughly 150 distinct route files — is agreed.
+
+### A second test defect of my own, and a real finding it exposed
+
+Adding the D4 cheque test produced a review screen reading **«تاریخ سررسید چک: ۷ اسفند ۲۲۵۷»**
+— year 2257. I stopped and measured before recording it as a product defect, and it was
+mine:
+
+```
+date pickers on this step: 2
+  naive   picker[0] = "۱۴۰۵/۰۷/۱۰"
+  naive   picker[1] = "۱۴۰۵/۰۵/۳۱۱۴۰۵/۰۷/۱۰"     <- fill() APPENDED
+  careful picker[0] = "۱۴۰۵/۰۷/۱۰"
+  careful picker[1] = "۱۴۰۵/۰۷/۱۰"
+```
+
+Playwright's `fill()` appends on `JalaliDateInput` when the field already holds a value.
+The helper now clears and types, and the same test reads:
+
+```
+تاریخ: ۱۰ مهر ۱۴۰۵
+شمارهٔ چک: CHQ-EVIDENCE-777
+تاریخ سررسید چک: ۱۰ مهر ۱۴۰۵
+بانک صادرکننده: BANK-EVIDENCE-777
+```
+
+**The finding it exposed is real and is recorded, not fixed.** `JalaliDateInput` accepted
+`۱۴۰۵/۰۵/۳۱۱۴۰۵/۰۷/۱۰`, converted it to a date in **year 2257** rather than rejecting it,
+and `canNext()` passed it because `Boolean(chequeDue)` is true. Nothing between that input
+and the RPC bounds a cheque due date — migration 351's date bounds apply to
+`p_payment_date`, not to `p_cheque_due_date`. So a malformed due date can reach the point
+of submission.
+
+It is out of this mission's scope: `JalaliDateInput` is not one of the four files this
+mission owns, it was not a Gate A finding, and confirming what the RPC does with such a
+date would require submitting, which this mission may not do. **Recorded for the owner.**
+
+Worth noting in the fix's favour: the only reason this was visible at all is that the
+review screen now shows the cheque due date. Before this mission it showed neither.

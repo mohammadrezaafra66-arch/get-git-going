@@ -32,10 +32,22 @@ async function fillByLabel(page: Page, label: string, value: string): Promise<bo
   return true;
 }
 
+/**
+ * Clear, then type. A plain `fill()` APPENDS on JalaliDateInput when the field
+ * already holds a value — measured: "۱۴۰۵/۰۵/۳۱" + "۱۴۰۵/۰۷/۱۰" became
+ * "۱۴۰۵/۰۵/۳۱۱۴۰۵/۰۷/۱۰", which the component converted to a date in year 2257
+ * and the review screen then displayed faithfully. That was a defect in this
+ * helper, not in the product; see due-date-probe.spec.ts for the measurement.
+ */
 async function fillDatePickers(page: Page, jalali: string): Promise<void> {
   const pickers = page.locator('input[placeholder*="انتخاب تاریخ"]');
   for (let i = 0; i < (await pickers.count()); i++) {
-    await pickers.nth(i).fill(jalali).catch(() => undefined);
+    const p = pickers.nth(i);
+    await p.click().catch(() => undefined);
+    await p.press("Control+a").catch(() => undefined);
+    await p.press("Delete").catch(() => undefined);
+    await p.type(jalali, { delay: 25 }).catch(() => undefined);
+    await page.waitForTimeout(200);
   }
   await page.waitForTimeout(400);
 }
@@ -263,8 +275,8 @@ test.describe("P3 — the review screen tells the truth", () => {
     const review = page.getByTestId("wizard-review");
     await expect(review).toBeVisible();
     const text = await review.innerText();
-    console.log(["P3/D4 cheque receipt review:", text].join("
-"));
+    console.log("P3/D4 cheque receipt review:");
+    console.log(text);
     await saveEvidence(page, testInfo, "P3-D4-cheque-review");
 
     // The cheque number and due date are columns on the document — they reach the
