@@ -620,6 +620,19 @@ export function DocumentWizard() {
           <p>تاریخ: {formatDateFa(date)}</p>
 
           {tracking.trim() ? <p>شمارهٔ پیگیری: {tracking.trim()}</p> : null}
+
+          {/* The cheque details reach the ledger — cheque_number and cheque_due_date are
+              columns on the document, not decoration. Showing the evidence-only fields
+              below while hiding these would have been exactly backwards. Raised by the
+              phase-2/3 independent review as D4. */}
+          {channel === "cheque" && chequeKind !== "endorsed" ? (
+            <>
+              {chequeNumber.trim() ? <p>شمارهٔ چک: {chequeNumber.trim()}</p> : null}
+              {chequeDue ? <p>تاریخ سررسید چک: {formatDateFa(chequeDue)}</p> : null}
+              {chequeBank.trim() ? <p>بانک صادرکننده: {chequeBank.trim()}</p> : null}
+            </>
+          ) : null}
+
           {description.trim() ? <p>شرح: {description.trim()}</p> : null}
 
           {/* P6-M1 / T11: the transferrer and the recipient are recorded on the document

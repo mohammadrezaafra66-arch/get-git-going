@@ -247,6 +247,33 @@ test.describe("P3 — the review screen tells the truth", () => {
     expect(text).not.toMatch(/\d{4}-\d{2}-\d{2}/);
   });
 
+  test("cheque details reach the review screen (review D4)", async ({ page }, testInfo) => {
+    await gotoApp(page, CREATE);
+    await page.getByTestId("wizard-branch-receipt").click();
+    await page.getByTestId("wizard-channel-cheque").click();
+    await page.getByTestId("wizard-next").click();
+    await lookupParty(page, ASAN_CUSTOMER);
+    await page.getByTestId("wizard-next").click();
+    await page.getByTestId("wizard-amount").fill("1750000");
+    await fillByLabel(page, "شماره چک", "CHQ-EVIDENCE-777");
+    await fillByLabel(page, "بانک صادرکننده", "BANK-EVIDENCE-777");
+    await fillDatePickers(page, "1405/07/10");
+    await page.getByTestId("wizard-next").click();
+
+    const review = page.getByTestId("wizard-review");
+    await expect(review).toBeVisible();
+    const text = await review.innerText();
+    console.log(["P3/D4 cheque receipt review:", text].join("
+"));
+    await saveEvidence(page, testInfo, "P3-D4-cheque-review");
+
+    // The cheque number and due date are columns on the document — they reach the
+    // ledger. Showing the evidence-only fields while hiding these was backwards.
+    expect(text).toContain("CHQ-EVIDENCE-777");
+    expect(text).toContain("BANK-EVIDENCE-777");
+    expect(text).not.toMatch(/\d{4}-\d{2}-\d{2}/);
+  });
+
   test("the proforma empty state no longer promises a file attachment", async ({ page }) => {
     await gotoApp(page, CREATE);
     await page.getByTestId("wizard-branch-receipt").click();

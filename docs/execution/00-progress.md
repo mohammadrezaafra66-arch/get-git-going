@@ -182,8 +182,42 @@ B) client-side nav  -> /unauthorized                  denied = true
 `if (typeof window === "undefined") return null`, and `requireAnyRole`,
 `requirePermission` and `requireAdmin` then each return `{user: null, roles: []}`
 **without throwing** — so the server-rendered page is delivered and the initial route is
-never re-checked on the client. Only this SSR path fails open; the `rolesLoading` path
-denies correctly.
+never re-checked on the client.
+
+**Correction, 2026-08-22, from the phase-2/3 independent review (its D3).** This entry
+first said "only this SSR path fails open; the `rolesLoading` path denies correctly."
+**That was wrong.** Every guard carries a *second* non-throwing return:
+
+```ts
+if (auth.rolesLoading || auth.profileLoading || auth.loading) return { user, roles: auth.roles };
+```
+
+That is a client-side fail-open as well. The remediation's measurement never reached it
+because the roles were already warm in that session. The defect is therefore wider than
+this gate first recorded: **two** fail-open paths, not one.
+
+**Exploitability, measured by the same review — this is UI exposure, not privilege
+escalation.** A sales-only session on a fail-open route sees chrome, filters and «فیشی
+یافت نشد» — no rows — because RLS holds the data back and `create_receipt` enforces the
+same boundary server-side (`42501`). That is why the review capped it at MEDIUM rather
+than HIGH. It does not make the hole acceptable; it means the owner is choosing when to
+fix a visibility defect, not racing a data leak.
+
+**An option the remediation did not consider.** "Fix it in the guard" is not the same as
+"deny during SSR". Deferring re-validation until after hydration — for instance
+invalidating the matched route once auth initialises, in `_app.tsx` — is one file and no
+route changes. It was never evaluated, and the remediation's argument presented a false
+choice between a per-route component check and locking everyone out. Whether it works in
+this TanStack Start version is unproven.
+
+**Still live on a full page load for a sales-only session** (measured):
+
+```
+/accounting/receipts            denied=false
+/accounting/receipts/training   denied=false
+/accounting/payment-vouchers    denied=false
+/accounting/treasury            denied=false
+```
 
 **Blast radius: 150 route files** — 62 `requireAnyRole`, 73 `requirePermission`,
 15 `requireAdmin`.

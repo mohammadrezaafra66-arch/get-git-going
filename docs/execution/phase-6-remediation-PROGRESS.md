@@ -75,7 +75,9 @@ A) full page load   -> /accounting/payment-vouchers   denied = false
 B) client-side nav  -> /unauthorized                  denied = true
 ```
 
-Only the **SSR path** fails open. `resolveAuthWithRetry` opens with `if (typeof window === "undefined") return null`, and each guard then returns `{user: null, roles: []}` without throwing, so the server-rendered page is delivered and the initial route is never re-checked. The `rolesLoading` path, which Gate A also suspected, is **not** implicated — client-side navigation goes through it and denies correctly.
+The **SSR path** fails open. `resolveAuthWithRetry` opens with `if (typeof window === "undefined") return null`, and each guard then returns `{user: null, roles: []}` without throwing, so the server-rendered page is delivered and the initial route is never re-checked.
+
+> **This paragraph originally continued: "The `rolesLoading` path, which Gate A also suspected, is **not** implicated." That was wrong** — see the phase-2/3 independent review section at the foot of this file (its D3). Every guard also returns without throwing on `rolesLoading || profileLoading || loading`, which is a second, client-side fail-open. My measurement never reached it because the roles were already warm. OG-24 has been corrected.
 
 **Blast radius, measured before touching anything:**
 
@@ -215,3 +217,61 @@ The circuit breaker never fired. No defect needed three attempts.
 2. **`manager` has no testable session** (`status=rejected`). Either activate the account or accept that the manager path stays unverified.
 3. **The endorsed-cheque branch has no live coverage** — zero endorsable cheques exist and Q2 said not to create one.
 4. **G-1**, the unauthenticated view leak, remains open and untouched by this mission, as instructed.
+
+---
+
+## Independent review of phases 2 and 3 — PASS, with six defects, three of them mine
+
+The reviewer confirmed every claim about the three files on screen, and went further than
+the acceptance suite in three useful ways: it sampled the sales denial across hydration
+(`t=200ms` through `t=5000ms`, denied at every sample, and the SSR HTML carries no wizard
+markup, so there is no flash to catch); it exercised the `rolesLoading` hold by delaying
+`/rest/v1/user_roles` by 8s and confirmed the page holds rather than flashing a false
+denial at a legitimate accountant; and it classified every ASCII token in every added
+Persian string, confirming the "English identifier in a Persian message" class did not
+ship a fourth time.
+
+### What I accepted and acted on
+
+**D3 — my diagnosis was wrong, and the Owner-Gate said so.** I recorded "only the SSR
+path fails open, not the `rolesLoading` path." Every guard has a second non-throwing
+return on `rolesLoading || profileLoading || loading`, which is a client-side fail-open
+too. My measurement never hit it because the roles were warm. **OG-24 has been corrected**
+and now records two fail-open paths, not one.
+
+**D4 — I showed the fields that carry no accounting weight and hid one that does.** The
+review screen listed the four T11 evidence-only fields while omitting the **cheque
+number**, which is a column on the document and reaches the ledger. Measured by the
+reviewer: `CHQ-EVIDENCE-777` entered, `shown on review: false`. Fixed — the review screen
+now shows the cheque number, due date and issuing bank on the cheque branches.
+
+**D2 — the exploitability finding is better than mine.** The reviewer established what I
+did not: the fail-open is **UI exposure, not privilege escalation**, because RLS returns
+no rows and `create_receipt` enforces the same boundary with `42501`. That is now in
+OG-24. The fair criticism stands: I deferred the fix without first checking whether the
+hole was exploitable.
+
+**D1 — a process slip of mine.** I briefed the reviewer that the box served `89e576d6`; by
+the time it ran, phase 4 had landed and the box served `24c1e188`. The reviewer caught it
+and proved the three files under review are byte-identical across that range, so the
+evidence stands — but the brief was stale and that is my error.
+
+### What I recorded rather than fixed, and why
+
+**D5 — `formatDateFa` is off by one day for a negative-UTC viewer.** `new Date("2026-08-22")`
+is UTC midnight and the helper pins no `timeZone`; measured Tehran/London `۳۱ مرداد ۱۴۰۵`,
+Los Angeles `۳۰ مرداد ۱۴۰۵`. It is a **pre-existing shared helper** used across the app,
+and this mission newly applied it to the review screen. Changing it touches every date in
+the product, which is the same reason the shared route guard was left alone. Recorded for
+the owner, not fixed here.
+
+**D6 — the denial UX is inconsistent.** A full page load shows an inline Persian message
+on the same URL; a client-side navigation redirects to `/unauthorized` with different
+wording. The `ثبت فیش جدید` link also stays visible to a sales user, so it is a dead link.
+Both are outside the four files this mission owns.
+
+### One claim of the reviewer's I checked rather than accepted
+
+It reported the guard counts as 62 / 74 / 16 against my 62 / 73 / 15. The difference is
+immaterial to the argument and I did not re-litigate it; the figure that matters —
+roughly 150 distinct route files — is agreed.
