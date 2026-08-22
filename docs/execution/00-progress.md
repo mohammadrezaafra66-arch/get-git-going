@@ -123,6 +123,7 @@ remediation needs that rebuild to function — it closes a reporting discrepancy
 | **reverse_document** | **complete (OG-14) + Gate A remediated** | 2026-08-19 | 2026-08-19 | accept + Gate A re-probes PASS | 363–364 plus **365** (M2 credit from journal line; M3 admin+accountant only, interim). M1 deferred to phase 5 as required input. m1 leftover recorded for phase 8. OG-22 closed. OG-23 raised (source-row freeze). `asan_list_journal_export` not touched. |
 | 5 Asan exports live | **complete** | 2026-08-19 | 2026-08-19 | 5/5 Accept; typecheck 70 | migration **366**. Classifier reads stored `doc_kind`. M1/C-d/C-e/C10/C7 closed. Cheque skip (D8). invoice_ar already 989. Samples in `docs/verification/asan/phase-5-asan-*.xlsx`. Owner must open one in Asan before phase 9. Phase 6 not started. |
 | 6 Wizard front end | **complete except 6.7** | 2026-08-19 | 2026-08-19 | RPC accept 3/3; typecheck 70 | No migration. Dual fee step removed from spec. `PaymentReceiptForm` deleted. OG-4 still open. Do not start phase 7. |
+| **phase-6 remediation** | **COMPLETE** | 2026-08-22 | 2026-08-22 | 14/14 acceptance PASS; typecheck 70; two independent review subagents | Closes the phase-6 Gate A defects. **P6-B1** cheque receipt could not be recorded — the step-4 gate demanded an account the branch never renders and the RPC refuses; fixed against the live RPC signatures. **P6-B2** a `sales` session reached the wizard — cause measured (only the SSR path fails open, not `rolesLoading`); fixed with the in-component check this repo already uses, **the shared guard deliberately not changed** (see the new Owner-Gate). **P6-M1/M3/m1/m2** the review screen now shows the tracking number, description and all four T11 evidence-only fields, renders Jalali, and no longer claims to come from the server. **P6-m3** the receipts list now names a party from the person file, matching the Asan export — owner answer (c), **no stored name rewritten, no migration**. Evidence: `phase-6-remediation-PROGRESS.md`. |
 | 7 OCR | not started | | | | Needs OG-5 (HTTPS) |
 | 8 Integrated verification | not started | | | | |
 | 9 Production | not started | | | | Needs OG-6 |
@@ -167,6 +168,85 @@ The deployed UI still shows the «سند پرداخت جدید» button on `/acc
 write path behind it is closed. A user who fills that form gets **`42501`** on submit. This is the
 ordinary migrations-ahead-of-code window, but it is user-visible, so it is recorded here rather than
 left to be discovered. It closes as soon as the tree is clean and the `web` service is rebuilt.
+
+### OG-24 (raised 2026-08-22) — the shared route guards fail open under SSR
+
+Measured during the phase-6 remediation with a session whose only role is `sales`:
+
+```
+A) full page load   -> /accounting/payment-vouchers   denied = false
+B) client-side nav  -> /unauthorized                  denied = true
+```
+
+`resolveAuthWithRetry` in `src/lib/rbac/route-guards.ts` opens with
+`if (typeof window === "undefined") return null`, and `requireAnyRole`,
+`requirePermission` and `requireAdmin` then each return `{user: null, roles: []}`
+**without throwing** — so the server-rendered page is delivered and the initial route is
+never re-checked on the client.
+
+**Correction, 2026-08-22, from the phase-2/3 independent review (its D3).** This entry
+first said "only this SSR path fails open; the `rolesLoading` path denies correctly."
+**That was wrong.** Every guard carries a *second* non-throwing return:
+
+```ts
+if (auth.rolesLoading || auth.profileLoading || auth.loading) return { user, roles: auth.roles };
+```
+
+That is a client-side fail-open as well. The remediation's measurement never reached it
+because the roles were already warm in that session. The defect is therefore wider than
+this gate first recorded: **two** fail-open paths, not one.
+
+**Exploitability, measured by the same review — this is UI exposure, not privilege
+escalation.** A sales-only session on a fail-open route sees chrome, filters and «فیشی
+یافت نشد» — no rows — because RLS holds the data back and `create_receipt` enforces the
+same boundary server-side (`42501`). That is why the review capped it at MEDIUM rather
+than HIGH. It does not make the hole acceptable; it means the owner is choosing when to
+fix a visibility defect, not racing a data leak.
+
+**The named remedy — added 2026-08-22 after the final independent review refused to let this
+gate close without one.** "Fix it in the guard" is not the same as "deny during SSR", and the
+remediation's argument knocked down a fix nobody proposed. The obvious remedy never touches
+the SSR path at all:
+
+> Lift the hand-written client-side check into a shared `<RequireRoles roles={…}>` wrapper —
+> or a `useRoleGate(roles)` hook — that holds while `rolesLoading`, reports `rolesError` as a
+> load failure rather than a denial, and renders a denial otherwise. Apply it once in the
+> `_app` layout, or per route as a one-line wrapper. It is the same ~15 lines already written
+> by hand in `_app.accounting.receipts.create.tsx` and in `_app.admin.asan-export.tsx`,
+> generalised. Mechanical, and it covers all 150 routes rather than one.
+
+Whether a single `_app`-level application works in this TanStack Start version is **unproven** —
+it needs a prototype. That prototype is the first task of the scoped mission, not a reason to
+defer again.
+
+**The honest summary of the deferral.** Both independent reviewers judged the *decision* sound
+and the *stated reasoning* not: deferring a 150-route refactor out of a four-file remediation is
+correct scoping, but it was argued from a false choice, and it leaves `/accounting/receipts` —
+a route that same remediation edited — fail-open one directory from the route it hardened.
+
+**Still live on a full page load for a sales-only session** (measured):
+
+```
+/accounting/receipts            denied=false
+/accounting/receipts/training   denied=false
+/accounting/payment-vouchers    denied=false
+/accounting/treasury            denied=false
+```
+
+**Blast radius: 150 route files** — 62 `requireAnyRole`, 73 `requirePermission`,
+15 `requireAdmin`.
+
+**Why the remediation did not fix it there.** `ensureAuthReady` reads the session from
+browser storage (`src/lib/auth/session.ts:315`), so the server cannot see who the caller
+is. A server-side deny would redirect **every legitimate user to /login on their first
+page load**. The wizard route was fixed with the in-component check this repository
+already uses in `_app.admin.asan-export.tsx` and five other routes; the shared guards
+were left alone deliberately.
+
+**Owner decision needed:** whether to make the guards fail closed — which needs an
+architectural answer for how a guarded route defers rendering until the client can
+check — as its own scoped mission with its own Gate A. Three of the four accounting
+routes tested still show no denial on a full page load.
 
 ## Owner-Gate log
 

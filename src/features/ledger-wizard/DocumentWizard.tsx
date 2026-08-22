@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 
 import { ChoiceButton } from "./ChoiceButton";
+import { formatDateFa } from "@/lib/i18n/formatters";
 import { MissingAsanMessage } from "./MissingAsanMessage";
 import { ProformaList } from "./ProformaList";
 import { lookupParty } from "./lookup";
@@ -169,7 +170,6 @@ export function DocumentWizard() {
       setStep(2);
       setConfirmReset(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmReset, branch]);
 
   const endorsed = heldCheques.find((c) => c.id === endorsedId) ?? null;
@@ -200,7 +200,23 @@ export function DocumentWizard() {
       if (channel === "cheque") {
         if (branch === "payment" && chequeKind === "endorsed")
           return Boolean(endorsedId) && Boolean(accountId);
-        return Boolean(chequeNumber) && Boolean(chequeDue) && Boolean(time) && Boolean(accountId);
+        // The account requirement follows the RPC, and the two RPCs differ.
+        // create_receipt REFUSES a destination account on the cheque branch
+        // («برای چک، حساب مقصد ثبت نمی‌شود؛ چک پس از وصول به حساب می‌نشیند») and
+        // this wizard's own submit already sends null for it. create_payment
+        // requires a source account for every channel, unconditionally.
+        // Requiring it here for a receipt asked for a value no control renders,
+        // so the step could never be satisfied and, being a disabled button
+        // rather than a failed validation, said nothing (phase-6 Gate A, P6-B1).
+        // Written positively — «payment requires an account» rather than «anything
+        // that is not a receipt does not». A future fourth branch then defaults to
+        // requiring the account instead of silently skipping it.
+        return (
+          Boolean(chequeNumber) &&
+          Boolean(chequeDue) &&
+          Boolean(time) &&
+          (branch === "payment" ? Boolean(accountId) : true)
+        );
       }
       return true;
     }
@@ -598,9 +614,63 @@ export function DocumentWizard() {
             ).toLocaleString("fa-IR")}{" "}
             تومان
           </p>
-          <p>تاریخ: {date}</p>
+          {/* P6-M3: this was `{date}`, the raw ISO value, so the last screen before
+              money is committed showed a Gregorian date beside an amount in Persian
+              digits. formatDateFa is the same helper the rest of the app uses. */}
+          <p>تاریخ: {formatDateFa(date)}</p>
+
+          {/* Show the tracking number only when submit() will actually send it.
+              Changing the channel does not clear `tracking`, so a user who typed one
+              on the bank branch and then switched to cheque would otherwise see it
+              confirmed here while p_tracking_number goes out as null — and one step
+              earlier the same wizard says «شماره پیگیری بانکی برای چک پرسیده نمی‌شود».
+              Two screens contradicting each other on the last page before money is
+              committed is the exact defect class this phase set out to close.
+              Mirrors submit(): bank on receipt/payment, always on dual. */}
+          {(branch === "dual" || channel === "bank") && tracking.trim() ? (
+            <p>شمارهٔ پیگیری: {tracking.trim()}</p>
+          ) : null}
+
+          {/* The cheque details reach the ledger — cheque_number and cheque_due_date are
+              columns on the document, not decoration. Showing the evidence-only fields
+              below while hiding these would have been exactly backwards. Raised by the
+              phase-2/3 independent review as D4. */}
+          {channel === "cheque" && chequeKind !== "endorsed" ? (
+            <>
+              {chequeNumber.trim() ? <p>شمارهٔ چک: {chequeNumber.trim()}</p> : null}
+              {chequeDue ? <p>تاریخ سررسید چک: {formatDateFa(chequeDue)}</p> : null}
+              {chequeBank.trim() ? <p>بانک صادرکننده: {chequeBank.trim()}</p> : null}
+            </>
+          ) : null}
+
+          {description.trim() ? <p>شرح: {description.trim()}</p> : null}
+
+          {/* P6-M1 / T11: the transferrer and the recipient are recorded on the document
+              for evidentiary reasons only — no Asan code, no journal line, no balance
+              movement. They exist so the document can stand as evidence a year later,
+              which is impossible if the user cannot check them before submitting. */}
+          {branch === "dual" &&
+          (transferrerName.trim() ||
+            transferrerAccount.trim() ||
+            recipientName.trim() ||
+            recipientAccount.trim()) ? (
+            <div className="rounded-md bg-muted/50 p-3" data-testid="wizard-review-evidence">
+              <p className="font-medium">فقط روی سند — بدون اثر حسابداری</p>
+              {transferrerName.trim() ? <p>نام انتقال‌دهنده: {transferrerName.trim()}</p> : null}
+              {transferrerAccount.trim() ? (
+                <p>شماره حساب انتقال‌دهنده: {transferrerAccount.trim()}</p>
+              ) : null}
+              {recipientName.trim() ? <p>نام گیرندهٔ حساب: {recipientName.trim()}</p> : null}
+              {recipientAccount.trim() ? <p>شماره حساب گیرنده: {recipientAccount.trim()}</p> : null}
+            </div>
+          ) : null}
+
+          {/* P6-m1: the old wording said the preview «از سرور می‌آید», which reads as a
+              claim that this screen was produced by the server. It is not — it is the
+              user's own input, echoed back. Say that plainly. */}
           <p className="text-muted-foreground">
-            پیش‌نمایش سند حسابداری از سرور می‌آید؛ اینجا فقط ورودی‌ها نمایش داده می‌شود.
+            این صفحه فقط ورودی‌های خودتان را نشان می‌دهد و از سرور نمی‌آید؛ سند حسابداری پس از ثبت
+            ساخته می‌شود.
           </p>
           {submitError ? (
             <Alert variant="destructive">
