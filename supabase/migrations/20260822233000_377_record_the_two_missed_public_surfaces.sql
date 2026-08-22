@@ -1,0 +1,88 @@
+-- 377 — the two public surfaces migrations 374 and 376 still missed (OG-25).
+--
+-- Found by the independent review of this mission, not by the mission's own enumeration. That makes
+-- three separate methods that each missed something, so the failure is worth stating plainly rather
+-- than buried:
+--
+--   * 374 classified each route FILE by which Supabase client it constructs. It missed
+--     `register.tsx`, whose table read happens one import away.
+--   * 376 fixed that with a transitive import walk keyed on `supabase.from(...)` / `.rpc(...)`.
+--     It missed BOTH surfaces below — one because the query is a hand-rolled `fetch` and never
+--     matches that shape at all, the other because the mission saw the call, wrote it down in the
+--     progress file, and then did not act on it.
+--
+-- ---------------------------------------------------------------------------
+-- Surface 4 — GET /api/healthz
+--
+--   `src/routes/api.healthz.ts:57-68` does not use the Supabase client. It builds the URL by hand
+--   and calls `fetch` with the publishable key as both `apikey` and `Authorization`:
+--
+--       `${url}/rest/v1/shop_settings?select=key&limit=1`
+--       { apikey: SUPABASE_PUBLISHABLE_KEY, Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}` }
+--
+--   The route's own header says so: "The database probe uses the publishable (anon) key, not the
+--   service-role key." Migration 374's header claims the opposite — that `api.healthz` "issues no
+--   database query at all". That claim is false and is corrected in the progress record.
+--
+--   WHY THIS ONE MATTERS BEYOND BOOKKEEPING. `shop_settings` holds an `anon` grant only through the
+--   schema default that 373 closed, and the Phase 3 audit listed it with NO consumer named. A
+--   batched REVOKE built from that audit — the very decision this mission exists to enable — would
+--   strip it. The probe would then get 401, report `"database": {"state": "down"}`, return HTTP 503,
+--   and the container healthcheck would restart every web container on the box. Recording it here is
+--   what stops that.
+--
+--   Verified live 2026-08-22: `GET /rest/v1/shop_settings?select=key&limit=1` with the anon key and
+--   no session returns HTTP 200, and `/api/healthz` returns `{"ok":true,...,"database":{"state":"up"}}`.
+-- ---------------------------------------------------------------------------
+SET client_encoding = 'UTF8';
+
+GRANT SELECT ON TABLE public.shop_settings TO anon;
+  -- src/routes/api.healthz.ts — the liveness probe. Revoking this returns 503 and restarts the
+  -- web containers; see the note above before touching it.
+
+-- ---------------------------------------------------------------------------
+-- Surface 5 — the public sale-list page's recent-purchase badge
+--
+--   src/routes/public.sale-lists.$listId.tsx
+--     -> src/components/public/sale-list-table.tsx
+--        -> RecentPurchaseGroup.tsx / RecentPurchaseBadge.tsx   (browser client, always rendered)
+--           -> rpc('get_recent_purchase_labels') / rpc('get_recent_purchase_label')
+--
+--   Both are SECURITY DEFINER and both are executable by `anon`.
+--
+--   UNLIKE `sale_lists` AND `sale_list_items`, THIS PATH WORKS TODAY. Those two return 401 to anon,
+--   which is why OG-32 records the sale-list page as already broken. These two do not. Measured
+--   2026-08-22 with the anon key and no session, against a product that has purchases:
+--
+--       POST /rest/v1/rpc/get_recent_purchase_label  {"p_product_id": "<any product uuid>"}
+--       -> {"status":"none","hours_since":967.17,
+--           "last_purchase_at":"2026-07-13T10:01:00.667437+00:00","is_today_purchase":false}
+--
+--   while the underlying table is closed to the same caller:
+--
+--       GET /rest/v1/purchases?select=id&limit=1  -> HTTP 401  (anon holds no grant on `purchases`)
+--
+--   So the SECURITY DEFINER context hands an unauthenticated caller the exact timestamp of the most
+--   recent non-cancelled purchase for any product UUID it can name. That is the G-1 defect class —
+--   a definer object reaching past a table the caller cannot read — surviving in a function rather
+--   than a view.
+--
+--   THIS MIGRATION DOES NOT CLOSE IT. Whether an anonymous visitor should learn procurement timing
+--   is a business decision, and closing it needs more than a REVOKE: PostgreSQL grants functions
+--   EXECUTE to PUBLIC by default and `proacl` here begins `=X/supabase_admin`, so revoking `anon`
+--   alone changes nothing. It is raised as an Owner-Gate. What this migration does is stop the
+--   surface being invisible: the grant is now written down with its consumer named, so the batched
+--   REVOKE knows it exists and the Owner-Gate has something to point at.
+-- ---------------------------------------------------------------------------
+
+GRANT EXECUTE ON FUNCTION public.get_recent_purchase_label(uuid)    TO anon;
+GRANT EXECUTE ON FUNCTION public.get_recent_purchase_labels(uuid[]) TO anon;
+  -- src/components/public/RecentPurchaseBadge.tsx and RecentPurchaseGroup.tsx, rendered by
+  -- src/routes/public.sale-lists.$listId.tsx. Discloses purchase timing to an anonymous caller —
+  -- see the Owner-Gate. Recorded, deliberately not closed.
+
+-- Like 374 and 376, every statement above is a catalogue no-op: all three privileges were already
+-- held. Verified by the unchanged relacl digest in the progress record.
+--
+-- ROLLBACK: docs/verification/377-down.sql. Read its header — running it alone takes /api/healthz
+-- down and restarts the web containers.

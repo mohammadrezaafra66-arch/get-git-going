@@ -1,0 +1,50 @@
+-- 376 — the public surface migration 374 missed: the registration form (OG-25).
+--
+-- WHAT WAS MISSED, AND WHY. Migration 374 classified all 31 route files outside `_app` by which
+-- Supabase client each one constructs. That found two anon-dependent surfaces and confirmed the
+-- eight `api.public.bot.*` routes are service-role. It also missed a third surface, because
+-- `src/routes/register.tsx` constructs the browser client only for `auth.*` and does its table read
+-- one import away:
+--
+--   src/routes/register.tsx
+--     -> src/lib/profile-fields/queries.ts  fetchActiveProfileFields({ registerOnly: true })
+--        -> supabase.from("profile_field_definitions").eq("is_active", true).eq("show_on_register", true)
+--
+-- That is the browser client on a route outside `_app`, so for a logged-out visitor filling in the
+-- registration form it resolves as `anon`. Re-measured with a transitive import walk of every
+-- non-`_app` route rather than a per-file classification.
+--
+-- This is the same class of mistake the G-1 mission made — a search that stopped one hop short —
+-- caught here by changing the method rather than repeating it.
+--
+-- THE GRANT IS REAL, NOT THEORETICAL. `anon` sees 4 of the table's 5 rows today, through a
+-- deliberate policy that exists for exactly this purpose:
+--
+--   "Public can read register form fields" | SELECT | {anon,authenticated}
+--       | (is_active = true AND show_on_register = true)
+--
+-- Of the 209 objects `anon` may SELECT, only five return it any data at all, and this is one of
+-- them (the others are products, brands, categories, and an aggregate view that returns zeros).
+--
+-- Like 374, this GRANT is a no-op in the catalogue — anon already holds `arwdDxt` here from the
+-- schema default that 373 closed. What changes is that the grant now names its consumer, so a
+-- future batched REVOKE has a record of what must be kept.
+--
+-- SELECT only. The wider pre-existing grant is deliberately left alone: narrowing existing objects
+-- is the batched REVOKE the owner excluded from this mission.
+--
+-- NOT GRANTED HERE, ON PURPOSE. The transitive walk also showed that `profiles`, `user_roles`,
+-- `custom_roles`, `role_permissions` and `log_event` are reached from every public route through
+-- `lib/auth/session.ts`, `lib/auth/AuthProvider.tsx` and `lib/rbac/*`. Those are auth bootstrap, not
+-- published data: measured as `anon` they return zero rows every time. Granting them would record
+-- them as public surfaces, which would be false. They are written up in
+-- `docs/research/anon-grant-audit.md` as objects a batched REVOKE must verify before touching.
+--
+-- ROLLBACK: docs/verification/376-down.sql. Read its header — reversing it alone breaks the
+-- registration form for a logged-out visitor.
+
+SET client_encoding = 'UTF8';
+
+GRANT SELECT ON TABLE public.profile_field_definitions TO anon;
+  -- src/routes/register.tsx via src/lib/profile-fields/queries.ts — renders the registration form's
+  -- dynamic fields for a visitor who has no session yet.
