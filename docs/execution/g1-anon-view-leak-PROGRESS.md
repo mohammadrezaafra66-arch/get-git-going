@@ -174,6 +174,30 @@ PostgreSQL) هستند و مالکشان `supabase_admin` است، RLS جدول 
 خوانده شد. **هر هشت view بسته شدند** — چهارتا به صفر ردیف، چهارتا به `42501`.
 پس از `ROLLBACK` بررسی شد که هیچ view نگهبانی `security_invoker` ندارد: **۰**.
 
+### ۰.۸ب — دامنهٔ دقیق ادعا: «کلاس نگهبان» بسته شد، نه «همهٔ سطح anon»
+
+بازبینی مستقل به‌درستی گفت من فقط گرنت **viewها** را بررسی کرده بودم. برای
+دقت، سطح anon روی جدول‌های پایه هم سنجیده شد:
+
+`anon` روی حدود ۱۹۰ جدول در `public` گرنت `SELECT` دارد — از جمله هر جدول پایهٔ
+پشت viewهای نشتی. اما RLS روی همه‌شان برقرار است و همه خالی برمی‌گردند:
+
+```
+bank_accounts   HTTP=200 []      journal_entries HTTP=200 []
+journal_lines   HTTP=200 []      profiles        HTTP=200 []
+user_roles      HTTP=200 []
+```
+
+**یک استثنا، که طراحی عمدی است نه رگرسیون:** جدول `products` به anon
+۳۵۵ ردیف می‌دهد (نام، SKU)، به‌واسطهٔ دو سیاست صریح `products_public_read` و
+`public_api_read_active_products`. همان endpoint عمومی `/api/public/products`
+بر همین تکیه می‌کند.
+
+پس ادعای درست این است: **مسیر ناشناس روی کلاس نگهبان `is_viewer_only` بسته
+شد.** نام و SKU محصول از راه دیگری و به‌عمد عمومی است، اما قیمت، موجودی، کانال،
+امتیاز و سهمیه — که `v_promotion_suggestions` می‌داد — دیگر از هیچ راهی در
+دسترس anon نیست، و هیچ دادهٔ مالی یا پرسنلی هم نیست.
+
 ### ۰.۹ — یک ادعای نادرست که پیش از ثبت اصلاح شد
 
 در اجرای اول `v_pricing_recompute_queue_summary` را «LEAKING» علامت زده بودم،
@@ -226,31 +250,103 @@ anon aggregate result                = 0, 0, 0, 0, null, null
 بانک را از `vw_account_balances` می‌بیند، خودش پرسش‌برانگیز است. اصلاحش تغییر
 رفتار برای کاربر واردشده است و خارج از دامنهٔ G-1 — پس اینجا فقط ثبت می‌شود.
 
-## مصرف‌کنندگان سمت برنامه — آیا (الف) چیزی را می‌شکند؟
+## مصرف‌کنندگان سمت برنامه
 
-پنج مصرف‌کنندهٔ واقعی در کد وجود دارد (بقیهٔ ارجاع‌ها در
-`src/integrations/supabase/types.ts` تولیدشده‌اند و اجرا نمی‌شوند):
+> **این بخش پس از بازبینی مستقل بازنویسی شد. نسخهٔ اولش غلط بود.**
+>
+> نوشته بودم «پنج مصرف‌کنندهٔ واقعی» و اینکه `publish_recipients_view` و
+> `v_promotion_suggestions` هیچ مصرف‌کنندهٔ اجرایی ندارند. هر دو ادعا نادرست
+> بود. علتش یک نقص در روش جست‌وجوی من بود: این مخزن هم نام‌فایل تختِ نقطه‌دار
+> دارد (`api.public.bot.*.ts`) و هم پوشهٔ تودرتو (`src/routes/api/public/`).
+> من فقط تخت‌ها را شمردم. همین نقص، BLOCKER زیر را هم تولید کرد.
 
-| فایل | view | مسیر سوارکننده | زیر پوستهٔ احراز؟ |
+**یازده محل فراخوانی در نُه فایل** (به‌جز `src/integrations/supabase/types.ts`
+که تولیدشده است):
+
+| فایل | view | زمینه | احراز؟ |
 |---|---|---|---|
+| **`src/routes/api/public/products.ts`** | `product_computed_prices_public` | endpoint سمت سرور با `Access-Control-Allow-Origin: *` | **خیر — عمومی** |
 | `src/components/products/ProductPublishPricesCard.tsx` | `product_computed_prices_public` | `_app.products.$id.tsx` | بله |
 | `src/components/sales/SalesProductRecommendations.tsx` | `product_computed_prices_public` | `_app.sales.search.tsx` | بله |
 | `src/hooks/pricing/useAminHozoorBoardPrices.ts` | `product_computed_prices_public` | `_app.pricing.amin-hozoor-board.tsx` | بله |
-| `src/lib/pricing/workbench-queries.ts` | `product_computed_prices_public` | `_app.pricing.my-workbench.tsx` | بله |
+| `src/lib/pricing/workbench-queries.ts` (دو محل) | `product_computed_prices_public` | `_app.pricing.my-workbench.tsx` | بله |
+| `src/routes/_app.pricing.live-price-list.tsx` | `product_computed_prices_public` | `_app` | بله |
+| `src/routes/_app.pricing.market-intelligence.tsx` | `product_computed_prices_public` | `_app` | بله |
+| `src/routes/_app.pricing.sale-lists_.$listId.tsx` (دو محل) | `product_computed_prices_public` | `_app` | بله |
+| `src/routes/_app.pricing.sale-lists_.$listId.publish.tsx` | **`publish_recipients_view`** | `_app` | بله |
 | `src/hooks/capital/useDynamicCapital.ts` | `v_dynamic_*` | `_app.accounting.dynamic-capital.tsx` | بله |
 
-هر پنج‌تا از کلاینت مشترک `@/integrations/supabase/client` استفاده می‌کنند که پس
-از ورود توکن کاربر را حمل می‌کند. مسیرهای واقعاً عمومی مخزن
-(`public.sale-lists.$listId.tsx`، `api.public.bot.*`، `sitemap.xml`, `index.tsx`)
-جست‌وجو شدند و **هیچ‌کدام** هیچ‌یک از این هشت view را نمی‌خوانند.
+اصلاح‌های مشخص نسبت به نسخهٔ اول:
 
-`vw_account_balances` هیچ ارجاعی در `src/` ندارد — حتی در فایل types. یعنی
-viewی که بیشترین داده حساس را افشا می‌کند، هیچ مصرف‌کنندهٔ برنامه‌ای ندارد.
+- `publish_recipients_view` **مصرف‌کنندهٔ اجرایی دارد**. بی‌ضرر است — گرنت
+  `authenticated` دست‌نخورده ماند و این view عمداً `security_invoker` نگرفت، پس
+  آن خواننده هنوز همان ۲۴ ردیف را می‌بیند.
+- `v_promotion_suggestions` واقعاً مصرف‌کنندهٔ اجرایی ندارد. این یکی درست بود.
+- `vw_account_balances` واقعاً هیچ ارجاعی در `src/` ندارد. این هم درست بود.
 
-`publish_recipients_view` و `v_promotion_suggestions` هم مصرف‌کنندهٔ اجرایی
-ندارند؛ فقط در types ظاهر می‌شوند.
+## BLOCKER — `/api/public/products` را شکستم، و بازبین پیدایش کرد
 
-**پس `REVOKE … FROM anon` هیچ قابلیت واردشده‌ای را نمی‌شکند.**
+`src/routes/api/public/products.ts` یک endpoint عمومی سمت سرور است که کلاینت را
+با `SUPABASE_PUBLISHABLE_KEY` و `persistSession: false` می‌سازد — یعنی به‌عنوان
+`anon` و بدون هیچ نشستی — و `product_computed_prices_public` را می‌خواند.
+
+پس از اعمال ۳۷۰، زنده خراب بود:
+
+```
+curl http://192.168.170.8:3100/api/public/products
+{"error":"Failed to fetch prices"}
+HTTP:500
+```
+
+بازبین علیت را در پایگاه‌داده و داخل `BEGIN … ROLLBACK` اثبات کرد، و نکتهٔ مهمی
+افزود: اگر فقط گرنت anon برگردد ولی `security_invoker` بماند، همچنان
+`permission denied for function has_dynamic_permission` می‌گیرد. یعنی **هیچ نیمی
+از درمان را نمی‌شود صرفاً شل کرد.**
+
+### اصلاح
+
+گرنت anon برنگشت. به‌جایش جست‌وجوی قیمت در همان handler به کلاید service-role
+منتقل شد — **و فقط جست‌وجوی قیمت**:
+
+- کوئری `products` روی مسیر anon/RLS باقی می‌ماند، زیر سیاست عمدی
+  `public_api_read_active_products`
+  (`is_active = true AND stock_status <> 'unavailable'`).
+- کلاینت service-role هرگز تصمیم نمی‌گیرد چه چیزی عمومی است؛ فقط قیمت
+  شناسه‌هایی را حل می‌کند که RLS از قبل آزادشان کرده، و فقط برای
+  `BASE_SALE_PRICE_TYPE_CODE`.
+
+شکل و محتوای پاسخ دقیقاً همان پیش از ۳۷۰ است. این قید در خود فایل به‌صورت
+کامنت ثبت شد تا ویرایش بعدی ناخواسته کوئری `products` را هم روی service-role
+نبرد.
+
+## مهاجرت ۳۷۱ — دروازه‌ای که واقعاً نگهبانی می‌کند
+
+بازبین ثابت کرد دروازهٔ `DO $chk$` خود ۳۷۰ می‌تواند روی **سه** حالت پایانی غلط
+هم «370 OK» چاپ کند: شمارش ۲ بدون بررسی *کدام* دو view؛ آزمون
+`grantee = 'anon'` که گرنت به `PUBLIC` را نمی‌بیند؛ و پوشش فقط ۴ از ۶ view در
+بررسی `authenticated`.
+
+۳۷۰ اعمال و commit شده بود و این مخزن مهاجرت اعمال‌شده را ویرایش نمی‌کند
+(قاعدهٔ ۶). پس دروازهٔ اصلاح‌شده به‌صورت **مهاجرت ۳۷۱** آمد — مهاجرتی که هیچ
+شیئی را تغییر نمی‌دهد و فقط ادعا می‌کند، با **نام** به‌جای **شمار**، و با
+`has_table_privilege` به‌جای پرس‌وجوی نام گیرنده.
+
+اثبات اینکه ۳۷۱ همان چیزی را می‌گیرد که ۳۷۰ از دست می‌داد — هر اختلال در
+`BEGIN … ROLLBACK` جداگانه:
+
+```
+BASELINE (healthy)   NOTICE: 371 OK: guard class matches by name; anon holds none of 7 …
+2a wrong two views   ERROR: security_invoker is on the wrong guard-class views.
+                            expected {product_computed_prices_public,v_promotion_suggestions},
+                            found   {publish_recipients_view,vw_account_balances}
+2b PUBLIC grant      ERROR: anon still holds SELECT on public.vw_account_balances
+                            (effective privilege, not just a named grant)
+2c authenticated     ERROR: authenticated lost SELECT on public.publish_recipients_view
+                            — the revoke hit the wrong role
+2d body rewritten    ERROR: the is_viewer_only view class has changed. expected {8}, found {7}
+```
+
+هر پنج حالت درست تشخیص داده شد. `psql exit=0` هنگام اعمال روی پایگاه‌دادهٔ سالم.
 
 ## تناقض‌های یافته‌شده
 

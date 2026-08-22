@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { BASE_SALE_PRICE_TYPE_CODE } from "@/lib/pricing/constants";
 
 const corsHeaders = {
@@ -55,7 +56,24 @@ export const Route = createFileRoute("/api/public/products")({
             // ردیف مقدار قبلی را بازنویسی می‌کرد و عملاً «آخرین ردیفی که آمد» برنده
             // می‌شد — یعنی این endpoint عمومی می‌توانست قیمت چکی یا همکاری را
             // به‌جای نقدی به بیرون بدهد.
-            const { data: prices, error: priceErr } = await supabase
+            //
+            // G-1 / migration 370: `anon` no longer has any privilege on
+            // `product_computed_prices_public`. That view is SECURITY DEFINER and was
+            // serving all 588 computed price rows — every price type, for every product,
+            // active or not — to any unauthenticated caller. The grant had to go.
+            //
+            // This lookup therefore runs as the service role. That does NOT widen what
+            // this endpoint publishes, because the service role is never allowed to decide
+            // what is public here: `ids` comes from the query above, which runs as `anon`
+            // under the deliberate `public_api_read_active_products` RLS policy
+            // (is_active = true AND stock_status <> 'unavailable'). We only resolve prices
+            // for rows RLS has already released, and only for BASE_SALE_PRICE_TYPE_CODE.
+            // The response shape and contents are identical to before 370.
+            //
+            // Keep it that way: never move the `products` query onto `supabaseAdmin`, and
+            // never drop the `.in("product_id", ids)` bound. Both are what keep the
+            // service-role client from becoming the thing that chooses the public surface.
+            const { data: prices, error: priceErr } = await supabaseAdmin
               .from("product_computed_prices_public")
               .select("product_id, rounded_sale_price, sale_price_types!inner(code)")
               .eq("sale_price_types.code", BASE_SALE_PRICE_TYPE_CODE)
