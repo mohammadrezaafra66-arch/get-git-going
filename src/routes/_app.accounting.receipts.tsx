@@ -273,7 +273,15 @@ function ReceiptsListPage() {
       let q = supabase
         .from("payment_receipts")
         .select(
-          "id, amount, payment_date, payment_time, tracking_number, status, receipt_type, customer:customers(id, name)",
+          // Phase-6 Gate A P6-m3 / owner answer (c) 2026-08-22. `customers.name` and
+          // `persons.display_name` diverge on 22 of 27 customers here, and the Asan
+          // export preview reads the person file — so one document showed two names on
+          // two screens. Neither column is rewritten; this reader now agrees with the
+          // export, and the person file is the source it agrees on because the journal,
+          // the export and `create_receipt`'s own payer_name already use it.
+          "id, amount, payment_date, payment_time, tracking_number, status, receipt_type, " +
+            "customer:customers(id, name), " +
+            "customer_person:persons!payment_receipts_customer_person_id_fkey(id, display_name)",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
@@ -497,10 +505,15 @@ function ReceiptsListPage() {
                     status: string;
                     receipt_type: string;
                     customer: { id: string; name: string } | null;
+                    customer_person: { id: string; display_name: string } | null;
                   };
                   return (
                     <TableRow key={row.id}>
-                      <TableCell>{row.customer?.name ?? "—"}</TableCell>
+                      {/* The person file first, the legacy customer name only as a
+                          fallback for a row that has no person yet. */}
+                      <TableCell>
+                        {row.customer_person?.display_name ?? row.customer?.name ?? "—"}
+                      </TableCell>
                       <TableCell className="font-medium">
                         {formatNumber(Number(row.amount))}
                       </TableCell>
