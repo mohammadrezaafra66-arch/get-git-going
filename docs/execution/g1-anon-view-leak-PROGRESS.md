@@ -4,13 +4,13 @@
 
 ```
 Phase:                G-1 — anon view leak remediation
-Status:               in progress
+Status:               complete — independent review PASS on round 3
 Branch:               feature/g1-anon-view-leak
 Base:                 staging @ e209218b
-Tasks:                5 of 7
-Current task:         Phase 4 — independent review dispatched
+Tasks:                7 of 7
+Current task:         Phase 6 — PR
 Blocked by:           nothing
-Migrations applied:   370 and 371 (2026-08-22, psql exit 0, both gates green)
+Migrations applied:   370, 371, 372 (2026-08-22, psql exit 0, all gates green)
 REST restarted after: yes — docker restart afrakala-lan-rest, container Up
 Backup taken:         n/a — this mission applies REVOKE/ALTER VIEW only, no data DDL
 Typecheck:            70 / 70 baseline (re-run after the src/ change)
@@ -67,6 +67,33 @@ anon از راهش `current_balance = 10289000000.00` را خواند.
 مسیرهای `api.public.bot.*` با کلید واقعی ربات؛ اشتراک‌های Realtime به‌عنوان anon؛
 سطل‌های Storage؛ دسترس‌پذیری Kong از بیرون LAN (همان `[U]` که خودم ثبت کردم)؛
 ۲۰ تابع `SECURITY DEFINER` آزموده‌نشده؛ و مجموعهٔ Playwright که اجرا نشد.
+
+### حکم نهایی — دور سوم: **PASS**
+
+بازبین ۱۵ حمله به دروازهٔ ۳۷۲ زد و هیچ‌کدام آن را نشکست: پنج املای
+`security_invoker` (`on`، `1`، `yes`، `RESET`، `off`)؛ گرنت سطح‌ستون؛
+`GRANT authenticated TO anon`؛ نقش میانی؛ گرنت به `PUBLIC`؛ تبدیل view به
+matview و به جدول هم‌نام؛ view نهم؛ و `security_barrier` که به‌درستی **مثبت
+کاذب نداد**. همچنین تأیید کرد مجموعهٔ ۱۹۹ محصول endpoint با آنچه RLS خودِ anon
+آزاد می‌کند **هش یکسان** دارد (`8a1994424ff2b51a`).
+
+### سه یادداشت غیرمسدودکننده از دور سوم
+
+۱. `option_value::boolean` می‌تواند خطای خام بدهد — ولی فقط **بسته‌شونده**، و
+فقط با دست‌کاری مستقیم کاتالوگ که PostgreSQL از راه DDL اجازه‌اش نمی‌دهد.
+مهاجرت باز هم شکست می‌خورد؛ فقط پیامش کمتر گویاست. آرایشی.
+
+۲. **دروازه بدنهٔ viewها را قفل می‌کند، ولی تابعی را که صدا می‌زنند نه.** اگر
+بدنهٔ `is_viewer_only` عوض شود، متن هر viewdef یکسان می‌ماند و بررسی ۵ رد
+می‌شود. این **رخنهٔ امنیتی G-1 نیست** — anon هیچ گرنتی ندارد — بلکه رانش
+دسترس‌پذیری است. اگر روزی OG-26 اجرا شود، قفل‌کردن `pg_get_functiondef` (یا
+هشش) ارزش افزودن دارد.
+
+۳. `public.sale-lists.$listId.tsx` یک مسیر واقعاً عمومی است که قیمت وعده
+می‌دهد، ولی **مسیر انتشار دوم نیست**: anon هیچ گرنتی روی `sale_lists` ندارد،
+هیچ فهرستی منتشر نشده، و `refresh_sale_list_prices` هیچ‌یک از این هشت view را
+نمی‌خواند. ۳۷۰ آن را هم نشکست. زمینه‌ای برای OG-29: قیمت مطلقاً محرمانه نیست —
+per-list و با اقدام صریح منتشر می‌شود.
 
 ### یک مشاهده، نه یافته
 
@@ -323,8 +350,16 @@ anon aggregate result                = 0, 0, 0, 0, null, null
 > دارد (`api.public.bot.*.ts`) و هم پوشهٔ تودرتو (`src/routes/api/public/`).
 > من فقط تخت‌ها را شمردم. همین نقص، BLOCKER زیر را هم تولید کرد.
 
-**یازده محل فراخوانی در نُه فایل** (به‌جز `src/integrations/supabase/types.ts`
-که تولیدشده است):
+**سیزده محل فراخوانی در ده فایل** (به‌جز `src/integrations/supabase/types.ts`
+که تولیدشده است).
+
+> عدد این سرخط دو بار غلط بود. اول «پنج» نوشتم. بعد از بازبینی دور دوم به
+> «یازده در نُه فایل» اصلاحش کردم — که عدد گزارش خود بازبین بود و من بدون
+> شمردن پذیرفتمش. بازبین در دور سوم خودش آن را پس گرفت و گفت ۱۳ است. شمردم:
+> **۱۳ محل فراخوانی در ۱۰ فایل** — یعنی عدد فایل هم غلط بود، نه فقط عدد
+> فراخوانی. جدول زیر از ابتدا کامل بود؛ فقط جمعِ بالای آن اشتباه بود.
+> `useDynamicCapital.ts`، `workbench-queries.ts` و
+> `sale-lists_.$listId.tsx` هرکدام دو فراخوانی دارند.
 
 | فایل | view | زمینه | احراز؟ |
 |---|---|---|---|
