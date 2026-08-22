@@ -7,14 +7,14 @@ Phase:                G-1 — anon view leak remediation
 Status:               in progress
 Branch:               feature/g1-anon-view-leak
 Base:                 staging @ e209218b
-Tasks:                1 of 7
-Current task:         Phase 0 — measurement (complete), Phase 1 next
+Tasks:                5 of 7
+Current task:         Phase 4 — independent review dispatched
 Blocked by:           nothing
-Migrations applied:   none yet (370 reserved)
-REST restarted after: n/a
-Backup taken:         n/a — this mission applies GRANT/ALTER VIEW only, no data DDL
-Typecheck:            not yet run (baseline 70)
-Last commit:          e209218b
+Migrations applied:   370 (2026-08-22, psql exit 0, gate NOTICE green)
+REST restarted after: yes — docker restart afrakala-lan-rest, container Up
+Backup taken:         n/a — this mission applies REVOKE/ALTER VIEW only, no data DDL
+Typecheck:            70 / 70 baseline
+Last commit:          c7dd8771 (docs + migration + rollback, before apply)
 PR:                   not yet opened
 ```
 
@@ -273,7 +273,164 @@ viewی که بیشترین داده حساس را افشا می‌کند، هی�
    می‌رسد. آنچه **نمی‌توانم** بسنجم: پیکربندی روتر/NAT شرکت. **`[U]`**
 3. اینکه `sales` مانده و نام بانک را می‌بیند (G-2 و بند ۰.۹ بالا).
 
+---
+
+## فاز ۱ — فایل بازگشت، پیش از هر مهاجرت
+
+`docs/verification/370-down.sql` **قبل از** نوشتن مهاجرت نوشته شد. مجموعهٔ امتیازها
+از حافظه بازنویسی نشد؛ از `pg_class.relacl` روی کاتالوگ زنده خوانده شد و روی هر شش
+view یکسان بود: `anon=arwdDxt/supabase_admin` (یعنی `GRANT ALL`، نه فقط `SELECT`).
+
+اثبات با `docs/verification/rollback-dryrun.sql` (اعمال، ادعا، دور ریختن):
+
+```
+>>>> running the down file inside a transaction we control
+SET / ALTER VIEW x2 / GRANT x6
+>>>> down file completed; still inside the transaction   still_in_txn = t
+ROLLBACK
+>>>> STATE AFTER ROLLBACK — must equal STATE BEFORE      public_functions = 841
+```
+
+و تأیید جداگانه که چیزی باقی نماند:
+
+```
+42 anon privileges (expect 42 = 6 views x 7)  |  0 guard views with reloptions (expect 0)
+```
+
+فایل هیچ `BEGIN`/`COMMIT`/`ROLLBACK` ندارد — قاعدهٔ M7 از مهاجرت ۳۵۰ به بعد.
+
+## فاز ۲ — اعمال
+
+مهاجرت **پیش از** اعمال commit شد (`c7dd8771`)، که سخت‌گیرانه‌تر از قاعدهٔ «هرگز
+اعمال‌شده ولی commit‌نشده» است. پیش از اعمال، آزادبودن شمارهٔ ۳۷۰ دوباره هم روی
+دیسک و هم روی `origin/staging` بررسی شد.
+
+پیش از اعمال واقعی، مهاجرت داخل `BEGIN … ROLLBACK` هم آزموده شد تا رفتار دروازه و
+تریگرهای رویدادی معلوم شود؛ دروازه سبز شد و anon روی `vw_account_balances` به
+`42501` خورد. بازگشت تأیید شد (۴۲ امتیاز anon دست‌نخورده باقی ماند).
+
+```
+docker cp … afrakala-lan-db:/tmp/mig370.sql
+psql -U supabase_admin -d afrakala -v ON_ERROR_STOP=1 --single-transaction -f /tmp/mig370.sql
+
+SET / REVOKE x6 / ALTER VIEW x2 / DO
+NOTICE:  370 OK: 8 guard-class views, 0 anon privileges, 2 security_invoker, authenticated intact
+psql exit=0
+
+docker restart afrakala-lan-rest   ->  afrakala-lan-rest  Up 6 seconds
+```
+
+ترتیب رعایت شد: commit ← اعمال ← restart ← commit نتایج.
+
+---
+
+## فاز ۳ — پذیرش A1 تا A11
+
+### A1 — anon روی HTTP، هر هشت view
+
+```
+product_computed_prices_public           401  42501 permission denied for view …
+publish_recipients_view                  401  42501 permission denied for view …
+v_dynamic_customer_capital_balances      401  42501 permission denied for view …
+v_dynamic_salesperson_capital_balances   401  42501 permission denied for view …
+v_promotion_suggestions                  401  42501 permission denied for view …
+vw_account_balances                      401  42501 permission denied for view …
+vw_customer_receivables                  401  42501 permission denied for view …
+vw_supplier_payables                     401  42501 permission denied for view …
+```
+
+توجه: پیام خطا اکنون روی هر هشت‌تا **مربوط به خود view** است. پیش از ۳۷۰، دو
+`v_dynamic_*` خطای `permission denied for function _capital_alloc_used` می‌دادند —
+یعنی حالا سد از گرنت می‌آید، نه از یک ACL اتفاقی. **PASS**
+
+### A2 — امتیاز anon
+
+`0 anon privilege rows (expect 0)` — از ۴۲ به ۰. **PASS**
+
+### A3 — دقیقاً دو view با `security_invoker`
+
+```
+product_computed_prices_public -> {security_invoker=true}
+v_promotion_suggestions        -> {security_invoker=true}
+2 total (expect 2)
+```
+**PASS**
+
+### A4 — مقایسه با خط پایهٔ فاز ۰ (نه با انتظار)
+
+هر ۳۲ خانه **دقیقاً** برابر خط پایه است. هیچ نقش واردشده‌ای تغییر نکرد.
+
+| view | accountant | sales | admin | viewer |
+|---|---|---|---|---|
+| `product_computed_prices_public` | ۵۸۸ | ۵۸۸ | ۵۸۸ | ۰ |
+| `publish_recipients_view` | ۲۴ | ۲۴ | ۲۴ | ۰ |
+| `v_dynamic_customer_capital_balances` | ۱۴ | ۱۴ | ۱۴ | ۰ |
+| `v_dynamic_salesperson_capital_balances` | ۲۱۰ | ۲۱۰ | ۲۱۰ | ۰ |
+| `v_promotion_suggestions` | ۱۹۸۸۰ | ۱۹۸۸۰ | ۱۹۸۸۰ | ۰ |
+| `vw_account_balances` | ۱ | ۱ | ۱ | ۰ |
+| `vw_customer_receivables` | 42501 | 42501 | 42501 | 42501 |
+| `vw_supplier_payables` | 42501 | 42501 | 42501 | 42501 |
+
+**PASS**
+
+### A5 — `authenticated` هنوز `SELECT` دارد
+
+هر شش view: `authenticated SELECT = yes`. REVOKE به نقش اشتباه نخورد. **PASS**
+
+### A6 — کلاس نگهبان هنوز هشت view است
+
+`8 views reference is_viewer_only (expect 8)`. **PASS**
+
+### A7 — هیچ بدنهٔ viewی بازنویسی نشد
+
+`8 guard-class views still SELECT-filtered by NOT is_viewer_only(uid()) (expect 8)`.
+این مأموریت هیچ `CREATE OR REPLACE VIEW` نزد. **PASS**
+
+### A8 — شمار کل viewها
+
+`20 views in public (baseline 20)`. **PASS**
+
+### A9 — ده view پیشین دست‌نخورده
+
+`12 views carry security_invoker in total (10 pre-existing + 2 new = 12)`. **PASS**
+
+### A10 — typecheck
+
+```
+npx tsc --noEmit | grep -c "error TS"
+70
+```
+
+دقیقاً روی خط پایهٔ ۷۰. این مأموریت هیچ فایل TypeScript را لمس نکرد. **PASS**
+
+### A11 — آزمون سرتاسری روی HTTP با نشست واقعی
+
+رمز فرضی `AfraTest!1404` برای `test.accountant` کار نکرد
+(`invalid_grant`). به‌جای حدس‌زدن رمز، از نشست ذخیره‌شدهٔ خود پروژه در
+`e2e/auth/accountant.storage.json` استفاده و با `grant_type=refresh_token` تازه شد.
+هیچ توکنی چاپ نشد.
+
+```
+  product_computed_prices_public           HTTP 200  rows=588
+  publish_recipients_view                  HTTP 200  rows=24
+  v_dynamic_customer_capital_balances      HTTP 200  rows=14
+  v_dynamic_salesperson_capital_balances   HTTP 200  rows=210
+  v_promotion_suggestions                  HTTP 200  rows=19880
+  vw_account_balances                      HTTP 200  rows=1
+
+  --- identical requests with NO session ---
+  vw_account_balances                      HTTP 401
+  publish_recipients_view                  HTTP 401
+  v_promotion_suggestions                  HTTP 401
+  product_computed_prices_public           HTTP 401
+```
+
+پس از restart سرویس REST، نشست واقعی همان شمار ردیف خط پایه را می‌گیرد و همان
+درخواست بدون نشست ۴۰۱ می‌شود. **PASS**
+
+**نتیجهٔ فاز ۳: هر یازده معیار PASS.**
+
 ## گام بعدی
 
-فاز ۱ — نوشتن `docs/verification/370-down.sql` **پیش از** هر مهاجرت، و اثبات آن
-با `rollback-dryrun.sql`.
+فاز ۴ — بازبینی مستقل، سپس فاز ۵ (Owner-Gateها) و فاز ۶ (به‌روزرسانی
+`00-progress.md`، PR، ادغام).
