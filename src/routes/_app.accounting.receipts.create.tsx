@@ -2,18 +2,61 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight } from "lucide-react";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { DocumentWizard } from "@/features/ledger-wizard/DocumentWizard";
 
+/** OG-13: create is admin, accountant, manager. Sales is not on that list. */
+const CREATE_ROLES = ["admin", "accountant", "manager"] as const;
+
 export const Route = createFileRoute("/_app/accounting/receipts/create")({
   beforeLoad: async () => {
-    await requireAnyRole(["admin", "accountant", "manager"]);
+    await requireAnyRole([...CREATE_ROLES]);
   },
   component: CreateReceiptPage,
 });
 
 function CreateReceiptPage() {
+  const { roles, rolesLoading } = useAuth();
+
+  // Phase-6 Gate A, P6-B2. `beforeLoad` alone does not hold on a full page load.
+  // Measured on 2026-08-22 with a session whose only role is `sales`:
+  //
+  //   full page load    -> /accounting/payment-vouchers   denied = false
+  //   client-side nav   -> /unauthorized                  denied = true
+  //
+  // The reason is that the guard's `resolveAuthWithRetry` starts with
+  // `if (typeof window === "undefined") return null`, and every guard then
+  // returns `{ user: null, roles: [] }` without throwing — so the server-rendered
+  // page is delivered and the initial route is never re-checked on the client.
+  // The server cannot do better on its own: `ensureAuthReady` reads the session
+  // from browser storage, so a server-side deny would redirect every legitimate
+  // user to /login on their first load.
+  //
+  // This check runs after hydration, when the roles are known, which is exactly
+  // where the SSR pass is blind. It is the pattern this repository already uses
+  // in `_app.admin.asan-export.tsx` and five other routes, not a new invention.
+  //
+  // The shared guard's SSR fail-open affects 150 route files (62 `requireAnyRole`,
+  // 73 `requirePermission`, 15 `requireAdmin`) and is recorded as an Owner-Gate;
+  // fixing it there is a separate, scoped mission.
+  const allowed = roles.some((r) => (CREATE_ROLES as readonly string[]).includes(r));
+
+  if (rolesLoading) {
+    // Hold, never render. A wizard shown while the answer is unknown is the
+    // failure this check exists to prevent.
+    return <div className="p-6 text-muted-foreground">در حال بررسی دسترسی…</div>;
+  }
+
+  if (!allowed) {
+    return (
+      <div className="p-6 text-muted-foreground" data-testid="create-denied">
+        دسترسی ندارید. ثبت سند حسابداری فقط برای مدیر کل، حسابدار و مدیر است.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader

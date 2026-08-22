@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 
 import { ChoiceButton } from "./ChoiceButton";
+import { formatDateFa } from "@/lib/i18n/formatters";
 import { MissingAsanMessage } from "./MissingAsanMessage";
 import { ProformaList } from "./ProformaList";
 import { lookupParty } from "./lookup";
@@ -169,7 +170,6 @@ export function DocumentWizard() {
       setStep(2);
       setConfirmReset(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [confirmReset, branch]);
 
   const endorsed = heldCheques.find((c) => c.id === endorsedId) ?? null;
@@ -208,11 +208,14 @@ export function DocumentWizard() {
         // Requiring it here for a receipt asked for a value no control renders,
         // so the step could never be satisfied and, being a disabled button
         // rather than a failed validation, said nothing (phase-6 Gate A, P6-B1).
+        // Written positively — «payment requires an account» rather than «anything
+        // that is not a receipt does not». A future fourth branch then defaults to
+        // requiring the account instead of silently skipping it.
         return (
           Boolean(chequeNumber) &&
           Boolean(chequeDue) &&
           Boolean(time) &&
-          (branch !== "payment" || Boolean(accountId))
+          (branch === "payment" ? Boolean(accountId) : true)
         );
       }
       return true;
@@ -611,9 +614,40 @@ export function DocumentWizard() {
             ).toLocaleString("fa-IR")}{" "}
             تومان
           </p>
-          <p>تاریخ: {date}</p>
+          {/* P6-M3: this was `{date}`, the raw ISO value, so the last screen before
+              money is committed showed a Gregorian date beside an amount in Persian
+              digits. formatDateFa is the same helper the rest of the app uses. */}
+          <p>تاریخ: {formatDateFa(date)}</p>
+
+          {tracking.trim() ? <p>شمارهٔ پیگیری: {tracking.trim()}</p> : null}
+          {description.trim() ? <p>شرح: {description.trim()}</p> : null}
+
+          {/* P6-M1 / T11: the transferrer and the recipient are recorded on the document
+              for evidentiary reasons only — no Asan code, no journal line, no balance
+              movement. They exist so the document can stand as evidence a year later,
+              which is impossible if the user cannot check them before submitting. */}
+          {branch === "dual" &&
+          (transferrerName.trim() ||
+            transferrerAccount.trim() ||
+            recipientName.trim() ||
+            recipientAccount.trim()) ? (
+            <div className="rounded-md bg-muted/50 p-3" data-testid="wizard-review-evidence">
+              <p className="font-medium">فقط روی سند — بدون اثر حسابداری</p>
+              {transferrerName.trim() ? <p>نام انتقال‌دهنده: {transferrerName.trim()}</p> : null}
+              {transferrerAccount.trim() ? (
+                <p>شماره حساب انتقال‌دهنده: {transferrerAccount.trim()}</p>
+              ) : null}
+              {recipientName.trim() ? <p>نام گیرندهٔ حساب: {recipientName.trim()}</p> : null}
+              {recipientAccount.trim() ? <p>شماره حساب گیرنده: {recipientAccount.trim()}</p> : null}
+            </div>
+          ) : null}
+
+          {/* P6-m1: the old wording said the preview «از سرور می‌آید», which reads as a
+              claim that this screen was produced by the server. It is not — it is the
+              user's own input, echoed back. Say that plainly. */}
           <p className="text-muted-foreground">
-            پیش‌نمایش سند حسابداری از سرور می‌آید؛ اینجا فقط ورودی‌ها نمایش داده می‌شود.
+            این صفحه فقط ورودی‌های خودتان را نشان می‌دهد و از سرور نمی‌آید؛ سند حسابداری پس از ثبت
+            ساخته می‌شود.
           </p>
           {submitError ? (
             <Alert variant="destructive">

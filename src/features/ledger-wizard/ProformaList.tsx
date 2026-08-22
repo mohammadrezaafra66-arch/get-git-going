@@ -26,7 +26,11 @@ export function ProformaList({ items, allocations, onChange }: ProformaListProps
   if (items.length === 0) {
     return (
       <p className="text-sm text-muted-foreground" data-testid="wizard-proforma-empty">
-        پیش‌فاکتور بازی برای این مشتری وجود ندارد. پیوست اختیاری است.
+        {/* P6-m2: this used to end «پیوست اختیاری است», which reads as a promise of a
+            file-upload control. There is none — p_attachment_ids raises 0A000 by
+            contract C8, and attachments belong to a later phase. The sentence is about
+            attaching a PROFORMA, so it now says so. */}
+        پیش‌فاکتور بازی برای این مشتری وجود ندارد. تخصیص پیش‌فاکتور اختیاری است.
       </p>
     );
   }
