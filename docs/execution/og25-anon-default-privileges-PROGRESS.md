@@ -8,9 +8,9 @@ Status:               in progress
 Branch:               feature/og25-close-anon-default-privileges
 Base:                 staging @ 1acbd730  (verified — matches the mission document)
 Tasks:                6 of 7
-Current task:         Phase 5 — review round 3 dispatched
+Current task:         Phase 5 — review round 4 dispatched
 Blocked by:           nothing
-Migrations applied:   373-379 — all psql exit 0, gates green
+Migrations applied:   373-380 — all psql exit 0, gates green
 REST restarted after: yes, after each
 Backup taken:         n/a — this mission changes privileges only, no data DDL
 Typecheck:            70 / 70 baseline (branch touches 0 TypeScript files)
@@ -229,7 +229,7 @@ sale_lists=HTTP 401        sale_list_items=HTTP 401
 
 | انتظار | یافته | اثر |
 |---|---|---|
-| `deferred.md`: ۲۱۶ از ۲۲۴ جدول گرنت anon دارند | ۲۰۴ جدول + ۷ view = ۲۱۱ شیء؛ هیچ‌کدام دقیق با ۲۱۶ جا نمی‌افتد | عدد امروز مبنا شد، نه عدد سند |
+| `deferred.md`: ۲۱۶ از ۲۲۴ جدول گرنت anon دارند | **آشتی می‌کند** — ۲۰۴ جدول + ۷ view + **۵ sequence** = ۲۱۶. کوئری اصلی همهٔ `relkind`ها را شمرده و با شمار جدول‌ها مقایسه کرده | عدد سند درست بود، برچسبش غلط. سرشماری این مأموریت به ۲۱۶ اصلاح شد (بند ۰.۳) |
 | سطح عمومی `sale-lists` به `anon` روی `sale_lists`/`sale_list_items` وابسته است و کار می‌کند | anon روی هر دو **`SELECT` ندارد** — ولی `DELETE,INSERT,UPDATE,TRUNCATE` دارد | سطح از قبل شکسته است ⇒ Owner-Gate، نه اصلاح |
 | `sale_price_types` برای صفحهٔ عمومی خوانا است | anon ۰ ردیف می‌بیند (RLS) | عنوان نوع‌قیمت روی صفحهٔ عمومی رندر نمی‌شود ⇒ همان Owner-Gate |
 | یک لیست منتشرشده برای خط پایه وجود دارد | **صفر** — هر ۲۰ لیست `draft` | مسیر منتشرشده **NOT BASELINEABLE**؛ داده آزمایشی ساخته نشد |
@@ -402,8 +402,8 @@ P11 a new object gains a grant ERROR: 212 objects hold an anon grant, but Phase 
 | **A4ب** | `/api/healthz` → `ok=true`, `database: up` — سطحی که BLOCKER 1 بود — **PASS** |
 | **A9ب** | سرشماری اثری: `r=204 v=7 S=5 m=0 p=0 f=0` = **۲۱۶** — **PASS** |
 
-**این برنچ هیچ فایل TypeScript تغییر نمی‌دهد** (۱۸ فایل: ۷ مهاجرت، ۷ فایل
-بازگشت، ۳ سند، و `00-progress.md`). پس ایمیج وب بازسازی **نشد** و
+**این برنچ هیچ فایل TypeScript تغییر نمی‌دهد** (**۱۹ فایل**: ۸ مهاجرت، ۸ فایل
+بازگشت، ۳ سند — و `00-progress.md` یکی از همان سه است، نه چهارمی). پس ایمیج وب بازسازی **نشد** و
 `APP_GIT_SHA` جابه‌جا نشد — جابه‌جا کردنش برای تغییری که هرگز به بسته نمی‌رسد،
 مُهر را دروغ می‌کرد.
 
@@ -610,6 +610,120 @@ R7 G-1 via column grant                378: ERROR anon holds a column-level SELE
 و دربارهٔ تخطی ترتیبی که خودم افشا کردم: بازبین آن را «قاعده شکسته شد، شیء سالم
 است» ارزیابی کرد و مستقل تأیید کرد که ۳۷۷ سه گرنتِ از پیش موجود است.
 
+---
+
+## فاز ۵، دور سوم — **CHANGE REQUIRED** سوم، و دو حفرهٔ دیگر
+
+بازبین تأیید کرد **هر هفت حملهٔ دور ۱ و ۲ با ۳۷۹ گرفته می‌شوند**، و دو تردید
+خودم را هم به نفعم حل کرد: ارث‌بری **دو-پرشی** درست حل می‌شود
+(`has_table_privilege` گراف عضویت را بازگشتی می‌پیماید)، و
+`defaclnamespace = 0` را بررسی ۷ می‌گیرد نه بررسی ۱ — پس شکاف نهفتهٔ دور اول
+عملاً بسته است، فقط جایی نیست که خواننده دنبالش بگردد.
+
+و تصمیم «هر امتیازی» را که از او پرسیده بودم، مستقل بازتولید و تأیید کرد:
+
+```
+effect_set=216  name_set=216  only_in_effect=<none>  only_in_name=<none>
+would_drop_under_select_only: 2
+```
+
+**ولی همان تصمیم حفره‌ای ساخت که ندیده بودم.**
+
+### MAJOR 15 — سرشماری «عضویت» را پین می‌کرد، نه «ترکیب»
+
+۳۷۹ می‌پرسید «آیا anon **هر** امتیازی روی این شیء دارد». وقتی شیئی وارد مجموعه
+شد، ترکیب امتیازهایش آزادانه عوض می‌شود — و مهم‌ترین تغییر، یعنی **گرفتن
+`SELECT`**، نامرئی است. روشن‌ترین نمونه دقیقاً همان شیئی است که مالک صریحاً
+دروازه‌بندی‌اش کرده بود:
+
+```
+GRANT SELECT ON TABLE public.sale_lists TO anon;   ->  379 OK
+```
+
+`sale_lists` و `sale_list_items` `DELETE,INSERT,REFERENCES,TRIGGER,TRUNCATE,UPDATE`
+دارند و **`SELECT` ندارند** — و همان **نبودِ** `SELECT` است که **OG-32** است.
+دادن `SELECT` بی‌صدا دروازه را باز می‌کند و ۳۷۹ نمی‌فهمد.
+
+امروز ردیفی نشت نمی‌کند — RLS هنوز صفر ردیف می‌دهد — پس این **رانش کشف‌نشده**
+است نه افشا. ولی اهمیتش این است که سرشماری **محصول اصلی این مأموریت** است،
+همان فهرست نگه‌داشتن/برداشتن که OG-30 از آن کار می‌کند، و نمی‌توانست
+«anon می‌تواند بنویسد ولی نه بخواند» را از «anon می‌تواند بخواند» تمیز دهد —
+که تنها تمایزی است که آن فهرست برایش وجود دارد.
+
+### MAJOR 16 — جاروی ستونی هنوز آزمون هویت بود، و نشت می‌کرد
+
+بررسی ۳ می‌پرسید `aclexplode(attacl) WHERE grantee='anon' OR grantee=0`. این
+anon و PUBLIC را می‌پوشاند — یک آزمون هویتِ **پهن‌تر**، نه آزمون اثر — و نقشی
+که anon از آن ارث می‌برد را نمی‌بیند:
+
+```
+CREATE ROLE _colrole;
+GRANT SELECT (purchase_price) ON public.api_products_pricing TO _colrole;
+GRANT _colrole TO anon;
+ -> 379 OK، با چاپ «no column-level anon grant anywhere in public»
+    در حالی که table-level=false و column-level=TRUE
+    و anon ۳۵۵ ردیف قیمت خرید از تأمین‌کننده می‌خواند.
+```
+
+فراخوان درست **دو بار** در همان فایل بود: بررسی ۲ از `has_table_privilege` و
+بررسی ۶ از `has_column_privilege` استفاده می‌کردند. بررسی ۳ نه.
+
+### MINOR 17 — و ادعای من دربارهٔ column ACLها ساده‌لوحانه غلط بود
+
+کامنت ۳۷۹ نوشته بود «در این شِما **صفر** column ACL وجود دارد» و «گرنت ستونی
+هرگز روش گرنت‌دادن این پروژه نیست». هر دو غلط است. **هشت** تا وجود دارد، و
+عمدی‌اند:
+
+```
+currency_sources.api_key    {authenticated=aw/postgres}   -- INSERT/UPDATE، بدون SELECT
+currency_sources.created_at / id / is_active / name / updated_at / url   {authenticated=r/postgres}
+sales_quotes.customer_person_id   {authenticated=w/postgres}
+```
+
+`currency_sources.api_key` دقیقاً برای **دریغ‌کردن `SELECT`** ستونی شده — یعنی
+پروژه از گرنت ستونی برای همان کاری استفاده می‌کند که MAJOR 15 دربارهٔ آن است.
+هیچ‌کدام به anon نمی‌رسد، پس ادعای ۳۷۹ همچنان برقرار بود؛ ولی **استدلالی که
+برایش آورده بودم** غلط بود. در ۳۸۰ بررسی ستونی از «ادعای مطلق» به **تفاضل با
+سطح جدول** تغییر کرد، که هم درست‌تر است هم با واقعیت این شِما می‌خواند.
+
+### مهاجرت ۳۸۰
+
+- سرشماری **مجموعهٔ امتیاز به‌ازای هر شیء** را پین می‌کند:
+  `'r:sale_lists=DELETE,INSERT,REFERENCES,TRIGGER,TRUNCATE,UPDATE'`. نبودِ
+  `SELECT` دیگر ضمنی نیست، **نوشته** شده.
+- بررسی ستونی به `has_column_privilege` تبدیل شد، با قاعدهٔ: anon فقط جایی
+  امتیاز ستونی داشته باشد که همان امتیاز را در سطح جدول هم دارد.
+- کامنت صریح دربارهٔ اینکه چرا بررسی ۱ عمداً باریک مانده و محافظت واقعی در
+  بررسی ۷ است.
+
+نتیجهٔ یازده حمله در برابر ۳۸۰:
+
+```
+BASELINE                         NOTICE: 380 OK
+M15 GRANT SELECT sale_lists      ERROR: expected-but-absent {"r:sale_lists=DELETE,INSERT,REFERENCES,TRIGGER,TRUNCATE,UPDATE"}
+M16 column via inherited role    ERROR: anon holds SELECT on … .purchase_price at COLUMN level but not at table level
+M9  PUBLIC grant                 ERROR: found-but-unexpected {v:api_products_pricing=SELECT}
+M10 matview                      ERROR: found-but-unexpected {m:_atk_mv=SELECT}
+M11 role inheritance             ERROR: found-but-unexpected {v:api_product_price_rows=SELECT, …}
+m12 direct column grant          ERROR: … at COLUMN level but not at table level
+R1  census swap                  ERROR: expected-but-absent {"r:payment_vouchers=…"}
+R2  all sequences                ERROR: found-but-unexpected {"S:platform_release_number_seq=SELECT,UPDATE,USAGE"}
+R6  shop_settings loses SELECT   ERROR: expected-but-absent {"r:shop_settings=…"}
+R5  close FUNCTIONS              ERROR: the FUNCTIONS default privilege … must be untouched
+NEW global ALTER DEFAULT PRIV    ERROR: a freshly created VIEW is still granted to anon — the tap is NOT closed
+```
+
+آخری همان حالتی است که بررسی ۱ **نمی‌بیند** و بررسی ۷ می‌گیرد — همان چیزی که
+بازبین در دور اول «نهفته» علامت زده بود.
+
+### دو خطای رکورد (MINOR 18)
+
+- شمار فایل: نوشته بودم ۱۸، ولی `00-progress.md` را دو بار شمرده بودم. با ۳۸۰
+  و فایل بازگشتش، عدد درست **۱۹** است.
+- جدول «تناقض‌های یافته‌شده» هنوز ردیف کهنهٔ «هیچ‌کدام با ۲۱۶ جا نمی‌افتد» را
+  داشت، در تناقض با بند ۰.۳ که در همان فایل اصلاح شده بود. اصلاح در یک جا
+  انجام شده بود و ادعای جایگزین‌شده در جای دیگر نمانده بود. حذف شد.
+
 ## گام بعدی
 
-بازبینی دور سوم.
+بازبینی دور چهارم.
