@@ -18,7 +18,7 @@
 -- on this box; migrations here are applied by hand with `docker cp` + `psql -f`.
 --
 -- WHY ONLY 29 OF THE 45 ARE WRITTEN. Each of the 45 was probed against the live catalogue for the
--- object it names. 27 are provable: the table, column, index, policy, trigger, constraint or
+-- object it names. 29 are provable: the table, column, index, policy, trigger, constraint or
 -- function body they created is there, and is attributable to that migration and no other.
 --
 -- The other 16 are NOT written, deliberately, and they are listed in
@@ -46,9 +46,27 @@
 --     374, 376, 377 grant privileges `anon` already held, so the catalogue does not move.
 --
 -- Writing a row that cannot be proved is worse than leaving one out. A missing row makes a replay
--- RE-RUN the migration, which for every one of these 18 is safe — they are idempotent, assertions,
+-- RE-RUN the migration, which for every one of these 16 is safe — they are idempotent, assertions,
 -- or `CREATE OR REPLACE` statements that a replay executes in file order anyway. A wrongly written
 -- row makes a replay SKIP a migration that may never have run, and nothing later would notice.
+--
+-- READ THAT QUALIFIER CAREFULLY — "in file order" is load-bearing, and phase 9 must honour it.
+-- It is true for phase 9's model, which replays the whole directory from scratch in order against a
+-- fresh production ledger. It is NOT true for a GAP-DRIVEN replay — one that runs only the versions
+-- absent from this table. In that mode the seven superseded exclusions (349, 350, 356, 358, 359,
+-- 361, 366) would run in ISOLATION, out of chain order, and a `CREATE OR REPLACE` executed alone
+-- reverts its object to an older body.
+--
+-- That is not hypothetical, and it is why 340 and 355 had to be written rather than left out:
+--
+--   * 340 declares `SECURITY DEFINER`. The live `require_asan_code` has `prosecdef = false`,
+--     because migration 346 removed it — 346's own header calls it "an RLS bypass". Running 340
+--     alone would restore that bypass.
+--   * 355 has zero references to `reversed_at`; 364 has seventeen and the live body carries them.
+--     Running 355 alone would strip 364's reversal guard and 356's endorsement-consumed-once rule.
+--
+-- Whoever owns phase 9: replay this directory in order, whole. Do not drive it from the gaps in
+-- this table.
 --
 -- Column set matched to the live table exactly: `version` text NOT NULL (primary key) and
 -- `inserted_at` timestamptz DEFAULT now(). The existing 523 rows all carry a single bulk
