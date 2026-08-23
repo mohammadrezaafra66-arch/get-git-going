@@ -17,18 +17,31 @@
 -- entire ledger programme plus the two security missions — have no row. Nothing writes that table
 -- on this box; migrations here are applied by hand with `docker cp` + `psql -f`.
 --
--- WHY ONLY 27 OF THE 45 ARE WRITTEN. Each of the 45 was probed against the live catalogue for the
+-- WHY ONLY 29 OF THE 45 ARE WRITTEN. Each of the 45 was probed against the live catalogue for the
 -- object it names. 27 are provable: the table, column, index, policy, trigger, constraint or
 -- function body they created is there, and is attributable to that migration and no other.
 --
--- The other 18 are NOT written, deliberately, and they are listed in
+-- The other 16 are NOT written, deliberately, and they are listed in
 -- `docs/execution/bookkeeping-record-reconciliation-PROGRESS.md` with the reason for each. They
 -- fall into two groups:
 --
---   * Nine are superseded `CREATE OR REPLACE` migrations — 340, 349, 350, 355, 356, 358, 359, 361,
---     366. A later migration in the same chain overwrote the body, so the live definition proves
---     the LAST writer ran and says nothing about the earlier ones. If 349 had never run and 351
---     had, the database would look exactly as it does now.
+--   * Seven are superseded `CREATE OR REPLACE` migrations — 349, 350, 356, 358, 359, 361, 366.
+--     A later migration in the same chain overwrote the body, so the live definition proves the
+--     LAST writer ran and says nothing about the earlier ones. If 349 had never run and 351 had,
+--     the database would look exactly as it does now.
+--
+--     340 and 355 were in this group until an independent review pointed out that the probe read
+--     function BODIES only. `COMMENT ON FUNCTION` writes a `pg_description` row, which is a separate
+--     catalogue object that `CREATE OR REPLACE` PRESERVES. Both wrote one, both are the only file in
+--     all 568 that writes that comment, and neither of their later writers (346 for
+--     require_asan_code; 356 and 364 for create_payment) issues any `COMMENT ON` at all. So the live
+--     comment can only have come from them. `create_payment`'s live comment even names its own
+--     migration: "…in one transaction (phase 3, migration 355)". Both are now written.
+--
+--     356 also created `payment_vouchers_endorsed_receipt_unique_idx`, which looks durable — but
+--     migration 363 does an unconditional `DROP INDEX` + `CREATE UNIQUE INDEX` with its own
+--     definition and its own comment, and the live index carries 363's `reversed_at IS NULL` clause.
+--     So 356 genuinely leaves no trace and stays excluded.
 --   * Nine leave no trace at all — 371, 372, 375, 378, 379, 380 create no object and only assert;
 --     374, 376, 377 grant privileges `anon` already held, so the catalogue does not move.
 --
@@ -52,6 +65,7 @@ INSERT INTO supabase_migrations.schema_migrations (version) VALUES
   ('20260818151000'),  -- 337  20260818151000_337_jalali_year_helper.sql
   ('20260818152000'),  -- 338  20260818152000_338_document_numbers.sql
   ('20260818153000'),  -- 339  20260818153000_339_lock_down_burn_document_number.sql
+  ('20260818154000'),  -- 340  20260818154000_340_require_asan_code.sql
   ('20260818155000'),  -- 341  20260818155000_341_cheque_kinds_and_doc_kind.sql
   ('20260818156000'),  -- 342  20260818156000_342_document_attachments.sql
   ('20260818157000'),  -- 343  20260818157000_343_posted_entry_immutability.sql
@@ -64,6 +78,7 @@ INSERT INTO supabase_migrations.schema_migrations (version) VALUES
   ('20260819092000'),  -- 352  20260819092000_352_og13_remaining_surfaces.sql
   ('20260819093000'),  -- 353  20260819093000_353_block_receipt_delete_when_posted.sql
   ('20260819100000'),  -- 354  20260819100000_354_payment_voucher_endorsed_cheque_ref.sql
+  ('20260819101000'),  -- 355  20260819101000_355_create_payment.sql
   ('20260819111000'),  -- 357  20260819111000_357_block_voucher_delete_when_posted.sql
   ('20260819130000'),  -- 360  20260819130000_360_dual_documents_table.sql
   ('20260819140000'),  -- 362  20260819140000_362_dual_document_no_fee.sql

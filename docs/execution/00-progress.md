@@ -33,8 +33,8 @@ Typecheck:            70 / 70 baseline (D14)
 Migrations applied:   45 (336-380) on the test server, all applied by hand.
                       supabase/migrations/ holds 568 files; supabase_migrations.schema_migrations
                       held 523 rows and was frozen at 20260811180000 — it records nothing this
-                      programme built. Back-filled to 550 rows on 2026-08-23 with the 27 of the
-                      45 whose effect is provable against the live catalogue. The other 18 are
+                      programme built. Back-filled to 552 rows on 2026-08-23 with the 29 of the
+                      45 whose effect is provable against the live catalogue. The other 16 are
                       deliberately absent and each is listed with its reason in
                       `bookkeeping-record-reconciliation-PROGRESS.md`; a replay re-running them
                       is safe, a replay skipping one that never ran is not.

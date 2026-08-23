@@ -10,7 +10,7 @@ Base:                 staging @ faa8b1fa  (verified: git rev-parse origin/stagin
 Items:                4 of 4 done
 Schema objects changed: ZERO — proven by digest + two counts, before and after
 Migrations added:     ZERO. supabase/migrations/ gained no file.
-Data written:         27 rows into supabase_migrations.schema_migrations, nothing else
+Data written:         29 rows into supabase_migrations.schema_migrations, nothing else
 REST restarted:       NO, and none was needed — no schema object moved
 Typecheck:            70 / 70 baseline (branch touches 0 TypeScript files)
 Web rebuilt:          NO — 0 files under src/
@@ -46,7 +46,7 @@ MISSING from the table : 45     -> exactly migrations 336 … 380
 missing range          : 20260818150000 … 20260823010000
 ```
 
-### ۱.۲ — پروب‌ها، و چرا فقط ۲۷ از ۴۵ نوشته شد
+### ۱.۲ — پروب‌ها، و چرا فقط ۲۹ از ۴۵ نوشته شد
 
 پروب از روی نام فایل حدس زده نشد. برای هر مهاجرت، فایل خوانده شد، شیئی که
 نام می‌برد پیدا شد، و همان شیء در کاتالوگ زنده بررسی شد. برای
@@ -62,10 +62,10 @@ asan_list_bank_deposit_export  350, 364        -> only 364 body-provable
 asan_list_journal_export       358, 359, 366, 367 -> only 367
 assign_document_number         338, 346        -> only 346  (338 provable by its TABLE)
 create_dual_document           361, 362        -> only 362
-create_payment                 355, 356, 364   -> only 364
+create_payment                 355, 356, 364   -> only 364 by BODY; 355 by its COMMENT
 create_receipt                 349, 351        -> only 351
 get_account_ledger             359, 364, 369   -> only 369
-require_asan_code              340, 346        -> only 346
+require_asan_code              340, 346        -> only 346 by BODY; 340 by its COMMENT
 reverse_document               364, 365        -> only 365
 validate_journal_line_ref      341, 347        -> only 347  (341 provable by its COLUMN)
 vw_account_balances            359, 364, 369   -> only 369
@@ -110,18 +110,37 @@ live : has_any_role(_uid, ARRAY['admin'::app_role, 'accountant'::app_role])
 | | تعداد |
 |---|---|
 | فایل‌های گم‌شده از جدول | ۴۵ |
-| **APPLIED** — نوشته شد | **۲۷** |
-| **UNPROVABLE** — عمداً نوشته نشد | **۱۸** |
+| **APPLIED** — نوشته شد | **۲۹** |
+| **UNPROVABLE** — عمداً نوشته نشد | **۱۶** |
 
-هجده مورد `UNPROVABLE`، با دلیل هرکدام:
+> **این بخش پس از بازبینی مستقل اصلاح شد: ۲۷ → ۲۹، و ۱۸ → ۱۶.**
+>
+> پروب من فقط **بدنهٔ** تابع را می‌خواند. `COMMENT ON FUNCTION` در
+> `pg_description` می‌نشیند — یک شیء کاتالوگ **جداگانه** که
+> `CREATE OR REPLACE` آن را **حفظ می‌کند**. پس یک نویسندهٔ بازنویسی‌شده هم
+> می‌تواند اثر بادوام و منحصربه‌فرد بگذارد. دو تا می‌گذارند:
+>
+> | | ۳۴۰ `require_asan_code` | ۳۵۵ `create_payment` |
+> |---|---|---|
+> | کامنت زنده با فایل می‌خواند | بله | بله |
+> | تنها فایل در هر ۵۶۸ که این کامنت را می‌نویسد | `..._340_...` | `..._355_...` |
+> | نویسنده‌های بعدی کامنت می‌زنند؟ | ۳۴۶ **صفر** `COMMENT ON` دارد | ۳۵۶ و ۳۶۴ هیچ‌کدام `create_payment` را کامنت نمی‌کنند |
+>
+> و کامنت زندهٔ `create_payment` عملاً **نام مهاجرت خودش را می‌برد**:
+> «…in one transaction (phase 3, migration 355)». این دقیقاً به همان قوتِ
+> شاهدی است که برای ۳۴۸ (constraint) یا ۳۴۱ (column) پذیرفتم.
+>
+> بازبین ۱۶ مورد باقی‌مانده را هم برای همین کلاس بررسی کرد و موردی نیافت:
+> ۳۴۹، ۳۵۰، ۳۶۱ و ۳۶۶ کامنتشان **بازنویسی** شده؛ ۳۵۸ و ۳۵۹ اصلاً کامنت
+> ندارند؛ ۳۷۱–۳۸۰ همان‌طور که ثبت شده بود.
+
+شانزده مورد `UNPROVABLE`، با دلیل هرکدام:
 
 | # | دلیل |
 |---|---|
-| ۳۴۰ | `require_asan_code` را ۳۴۶ بازنویسی کرد؛ هیچ اثر بادوام دیگری ندارد |
 | ۳۴۹ | `create_receipt` را ۳۵۱ بازنویسی کرد؛ گرنت‌هایش را هم ۳۵۱ دوباره صادر می‌کند |
 | ۳۵۰ | `asan_list_bank_deposit_export` را ۳۶۴ بازنویسی کرد |
-| ۳۵۵ | `create_payment` را ۳۵۶ و بعد ۳۶۴ بازنویسی کردند |
-| ۳۵۶ | `create_payment` را ۳۶۴ بازنویسی کرد |
+| ۳۵۶ | `create_payment` را ۳۶۴ بازنویسی کرد. **و ایندکسی که ساخت هم به حسابش نمی‌آید:** `payment_vouchers_endorsed_receipt_unique_idx` بادوام به‌نظر می‌رسد، ولی مهاجرت ۳۶۳ یک `DROP INDEX` بی‌قید و `CREATE UNIQUE INDEX` با تعریف و کامنت خودش می‌زند، و ایندکس زنده شرط `reversed_at IS NULL` مالِ ۳۶۳ را دارد |
 | ۳۵۸ | `asan_list_journal_export` را ۳۶۶ و ۳۶۷ بازنویسی کردند |
 | ۳۵۹ | `vw_account_balances` و `get_account_ledger` را ۳۶۹ بازنویسی کرد |
 | ۳۶۱ | `create_dual_document` را ۳۶۲ حذف و از نو ساخت |
@@ -129,8 +148,8 @@ live : has_any_role(_uid, ARRAY['admin'::app_role, 'accountant'::app_role])
 | ۳۷۱، ۳۷۲، ۳۷۵، ۳۷۸، ۳۷۹، ۳۸۰ | مهاجرت‌های صرفاً ادعایی — هیچ شیئی نمی‌سازند و هیچ ردی نمی‌گذارند |
 | ۳۷۴، ۳۷۶، ۳۷۷ | امتیازهایی به `anon` می‌دهند که از قبل داشت — no-op کاتالوگی |
 
-**چرا ننوشتنشان درست است، نه محافظه‌کاری بی‌جا:** ردیف نبود باعث می‌شود یک
-replay آن مهاجرت را **دوباره اجرا** کند، و برای هر ۱۸ مورد این بی‌خطر است —
+**چرا ننوشتن این شانزده‌تا درست است، نه محافظه‌کاری بی‌جا:** ردیف نبود باعث می‌شود یک
+replay آن مهاجرت را **دوباره اجرا** کند، و برای هر ۱۶ مورد این بی‌خطر است —
 ایدمپوتنت‌اند، ادعایی‌اند، یا `CREATE OR REPLACE`ای که replay به‌هر‌حال به
 ترتیب فایل اجرا می‌کند. ردیفی که به‌غلط نوشته شود باعث می‌شود replay مهاجرتی
 را **رد کند** که شاید هرگز اجرا نشده — و هیچ چیز بعدی متوجه نمی‌شود.
@@ -183,6 +202,15 @@ AFTER   rows=550  max=20260822210000
 
 **B2 — ایدمپوتنس:** اجرای دوباره `INSERT 0 0` داد و شمار روی ۵۵۰ ماند.
 
+سپس، پس از بازبینی مستقل، دو ردیف ۳۴۰ و ۳۵۵ به اسکریپت افزوده و دوباره اعمال شد
+— و ایدمپوتنس دقیقاً همان کاری را کرد که باید:
+
+```
+INSERT 0 2
+rows=552  max=20260822210000
+INSERT 0 0        <- سومین اجرا
+```
+
 **PostgREST ری‌استارت نشد و لازم هم نبود** — هیچ شیء شِمایی عوض نشد و چیزی در
 شِمای در معرض حرکت نکرد. این را صریح می‌نویسم به‌جای اینکه بازتابی ری‌استارت کنم.
 
@@ -195,6 +223,24 @@ AFTER   rows=550  max=20260822210000
 | `pg_proc` در `public` | ۸۴۱ | ۸۴۱ |
 
 هر سه یکسان.
+
+کوئریِ سازندهٔ رقم اول، **عیناً** — بازبینی به‌درستی گفت بدون آن رقم قابل
+بررسی نیست، و این همان نقصی است که بازبینی OG-25 هم گرفته بود و آن مأموریت با
+ثبت کوئری بستش. من دوباره تولیدش کردم:
+
+```sql
+SELECT md5(string_agg(c.relname || ':' || coalesce(c.relacl::text, ''), ',' ORDER BY c.relname))
+FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'public';
+```
+
+توجه: بدون فیلتر `relkind` — همهٔ اشیای `public` را می‌گیرد، جداکنندهٔ `:`،
+اتصال با `,`، و رشتهٔ خالی برای `relacl` تهی. بازبین ۱۴ صورت‌بندی محتمل را
+امتحان کرد و هیچ‌کدام این رقم را نداد؛ ثبت‌نکردن کوئری همان نقص است، نه رقم.
+بازبین مستقلاً با فرمول OG-25 نیز `5e31cb642a399d0370f56da643424a2d` گرفت که
+با آنچه مأموریت OG-25 درست پیش از کامیت پایهٔ این برنچ ثبت کرده بود
+بایت‌به‌بایت یکی است — شاهد مستقل و قوی‌تری بر اینکه هیچ امتیاز سطح‌رابطه‌ای
+حرکت نکرده.
 
 ---
 
@@ -338,7 +384,7 @@ TOTAL   claimed=69 body=69
 | انتظار | یافته |
 |---|---|
 | `schema_migrations` وضعیت اعمال را ثبت می‌کند | از ۲۶/۰۸/۱۱ یخ‌زده؛ هیچ‌چیز از ۳۳۶ به بعد در آن نیست. مهاجرت‌ها اینجا دستی اعمال می‌شوند و چیزی آن جدول را نمی‌نویسد |
-| هر ۴۵ مهاجرت قابل‌اثبات‌اند | ۱۸ تا نیستند — ۹ تای بازنویسی‌شده و ۹ تای بی‌اثر |
+| هر ۴۵ مهاجرت قابل‌اثبات‌اند | ۱۶ تا نیستند — ۷ تای بازنویسی‌شده و ۹ تای بی‌اثر |
 | OG-25 پس از اتمام مأموریتش بسته ثبت شده | هنوز `OPEN` می‌خواند |
 | هر Owner-Gate ردیفی در log دارد | OG-24 فقط بخش `###` داشت |
 | `OG-7` یک دروازه است | نیست — عنوان بخش «Reviewer escalations» است |
