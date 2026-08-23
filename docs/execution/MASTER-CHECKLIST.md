@@ -30,7 +30,7 @@ optional.
 - [x] **0.2** Write `ledger-decisions.md` (A1–A4) — Scope: `docs/execution/` — S
 - [x] **0.3** Write `decisions.md`, `deferred.md` — Scope: `docs/execution/` — S
 - [x] **0.4** Write `MASTER-CHECKLIST.md`, progress templates — Scope: `docs/execution/` — S
-- [ ] **0.5** **OG-1** — owner confirms A1–A4
+- [x] **0.5** **OG-1** — owner confirms A1–A4
   **Accept:** `ledger-decisions.md` contains a line `OG-1: CONFIRMED <date>`
 
 **Phase 0 exit:** all documents exist; OG-1 answered. No code written.
@@ -39,7 +39,7 @@ optional.
 
 ## Phase 1 — Shared foundations
 
-- [ ] **1.1** Remove the dead posting path — Scope: `supabase/migrations/` — S — **gated by OG-2**
+- [x] **1.1** Remove the dead posting path — Scope: `supabase/migrations/` — S — **gated by OG-2**
   Capture `pg_get_functiondef` for both objects into the progress file first, then
   `DROP TRIGGER trg_payment_receipts_post_journal ON public.payment_receipts;`
   `DROP FUNCTION public.post_receipt_journal(_receipt_id uuid);`
@@ -52,7 +52,7 @@ optional.
   **Accept:** `SELECT count(*) FROM pg_proc WHERE proname='post_receipt_journal';` → `0`
   and `SELECT count(*) FROM pg_trigger WHERE tgname='trg_payment_receipts_post_journal';` → `0`
 
-- [ ] **1.2** `document_numbers` table + `assign_document_number(doc_type, source_id)` — Scope:
+- [x] **1.2** `document_numbers` table + `assign_document_number(doc_type, source_id)` — Scope:
   `supabase/migrations/` — M
   Mirror `asan_assign_document_number` exactly: advisory lock, `max+1`, idempotent, no sequence, no
   FK to sources, burn-on-delete triggers. `doc_type` CHECK: `receipt | payment | dual`.
@@ -61,20 +61,20 @@ optional.
   **Accept:** calling it twice with the same `source_id` returns the same number:
   `SELECT assign_document_number('receipt','<uuid>') = assign_document_number('receipt','<uuid>');` → `t`
 
-- [ ] **1.3** `require_asan_code(p_person_id uuid)` — Scope: `supabase/migrations/` — S
+- [x] **1.3** `require_asan_code(p_person_id uuid)` — Scope: `supabase/migrations/` — S
   Raises `P0001` with a Persian message naming the party when no
   `person_identifiers(kind='asan_person_code')` row exists. Returns the code otherwise.
   **Accept:** for a person known to lack a code, the call raises; for one with a code it returns the
   code. Record both outputs.
 
-- [ ] **1.4** New `account_kind` values + `doc_kind` column — Scope: `supabase/migrations/` — M
+- [x] **1.4** New `account_kind` values + `doc_kind` column — Scope: `supabase/migrations/` — M
   Widen the `journal_lines` CHECK with `cheque_receivable`, `cheque_payable`. Teach
   `validate_journal_line_ref` their target tables. Add `journal_entries.doc_kind` with its CHECK,
   backfill existing rows (`payment_receipt` → `receipt`), then set `NOT NULL`.
   **Accept:** `SELECT count(*) FROM journal_entries WHERE doc_kind IS NULL;` → `0`
   and inserting a line with `account_kind='cheque_receivable'` succeeds in a rolled-back transaction.
 
-- [ ] **1.5** `document_attachments` polymorphic table + RLS — Scope: `supabase/migrations/` — M
+- [x] **1.5** `document_attachments` polymorphic table + RLS — Scope: `supabase/migrations/` — M
   Columns: `id`, `document_type` (CHECK `receipt|payment|dual`), `document_id`, `storage_path`,
   `mime_type`, `ocr_payload jsonb`, `ocr_status`, `uploaded_by`, `created_at`.
   Existence trigger validating `document_id` against the table implied by `document_type`.
@@ -82,12 +82,12 @@ optional.
   **Accept:** `SELECT relrowsecurity FROM pg_class WHERE relname='document_attachments';` → `t`
   and `SELECT count(*) FROM pg_policies WHERE tablename='document_attachments';` → `3`
 
-- [ ] **1.6** Immutability + mandatory audit on posted entries — Scope: `supabase/migrations/` — M
+- [x] **1.6** Immutability + mandatory audit on posted entries — Scope: `supabase/migrations/` — M
   See `docs/security/audit-trigger-spec.md`. A `BEFORE UPDATE OR DELETE` trigger on
   `journal_entries` and `journal_lines` raises when the entry is `posted`.
   **Accept:** `UPDATE journal_entries SET description='x' WHERE status='posted';` raises `P0001`.
 
-- [ ] **1.7** Seed `role_permissions` for any new module — Scope: `supabase/migrations/` — S
+- [x] **1.7** Seed `role_permissions` for any new module — Scope: `supabase/migrations/` — S
   Mandatory because `has_dynamic_permission` grants to **all** roles when a module has no row.
   **Accept:** `SELECT count(DISTINCT role_name) FROM role_permissions WHERE module='<new>';`
   equals the total distinct role count.
@@ -127,21 +127,21 @@ Stress test: 50 concurrent receipts → 50 balanced entries, 50 distinct numbers
 
 ## Phase 3 — Payments post
 
-- [ ] **3.1** `rpc-contracts.md` entry for `create_payment` — Scope: `docs/api/` — S
-- [ ] **3.2** Read `pay_purchase_with_voucher` and record its posting shape — Scope: none (read-only) — S
-- [ ] **3.3** `create_payment`: validate, mint number, insert voucher, audit — Scope:
+- [x] **3.1** `rpc-contracts.md` entry for `create_payment` — Scope: `docs/api/` — S
+- [x] **3.2** Read `pay_purchase_with_voucher` and record its posting shape — Scope: none (read-only) — S
+- [x] **3.3** `create_payment`: validate, mint number, insert voucher, audit — Scope:
   `supabase/migrations/` — M
   Reuse `payment_vouchers` and its existing `payee_matches_type` CHECK.
-- [ ] **3.4** Post the entry: `doc_kind='payment'`, debit `supplier_payable`, credit
+- [x] **3.4** Post the entry: `doc_kind='payment'`, debit `supplier_payable`, credit
   `bank`/`cheque_payable` — Scope: `supabase/migrations/` — M
   **Accept:** balanced, posted, correct `doc_kind`.
-- [ ] **3.5** Asan-code precondition for the payee — Scope: `supabase/migrations/` — S
-- [ ] **3.6** Cash branch: internal number — Scope: `supabase/migrations/` — S
-- [ ] **3.7** Cheque branch, own cheque: credit `cheque_payable` — Scope: `supabase/migrations/` — S
-- [ ] **3.8** Cheque branch, endorsed customer cheque: credit `cheque_receivable` — Scope:
+- [x] **3.5** Asan-code precondition for the payee — Scope: `supabase/migrations/` — S
+- [x] **3.6** Cash branch: internal number — Scope: `supabase/migrations/` — S
+- [x] **3.7** Cheque branch, own cheque: credit `cheque_payable` — Scope: `supabase/migrations/` — S
+- [x] **3.8** Cheque branch, endorsed customer cheque: credit `cheque_receivable` — Scope:
   `supabase/migrations/` — M
   **Accept:** the referenced cheque is not reusable — a second endorsement raises.
-- [ ] **3.9** Role gate + grants — Scope: `supabase/migrations/` — S
+- [x] **3.9** Role gate + grants — Scope: `supabase/migrations/` — S
 
 **Phase 3 exit:** a payment posts and reduces what we owe. Stress test as phase 2.
 **Also fix here:** `supplier_payable` is summed as `credit − debit` by

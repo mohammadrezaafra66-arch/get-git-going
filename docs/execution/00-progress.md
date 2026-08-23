@@ -7,21 +7,47 @@ boundary. Per-task detail lives in `phase-<N>-PROGRESS.md`.
 
 ```
 Programme:            AfraKala Live Ledger
-Current phase:        6 COMPLETE (wizard UI); 6.7 BLOCKED by OG-4
-                      SIDE-MISSION 2026-08-21: PV-remediation — phases 0-3 COMPLETE,
-                      merged as PR #328 (merge commit 5b65f60). Phase 4 (independent
-                      Gate A) NOT started; it is a separate dispatch on its own branch.
-                      ONE REMAINING MANUAL STEP: the test web image was not rebuilt.
-                      See T-3.5 below — the database carries 368/369 while the deployed
-                      image does not carry the frontend change.
-Current task:         none — do not start phase 7 (OG-5 HTTPS)
-Branch:               feature/phase6-wizard  (PV-remediation: feature/close-legacy-payment-voucher-path)
-Last commit SHA:      see git log on staging after this PR merges
-Live APP_GIT_SHA:     pending deploy
-Typecheck:            70 / 70 baseline (D14) — phase 6
-Migrations applied:   32 (336-367) — phase 6 added 0
-Open Owner-Gates:     OG-4, OG-8, OG-11, OG-12, OG-15, OG-17, OG-23
-                      (OG-10, OG-13, OG-14, OG-16, OG-18, OG-19, OG-20, OG-21, OG-22 CLOSED).
+                      Block rewritten 2026-08-23 by the bookkeeping mission. Every line below
+                      is measured; nothing is carried over from the previous text. The phase
+                      table and the Owner-Gate log further down were already current — only
+                      this block was stale, and it had been stale since phase 6.
+Current phase:        NONE IN PROGRESS. Phase 6 and its remediation are COMPLETE; task 6.7
+                      remains BLOCKED by OG-4 and is the only open item inside phase 6.
+                      Since then, four side-missions closed, none of them a numbered phase:
+                        PV-remediation      PR #328, merge 5b65f60  (migrations 368, 369)
+                        phase-6 remediation PR #332, merge e209218b (no migration)
+                        G-1 anon view leak  PR #333, merge 1acbd730 (migrations 370-372)
+                        OG-25 default tap   PR #334, merge faa8b1fa (migrations 373-380)
+                      The previous text's "ONE REMAINING MANUAL STEP: the test web image was
+                      not rebuilt" is RESOLVED — the image was rebuilt during the G-1 mission.
+Current task:         none — do not start phase 7 (blocked by OG-5, HTTPS)
+Branch:               staging is the integration branch; work happens on feature/*
+Last commit SHA:      faa8b1fa on origin/staging (git rev-parse, 2026-08-23)
+Live APP_GIT_SHA:     dbe46fe1 — BEHIND HEAD, AND THAT IS CORRECT. NO REBUILD IS OWED.
+                      `git diff --name-only dbe46fe1 origin/staging` is 12 files under docs/
+                      and 8 under supabase/migrations/ — ZERO under src/. Nothing in that gap
+                      reaches the built bundle, so moving the stamp would make it lie about
+                      what is in the image. PostgREST was restarted after each migration,
+                      which is what actually makes new database objects reachable.
+Typecheck:            70 / 70 baseline (D14)
+Migrations applied:   45 (336-380) on the test server, all applied by hand.
+                      supabase/migrations/ holds 568 files; supabase_migrations.schema_migrations
+                      held 523 rows and was frozen at 20260811180000 — it records nothing this
+                      programme built. Back-filled to 552 rows on 2026-08-23 with the 29 of the
+                      45 whose effect is provable against the live catalogue. The other 16 are
+                      deliberately absent and each is listed with its reason in
+                      `bookkeeping-record-reconciliation-PROGRESS.md`; a replay re-running them
+                      is safe, a replay skipping one that never ran is not.
+Open Owner-Gates:     20 open — OG-4, OG-5, OG-6, OG-8, OG-9, OG-11, OG-12, OG-15, OG-17,
+                      OG-23, OG-24, OG-26, OG-27, OG-28, OG-29, OG-30, OG-31, OG-32, OG-33,
+                      OG-34.
+                      13 closed — OG-1, OG-2, OG-3, OG-10, OG-13, OG-14, OG-16, OG-18, OG-19,
+                      OG-20, OG-21, OG-22, OG-25.
+                      Derived from the log below, gate for gate. Two defects in that log were
+                      fixed the same day: OG-25 still read OPEN although the mission that
+                      closed it had merged, and OG-24 existed only as a `###` section and had
+                      never been added to the table. `OG-7` is NOT a gate — it is the heading
+                      of the "Reviewer escalations" section, which is why it has no row.
 BLOCKING BEFORE PHASE 6: reverse_document CLOSED (363–365).
 BINDING ON PHASE 5:   T14 honoured. T15 (2026-08-19): bank automatic; cash/cheque/reversal
                       manual — both legs of a reversed pair and every cheque document are
@@ -276,7 +302,8 @@ routes tested still show no denial on a full page load.
 | OG-21 is a صراف who is paid a fee an account holder? | 2026-08-19 | **2026-08-19** | **ANSWERED and CLOSED, 2026-08-19: there is no fee at all.** AfraKala does not charge or record one. The question as asked does not arise. Phase 4's C-c reading (a paid صراف is a third account holder, third journal line on `('external_party', intermediary_id)`) is **overturned**, not because the implementation was faulty but because the business rule it implemented does not exist. صراف / واسط / شخص ثالث / نفر سوم / طرف سوم are the same **record-only** class as the transferrer and recipient. Migration **362** dropped the fee columns, the fee parameters, and the third line. The original C-c write-up is kept in `phase-4-PROGRESS.md`. |
 | OG-22 may a manager reverse a posted document? | 2026-08-19 | **2026-08-19** | **ANSWERED and CLOSED by migration 365: accountant and admin only; manager excluded (`42501`).** Create stays OG-13's wider set. **Interim, not final:** the owner said access control will be built in a dedicated phase where every module's permissions are set by role. Recorded in `ledger-decisions.md` so that phase revisits this array. |
 | OG-23 freeze party/amount on a posted source row? | 2026-08-19 | | **OPEN.** Migration 343 made the journal immutable; UPDATE policies on `payment_receipts`, `payment_vouchers` and `dual_documents` have **no column list**. Accountants still UPDATE posted receipts (OCR apply of amount; approve/reject `status`; `reverse_document` metadata). Credit unwind no longer reads the mutable party (365). Freezing is a business question — continue; do not idle. |
-| OG-25 close the schema-wide `ALTER DEFAULT PRIVILEGES … TO anon`? | 2026-08-22 | | **OPEN — larger than the G-1 it was found under.** `pg_default_acl` holds, for `supabase_admin` in schema `public`: tables/views `anon=arwdDxt`, sequences `anon=rwU`, functions `anon=X`. So **every future table, view and function created there is granted to `anon` automatically**. G-1 was therefore not a mistake on eight objects — it is the schema default, and those eight were merely where someone looked. Migration 370 is a point fix: `CREATE OR REPLACE VIEW` preserves the revoked ACL, but a `DROP VIEW` + `CREATE VIEW` (which migrations do whenever a column list changes) **silently re-grants anon**. Not changed autonomously because it affects every future object and some tables must genuinely stay public — the `api.public.bot.*` routes depend on that. Needs its own mission: close the default, then audit every existing object in `public`, not just views. |
+| OG-24 the shared route guards fail open under SSR | 2026-08-22 | | **OPEN.** Raised by the phase-6 remediation and written up in full as a `###` section earlier in this file — but never added to this table, so every reader of the log has been one gate short since 2026-08-22. Added here 2026-08-23 by the bookkeeping mission; the section is the authority and is not duplicated. In short: `resolveAuthWithRetry` returns `null` when there is no `window`, and `requireAnyRole` / `requirePermission` / `requireAdmin` then each return `{user: null, roles: []}` **without throwing**, so a server-rendered page is delivered and the initial route is never re-checked. Measured with a `sales`-only session: full page load reaches `/accounting/payment-vouchers` with `denied = false`, client-side navigation correctly reaches `/unauthorized`. Affects 150 route files. |
+| OG-25 close the schema-wide `ALTER DEFAULT PRIVILEGES … TO anon`? | 2026-08-22 | **2026-08-22** | **ANSWERED and CLOSED by migrations 373–380** (see the OG-25 remediation row in the phase table). The owner scoped it on 2026-08-22: close the future tap on `TABLES` and `SEQUENCES`, exclude `FUNCTIONS`, grant the real public surfaces explicitly, audit existing objects **report-only** with no batched REVOKE, and hand back any already-broken surface as a new gate rather than fixing it. All five delivered; the batched REVOKE became **OG-30**, `FUNCTIONS` became **OG-31**, and the two broken surfaces became **OG-32** and **OG-33**. **This row said OPEN until 2026-08-23**, when the bookkeeping mission corrected it — the mission that closed the gate recorded its own completion in the phase table and in the migration ledger but never came back to the gate log. Original text follows. **OPEN — larger than the G-1 it was found under.** `pg_default_acl` holds, for `supabase_admin` in schema `public`: tables/views `anon=arwdDxt`, sequences `anon=rwU`, functions `anon=X`. So **every future table, view and function created there is granted to `anon` automatically**. G-1 was therefore not a mistake on eight objects — it is the schema default, and those eight were merely where someone looked. Migration 370 is a point fix: `CREATE OR REPLACE VIEW` preserves the revoked ACL, but a `DROP VIEW` + `CREATE VIEW` (which migrations do whenever a column list changes) **silently re-grants anon**. Not changed autonomously because it affects every future object and some tables must genuinely stay public — the `api.public.bot.*` routes depend on that. Needs its own mission: close the default, then audit every existing object in `public`, not just views. |
 | OG-26 rewrite `is_viewer_only` to fail closed on a NULL uid? | 2026-08-22 | | **OPEN.** Option (ج) of the G-1 pre-flight. `is_viewer_only(NULL)` returns false, so for a caller with no identity the guard **opens** instead of closing — that is the root of G-1, not a faulty RLS policy. Deliberately not taken autonomously: it changes the behaviour of all eight views plus every other caller of the function at once. Migration 370 closes the anon path without it. |
 | OG-27 was G-1 reachable from outside the LAN? | 2026-08-22 | | **OPEN — `[U]`, and it cannot be closed from this session.** What was measured: `docker port` shows Kong listening on `0.0.0.0:9000` and `[::]:9000` on the test host, so any host that can route to `192.168.170.8` reaches it with the published anon key and no session. What could **not** be measured: the company router/NAT configuration, which is out of reach here and was not to be probed from production. If the answer is yes, this was a real disclosure of bank and staff data rather than an internal defect, and whether to notify anyone is the owner's call. |
 | OG-34 `ALTER ROLE anon BYPASSRLS` is invisible to every grant-level control | 2026-08-23 | | **OPEN — outside OG-25's scope by construction, and the single most consequential gap the four review rounds surfaced.** A role attribute is neither a grant nor a default privilege, so migration 380's gate cannot see it and deliberately was not extended to. Measured 2026-08-23 inside `BEGIN … ROLLBACK`: `ALTER ROLE anon BYPASSRLS` changes no relation-level privilege, the gate prints `380 OK`, and `anon` then reads **28 customers, 84 persons and 7 journal entries**. **Why this outranks an ordinary gap:** `docs/research/anon-grant-audit.md` §3 rests its whole safety argument on RLS — all 202 anon-readable tables have it enabled, and "for 202 of 202 the grant layer does nothing". One attribute change falsifies that for all 202 at once. The check is three lines against `pg_roles` and belongs to whatever mission owns role attributes, alongside two smaller siblings the same review found and rated low because `anon` has `rolcanlogin = f` and reaches the database only through PostgREST, which issues neither DDL nor GRANT: `GRANT … WITH GRANT OPTION` is not distinguished, and `GRANT CREATE ON SCHEMA public TO anon` is invisible. |
@@ -347,6 +374,7 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 364 | 20260819151000_364_reverse_document.sql | OG-14 | 2026-08-19 | docs/verification/364-down.sql | yes |
 | 365 | 20260819160000_365_reverse_document_gate_a.sql | OG-14 Gate A (M2, M3) | 2026-08-19 | docs/verification/365-down.sql | yes |
 | 366 | 20260819170000_366_asan_journal_export_doc_kind.sql | 5 (5.1, 5.2) | 2026-08-19 | docs/verification/366-down.sql | yes |
+| 367 | 20260819180000_367_asan_export_filters.sql | 5 — implements **T15** | 2026-08-19 | docs/verification/367-down.sql | **unknown** — this migration was applied on 2026-08-19 by another operator and no restart is evidenced anywhere; `unknown` is the honest answer and is not the same as `no`. **Added by the bookkeeping mission on 2026-08-23, from evidence, not from its neighbours' pattern.** Reason from T15: cash, cheque and reversal documents are entered into Asan by hand, so both legs of a reversed pair and every cheque document must be absent from the export file. Date cross-checked two ways — the filename's embedded timestamp `20260819180000`, and `git log --follow` on the file, whose first commit is `d850e63a` on 2026-08-19, *"367 — exclude reversals and cheques; fourth Asan menu; samples from live RPC"*. Live-catalogue probe: `pg_get_functiondef(asan_list_journal_export)` contains both `cheque` and `revers` → **true**. |
 | 368 | 20260821120000_368_close_payment_voucher_insert_path.sql | PV-remediation T-2.2 | 2026-08-21 | docs/verification/368-down.sql | yes — dry-run proved before the forward file existed |
 | 369 | 20260821121000_369_ledger_derived_balance_readers.sql | PV-remediation T-2.3 | 2026-08-21 | docs/verification/369-down.sql | yes — dry-run proved; bodies captured verbatim from the live catalogue |
 | 370 | 20260822143000_370_close_anon_read_on_viewer_guard_views.sql | G-1 remediation | 2026-08-22 | docs/verification/370-down.sql | yes — down file written and dry-run proved **before** the forward file was written; ACL captured verbatim from `pg_class.relacl` |
@@ -361,10 +389,18 @@ Every migration applied, in order. The rollback column must be filled **before**
 | 379 | 20260823001000_379_census_by_effect_all_relkinds.sql | OG-25 review r2 | 2026-08-23 | docs/verification/379-down.sql | **SUPERSEDED BY 380.** Pins set membership rather than the privilege set, so `GRANT SELECT ON sale_lists TO anon` — which silently un-gates OG-32 — passes it; its column sweep is still an identity test. yes — a documented no-op. Supersedes 378: the census becomes an EFFECT test (`has_table_privilege`), so a `PUBLIC` grant, an inherited role and a column grant no longer walk past it, and the scope widens to `relkind IN ('r','v','S','m','p','f')` because `ALTER DEFAULT PRIVILEGES … ON TABLES` covers matviews, partitioned and foreign tables too. |
 | 380 | 20260823010000_380_pin_privilege_set_and_column_effect.sql | OG-25 review r3 | 2026-08-23 | docs/verification/380-down.sql | **THE AUTHORITATIVE GATE. 375, 378 and 379 are superseded by it.** Hardening stopped here on the fourth review's advice: four gates asserting one unchanging state came to 1,218 lines against the 50-line remediation itself, and OG-30's batched REVOKE will deliberately change most of the 216 pinned entries, so every gate in the chain will have to be updated or retired by that mission. **One factual error stands in its header and is corrected here, not in the file** (AGENTS.md rule 6 — an applied migration is not edited, and a ninth migration for a comment is the over-engineering the same review warned against): it cites `currency_sources.api_key` as a column grant that withholds `SELECT`. It does not. `authenticated` holds `arwdDxt` at table level there and can read the column; PostgreSQL column privileges are purely **additive** and can never withhold. The genuine narrowing pattern is `sales_quotes.customer_person_id` — table-level `UPDATE` absent (`ardDxt`, no `w`), single-column `UPDATE` granted. The check itself is unaffected and is exactly what catches that shape. yes — a documented no-op. Supersedes 379: pins the privilege SET per object rather than set membership, so adding `SELECT` to an object already in the census is caught — including `sale_lists`, whose missing `SELECT` **is** OG-32; and makes the column sweep an effect test against the table grant. Eleven perturbations run against it, all caught. |
 
-> **367 is missing from this table and that is a pre-existing record defect, not an omission by the
-> PV-remediation mission.** It is live (`asan_list_journal_export` filters, T15) and is recorded in
-> `docs/research/PROGRAMME-AUDIT.md` and `docs/research/DEEP-AUDIT-2.md`. It is left alone here
-> rather than silently back-filled by a mission that did not write it.
+> **367 was missing from this table for four missions. It is now present — added 2026-08-23 by the
+> bookkeeping mission, which is the mission that owns the record.**
+>
+> The history is kept because it explains the rule that produced it. 367 is live
+> (`asan_list_journal_export` filters cheques and reversals, T15) and was recorded in
+> `docs/research/PROGRAMME-AUDIT.md` and `docs/research/DEEP-AUDIT-2.md`, but no row existed here.
+> The PV-remediation mission saw the gap and deliberately left it: back-filling another mission's
+> row from the side is how a progress file stops being evidence. The G-1 and OG-25 missions saw it
+> and left it for the same reason. Each was right to. A bookkeeping mission that reconciles the
+> whole file at once is where it belongs, and every column of the new row was filled from evidence
+> — the file's embedded timestamp, `git log --follow`, the existence of `367-down.sql`, and a live
+> probe of the function body — rather than from the shape of rows 366 and 368.
 >
 > **Still true as of 2026-08-22 (OG-25 remediation), and left alone again for the same reason.**
 > That mission saw the missing 367 row, the stale HANDOFF STATE block (`Migrations applied: 32
