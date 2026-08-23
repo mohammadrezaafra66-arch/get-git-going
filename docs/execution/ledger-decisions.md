@@ -548,8 +548,15 @@ table, or an RPC that takes the storage path instead of an attachment id. M1's p
 still runs, but its **conclusion is constrained** — the option it selects must put the attachment
 first, and "we could not, so we did create-then-attach" is no longer available.
 
-The upload leg still needs a Secure Context and OG-5 is still unanswered. That does not change: the
-ordering work is database and RPC, and it proceeds; the browser upload leg stays `[U]`.
+~~The upload leg still needs a Secure Context and OG-5 is still unanswered. That does not change: the
+ordering work is database and RPC, and it proceeds; the browser upload leg stays `[U]`.~~
+
+**Corrected 2026-08-23, and this is a consequence of the owner's own answer that I got wrong when I
+first wrote it down.** If the attachment must come **before** the document, then the attachment must
+be uploaded before the document exists — and an upload is a browser upload, which needs a Secure
+Context. **So the whole of M1 now sits behind OG-5, not just its upload leg.** There is no
+database-and-RPC half that can proceed alone: relaxing the ordering constraint without a working
+upload path would ship a schema change nothing can exercise. M1 does not start until OG-5 lands.
 
 ### M11 — build `hold_credit`
 
@@ -563,6 +570,14 @@ The owner's answer closes that loop: reserve when a sales quote is finalised or 
 payment or cancellation. This makes M11 a build mission rather than a measurement mission, and it
 stays last in the order — after Phase 8 — because it changes what the credit limit *does*, and the
 sales side is being completed separately.
+
+**A prerequisite the owner added on 2026-08-23, and it comes before any `hold_credit` code is
+written:** `increase_credit` already runs on the release side today. **Prove there is no
+double-release path first.** If release fires both on payment and on some other event that already
+calls `increase_credit`, then adding a hold would turn a currently-invisible double-release into a
+visible over-restoration of the limit. That proof is M11's phase 0 and it produces no code.
+
+M11's summary-table row is therefore: **1 gate, 2–3 items, depends on Phase 8.**
 
 ## Two things these answers do not change
 
