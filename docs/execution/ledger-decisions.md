@@ -512,3 +512,84 @@ for the owner to place; **not assigned to a phase here.**
 
 OG-1: CONFIRMED 2026-08-18 — A1, A2, A3, A4 approved by owner.
 OG-2: CONFIRMED 2026-08-18 — owner authorised dropping trg_payment_receipts_post_journal and post_receipt_journal.
+
+---
+
+# Part 5 — Owner answers to the remaining missions' pre-flight questions
+
+**Given 2026-08-23, all at once, before the missions ran.** They are recorded here rather than in
+each mission's progress file because they span missions and because several of them **override the
+fallback the execution brief had pre-declared**. Where they do, that is called out — an agent
+reading only the brief would otherwise do the opposite of what the owner asked.
+
+| Mission | Question | **Owner answer** | Brief's fallback | Same? |
+|---|---|---|---|---|
+| **M3** | may the last-purchase timestamp be public? | **No. Close the leak. Do not use the fallback.** | close it | ✅ same, but now a decision |
+| **M4** | should signed-in roles keep the wider view, or fall back to base-table RLS? | **Do not change what signed-in roles currently see. Fix only the NULL-uid fail-open.** | change nothing for signed-in access | ✅ same |
+| **M5** | may `/api/public/products` publish prices? repair the sale-list page? | **Publish nothing. Repair nothing now. Measure and report only.** | publish nothing, repair nothing | ✅ same |
+| **M1** | does the attachment precede the document? must OCR pre-fill before submit? | **Attachment comes BEFORE the document. OCR must pre-fill the form before submit. Do not use the fallback.** | create-then-attach | ❌ **OVERRIDDEN** |
+| **M2** | what is the canonical mobile format? | **Do not rewrite stored identifiers. Search must normalise all three forms: `09121234567`, `9121234567`, `+989121234567`.** | normalise at the query boundary, change no stored data | ✅ same — and now explicit about all three forms |
+| **M7** | which columns freeze on a posted document? | **Freeze nothing now. Document precisely which columns are mutable by whom.** | freeze nothing, document | ✅ same |
+| **M11** | should `hold_credit` be built? | **Build it and activate it. Reserve on quote finalise/create, release on payment or cancellation. Do not use the fallback.** | build nothing, write up the measurement | ❌ **OVERRIDDEN** |
+| **M12** | reset the serial each Jalali year? rename the module? | **Do not reset the serial. Do not rename the module.** | change neither | ✅ same |
+
+## The two that override the brief, and what changes because of them
+
+### M1 — attachment before document
+
+The brief's fallback was create-then-attach, chosen because it needs no schema change. **The owner
+refused it.** So M1 must actually resolve the ordering contradiction rather than route around it:
+
+`document_attachments.document_id` is `NOT NULL` behind a `BEFORE INSERT` existence trigger
+(`validate_document_attachment_ref`), and all three RPCs raise `0A000` when `p_attachment_ids` is
+non-empty — precisely because an attachment row cannot precede its document today. Honouring the
+owner's answer means changing that: a nullable `document_id` with a later binding step, a staging
+table, or an RPC that takes the storage path instead of an attachment id. M1's phase 0 design study
+still runs, but its **conclusion is constrained** — the option it selects must put the attachment
+first, and "we could not, so we did create-then-attach" is no longer available.
+
+The upload leg still needs a Secure Context and OG-5 is still unanswered. That does not change: the
+ordering work is database and RPC, and it proceeds; the browser upload leg stays `[U]`.
+
+### M11 — build `hold_credit`
+
+The brief's fallback was to build nothing and write up the measurement. **The owner refused it.**
+Measured state, from Part 4 of this file: CHECK is built and running, RELEASE is built and running,
+**HOLD was never built** — `hold_credit` has zero SQL callers, all 11 `customer_credit_balance` rows
+have `held_credit = 0.00`, and none of the 9 `sales_quotes` triggers touches credit. So the system
+checks the limit, never reserves against it, then releases against it on payment.
+
+The owner's answer closes that loop: reserve when a sales quote is finalised or created, release on
+payment or cancellation. This makes M11 a build mission rather than a measurement mission, and it
+stays last in the order — after Phase 8 — because it changes what the credit limit *does*, and the
+sales side is being completed separately.
+
+## Two things these answers do not change
+
+**OG-4 is still open.** M2's answer settles the *search* behaviour — normalise all three forms, touch
+no stored data — but the owner has not named a canonical stored format, which is what OG-4 asks. The
+gate stays open and task 6.7 may still be ticked on the search acceptance alone.
+
+**Nothing here authorises production.** OG-6 is untouched and phase 9 remains `DO NOT EXECUTE`.
+
+## An additional M2 requirement, beyond the pre-flight question
+
+The owner also specified, in the same message, that the customer/party search must support:
+
+- first name
+- last name
+- city
+- Asan code
+- mobile number
+
+**not identifier-based lookup alone.** That is a widening of task 6.7, not a restatement of it.
+
+Measured 2026-08-23, `src/features/ledger-wizard/lookup.ts` does an **exact-match** lookup: it calls
+`person_find_by_identifiers`, and otherwise selects `id, display_name` by exact identifier. There is
+no name search, no city search and no partial matching anywhere in that path. So M2 is larger than
+"wire up what exists" — it must add a real search surface, and its phase 0 must measure what
+`persons` actually holds (`display_name`, and whether a city column exists on `persons` or only on a
+related table) before designing it.
+
+This does not change the two constraints the owner set alongside it: **no stored identifier is
+rewritten**, and all three mobile forms must resolve.
