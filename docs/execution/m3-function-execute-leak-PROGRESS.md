@@ -8,9 +8,9 @@ Status:               complete — review CHANGE, all findings closed
 Branch:               feature/m3-function-execute-leak
 Base:                 staging @ 9a661303  (verified: git rev-parse origin/staging)
 Items:                OG-33 (close, owner-decided) + OG-31 (decide with measurement)
-Migrations:           381 (OG-33) and 382 (gate repair), both applied, psql exit 0
-Assertion gates:      1 — shipped in 381, REPAIRED in 382 (not a second gate)
-Review rounds:        2 of 2 used — both CHANGE; 2 findings left [U] per the cap
+Migrations:           381 (OG-33), 382 (gate repair), 383 (assert by name) — all applied, psql exit 0
+Assertion gates:      1 lineage — 381, repaired in 382, one check narrowed in 383
+Review rounds:        2 of 2 used — both CHANGE; 1 finding fixed on owner override, 1 left [U]
 Catalogue baseline:   a51ee08e55ff48453d7a2925f1c5d098 / pg_class 1105 / pg_proc 841
 ```
 
@@ -429,8 +429,33 @@ CREATE FUNCTION public.get_recent_purchase_label(p_sku text) …
 `get_recent_purchase_label*` باید برای `anon` و `PUBLIC` بسته باشد. سه خط.
 سرشماری برنمی‌گردد، پس خطر replay هم برنمی‌گردد.
 
-**این را به مالک می‌سپارم، نه به سکوت:** اگر ترجیح می‌دهید همین حالا اصلاح شود،
-یک مهاجرت کوچک است و سقف را کنار می‌گذارم. با رعایت سقف، ثبت شد و رد شد.
+**مالک سقف را برای همین یک مورد کنار گذاشت — و فقط همین یک مورد.** استدلالش
+دقیقاً همان چیزی بود که نگرانم می‌کرد: این حفره نشتی را که همین مأموریت بست
+بازمی‌گرداند، و OG-31 آن را **تصادفی** قابل‌رسیدن می‌کند. `[U]`-1 (فهرست
+توابع کمکی) به دستور صریح مالک **دست‌نخورده و `[U]` ماند.**
+
+### مهاجرت ۳۸۳ — بررسی ۱ مهاجرت ۳۸۲ را باریک می‌کند، نه اینکه سرشماری را برگرداند
+
+ادعا از دو **امضای دقیق** به **نام** تغییر کرد: هر overload از
+`get_recent_purchase_label*` باید برای `anon` و `PUBLIC` بسته باشد. سرشماری
+کل‌شِمای ۳۸۱ برنگشت، پس خطر replay هم برنگشت. بقیهٔ بررسی‌های ۳۸۲ (۲، ۲ب، ۳،
+۴، ۵) دست‌نخورده‌اند.
+
+یک نگهبان اضافه هم دارد که خودم افزودم: اگر هر دو تابع یک‌جا حذف شوند، ادعای
+بالا **توخالی** پاس می‌شد و چیزی گزارش نمی‌کرد. پس شمار توابع هم‌نام هم بررسی
+می‌شود.
+
+```
+BASELINE                       383: NOTICE OK — all 2 overloads closed
+P4  overload (defeated 382)    382: OK    383: ERROR 1 overload(s) … : get_recent_purchase_label(text)
+P4b overload created & closed  383: NOTICE OK — all 3 overloads closed   <- درست رد نمی‌کند
+P7  PUBLIC trap on the old sig 383: ERROR 1 overload(s) … : get_recent_purchase_labels(uuid[])
+P8  both functions dropped     383: ERROR only 0 function(s) … expected at least 2
+```
+
+پس از اعمال: digest، `pg_class`، `pg_proc` و شمار اجراشدنی همه ثابت
+(`a51ee08e… / 1105 / 841 / 744`)، و anon روی RPC همچنان `42501`. مهاجرت هیچ
+شیء شِمایی نمی‌سازد، پس PostgREST عمداً ری‌استارت نشد.
 
 ## آنچه دور دوم تأیید کرد
 
