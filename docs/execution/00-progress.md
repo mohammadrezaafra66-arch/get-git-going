@@ -38,11 +38,20 @@ Migrations applied:   45 (336-380) on the test server, all applied by hand.
                       deliberately absent and each is listed with its reason in
                       `bookkeeping-record-reconciliation-PROGRESS.md`; a replay re-running them
                       is safe, a replay skipping one that never ran is not.
-Open Owner-Gates:     20 open — OG-4, OG-5, OG-6, OG-8, OG-9, OG-11, OG-12, OG-15, OG-17,
+Open Owner-Gates:     23 open — OG-4, OG-5, OG-6, OG-8, OG-9, OG-11, OG-12, OG-15, OG-17,
                       OG-23, OG-24, OG-26, OG-27, OG-28, OG-29, OG-30, OG-31, OG-32, OG-33,
-                      OG-34.
+                      OG-34, OG-35, OG-36, OG-37.
                       13 closed — OG-1, OG-2, OG-3, OG-10, OG-13, OG-14, OG-16, OG-18, OG-19,
                       OG-20, OG-21, OG-22, OG-25.
+                      OG-35/36/37 were added 2026-08-23. They are not new decisions — they are
+                      three owner ACTIONS that existed only as prose in this file and had no row,
+                      so a reader of the log could not see them: open one generated .xlsx inside
+                      Asan (phase 5's unmet exit condition), activate test.manager and test.viewer
+                      (both `rejected`, which makes a third of the role matrix untestable), and
+                      create a bank_accounts row with account_type='cash' (there is none, so the
+                      cash branch of all three document types has never been exercised).
+                      OG-4, OG-5 and OG-6 had rows but were entirely EMPTY — no date, no status.
+                      Filled the same day from measurement.
                       Derived from the log below, gate for gate. Two defects in that log were
                       fixed the same day: OG-25 still read OPEN although the mission that
                       closed it had merged, and OG-24 existed only as a `###` section and had
@@ -283,9 +292,12 @@ routes tested still show no denial on a full page load.
 | OG-1 A1–A4 confirmed | | 2026-08-18 | CONFIRMED — ledger-decisions.md:155 |
 | OG-2 delete dead posting path | | 2026-08-18 | CONFIRMED — owner authorised the drop |
 | OG-3 `invoice_ar` Asan code | | 2026-08-18 | ANSWERED — asan_control_accounts.invoice_ar = 989 (verified live) |
-| OG-4 canonical phone format | | | |
-| OG-5 HTTPS live | | | |
-| OG-6 production authorised | | | |
+| OG-4 canonical phone format | 2026-08-18 | | **OPEN.** Blocks **task 6.7** (party lookup by Asan code or mobile) and mission M2. The owner must decide one canonical stored form for a mobile number — `09121234567`, `9121234567` or `+989121234567`. Measured 2026-08-23: `normalize_identifier` and `person_find_by_identifiers` are already live and `src/features/ledger-wizard/lookup.ts` already calls the latter, so the lookup may already satisfy 6.7's acceptance and only the format decision is missing. **What an agent must not do while this is open:** rewrite stored identifiers. Normalising at the query boundary is reversible; rewriting the data is not, and it is the same mistake owner decision (ج) was taken to avoid on the customer-name divergence. |
+| OG-5 HTTPS on the test server | 2026-08-18 | | **OPEN, and it is the widest block in the programme.** Without a Secure Context the browser withholds `getUserMedia`, `crypto.randomUUID` and `crypto.subtle`. Blocks **all of phase 7** and the upload leg of **M1**. Owner options: split-horizon DNS, Let's Encrypt DNS-01, or WireGuard. **There is no polyfill and no workaround** — an agent that finds one has found a way to be wrong. Work that does not need a Secure Context (M1's attachment *ordering*, which is pure database and RPC) proceeds; the browser upload leg is marked `[U]` until this lands. |
+| OG-6 authorise production | 2026-08-18 | | **OPEN.** Blocks **phase 9 entirely**. `main` is still at `99f6bd5`, before this programme began and roughly 45,000 lines behind `staging`. Two things are unmet independently of the authorisation itself: the owner has not yet opened a generated `.xlsx` inside Asan (OG-35), and 16 of the 45 applied migrations are deliberately absent from `schema_migrations` because their effect is not provable — so a production replay must run `supabase/migrations/` **whole and in order**, never gap-driven. See `bookkeeping-record-reconciliation-PROGRESS.md`. |
+| OG-35 open one generated `.xlsx` inside Asan | 2026-08-23 | | **OPEN — this is phase 5's exit condition and it has never been met.** No test anywhere in this repo can prove Asan accepts the file; only the owner opening one in Asan can. Samples exist at `docs/verification/asan/phase-5-asan-*.xlsx`, generated from the live RPC. **Do not import the old concatenated sample** — take a fresh trial export from `/admin/asan-export`. Recorded as a gate row 2026-08-23; it existed in prose in this file but had no row, so it was invisible to anyone reading the log. |
+| OG-36 activate `test.manager` and `test.viewer` | 2026-08-23 | | **OPEN.** Measured 2026-08-23: both accounts exist with the right roles assigned (`manager`, `viewer`) but `profiles.status = 'rejected'` for both. The `_app` layout redirects a non-active profile **before any route guard runs**, so one third of the role matrix cannot be exercised at all — this is what makes task **8.4** partly untestable, and it is why every mission in this programme records `manager`/`viewer` as `NOT TESTABLE` rather than as passing. **An agent may not change a user's account status** — that is business data. Two clicks in the admin panel. |
+| OG-37 create a `bank_accounts` row with `account_type='cash'` | 2026-08-23 | | **OPEN.** Measured 2026-08-23: `bank_accounts` holds exactly **one** row and its `account_type` is `bank`. There is no cash box. So the **cash branch of all three document types has never been exercised end to end**, in any phase, by any test. Roughly two minutes from the admin panel; an agent may not create it, because it is business data. Related and also owner-supplied: there are **zero** endorsable cheques (`payment_receipts` with `document_channel='cheque'` and `reversed_at IS NULL` = 0), so the endorsed-cheque branch is equally unexercised. Both are prerequisites for phase 8. |
 | OG-8 drop orphaned trg_post_receipt_on_approve? | 2026-08-18 | | raised in task 1.1 |
 | OG-9 should the document serial reset each Jalali year? | 2026-08-18 | | raised in task 1.2 |
 | OG-10 cheque counterparty may be an external party? | 2026-08-18 | **2026-08-18** | **ANSWERED: YES, both directions.** A cheque received may come from a non-customer; a cheque issued may go to a non-supplier. Implemented in migration **347**: `validate_journal_line_ref` accepts `external_parties` for both `cheque_receivable` and `cheque_payable`. **Closes Gate A M6** (the receipt-side mirror) by the same migration. Design choice (a) - existence in any allowed table - recorded with reasons in phase-1-PROGRESS.md. |
