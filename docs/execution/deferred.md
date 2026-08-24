@@ -96,3 +96,65 @@ functions role-gate internally and raise `42501` for anyone outside admin/manage
 `CREATE OR REPLACE` in migration 369 preserved the existing ACL rather than widening it. Whether the
 project wants EXECUTE narrowed on role-gated `SECURITY DEFINER` functions belongs with the item
 above.
+
+## The "27 lost untracked files" — WITHDRAWN, nothing was ever lost — 2026-08-24
+
+**This entry replaces one written on 2026-08-23 that recorded a data-loss incident. There was no
+incident.** The original text is preserved in this file's git history; it is withdrawn rather than
+quietly deleted because the M3 mission's review, this file, and a commit message all repeated the
+claim, and a future reader who meets one of those needs to be able to find the correction.
+
+### What the original entry said
+
+That 27 untracked files and 3 directories belonging to other operators had disappeared from
+`D:\AfraKalaTest\app`; that the surviving paths were exactly those `.gitignore` covers, which is the
+signature of `git clean -fd`; and that git could not restore them because untracked files were never
+in git objects. The owner's position closed it — he believed he had deleted them himself in an
+earlier cleanup, and no recovery was to be attempted.
+
+### What is actually true
+
+**Every one of those files is on disk, untouched, and always was.** They live in `D:\AfraKalaTest` —
+the *parent* directory — which is **a separate git repository**, with `D:\AfraKalaTest\app` nested
+inside it as an untracked subdirectory.
+
+Measured 2026-08-24:
+
+```
+git -C D:/AfraKalaTest     rev-parse --show-toplevel   ->  D:/AfraKalaTest
+git -C D:/AfraKalaTest/app rev-parse --show-toplevel   ->  D:/AfraKalaTest/app
+git -C D:/AfraKalaTest     status --porcelain | wc -l  ->  39
+git -C D:/AfraKalaTest/app status --porcelain | wc -l  ->  0
+```
+
+The parent's 39 untracked entries today are the same 39 the original snapshot listed, in the same
+order — including `?? app/` itself, **which is the tell**: a status listing that contains `app/` as
+an untracked entry can only have been produced from the parent repository, never from inside `app`.
+File modification times run 2026-07-13 to 2026-07-21 and nothing has been written since.
+
+### How the mistake was made
+
+A `git status --porcelain` snapshot taken in `D:\AfraKalaTest` was compared against the working tree
+of `D:\AfraKalaTest\app`. The files were "missing" from `app` because they were never in `app`.
+Every downstream inference then followed correctly from a false premise — including the
+`git clean -fd` signature, which fit only because `.gitignore` was being read from the wrong
+repository, and including the M9 reviewer's confirmation that the files are "absent from
+`D:\AfraKalaTest\app`", which is true and beside the point.
+
+The internal contradiction was visible the whole time and was caught only when an independent review
+counted the list: the entry said 27 files, the block beneath it listed 35, and one line read
+`rls-fix…` — an ellipsis where a filename should be, because the list had been transcribed rather
+than measured. Neither the count nor that placeholder was ever checked against disk.
+
+### What stands
+
+Nothing about the M3 agent's conduct, which the original entry already declined to blame. And
+nothing was destroyed, so the paragraph about four database backups and a pre-deploy snapshot whose
+contents "are now unknowable" is void — they are readable, in `D:\AfraKalaTest`, right now.
+
+**The lesson worth keeping is the one that produced the error:** `D:\AfraKalaTest` and
+`D:\AfraKalaTest\app` are two different git repositories, one nested in the other. A `git` command
+run without `-C` lands in whichever the shell's working directory selects, and the two give
+completely different answers to `status`, `check-ignore` and `log`. This programme's rule to write
+`git -C D:/AfraKalaTest/app` on every git command exists for exactly this reason; the snapshot that
+started this was taken without it.
