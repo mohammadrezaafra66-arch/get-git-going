@@ -2,8 +2,7 @@ import { useMatches } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermissionEx } from "@/lib/rbac/roles";
-import type { AppRole, ModuleKey, ExtendedAction } from "@/lib/rbac/roles";
+import type { AppRole } from "@/lib/rbac/roles";
 
 /**
  * M6 / OG-24 — enforce, on the client, the check `beforeLoad` could not make.
@@ -38,9 +37,17 @@ import type { AppRole, ModuleKey, ExtendedAction } from "@/lib/rbac/roles";
  *   [{"id":"__root__","ctxKeys":[]},{"id":"/_app","ctxKeys":[]},
  *    {"id":"/_app/accounting/treasury","ctxKeys":[]}]
  *
- * `beforeLoad`'s return value is not carried across SSR into the hydrated client, so a gate
- * reading it would silently never fire — a dead check that looks like a live one, which is
- * worse than no check at all. That code was removed rather than left in place.
+ * A gate reading that would silently never fire — a dead check that looks like a live one,
+ * which is worse than no check at all — so the code was removed rather than left in place.
+ *
+ * **The measurement is solid; the earlier explanation of it was not, and a reviewer was right to
+ * say so.** This app creates its router with an empty root context (`src/router.tsx`: `context:
+ * {}`) and no route in the repository returns anything from `beforeLoad`, so `ctxKeys: []` on
+ * all three matches — `__root__` included — is equally explained by "this app configures no
+ * context at all". What is established is narrower and sufficient: the mechanism was built,
+ * deployed and observed to change nothing, and the case that matters is precisely the cold load,
+ * where the client does not re-run the initial match's `beforeLoad` during hydration. A
+ * context-fed gate would therefore read nothing exactly when it is needed.
  *
  * `staticData` is static route configuration, so it survives to the client. Measured on one
  * route before being applied to the rest: `sales` on `/accounting/treasury` (carrying
@@ -57,10 +64,21 @@ import type { AppRole, ModuleKey, ExtendedAction } from "@/lib/rbac/roles";
  * mirrors, so the two cannot drift apart without both being visible in the same three lines.
  */
 
-export type RouteGate =
-  | { kind: "anyRole"; allowed: readonly AppRole[] }
-  | { kind: "admin" }
-  | { kind: "permission"; module: ModuleKey; action: ExtendedAction };
+/**
+ * NO `permission` KIND, DELIBERATELY. An earlier draft mirrored `requirePermission` here with a
+ * direct `hasPermissionEx(...)` call, and a reviewer found that it silently diverges from the
+ * guard it claims to mirror: `requirePermission` does `await loadRolePermissions()` FIRST, while
+ * a React render cannot await, so an unpopulated dynamic cache makes `hasPermissionEx` fall
+ * through to the STATIC permission table (`roles.ts` — "Fallback to static"). The two would then
+ * disagree for any role whose `role_permissions` row differs from the static default.
+ *
+ * No route uses that kind today, so shipping it would have added an untested branch that is
+ * wrong in a way nothing here can catch — the same failure this mission already deleted once,
+ * when the router-context mechanism turned out never to fire. Whoever takes OG-41 and adopts the
+ * 74 `requirePermission` routes has to solve the cache load first, and removing the kind makes
+ * TypeScript say so rather than letting it pass silently.
+ */
+export type RouteGate = { kind: "anyRole"; allowed: readonly AppRole[] } | { kind: "admin" };
 
 declare module "@tanstack/react-router" {
   interface StaticDataRouteOption {
@@ -78,10 +96,7 @@ const ROLE_FA: Record<string, string> = {
 
 function describe(gate: RouteGate): string {
   if (gate.kind === "admin") return "این بخش فقط برای مدیر کل است.";
-  if (gate.kind === "anyRole") {
-    return `این بخش فقط برای ${gate.allowed.map((r) => ROLE_FA[r] ?? r).join("، ")} است.`;
-  }
-  return "شما اجازه دسترسی به این بخش را ندارید.";
+  return `این بخش فقط برای ${gate.allowed.map((r) => ROLE_FA[r] ?? r).join("، ")} است.`;
 }
 
 /**
@@ -91,8 +106,7 @@ function describe(gate: RouteGate): string {
  */
 function passes(gate: RouteGate, roles: AppRole[]): boolean {
   if (gate.kind === "admin") return roles.includes("admin");
-  if (gate.kind === "anyRole") return roles.some((r) => gate.allowed.includes(r));
-  return hasPermissionEx(roles, gate.module, gate.action);
+  return gate.allowed.some((allowed) => roles.includes(allowed));
 }
 
 export function RouteRoleGate({ children }: { children: ReactNode }) {

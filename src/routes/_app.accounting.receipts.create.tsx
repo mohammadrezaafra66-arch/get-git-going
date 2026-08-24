@@ -49,7 +49,11 @@ function CreateReceiptPage() {
   if (rolesLoading) {
     // Hold, never render. A wizard shown while the answer is unknown is the
     // failure this check exists to prevent.
-    return <div className="p-6 text-muted-foreground">در حال بررسی دسترسی…</div>;
+    return (
+      <div className="p-6 text-muted-foreground" data-testid="create-roles-checking">
+        در حال بررسی دسترسی…
+      </div>
+    );
   }
 
   // A failed role load leaves `roles` empty with `rolesLoading` false, which would
