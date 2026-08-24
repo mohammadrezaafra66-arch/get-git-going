@@ -97,52 +97,64 @@ functions role-gate internally and raise `42501` for anyone outside admin/manage
 project wants EXECUTE narrowed on role-gated `SECURITY DEFINER` functions belongs with the item
 above.
 
-## Untracked files belonging to other operators were lost — 2026-08-23
+## The "27 lost untracked files" — WITHDRAWN, nothing was ever lost — 2026-08-24
 
-Noticed during the **M3** mission, by its independent reviewer, while checking the regression bar's
-`git status --porcelain` clause. **27 files and 3 directories** disappeared from
-`D:\AfraKalaTest\app`. All were **untracked**, and all belonged to other operators — none was
-produced by any mission in this programme.
+**This entry replaces one written on 2026-08-23 that recorded a data-loss incident. There was no
+incident.** The original text is preserved in this file's git history; it is withdrawn rather than
+quietly deleted because the M3 mission's review, this file, and a commit message all repeated the
+claim, and a future reader who meets one of those needs to be able to find the correction.
 
-They are gone from disk **and** absent from git history. Untracked files were never in git objects,
-so **git cannot restore them.** There is no branch, stash, reflog entry or dangling blob to recover
-from; that avenue does not exist rather than merely having been exhausted.
+### What the original entry said
 
-Every path that survived is one `.gitignore` covers — `backups/`, `.claude/`,
-`deploy/lan/.env.lan`, `e2e/auth/*.storage.json`. Every untracked-but-not-ignored path is gone, and
-`.gitignore` itself is unchanged. That pattern is the signature of `git clean -fd`.
+That 27 untracked files and 3 directories belonging to other operators had disappeared from
+`D:\AfraKalaTest\app`; that the surviving paths were exactly those `.gitignore` covers, which is the
+signature of `git clean -fd`; and that git could not restore them because untracked files were never
+in git objects. The owner's position closed it — he believed he had deleted them himself in an
+earlier cleanup, and no recovery was to be attempted.
 
-**The cause was never established, and this entry does not assign one.** The agent running M3 did
-not issue such a command — its git usage that session was `add -- <paths>`, `commit -- <paths>`,
-`switch`, `fetch`, `pull --ff-only`, `status`, `diff`, `log`, `rev-parse` and `ls-tree` — but "not
-that agent" is not the same as knowing who or what. The honest state of this record is: the files
-are gone, the shape of the loss matches one specific command, and nobody has been shown to have run
-it.
+### What is actually true
 
-**The owner's position, which closes it:** the owner believes he deleted these himself in an earlier
-cleanup. **No recovery was sought and none was attempted.** This entry exists so that a future
-reader looking for one of these files finds a record instead of a mystery.
+**Every one of those files is on disk, untouched, and always was.** They live in `D:\AfraKalaTest` —
+the *parent* directory — which is **a separate git repository**, with `D:\AfraKalaTest\app` nested
+inside it as an untracked subdirectory.
 
-The complete list, as recorded at the start of the session in which the loss was noticed:
+Measured 2026-08-24:
 
 ```
-AfraKala-Settlement-Pricing-Plan.md   Dockerfile.bak        New Text Document.txt
-PHASE_4_5_COMPLETE (1).md             types.new.ts          approle-fix.sql
-auth-fix.sql                          d2.sql  d2.txt  d3.sql  d4.sql
-backup_before_lovable_merge.sql       backup_pre_E.sql      backup_pre_J.sql
-backup_pre_settlement.sql             detect-result.txt     diag.sql  diag.txt
-func-fix.sql  grants-fix.sql  storage-fix.sql  rls-fix…      t1.sql
-rls-audit-real.txt  rls-audit.txt  rls-cols.txt  verify-rls.txt
-verify-schema.txt  verify-schema-2.txt  verify-schema-3.txt
-files.zip  files (1).zip  e2eauthsave-admin-session.spec.ts
-docker-compose.yml.bak  vite.config.ts.bak
-dirs: afrakala-deploy-sidebar/  app/  pre-deploy-backup-5113fe65/
+git -C D:/AfraKalaTest     rev-parse --show-toplevel   ->  D:/AfraKalaTest
+git -C D:/AfraKalaTest/app rev-parse --show-toplevel   ->  D:/AfraKalaTest/app
+git -C D:/AfraKalaTest     status --porcelain | wc -l  ->  39
+git -C D:/AfraKalaTest/app status --porcelain | wc -l  ->  0
 ```
 
-**Four of those names read as database backups** — `backup_pre_E.sql`, `backup_pre_J.sql`,
-`backup_pre_settlement.sql`, `backup_before_lovable_merge.sql` — and one more, the
-`pre-deploy-backup-5113fe65/` directory, reads as a pre-deploy snapshot. Their contents were never
-inspected and are now unknowable. **If any of them was the only copy of something, this paragraph is
-where a future reader will learn that it existed at all.** That is the entire value of this entry.
+The parent's 39 untracked entries today are the same 39 the original snapshot listed, in the same
+order — including `?? app/` itself, **which is the tell**: a status listing that contains `app/` as
+an untracked entry can only have been produced from the parent repository, never from inside `app`.
+File modification times run 2026-07-13 to 2026-07-21 and nothing has been written since.
 
-The surviving `backups/` directory is a separate, git-ignored location and was not affected.
+### How the mistake was made
+
+A `git status --porcelain` snapshot taken in `D:\AfraKalaTest` was compared against the working tree
+of `D:\AfraKalaTest\app`. The files were "missing" from `app` because they were never in `app`.
+Every downstream inference then followed correctly from a false premise — including the
+`git clean -fd` signature, which fit only because `.gitignore` was being read from the wrong
+repository, and including the M9 reviewer's confirmation that the files are "absent from
+`D:\AfraKalaTest\app`", which is true and beside the point.
+
+The internal contradiction was visible the whole time and was caught only when an independent review
+counted the list: the entry said 27 files, the block beneath it listed 35, and one line read
+`rls-fix…` — an ellipsis where a filename should be, because the list had been transcribed rather
+than measured. Neither the count nor that placeholder was ever checked against disk.
+
+### What stands
+
+Nothing about the M3 agent's conduct, which the original entry already declined to blame. And
+nothing was destroyed, so the paragraph about four database backups and a pre-deploy snapshot whose
+contents "are now unknowable" is void — they are readable, in `D:\AfraKalaTest`, right now.
+
+**The lesson worth keeping is the one that produced the error:** `D:\AfraKalaTest` and
+`D:\AfraKalaTest\app` are two different git repositories, one nested in the other. A `git` command
+run without `-C` lands in whichever the shell's working directory selects, and the two give
+completely different answers to `status`, `check-ignore` and `log`. This programme's rule to write
+`git -C D:/AfraKalaTest/app` on every git command exists for exactly this reason; the snapshot that
+started this was taken without it.
