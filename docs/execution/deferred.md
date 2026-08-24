@@ -96,3 +96,53 @@ functions role-gate internally and raise `42501` for anyone outside admin/manage
 `CREATE OR REPLACE` in migration 369 preserved the existing ACL rather than widening it. Whether the
 project wants EXECUTE narrowed on role-gated `SECURITY DEFINER` functions belongs with the item
 above.
+
+## Untracked files belonging to other operators were lost — 2026-08-23
+
+Noticed during the **M3** mission, by its independent reviewer, while checking the regression bar's
+`git status --porcelain` clause. **27 files and 3 directories** disappeared from
+`D:\AfraKalaTest\app`. All were **untracked**, and all belonged to other operators — none was
+produced by any mission in this programme.
+
+They are gone from disk **and** absent from git history. Untracked files were never in git objects,
+so **git cannot restore them.** There is no branch, stash, reflog entry or dangling blob to recover
+from; that avenue does not exist rather than merely having been exhausted.
+
+Every path that survived is one `.gitignore` covers — `backups/`, `.claude/`,
+`deploy/lan/.env.lan`, `e2e/auth/*.storage.json`. Every untracked-but-not-ignored path is gone, and
+`.gitignore` itself is unchanged. That pattern is the signature of `git clean -fd`.
+
+**The cause was never established, and this entry does not assign one.** The agent running M3 did
+not issue such a command — its git usage that session was `add -- <paths>`, `commit -- <paths>`,
+`switch`, `fetch`, `pull --ff-only`, `status`, `diff`, `log`, `rev-parse` and `ls-tree` — but "not
+that agent" is not the same as knowing who or what. The honest state of this record is: the files
+are gone, the shape of the loss matches one specific command, and nobody has been shown to have run
+it.
+
+**The owner's position, which closes it:** the owner believes he deleted these himself in an earlier
+cleanup. **No recovery was sought and none was attempted.** This entry exists so that a future
+reader looking for one of these files finds a record instead of a mystery.
+
+The complete list, as recorded at the start of the session in which the loss was noticed:
+
+```
+AfraKala-Settlement-Pricing-Plan.md   Dockerfile.bak        New Text Document.txt
+PHASE_4_5_COMPLETE (1).md             types.new.ts          approle-fix.sql
+auth-fix.sql                          d2.sql  d2.txt  d3.sql  d4.sql
+backup_before_lovable_merge.sql       backup_pre_E.sql      backup_pre_J.sql
+backup_pre_settlement.sql             detect-result.txt     diag.sql  diag.txt
+func-fix.sql  grants-fix.sql  storage-fix.sql  rls-fix…      t1.sql
+rls-audit-real.txt  rls-audit.txt  rls-cols.txt  verify-rls.txt
+verify-schema.txt  verify-schema-2.txt  verify-schema-3.txt
+files.zip  files (1).zip  e2eauthsave-admin-session.spec.ts
+docker-compose.yml.bak  vite.config.ts.bak
+dirs: afrakala-deploy-sidebar/  app/  pre-deploy-backup-5113fe65/
+```
+
+**Four of those names read as database backups** — `backup_pre_E.sql`, `backup_pre_J.sql`,
+`backup_pre_settlement.sql`, `backup_before_lovable_merge.sql` — and one more, the
+`pre-deploy-backup-5113fe65/` directory, reads as a pre-deploy snapshot. Their contents were never
+inspected and are now unknowable. **If any of them was the only copy of something, this paragraph is
+where a future reader will learn that it existed at all.** That is the entire value of this entry.
+
+The surviving `backups/` directory is a separate, git-ignored location and was not affected.
