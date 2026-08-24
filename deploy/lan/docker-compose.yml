@@ -330,3 +330,20 @@ services:
       - "${SUPABASE_API_PORT:-8000}:8000"
     networks:
       - afrakala-lan-net
+
+
+
+# -------------------------------------------------------------
+  # Caddy — HTTPS reverse proxy (LAN-only, mkcert certificate)
+  # -------------------------------------------------------------
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: afrakala-lan-caddy
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - C:/caddy-config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - C:/certs:/certs:ro
+    networks:
+      - afrakala-lan-net

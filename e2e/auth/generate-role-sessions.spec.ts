@@ -272,6 +272,8 @@ async function loginThroughUi(page: Page, target: RoleTarget, email: string, pas
   await page.context().clearCookies();
   await page.goto("/login", { waitUntil: "domcontentloaded" });
 
+  await page.locator('input[name="email"][type="email"]').waitFor({ state: "visible" });
+  await page.waitForTimeout(2000);
   await page.locator('input[name="email"][type="email"]').fill(email);
   await page.locator('input[name="password"][type="password"]').fill(password);
   await page.getByRole("button", { name: /^ورود$/ }).click();

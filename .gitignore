@@ -86,6 +86,10 @@ deploy/backups/**/*.age
 # AfraKala LAN pilot runtime (never commit real secrets)
 deploy/lan/.env
 deploy/lan/.env.lan
+# ...and any copy of it. `.env.lan.bak` appeared in the working tree on 2026-08-24 during
+# the HTTPS work, carrying the same service_role key and database password as the original
+# while matching none of the patterns above. The negation below still un-ignores the example.
+deploy/lan/.env.lan.*
 deploy/lan/data/
 deploy/lan/volumes/
 deploy/lan/storage-export/
