@@ -17,6 +17,9 @@ import { listAssignableUsers } from "@/lib/products/assignable-users.functions";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/accounting/salesperson-scoring")({
+  // M6/OG-24 — mirrors the requireAnyRole call below. The shared guard cannot decide
+  // during SSR or while roles load, so RouteRoleGate in _app enforces this on the client.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "accountant"] } },
   beforeLoad: async () => {
     // accounting module is not seeded in role_permissions, so use requireAnyRole
     // directly rather than a permission check that would hit the open fallback.

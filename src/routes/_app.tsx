@@ -1,5 +1,6 @@
 import { createFileRoute, isRedirect, Outlet, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
+import { RouteRoleGate } from "@/components/layout/RouteRoleGate";
 import { Button } from "@/components/ui/button";
 import { ensureAuthReady } from "@/lib/auth/session";
 import { AuthProvider, useAuth } from "@/lib/auth/AuthProvider";
@@ -211,7 +212,9 @@ function AppLayoutContent() {
           <div className="h-full w-1/3 animate-pulse bg-primary/60" />
         </div>
       )}
-      <Outlet />
+      <RouteRoleGate>
+        <Outlet />
+      </RouteRoleGate>
     </AppShell>
   );
 }
