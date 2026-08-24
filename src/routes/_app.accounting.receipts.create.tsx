@@ -11,6 +11,9 @@ import { DocumentWizard } from "@/features/ledger-wizard/DocumentWizard";
 const CREATE_ROLES = ["admin", "accountant", "manager"] as const;
 
 export const Route = createFileRoute("/_app/accounting/receipts/create")({
+  // M6/OG-24 — mirrors the requireAnyRole call below. The shared guard cannot decide
+  // during SSR or while roles load, so RouteRoleGate in _app enforces this on the client.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "accountant", "manager"] } },
   beforeLoad: async () => {
     await requireAnyRole([...CREATE_ROLES]);
   },

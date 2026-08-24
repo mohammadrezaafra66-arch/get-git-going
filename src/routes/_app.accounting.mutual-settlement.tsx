@@ -49,6 +49,9 @@ import {
 } from "@/lib/accounting/mutual-settlement";
 
 export const Route = createFileRoute("/_app/accounting/mutual-settlement")({
+  // M6/OG-24 — mirrors the requireAnyRole call below. The shared guard cannot decide
+  // during SSR or while roles load, so RouteRoleGate in _app enforces this on the client.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "accountant"] } },
   beforeLoad: async () => {
     // Same pair the two database functions enforce. The route guard is the
     // convenience; person_settlement_position and post_mutual_settlement

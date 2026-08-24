@@ -61,6 +61,9 @@ const NO_ACCOUNT = "__no_account__";
 const NO_PARTY = "__no_party__";
 
 export const Route = createFileRoute("/_app/accounting/purchase-payments")({
+  // M6/OG-24 — mirrors the requireAnyRole call below. The shared guard cannot decide
+  // during SSR or while roles load, so RouteRoleGate in _app enforces this on the client.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager", "accountant"] } },
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager", "accountant"]);
   },

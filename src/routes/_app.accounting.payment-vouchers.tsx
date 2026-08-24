@@ -37,6 +37,9 @@ import {
 // that permitted the raw insert is gone, so this page could not create one even if the form
 // returned. What survives is the list — it is the only place a payment document can be viewed.
 export const Route = createFileRoute("/_app/accounting/payment-vouchers")({
+  // M6/OG-24 — mirrors the requireAnyRole call below. The shared guard cannot decide
+  // during SSR or while roles load, so RouteRoleGate in _app enforces this on the client.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager", "accountant"] } },
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager", "accountant"]);
   },
