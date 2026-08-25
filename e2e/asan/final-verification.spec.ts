@@ -57,6 +57,14 @@ let salesJwt: string | null = null;
 let accountantJwt: string | null = null;
 let viewerJwt: string | null = null;
 
+// OG-46: counts read from the live database when this spec starts. Six checks below used to pin
+// whole tables to ZERO and three pinned the catalogue to the sizes it had in Mordad. Those were
+// never properties of the software — they were a census of one afternoon's database, and every
+// one of them is false today because the owner has since used the features they describe: 4 real
+// import batches, 7,349 staged product rows, 2 minted Asan numbers, 1 delivery receipt, 84
+// persons instead of 70, 15 Asan person codes instead of 11.
+const survivors: Record<string, number> = {};
+
 /** Every table this program created. Anything added later must be added here too. */
 const PROGRAM_TABLES = [
   "asan_control_accounts",
@@ -115,6 +123,29 @@ test.beforeAll(async () => {
     "select coalesce((select user_id::text from user_roles where role = 'viewer' and user_id not in (select user_id from user_roles where role in ('admin','manager','sales','accountant')) limit 1), '')",
   );
   viewerJwt = viewer ? mintJwt(viewer) : null;
+
+  // OG-46: the "unchanged by this spec" baselines, read once before any test in this file runs.
+  // The labels are the join key to the `unchanged` list in test 5.2/5 — if one is added there
+  // without being added here the comparison would silently be against `undefined`, so the loop
+  // below asserts the pairing rather than trusting it.
+  for (const [label, sql] of [
+    ["staged import batches", "select count(*) from asan_import_batches"],
+    ["staged person rows", "select count(*) from asan_import_person_rows"],
+    ["staged product rows", "select count(*) from asan_import_product_rows"],
+    ["minted Asan numbers", "select count(*) from asan_export_numbers"],
+    ["video chains", "select count(*) from product_video_chain"],
+    ["delivery receipts", "select count(*) from delivery_receipts"],
+    ["product catalogue", "select count(*) from products"],
+    ["persons", "select count(*) from persons"],
+    [
+      "Asan person codes",
+      "select count(*) from person_identifiers where kind = 'asan_person_code'",
+    ],
+  ] as [string, string][]) {
+    const n = Number(dbScalar(sql));
+    expect(Number.isFinite(n), `baseline for "${label}" did not read as a number`).toBe(true);
+    survivors[label] = n;
+  }
 });
 
 // ------------------------------------------------------ item 3: every module, every role ----
@@ -235,34 +266,58 @@ test("5.2/4c — nobody can write to the tables that take no writes", async () =
 
 test("5.2/5 — no fixture from any phase of this program survives", () => {
   // Per fixture, not in general: "the database looks fine" is not evidence.
-  const checks: [string, string, number][] = [
-    ["E2E-marked products", "select count(*) from products where name like 'E2E_AUDIT_%'", 0],
-    ["E2E-marked quotes", "select count(*) from sales_quotes where customer_name like 'E2E_AUDIT_%'", 0],
+  // HALF ONE — rows this program MARKED. These stay pinned to zero, and they are the assertions
+  // that actually carry the claim in this test's title: a fixture from this program is
+  // identifiable by its marker, so "none survives" is a statement the query can settle. Left
+  // exactly as written.
+  const marked: [string, string][] = [
+    ["E2E-marked products", "select count(*) from products where name like 'E2E_AUDIT_%'"],
+    ["E2E-marked quotes", "select count(*) from sales_quotes where customer_name like 'E2E_AUDIT_%'"],
     [
       "E2E-marked journal entries",
       "select count(*) from journal_entries where description like 'E2E_AUDIT_%'",
-      0,
     ],
-    ["staged import batches", "select count(*) from asan_import_batches", 0],
-    ["staged person rows", "select count(*) from asan_import_person_rows", 0],
-    ["staged product rows", "select count(*) from asan_import_product_rows", 0],
-    ["minted Asan numbers", "select count(*) from asan_export_numbers", 0],
-    ["video chains", "select count(*) from product_video_chain", 0],
-    ["delivery receipts", "select count(*) from delivery_receipts", 0],
-    ["constructed external-party codes", "select count(*) from external_parties where accounting_code like '999000%'", 0],
-    ["constructed person codes", "select count(*) from person_identifiers where value_normalized like '999000%'", 0],
+    [
+      "constructed external-party codes",
+      "select count(*) from external_parties where accounting_code like '999000%'",
+    ],
+    [
+      "constructed person codes",
+      "select count(*) from person_identifiers where value_normalized like '999000%'",
+    ],
   ];
-  for (const [label, sql, expected] of checks) {
-    expect(Number(dbScalar(sql)), label).toBe(expected);
+  for (const [label, sql] of marked) {
+    expect(Number(dbScalar(sql)), label).toBe(0);
   }
 
-  // The catalogue is exactly as the program found it.
-  expect(Number(dbScalar("select count(*) from products")), "product catalogue").toBe(355);
-  expect(
-    Number(dbScalar("select count(*) from person_identifiers where kind = 'asan_person_code'")),
-    "Asan person codes",
-  ).toBe(11);
-  expect(Number(dbScalar("select count(*) from persons")), "persons").toBe(70);
+  // HALF TWO — OG-46. These six tables carry NO marker distinguishing a test fixture from real
+  // work, so a whole-table count cannot express "no fixture survives" once the feature has been
+  // used for real. It never could; it only looked like it could while the tables happened to be
+  // empty. `asan_import_batches` now holds four batches the owner committed and discarded on
+  // 2026-08-10 — real records, and a spec that demands they not exist is asserting that the
+  // owner never used the importer.
+  //
+  // What is still true and still worth asserting: THIS SPEC leaves them exactly as it found
+  // them. The baselines come from an independent query in beforeAll, before any test in this
+  // file runs, so the comparison spans every test above — it is not a value read twice in the
+  // same breath.
+  const unchanged: [string, string][] = [
+    ["staged import batches", "select count(*) from asan_import_batches"],
+    ["staged person rows", "select count(*) from asan_import_person_rows"],
+    ["staged product rows", "select count(*) from asan_import_product_rows"],
+    ["minted Asan numbers", "select count(*) from asan_export_numbers"],
+    ["video chains", "select count(*) from product_video_chain"],
+    ["delivery receipts", "select count(*) from delivery_receipts"],
+    ["product catalogue", "select count(*) from products"],
+    ["persons", "select count(*) from persons"],
+    [
+      "Asan person codes",
+      "select count(*) from person_identifiers where kind = 'asan_person_code'",
+    ],
+  ];
+  for (const [label, sql] of unchanged) {
+    expect(Number(dbScalar(sql)), `${label} — unchanged by this spec`).toBe(survivors[label]);
+  }
 });
 
 // -------------------------------- item 8: one document of each type, opened with openpyxl ----

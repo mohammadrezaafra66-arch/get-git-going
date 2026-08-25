@@ -82,11 +82,13 @@ const NON_TV_PRODUCT =
 let chainBaseline = 0;
 let taskBaseline = 0;
 let stockBaseline = 0;
+let deliveryBaseline = 0;
 
 test.beforeAll(() => {
   chainBaseline = Number(dbScalar("select count(*) from product_video_chain"));
   taskBaseline = Number(dbScalar("select count(*) from tasks"));
   stockBaseline = Number(dbScalar("select count(*) from stock_movements"));
+  deliveryBaseline = Number(dbScalar("select count(*) from delivery_receipts"));
 });
 
 test.afterAll(() => {
@@ -103,7 +105,14 @@ test.afterAll(() => {
   expect(
     Number(dbScalar(`select count(*) from sales_quotes where customer_name like '${MARK}%'`)),
   ).toBe(0);
-  expect(Number(dbScalar("select count(*) from delivery_receipts"))).toBe(0);
+  // OG-46: was `toBe(0)`, which asserted the delivery-receipt table was globally empty rather
+  // than that this spec created nothing in it. One real receipt exists today, so the old form
+  // failed for a reason that has nothing to do with what this spec does. Compared against the
+  // baseline captured in beforeAll alongside the other three.
+  expect(
+    Number(dbScalar("select count(*) from delivery_receipts")),
+    "no delivery receipt may have been created",
+  ).toBe(deliveryBaseline);
 });
 
 // -------------------------------------------------- the requirement, as permanent data ----

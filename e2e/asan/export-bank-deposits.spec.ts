@@ -52,16 +52,26 @@ async function listOk(): Promise<BankDepositRow[]> {
   return res.body ?? [];
 }
 
+// OG-46: captured from the live database at spec start, not written into the file as a literal.
+// The old pin was `toBe(6)` — true on the day this spec was written and false from the moment
+// anyone added a receipt. What the assertion is FOR is "this spec wrote nothing", and that is a
+// statement about a change between two moments, so it needs a reading from the first moment.
+let receiptsBaseline = 0;
+
 test.beforeAll(async () => {
   adminJwt = mintJwt(ADMIN_USER_ID);
   const salesUser = await userWithRole(adminJwt, "sales");
   salesJwt = salesUser ? mintJwt(salesUser) : null;
+  receiptsBaseline = Number(dbScalar("select count(*) from payment_receipts"));
 });
 
 test.afterAll(() => {
   // This spec writes nothing, so rule 2.10 is satisfied by construction — asserted rather than
   // assumed, because "the test did not write anything" is exactly the kind of claim that rots.
-  expect(Number(dbScalar("select count(*) from payment_receipts"))).toBe(6);
+  expect(
+    Number(dbScalar("select count(*) from payment_receipts")),
+    "rule 2.10 — the receipt table must hold exactly what it held before this spec ran",
+  ).toBe(receiptsBaseline);
   expect(
     Number(dbScalar(`select count(*) from payment_receipts where description like '${E2E_PREFIX}%'`)),
   ).toBe(0);
@@ -105,12 +115,19 @@ test("only approved receipts that landed in one of our banks appear", async () =
   expect(eligible.length, "the fixture must contain an approved bank receipt").toBeGreaterThan(0);
   expect([...listed].sort()).toEqual([...eligible].sort());
 
-  // The five unapproved receipts are absent, and that is the point: a receipt awaiting review is
-  // not money received.
+  // The unapproved receipts are absent, and that is the point: a receipt awaiting review is not
+  // money received.
+  //
+  // OG-46: this used to read `toBe(5)`, which was a census of the fixture on the day it was
+  // written, not a property of the export. What the assertion is actually guarding is that the
+  // exclusion is not VACUOUS — that there is at least one unapproved receipt for it to exclude.
+  // Pinning the exact number tested the database's contents; `toBeGreaterThan(0)` tests the
+  // export. The loop below is the real assertion and it is unchanged.
   const unapproved = dbRows("select id::text from payment_receipts where status <> 'approved'");
-  expect(unapproved.length, "the exclusion is not vacuous — there really are unapproved ones").toBe(
-    5,
-  );
+  expect(
+    unapproved.length,
+    "the exclusion is not vacuous — there really are unapproved receipts to exclude",
+  ).toBeGreaterThan(0);
   for (const id of unapproved) expect(listed.has(id)).toBe(false);
 });
 

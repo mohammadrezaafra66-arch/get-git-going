@@ -31,6 +31,11 @@ let adminJwt: string;
 let salesJwt: string | null = null;
 let quoteId: string | null = null;
 
+// OG-46: the register's high-water mark per doc_type, read from the live database at spec start
+// rather than assumed to be zero. See the note in beforeAll.
+const numbersBaseline = { sales: 0, purchase: 0 };
+let rowsBaseline = 0;
+
 async function assign(jwt: string, docType: string, sourceId: string) {
   return rest<number>(jwt, "/rpc/asan_assign_document_number", {
     method: "POST",
@@ -49,9 +54,23 @@ test.beforeAll(async () => {
   const salesUser = await userWithRole(adminJwt, "sales");
   salesJwt = salesUser ? mintJwt(salesUser) : null;
 
-  // The table must start empty, otherwise "the first document gets 1" is not a test of
-  // anything. This is the first phase to touch it.
-  expect(Number(dbScalar("select count(*) from asan_export_numbers"))).toBe(0);
+  // OG-46: this used to require the whole table to be EMPTY, on the reasoning that otherwise
+  // "the first document gets 1" is not a test of anything. That reasoning was right and the
+  // implementation was wrong: it pinned a global count, so the first real Asan export anyone
+  // performed made this spec unrunnable. The live table now holds two rows — one
+  // `accounting_document` and one `sales_invoice`, both number 1.
+  //
+  // The property under test is not "the register starts at 1", it is "each doc_type has its
+  // OWN register and hands out CONSECUTIVE numbers". That survives a non-empty table if the
+  // expected values are computed from the register's current high-water mark instead of
+  // assumed. Captured here, per doc_type, by an independent query.
+  numbersBaseline.sales = Number(
+    dbScalar("select coalesce(max(asan_number), 0) from asan_export_numbers where doc_type = 'sales_invoice'"),
+  );
+  numbersBaseline.purchase = Number(
+    dbScalar("select coalesce(max(asan_number), 0) from asan_export_numbers where doc_type = 'purchase_invoice'"),
+  );
+  rowsBaseline = Number(dbScalar("select count(*) from asan_export_numbers"));
 });
 
 test.afterAll(() => {
@@ -67,21 +86,32 @@ test.afterAll(() => {
         (select id from sales_quotes where customer_name like '${MARK}%');
      delete from sales_quotes where customer_name like '${MARK}%';`,
   );
-  expect(Number(dbScalar("select count(*) from asan_export_numbers")), "rule 2.10").toBe(0);
+  // OG-46: was `toBe(0)`, which asserted the whole register was empty — true only on a database
+  // no real Asan export had ever touched. The cleanup above deletes exactly the rows this spec
+  // minted, so the honest assertion is that the register is back to the height it had when the
+  // spec started, captured by an independent query in beforeAll.
+  expect(
+    Number(dbScalar("select count(*) from asan_export_numbers")),
+    "rule 2.10 — this spec's rows are gone and no pre-existing row was harmed",
+  ).toBe(rowsBaseline);
   expect(
     Number(dbScalar(`select count(*) from sales_quotes where customer_name like '${MARK}%'`)),
   ).toBe(0);
 });
 
-test("three documents receive 1, 2, 3 in order", async () => {
-  expect(await assignOk("sales_invoice", DOC_A)).toBe(1);
-  expect(await assignOk("sales_invoice", DOC_B)).toBe(2);
-  expect(await assignOk("sales_invoice", DOC_C)).toBe(3);
+test("three documents receive consecutive numbers, in order", async () => {
+  // OG-46: was `toBe(1)/(2)/(3)`. The register is shared with real Asan exports, so absolute
+  // numbers were only ever correct on an untouched database. Consecutiveness from wherever the
+  // register currently stands is the actual guarantee, and it is the stronger assertion: it
+  // still fails if the RPC skips, repeats or reorders.
+  expect(await assignOk("sales_invoice", DOC_A)).toBe(numbersBaseline.sales + 1);
+  expect(await assignOk("sales_invoice", DOC_B)).toBe(numbersBaseline.sales + 2);
+  expect(await assignOk("sales_invoice", DOC_C)).toBe(numbersBaseline.sales + 3);
 });
 
 test("a document exported twice keeps its number", async () => {
   const again = await assignOk("sales_invoice", DOC_A);
-  expect(again, "re-export must not mint a new number").toBe(1);
+  expect(again, "re-export must not mint a new number").toBe(numbersBaseline.sales + 1);
   expect(
     Number(dbScalar(`select count(*) from asan_export_numbers where source_id = '${DOC_A}'`)),
     "and must not create a second mapping row",
@@ -89,8 +119,11 @@ test("a document exported twice keeps its number", async () => {
 });
 
 test("each document type has its own register", async () => {
-  // Sales has already reached 3; the first purchase invoice is still number 1.
-  expect(await assignOk("purchase_invoice", PURCHASE_DOC)).toBe(1);
+  // Sales has advanced by three above; the purchase register must be untouched by that and hand
+  // out ITS next number. OG-46: was `toBe(1)`, which silently also asserted that no purchase
+  // invoice had ever been exported. Comparing against the purchase register's own baseline keeps
+  // the real claim — the two registers are independent — and drops the accidental one.
+  expect(await assignOk("purchase_invoice", PURCHASE_DOC)).toBe(numbersBaseline.purchase + 1);
 });
 
 test("two simultaneous assignments receive two different numbers", async () => {

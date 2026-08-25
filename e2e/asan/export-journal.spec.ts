@@ -246,6 +246,17 @@ test.describe("documents that must be blocked", () => {
       .join(",\n              ");
     dbExecE2e(
       `-- ${MARK} construct an entry: ${suffix}
+       -- OG-46 WRITING HALF -- DELIBERATELY LEFT BROKEN. DO NOT 'FIX' BY ADDING doc_kind.
+       -- doc_kind is NOT NULL with no default (migrations 294/297/320) so this INSERT fails
+       -- today and the fixture is never created. Adding the column was tried on 2026-08-25
+       -- and MEASURED to be worse: the INSERT then succeeds and writes a status='posted'
+       -- entry, and trg_journal_entry_immutable refuses every UPDATE and DELETE where
+       -- OLD.status='posted' -- even for supabase_admin. So the row can never be cleaned,
+       -- and every run would add two permanent entries to the company's journal. Two such
+       -- rows were created by that experiment and are stuck; see OG-56.
+       -- Setting status='draft' first does not help: the UPDATE to 'posted' is allowed, but
+       -- the DELETE afterwards is not. A real repair has to stop these fixtures creating
+       -- posted entries at all, which changes what these specs assert. Owner's call.
        insert into journal_entries (id, source_type, source_id, entry_date, description, status, posted_at)
        values ('${id}', 'manual', gen_random_uuid(), '2026-07-20', '${MARK}_${suffix}', 'posted', now());
        insert into journal_lines (journal_entry_id, line_no, account_kind, account_ref_id, description, debit, credit)
@@ -416,6 +427,17 @@ test.describe("documents that must be blocked", () => {
     const id = crypto.randomUUID();
     dbExecE2e(
       `-- ${MARK} an entry with no lines
+       -- OG-46 WRITING HALF -- DELIBERATELY LEFT BROKEN. DO NOT 'FIX' BY ADDING doc_kind.
+       -- doc_kind is NOT NULL with no default (migrations 294/297/320) so this INSERT fails
+       -- today and the fixture is never created. Adding the column was tried on 2026-08-25
+       -- and MEASURED to be worse: the INSERT then succeeds and writes a status='posted'
+       -- entry, and trg_journal_entry_immutable refuses every UPDATE and DELETE where
+       -- OLD.status='posted' -- even for supabase_admin. So the row can never be cleaned,
+       -- and every run would add two permanent entries to the company's journal. Two such
+       -- rows were created by that experiment and are stuck; see OG-56.
+       -- Setting status='draft' first does not help: the UPDATE to 'posted' is allowed, but
+       -- the DELETE afterwards is not. A real repair has to stop these fixtures creating
+       -- posted entries at all, which changes what these specs assert. Owner's call.
        insert into journal_entries (id, source_type, source_id, entry_date, description, status, posted_at)
        values ('${id}', 'manual', gen_random_uuid(), '2026-07-20', '${MARK}_NOLINES', 'posted', now());`,
     );
