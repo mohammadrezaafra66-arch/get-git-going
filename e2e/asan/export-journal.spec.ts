@@ -55,10 +55,49 @@ async function listOk(filter = "all"): Promise<JournalExportRow[]> {
 }
 
 /** Remove every journal entry this spec created. Lines cascade. Safe to call repeatedly. */
+/**
+ * OG-46 writing half. `journal_entries.doc_kind` is NOT NULL with no default (migrations
+ * 294/297/320, added after these fixtures were written), so an INSERT that omits it fails and
+ * the failure surfaces as a psql command error that reads like an infrastructure fault.
+ *
+ * The value is DERIVED from the live CHECK constraint at run time rather than written in as a
+ * literal, so a spec cannot drift from the database the way the counts in this file's sibling
+ * specs did. If the constraint ever stops admitting the value these fixtures need, this fails
+ * loudly at setup with the actual admitted list, instead of failing obscurely at the INSERT.
+ *
+ * Why `other`: the live constraint admits receipt/payment/dual/purchase_payment/settlement/
+ * other, and real rows pair doc_kind with source_type — payment_receipt/receipt,
+ * payment_voucher/payment, dual_document/dual. These fixtures are `source_type = 'manual'`,
+ * which matches none of the five specific kinds, so `other` is reached by elimination from the
+ * live list. It was NOT read off the existing `manual|other` rows in the table: those two rows
+ * are residue from this same repair (OG-56) and using them as evidence would be circular.
+ */
+function liveDocKind(): string {
+  const def = String(
+    dbScalar(
+      "select pg_get_constraintdef(oid) from pg_constraint where conrelid = 'public.journal_entries'::regclass and conname = 'journal_entries_doc_kind_chk'",
+    ) ?? "",
+  );
+  const admitted = [...def.matchAll(/'([a-z_]+)'::text/g)].map((m) => m[1]);
+  expect(admitted.length, "the doc_kind CHECK constraint could not be read").toBeGreaterThan(0);
+  expect(admitted, `doc_kind no longer admits "other"; it admits ${admitted.join(", ")}`).toContain(
+    "other",
+  );
+  return "other";
+}
+
 function cleanupConstructed(): void {
   dbExecE2e(
     `-- ${MARK} remove constructed journal entries
-     delete from journal_entries where description like '${MARK}%';
+     delete from journal_entries
+      where description like '${MARK}%'
+        -- OG-56: these two are status='posted' and trg_journal_entry_immutable refuses
+        -- every DELETE on a posted entry, even for supabase_admin. Without this
+        -- exclusion the DELETE raises, dbExecE2e throws, and beforeAll dies -- which
+        -- took all 23 tests in these two files out on 2026-08-25. Owner's decision:
+        -- exclude by id, do not reverse them, do not touch the trigger.
+        and id not in ('db8a628c-d560-45f6-8083-be6804f4c345',
+                       '81903a4c-a8f9-4d8c-869e-dad1595ae897');
      delete from external_parties where full_name like '${MARK}%';
      update external_parties set accounting_code = null where accounting_code = '${EXT_PARTY_CODE}';`,
   );
@@ -229,7 +268,23 @@ interface TestLine {
   credit: number;
 }
 
-test.describe("documents that must be blocked", () => {
+// OG-46 / OG-56 — DEFERRED TO PHASE 8, by owner decision on 2026-08-25.
+//
+// Every test below constructs a journal entry and then asserts how the ASAN export treats it.
+// The export RPC selects `status = 'posted'` only, so the fixture has to be posted to be seen.
+// It cannot be: `trg_journal_entry_immutable` refuses every UPDATE and DELETE where
+// OLD.status = 'posted', even for supabase_admin, so a posted fixture can never be cleaned up
+// and each run would leave permanent rows in the company's ledger. Two such rows already exist
+// and are excluded by id in cleanupConstructed — see OG-56.
+//
+// The fixtures are therefore created as drafts, which keeps them deletable and keeps these two
+// spec files runnable, and costs exactly these assertions. Making them work again needs the
+// specs to stop depending on a constructed posted document — a redesign of what they assert,
+// which is Phase 8's, not this mission's.
+//
+// Recorded by name as known failures in the new baseline. Do NOT "fix" this by posting the
+// fixture: that is the deadlock this deferral exists to avoid.
+test.describe.fixme("documents that must be blocked", () => {
   /**
    * Create a posted entry with the given lines and return its id.
    *
@@ -246,19 +301,8 @@ test.describe("documents that must be blocked", () => {
       .join(",\n              ");
     dbExecE2e(
       `-- ${MARK} construct an entry: ${suffix}
-       -- OG-46 WRITING HALF -- DELIBERATELY LEFT BROKEN. DO NOT 'FIX' BY ADDING doc_kind.
-       -- doc_kind is NOT NULL with no default (migrations 294/297/320) so this INSERT fails
-       -- today and the fixture is never created. Adding the column was tried on 2026-08-25
-       -- and MEASURED to be worse: the INSERT then succeeds and writes a status='posted'
-       -- entry, and trg_journal_entry_immutable refuses every UPDATE and DELETE where
-       -- OLD.status='posted' -- even for supabase_admin. So the row can never be cleaned,
-       -- and every run would add two permanent entries to the company's journal. Two such
-       -- rows were created by that experiment and are stuck; see OG-56.
-       -- Setting status='draft' first does not help: the UPDATE to 'posted' is allowed, but
-       -- the DELETE afterwards is not. A real repair has to stop these fixtures creating
-       -- posted entries at all, which changes what these specs assert. Owner's call.
-       insert into journal_entries (id, source_type, source_id, entry_date, description, status, posted_at)
-       values ('${id}', 'manual', gen_random_uuid(), '2026-07-20', '${MARK}_${suffix}', 'posted', now());
+       insert into journal_entries (id, source_type, doc_kind, source_id, entry_date, description, status, posted_at)
+       values ('${id}', 'manual', '${liveDocKind()}', gen_random_uuid(), '2026-07-20', '${MARK}_${suffix}', 'draft', null);
        insert into journal_lines (journal_entry_id, line_no, account_kind, account_ref_id, description, debit, credit)
        values ${values};`,
     );
@@ -427,19 +471,8 @@ test.describe("documents that must be blocked", () => {
     const id = crypto.randomUUID();
     dbExecE2e(
       `-- ${MARK} an entry with no lines
-       -- OG-46 WRITING HALF -- DELIBERATELY LEFT BROKEN. DO NOT 'FIX' BY ADDING doc_kind.
-       -- doc_kind is NOT NULL with no default (migrations 294/297/320) so this INSERT fails
-       -- today and the fixture is never created. Adding the column was tried on 2026-08-25
-       -- and MEASURED to be worse: the INSERT then succeeds and writes a status='posted'
-       -- entry, and trg_journal_entry_immutable refuses every UPDATE and DELETE where
-       -- OLD.status='posted' -- even for supabase_admin. So the row can never be cleaned,
-       -- and every run would add two permanent entries to the company's journal. Two such
-       -- rows were created by that experiment and are stuck; see OG-56.
-       -- Setting status='draft' first does not help: the UPDATE to 'posted' is allowed, but
-       -- the DELETE afterwards is not. A real repair has to stop these fixtures creating
-       -- posted entries at all, which changes what these specs assert. Owner's call.
-       insert into journal_entries (id, source_type, source_id, entry_date, description, status, posted_at)
-       values ('${id}', 'manual', gen_random_uuid(), '2026-07-20', '${MARK}_NOLINES', 'posted', now());`,
+       insert into journal_entries (id, source_type, doc_kind, source_id, entry_date, description, status, posted_at)
+       values ('${id}', 'manual', '${liveDocKind()}', gen_random_uuid(), '2026-07-20', '${MARK}_NOLINES', 'draft', null);`,
     );
     const row = (await listOk()).find((r) => r.doc_id === id);
     expect(row, "an INNER JOIN would have made it vanish").toBeTruthy();
