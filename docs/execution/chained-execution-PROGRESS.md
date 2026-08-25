@@ -10,52 +10,122 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 ## HANDOFF STATE
 
 ```
-Document in force:    AFRAKALA CHAINED EXECUTION — v6
-Last verified SHA:    20082d3b on origin/staging (PR #350, M8, merged 2026-08-25T19:12:07Z).
-                      The OG-60 mission sits on feature/og60-status-history; its own merge
-                      SHA is the first line of that mission's completion report.
-Mission just done:    OG-60 + the document_status_history finding. Two items, both delivered.
-Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350) and this mission
-                      are complete. Next: **mission 4 — security trio + OG-31** (OG-38,
-                      OG-44, OG-45, with OG-31 folded in by owner decision). Respect A6.34
-                      (OG-51): do NOT change the eight guard views' predicate. OG-30 is
-                      scheduled AFTER that mission, not inside it. Explicitly instructed not
-                      to start it in this session.
-Environment:          Local — verified, not assumed.
-Migration:            392 applied to afrakala; PostgREST restarted. Next free number is 393.
-                      NOT inserted into supabase_migrations.schema_migrations — 388/389/390/
-                      391 are all absent too, so 392 follows the existing convention.
-                      Reconciling that ledger is still v6 Phase 4's item.
-OG-60:                **CLOSED — the name was FABRICATED.** document_audit_log never existed:
-                      to_regclass NULL, no relation of that name in any schema, and the only
-                      grep hit in the whole tree is the line recording the OG-15 answer
-                      itself. SECOND fabricated name to propagate this way after
-                      document_serial_counters/next_serial (OG-59). Cross-ref A0.9.
-OG-15:                **CLOSED and fully discharged.** document_attachments done by 391
-                      (defence in depth — the viewer already read nothing there);
-                      document_audit_log never existed; audit_logs already carried the
-                      pattern. No table left uncovered.
-NEW this mission:     document_status_history got viewer_restricted (migration 392) as an
-                      INDEPENDENT finding, NOT a reconstruction of the fabricated name. It
-                      closed a REAL hole: a viewer-only account could READ the history of any
-                      document it uploaded (measured 1 row) AND INSERT into that history
-                      (measured INSERT 0 1). Both now closed; the write is refused by policy
-                      name. Unlike 391 this removed real access — say it that way.
-Gates raised:         ZERO. This mission closed two and raised none.
-e2e:                  RAN — privileges changed. 536 passed / 29 failed / 29 skipped in 20.8m,
-                      health-checked and locked. Failing SET is IDENTICAL to M8's run and a
-                      strict subset of the recorded 30 — zero new failures. Baseline NOT
-                      superseded (no spec changed). payment_receipts 10 before and after;
-                      chrome-headless-shell 0 before and after.
-                      NOTE on A4.18: the FIRST CPU reading was 27%, over threshold, and the
-                      run was NOT started on it. Re-measured over 20 averaged samples: mean
-                      20.2%, median 17.5%. Both readings are recorded in the research doc.
-typecheck:            70, the exact baseline, across the same 6 files.
-Build:                Not run and not required — zero src/ files changed.
+Document in force:    AFRAKALA CHAINED EXECUTION - v7
+Last verified SHA:    see the first line of this mission's completion report, which is the
+                      raw `git log --oneline -2 origin/staging` taken after the merge (A0.8).
+                      Branch: feature/security-trio-og31, cut from staging @ 4e128726.
+Mission just done:    **Mission 4 - security trio + OG-31.** Migration 393.
+Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350), OG-60 (#351) and
+                      now mission 4 are complete. **Next in v7's order: mission 5 - M10**,
+                      which v7 itself flags as a DEFINITION CONFLICT that must be settled
+                      first: the only in-repo definition is a batched EXECUTE revoke across
+                      ~746 functions, while the owner's recorded answer is "documentation
+                      only, no UI lock". Per A2.6 do not guess - ask. **But see
+                      RECOMMENDATION: OG-62 is a live price leak and should outrank M10.**
+Environment:          Local - proven, not assumed (both v7 STOP-block commands pasted in the
+                      mission progress file).
+Migration:            393 applied to afrakala; PostgREST restarted. Next free number is 394.
+                      NOT inserted into supabase_migrations.schema_migrations - 388-392 are
+                      all absent too, so 393 follows the existing convention. Reconciling
+                      that ledger remains v7 Phase 4's item.
+OG-31:                **CLOSED.** The FUNCTIONS default tap is shut for `public` and for
+                      `public` only. Six per-schema restores stop the global row reaching
+                      extensions/graphql/pgbouncer/pgsodium/pgsodium_masks/vault. Nothing
+                      existing was revoked: 741 anon-executable of 840, identical either
+                      side of the migration.
+OG-44:                **CLOSED.** This mission owns is_viewer_only. The gate pins its
+                      security properties AND asserts behaviourally that it still
+                      discriminates - the thing migration 387 could only reach indirectly.
+OG-45:                **CLOSED by assertion**, and measured down two levels: there is no
+                      grant to revoke (the access is pg_read_all_data), it is two grants
+                      away not one for two of the eight views, and with both grants made
+                      all eight still return ZERO rows because the role carries no JWT and
+                      386's predicate closes them. M4's OG-26 fix had already neutralised it.
+OG-38:                **STILL OPEN - the owner's, deliberately untouched.** New fact for the
+                      decision: the role has **no password**; it can only authenticate via
+                      the `127.0.0.1 trust` line inside the db container. But it reads every
+                      base table freely (persons 84, payment_receipts 10, measured), so the
+                      question is not the EXECUTE grant - it is whether a passwordless
+                      BYPASSRLS reader should exist at all. **This mission is CONDITIONAL
+                      on it.**
+Gates raised:         THREE. OG-61 (batched revoke over the 741 - the function-side twin of
+                      OG-30, and a deliberately weak case). **OG-62 (LIVE: two definer
+                      functions return real sale prices to an anonymous caller).** OG-63
+                      (LIVE: purchases are impossible for 3.5 hours every Tehran night
+                      because CURRENT_DATE is UTC).
+e2e:                  RAN - privileges changed. 522 passed / **43 failed** / 29 skipped in
+                      25.6 min, health-checked and locked. **43 is not a regression and the
+                      whole delta is accounted for:** 29 of the recorded 30 still fail, 1
+                      recovered (duplicate-mobile-blocked:59, the known UI race), and 14 are
+                      new - every one of them in purchase/*, all of them OG-63. **393 was
+                      exonerated by experiment**, not by argument: reverted live via
+                      393-down.sql, PostgREST restarted, two of the 14 re-run and failed
+                      identically, then 393 re-applied and re-verified. Baseline NOT
+                      superseded - no spec changed; it remains the recorded 30.
+                      payment_receipts 10 before and after; chrome-headless-shell 0 and 0.
+typecheck:            **70, the exact baseline**, across the same 6 files
+                      (lib/accounting/functions.ts, lib/audit/index.ts,
+                      lib/invoices/functions.ts, _app.admin.automation.tsx,
+                      _app.admin.sales-reminders.tsx, _app.products.index.tsx).
+Build:                Not run and not required - zero src/ files changed.
 Production touched:   NO. 192.168.170.10 was not contacted.
-Rotation verdict:     GOOD rotation point — two gates closed, none opened, nothing mid-flight,
-                      and the next mission is deliberately not started.
+RECOMMENDATION:       **Do OG-62 before M10.** It is a live disclosure of real sale prices to
+                      anonymous callers, against an A8 classification that already says
+                      price is never public, and the fix is the same shape as migration
+                      390's. OG-63 is the other live one and is a user-facing outage window.
+Rotation verdict:     **GOOD rotation point.** Nothing is mid-flight: the migration is
+                      applied, committed and merged, the gate is attacked and green, the
+                      e2e delta is explained and attributed, and the next mission is
+                      deliberately not started. The three new gates are recorded with full
+                      evidence, so a fresh session can act on them from the gate log alone.
 ```
+
+## LESSONS
+
+Started 2026-08-26 per A1.4b. Read this section at the START of every mission alongside the
+HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
+single observations that have not yet earned rule status.
+
+### From mission 4 - security trio + OG-31
+
+- **A failing-set delta is a question, not a verdict, and the answer is an experiment.**
+  This run showed 43 against a baseline of 30. The error-signature census (zero `42501`,
+  zero permission denials, 41 timeouts) pointed away from the migration, and reproducing
+  the failures on an idle machine ruled out machine load. Neither was treated as proof: the
+  migration was **reverted on the live database**, the tests re-run, they failed
+  identically, and only then was it exonerated. A signature is a hypothesis; a revert is
+  evidence. This is the shape OG-43's row used for migration 388, and it should be the
+  default whenever a mission's run differs from the baseline.
+- **e2e failures can be a function of the clock.** OG-63 is invisible for 20.5 hours a day
+  and fails 14 specs for the other 3.5. Before attributing new failures to a change, check
+  what time the run started - every earlier baseline run was taken earlier in the day.
+  Record the wall-clock start time of a suite run alongside its counts.
+- **A disturbance that errors while being built has caught nothing.** D11's first form
+  failed on a view dependency, so the gate never ran; scoring it CAUGHT would have been a
+  false positive. A2.12(d) exists for exactly this and it fired on the first real use.
+  Always print the perturbed state before running the gate.
+- **Dry-run the gate, not only the change.** The first draft of check C2 had a SQL scoping
+  bug - a comma-join mixed with an explicit `JOIN`, so the outer alias was invisible in the
+  `ON` clause - which would have failed the migration on a healthy database. The A5.28 dry
+  run caught it, and the same bug was present twice in the rollback file.
+- **A count in a mission brief is a claim with a timestamp.** Every number v7 stated for
+  this mission had drifted or was mis-stated: 91 policies -> 93 (the chain's own migrations
+  391/392 added them), 740 -> 741, and "345 SECURITY DEFINER" was really the
+  anon-executable definer count; the definer count is 427. A2.13 is not a formality.
+- **"anon can EXECUTE it" is an upper bound on exposure, not a measurement of it.** 14 of
+  the 18 highest-risk definer functions refuse from inside their own bodies. Reporting 741
+  open functions without saying so would have been true and badly misleading - and it is
+  why OG-61 is written as a weak case rather than an urgent one.
+- **Measure the prize, not just the door.** OG-45 was framed as one GRANT away from eight
+  sensitive views. Granting it yielded **zero rows** from all eight, because another
+  mission's fix had already closed the NULL-uid path. The base-table control in the same
+  session is what stopped that becoming a false all-clear: the role reads everything else
+  freely, it simply does not need those views.
+- **When a global setting has a blast radius, look for the per-scope restore before
+  escalating it to the owner.** OG-31's row called its blast radius "an owner decision, not
+  an agent's". Measured, it was worse than recorded - every role stripped, and a fifth
+  schema nobody had listed - but a six-line per-schema restore confined it exactly, and the
+  containment is assertable. The question never had to be asked.
 
 ## THE EXECUTION ENVIRONMENT IS NOT THE TEST COMPUTER — *(HISTORICAL: describes the M12 session of 2026-08-25, NOT the current one. The 0-LOCAL session that followed ran on the test computer with full database access — see HANDOFF STATE above. Kept because it is the evidence behind OG-58.)*
 

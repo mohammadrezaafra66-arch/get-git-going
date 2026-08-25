@@ -286,3 +286,154 @@ the owner said yes to.
 OG-45 is **not** on this list: it has no agent-available remedy that is not
 OG-38 (there is no grant to revoke — see above), so it is closed here as far as it
 can be, by assertion.
+
+---
+
+## THE CHANGE — migration 393
+
+Applied to `afrakala` as `supabase_admin`, `--single-transaction -v ON_ERROR_STOP=1`, via
+`docker cp` + `psql -f`, then `docker restart afrakala-lan-rest`. Two statements close the
+tap; six restore the prior default everywhere else, so **the only schema whose behaviour
+changes is `public`**:
+
+```
+ALTER DEFAULT PRIVILEGES REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;                    -- global
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM anon;
+ALTER DEFAULT PRIVILEGES IN SCHEMA extensions|graphql|pgbouncer|pgsodium|pgsodium_masks|vault
+                                          GRANT EXECUTE ON FUNCTIONS TO PUBLIC;
+```
+
+**Rollback proved before the forward file was applied** (A5.28). Forward-then-back left
+`pg_default_acl` byte-identical across every objtype, md5 `38d557d198379f3ae9a1f5120cca16b3`
+on both sides. It was then proved a second time **for real, not in a dry run** — see the
+exoneration experiment below, where 393 was fully reverted on the live database and
+re-applied.
+
+**The dry run earned its place immediately:** the first draft of gate check C2 mixed a
+comma-join with an explicit `JOIN`, so `d` was not visible in the `ON` clause
+(`invalid reference to FROM-clause entry for table "d"`). It failed in the dry run instead
+of in the migration. The same bug was present twice in the rollback file and was fixed
+there too.
+
+### Post-apply live re-check (A0.9a)
+
+```
+        surface         | anon | rouser | authenticated | service_role
+------------------------+------+--------+---------------+--------------
+ new function in public | f    | f      | t             | t
+ new function in extensions | t |       | t             |
+ new function in pgbouncer  | t |       |               |
+```
+
+### Nothing existing was revoked — measured, not argued
+
+| | before 393 | after 393 |
+|---|---|---|
+| functions in `public` | 840 | 840 |
+| anon-executable | **741** | **741** |
+| authenticated-executable | — | 831 |
+| service_role-executable | — | 840 |
+
+## GATE ATTACK — 1 control + 12 disturbances, all caught
+
+Full table with constructed-state proofs in
+`docs/research/og31-function-execute-audit.md`. Summary: D1 no global row · D2 forget
+`pgbouncer` · **D3 empties the surface for everyone (A2.10)** · D4 grant the read-only role
+EXECUTE · D5 grant it via PUBLIC · **D6 `AND`→`OR`, correct-looking and no effect
+(A2.12b)** · D7 `SECURITY INVOKER` · D8 `RESET search_path` · D9 reopen `calculate_adjusted_price`
+· D10 add an overload · D11 rewrite a guard view without the guard · D12 vacuous population.
+
+**D11 was rebuilt and the first attempt is recorded rather than hidden.** Its `DROP VIEW`
+form errored on a dependency, so the perturbation never built and the gate never ran —
+counting that as CAUGHT would have been the false positive A2.12(d) exists to prevent.
+
+**A2.12(b)'s "numeric returned as a JSON string" has no attack surface here** — this gate
+makes no HTTP or JSON read; every check is a catalogue lookup or a SQL boolean. Said
+plainly rather than skipped silently.
+
+---
+
+## e2e — RUN, and its 43 failures fully accounted for
+
+In scope per A4.16: database privileges changed.
+
+**Health pre-check (A4.18), all three measured before starting:**
+
+```
+CPU mean over 20 samples : 20.6%   median 18%      (threshold ~25%)
+chrome-headless-shell    : 0                        (A4.18b)
+GET /login               : 200, 15076 bytes, 0.08s  (threshold ~3s)
+```
+
+**Result:**
+
+```
+594 tests -> 522 passed / 43 failed / 29 skipped, 25.6 minutes
+independent marker count: ok 522, x 43, - 29  ->  agrees with the summary line
+ceiling A4.19 = 95 min, clean reference 46.6 min -> under both
+payment_receipts: 10 before, 10 after
+chrome-headless-shell: 0 before, 0 after
+```
+
+The full output was written to a file and parsed; nothing was tailed (A4.21).
+
+### Two-way SET comparison against the recorded 30 (A4.22)
+
+| | count |
+|---|---|
+| of the 30, still failing | **29** |
+| of the 30, no longer failing | **1** — `persons/duplicate-mobile-blocked:59`, the UI race the baseline itself flagged as new and non-deterministic |
+| new, not in the 30 | **14 — every one of them in `purchase/*`** |
+
+29 + 14 = 43. The 14: `c1-foundation:20`; `c2-central-rpc:46,151,197,241`;
+`c3-request-purchase:148,187,227,254,307,386`; `c4-assignment:573`;
+`c5-permissions:172,307`.
+
+### The 14 are OG-63, and migration 393 is exonerated by experiment
+
+The error-signature census across the whole run is the first thing that pointed away from
+privileges: **zero `42501`, zero "permission denied", zero `PGRST`, zero "forbidden",
+zero "unauthenticated"** — 41 timeouts. But a signature is not a proof, so three things
+were done instead of concluding:
+
+1. **They reproduce in isolation on an idle machine.** Re-running `e2e/purchase` alone
+   reproduced 12 of the 14 (the run was cut at test 42 of ~51). So they are real, not the
+   OG-54 machine-load pattern — which also fits, because this run was *faster* than the
+   28.7-minute baseline.
+2. **393 was fully reverted on the live database** with `393-down.sql`, PostgREST
+   restarted, and `c1-foundation:20` + `c2-central-rpc:46` re-run. **Both failed
+   identically with 393 absent.** 393 was then re-applied and the live state re-verified.
+3. **The real cause was found**, and it is a live product defect:
+
+```
+utc_now             | 2026-08-25 23:23      tehran_now   | 2026-08-26 02:53
+CURRENT_DATE (UTC)  | 2026-08-25            tehran_today | 2026-08-26
+tehran_today() > CURRENT_DATE -> t
+```
+
+`create_purchase` line 170 rejects `p_purchase_date > CURRENT_DATE` — the **UTC** date —
+while the form defaults to the **Tehran** day. Between 00:00 and 03:30 Tehran the form's own
+default is refused as being in the future, with the RPC's Persian message
+(`تاریخ خرید نمی‌تواند در آینده باشد` / `PURCHASE_DATE_FUTURE`), which reads as a validation
+rule rather than a bug. This run started inside that window; the 30-baseline and M8's run
+did not. Raised as **OG-63**, with the six-function class it belongs to.
+
+**No spec changed, so the baseline is NOT superseded** (A4.23). It remains the recorded 30.
+
+---
+
+## VERIFICATION AND SCOPE
+
+- **Migration:** 393 applied and committed; `docker restart afrakala-lan-rest` run after
+  every apply and after the revert/re-apply experiment. Number taken at write time and
+  checked against both `supabase/migrations/` and `origin/staging` — 393 was free in both.
+- **RLS/RBAC impact:** no policy, role or role membership changed. The only privilege
+  change is the FUTURE default for functions created by `supabase_admin` in `public`.
+  **No existing object's ACL was altered** — the 741/840 census is identical either side.
+- **Audit log impact:** none; no data written. Every probe ran inside `BEGIN … ROLLBACK`.
+- **Data:** no row inserted, updated or deleted. `payment_receipts` 10 before and after.
+- **`src/`:** zero files. No build required (A7.40), and none was run.
+- **OG-38:** untouched, by design. The mission's result is **CONDITIONAL** on it.
+- **A6.34 (OG-51) respected:** the eight guard views' predicate was not changed.
+- **A6.33/A6.35 respected:** `refresh_sale_list_prices` was not touched.
+- **production لمس نشد** — `192.168.170.10` was never contacted.
