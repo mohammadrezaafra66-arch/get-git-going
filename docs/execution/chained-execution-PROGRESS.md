@@ -10,39 +10,44 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 ## HANDOFF STATE
 
 ```
-Document in force:    AFRAKALA CHAINED EXECUTION — v4
-Last verified SHA:    <filled at merge — see the block below this one>
-Mission just done:    0-LOCAL — confirm M12's provisional findings against the live
-                      database. Read-only. No migration, no data change, no src/.
-Phase 2 position:     Mission 1 (OG-46, PR #347) COMPLETE. Mission 2 (M12, PR #348)
-                      COMPLETE and now **no longer provisional** — its live half is
-                      done. Next: **mission 3 (M8)**, whose definition is still
-                      MISSING from the repository (A2.6 stop-and-ask applies).
-Environment:          **Local — verified, not assumed.** `docker ps` shows all eight
-                      afrakala-lan containers; `psql -d afrakala -c "select 1;"`
-                      returns 1. OG-58's blocker does not apply to this session.
-OG-9:                 CONFIRMED LIVE, PROVISIONAL struck. Both serial mechanisms
-                      (`asan_assign_document_number` AND `assign_document_number`,
-                      the latter being the one migration 338 actually flagged) mint
-                      MAX+1 per doc_type with no year in the predicate.
-OG-12:                CONFIRMED LIVE, PROVISIONAL struck. 28 modules live,
-                      `ledger-documents` present, no competing wizard module,
-                      two-way census clean.
-OG-59:                **CLOSED** — `to_regclass`/`to_regproc` both NULL live. Not
-                      schema drift. Branch (b) confirmed by real output.
-OG-57:                Still OPEN, re-confirmed live (only seeded module with zero
-                      consumers in src/). Needs an owner decision, not agent action.
-Rule correction:      A5.32's "an unseeded module is open to all roles" is true only
-                      for `view`. See the section below — this matters for any future
-                      mission reasoning about unseeded modules.
-e2e:                  NOT RUN, correctly skipped per A4.16 — this mission changed no
-                      src/, no e2e spec and no database privilege. Baseline on record
-                      remains the 30-failure SET at 00-progress.md.
-typecheck:            NOT RUN — zero files under src/ changed (A7.39 conditions it on
-                      a code change). Baseline on record is 70.
-Production touched:   NO. 192.168.170.10 was not contacted in any way.
-Rotation verdict:     GOOD rotation point — the mission is self-contained, merged, and
-                      leaves no mid-flight state.
+Document in force:    AFRAKALA CHAINED EXECUTION — v6
+Last verified SHA:    8fb7731f on origin/staging (PR #349, merged 2026-08-25T17:07:19Z).
+                      M8 sits on feature/m8-orphan-function-and-viewer-restricted; its own
+                      merge SHA is the first line of the M8 completion report.
+Mission just done:    M8 — owner-scoped, exactly two items. Item 1 (OG-8) CLOSED. Item 2
+                      (OG-15) HALF applied and CONDITIONAL on the new OG-60.
+Phase 2 position:     Missions 1 (OG-46 #347), 2 (M12 #348), 0-LOCAL (#349) and 3 (M8)
+                      complete. Next: **mission 4 — security trio + OG-31** (OG-38, OG-44,
+                      OG-45, OG-31 folded in by owner decision). Respect A6.34 (OG-51): do
+                      NOT change the eight guard views' predicate. OG-30 is scheduled AFTER
+                      that mission, not inside it.
+Environment:          Local — verified, not assumed. Eight afrakala-lan containers up;
+                      psql -d afrakala returns 1. OG-58 does not bind this session.
+Migration:            391 applied to afrakala; PostgREST restarted. NOT inserted into
+                      supabase_migrations.schema_migrations — 388/389/390 are absent from it
+                      too, so 391 follows the existing convention. Reconciling that ledger is
+                      v6 Phase 4's item. Next free migration number is 392.
+OG-8:                 CLOSED. The object was a trigger FUNCTION, not a trigger — the chain
+                      document was wrong for three revisions and the owner corrected it.
+                      Zero callers in four directions; its callee was already gone, so it was
+                      broken as well as orphaned.
+OG-15:                HALF closed. document_attachments has viewer_restricted. The viewer
+                      already read nothing there — this adds write coverage and restrictive
+                      semantics, not a removal of current access. Say it that way.
+OG-60:                **NEW, OPEN, and it blocks the rest of OG-15.** document_audit_log does
+                      not exist anywhere. Owner must name the intended table, or confirm that
+                      audit_logs was meant (it already carries viewer_restricted, in which
+                      case OG-15 is already fully satisfied).
+e2e:                  RAN — privileges changed, so in scope. 536 passed / 29 failed / 29
+                      skipped in 21.0m, health-checked and locked. Failing SET is a STRICT
+                      SUBSET of the recorded 30 — zero new failures. duplicate-mobile-blocked:59
+                      passed (known UI race). Baseline deliberately NOT superseded: no spec
+                      file was changed. payment_receipts 10 before and 10 after.
+typecheck:            70, the exact baseline, across the same 6 files.
+Build:                Not run and not required — zero src/ files changed.
+Production touched:   NO. 192.168.170.10 was not contacted.
+Rotation verdict:     GOOD rotation point — M8 is merged and self-contained; the next mission
+                      has not started. But note OG-60 is an open owner question.
 ```
 
 ## THE EXECUTION ENVIRONMENT IS NOT THE TEST COMPUTER — *(HISTORICAL: describes the M12 session of 2026-08-25, NOT the current one. The 0-LOCAL session that followed ran on the test computer with full database access — see HANDOFF STATE above. Kept because it is the evidence behind OG-58.)*
