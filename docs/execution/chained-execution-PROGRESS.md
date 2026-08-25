@@ -15,9 +15,13 @@ Last verified SHA:    3d7fda09 on origin/staging  (git fetch + git log, 2026-08-
 Mission just done:    OG-46 harness repair — PR #347, MERGED 2026-08-25T14:42:53Z,
                       head feature/og46-write-half, merged_by mohammadrezaafra66-arch.
                       Verified with mcp github pull_request_read: "merged": true.
-Phase 2 position:     Mission 1 (OG-46) COMPLETE. Mission 2 (M12) is next and is
-                      **BLOCKED — its definition is not in this repository.** See
-                      "STOP-AND-ASK" below.
+Phase 2 position:     Mission 1 (OG-46) COMPLETE. Mission 2 (M12) — repository half
+                      DONE on feature/m12-serial-and-module; **live half NOT DONE and
+                      not claimable from here** (OG-58). OG-9 and OG-12 both answer as
+                      the owner decided on 2026-08-23, with the evidence now recorded.
+                      OG-57, OG-58 and OG-59 raised. The M12 SCOPE came from the owner's
+                      instruction of 2026-08-25, which supplied what the repository
+                      lacked; the definitions of M8 and M10 are still missing.
 Phase 0 (v3):         COMPLETE, and it did not come out clean. Four premises measured
                       false or missing; three of them change what a mission must do.
 Phase 1 (v3):         Owner answers 1, 2, 4, 5 confirmed present and consistent at
@@ -205,4 +209,5 @@ established so the next session on the test computer can settle it in one query.
 
 | date | tool | what changed | commit |
 |---|---|---|---|
-| 2026-08-25 | Claude Code | Created this file. Phase 0 state sync and premise audit; four v3 premises refuted or unfound; six blocking questions raised. No src/, no migration, no data. | (this commit) |
+| 2026-08-25 | Claude Code | Created this file. Phase 0 state sync and premise audit; four v3 premises refuted or unfound; six blocking questions raised. No src/, no migration, no data. | a94dc45a |
+| 2026-08-25 | Claude Code | M12 repository half. OG-9 and OG-12 answered with evidence; OG-57/58/59 raised; `docs/research/m12-serial-and-module.md` written. Live half explicitly NOT done — no psql ran. No src/, no migration, no data. | (this commit) |
