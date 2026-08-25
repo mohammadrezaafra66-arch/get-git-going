@@ -11,43 +11,50 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 
 ```
 Document in force:    AFRAKALA CHAINED EXECUTION — v6
-Last verified SHA:    8fb7731f on origin/staging (PR #349, merged 2026-08-25T17:07:19Z).
-                      M8 sits on feature/m8-orphan-function-and-viewer-restricted; its own
-                      merge SHA is the first line of the M8 completion report.
-Mission just done:    M8 — owner-scoped, exactly two items. Item 1 (OG-8) CLOSED. Item 2
-                      (OG-15) HALF applied and CONDITIONAL on the new OG-60.
-Phase 2 position:     Missions 1 (OG-46 #347), 2 (M12 #348), 0-LOCAL (#349) and 3 (M8)
-                      complete. Next: **mission 4 — security trio + OG-31** (OG-38, OG-44,
-                      OG-45, OG-31 folded in by owner decision). Respect A6.34 (OG-51): do
-                      NOT change the eight guard views' predicate. OG-30 is scheduled AFTER
-                      that mission, not inside it.
-Environment:          Local — verified, not assumed. Eight afrakala-lan containers up;
-                      psql -d afrakala returns 1. OG-58 does not bind this session.
-Migration:            391 applied to afrakala; PostgREST restarted. NOT inserted into
-                      supabase_migrations.schema_migrations — 388/389/390 are absent from it
-                      too, so 391 follows the existing convention. Reconciling that ledger is
-                      v6 Phase 4's item. Next free migration number is 392.
-OG-8:                 CLOSED. The object was a trigger FUNCTION, not a trigger — the chain
-                      document was wrong for three revisions and the owner corrected it.
-                      Zero callers in four directions; its callee was already gone, so it was
-                      broken as well as orphaned.
-OG-15:                HALF closed. document_attachments has viewer_restricted. The viewer
-                      already read nothing there — this adds write coverage and restrictive
-                      semantics, not a removal of current access. Say it that way.
-OG-60:                **NEW, OPEN, and it blocks the rest of OG-15.** document_audit_log does
-                      not exist anywhere. Owner must name the intended table, or confirm that
-                      audit_logs was meant (it already carries viewer_restricted, in which
-                      case OG-15 is already fully satisfied).
-e2e:                  RAN — privileges changed, so in scope. 536 passed / 29 failed / 29
-                      skipped in 21.0m, health-checked and locked. Failing SET is a STRICT
-                      SUBSET of the recorded 30 — zero new failures. duplicate-mobile-blocked:59
-                      passed (known UI race). Baseline deliberately NOT superseded: no spec
-                      file was changed. payment_receipts 10 before and 10 after.
+Last verified SHA:    20082d3b on origin/staging (PR #350, M8, merged 2026-08-25T19:12:07Z).
+                      The OG-60 mission sits on feature/og60-status-history; its own merge
+                      SHA is the first line of that mission's completion report.
+Mission just done:    OG-60 + the document_status_history finding. Two items, both delivered.
+Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350) and this mission
+                      are complete. Next: **mission 4 — security trio + OG-31** (OG-38,
+                      OG-44, OG-45, with OG-31 folded in by owner decision). Respect A6.34
+                      (OG-51): do NOT change the eight guard views' predicate. OG-30 is
+                      scheduled AFTER that mission, not inside it. Explicitly instructed not
+                      to start it in this session.
+Environment:          Local — verified, not assumed.
+Migration:            392 applied to afrakala; PostgREST restarted. Next free number is 393.
+                      NOT inserted into supabase_migrations.schema_migrations — 388/389/390/
+                      391 are all absent too, so 392 follows the existing convention.
+                      Reconciling that ledger is still v6 Phase 4's item.
+OG-60:                **CLOSED — the name was FABRICATED.** document_audit_log never existed:
+                      to_regclass NULL, no relation of that name in any schema, and the only
+                      grep hit in the whole tree is the line recording the OG-15 answer
+                      itself. SECOND fabricated name to propagate this way after
+                      document_serial_counters/next_serial (OG-59). Cross-ref A0.9.
+OG-15:                **CLOSED and fully discharged.** document_attachments done by 391
+                      (defence in depth — the viewer already read nothing there);
+                      document_audit_log never existed; audit_logs already carried the
+                      pattern. No table left uncovered.
+NEW this mission:     document_status_history got viewer_restricted (migration 392) as an
+                      INDEPENDENT finding, NOT a reconstruction of the fabricated name. It
+                      closed a REAL hole: a viewer-only account could READ the history of any
+                      document it uploaded (measured 1 row) AND INSERT into that history
+                      (measured INSERT 0 1). Both now closed; the write is refused by policy
+                      name. Unlike 391 this removed real access — say it that way.
+Gates raised:         ZERO. This mission closed two and raised none.
+e2e:                  RAN — privileges changed. 536 passed / 29 failed / 29 skipped in 20.8m,
+                      health-checked and locked. Failing SET is IDENTICAL to M8's run and a
+                      strict subset of the recorded 30 — zero new failures. Baseline NOT
+                      superseded (no spec changed). payment_receipts 10 before and after;
+                      chrome-headless-shell 0 before and after.
+                      NOTE on A4.18: the FIRST CPU reading was 27%, over threshold, and the
+                      run was NOT started on it. Re-measured over 20 averaged samples: mean
+                      20.2%, median 17.5%. Both readings are recorded in the research doc.
 typecheck:            70, the exact baseline, across the same 6 files.
 Build:                Not run and not required — zero src/ files changed.
 Production touched:   NO. 192.168.170.10 was not contacted.
-Rotation verdict:     GOOD rotation point — M8 is merged and self-contained; the next mission
-                      has not started. But note OG-60 is an open owner question.
+Rotation verdict:     GOOD rotation point — two gates closed, none opened, nothing mid-flight,
+                      and the next mission is deliberately not started.
 ```
 
 ## THE EXECUTION ENVIRONMENT IS NOT THE TEST COMPUTER — *(HISTORICAL: describes the M12 session of 2026-08-25, NOT the current one. The 0-LOCAL session that followed ran on the test computer with full database access — see HANDOFF STATE above. Kept because it is the evidence behind OG-58.)*
