@@ -11,7 +11,7 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 
 ```
 Document in force:    AFRAKALA CHAINED EXECUTION — v4
-Last verified SHA:    <filled at merge — see the block below this one>
+Last verified SHA:    8fb7731f on origin/staging (PR #349, merged 2026-08-25T17:07:19Z)
 Mission just done:    0-LOCAL — confirm M12's provisional findings against the live
                       database. Read-only. No migration, no data change, no src/.
 Phase 2 position:     Mission 1 (OG-46, PR #347) COMPLETE. Mission 2 (M12, PR #348)
