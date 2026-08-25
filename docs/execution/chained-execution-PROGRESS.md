@@ -10,33 +10,44 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 ## HANDOFF STATE
 
 ```
-Document in force:    AFRAKALA CHAINED EXECUTION — v3
-Last verified SHA:    3d7fda09 on origin/staging  (git fetch + git log, 2026-08-25)
-Mission just done:    OG-46 harness repair — PR #347, MERGED 2026-08-25T14:42:53Z,
-                      head feature/og46-write-half, merged_by mohammadrezaafra66-arch.
-                      Verified with mcp github pull_request_read: "merged": true.
-Phase 2 position:     Mission 1 (OG-46) COMPLETE. Mission 2 (M12) — repository half
-                      DONE on feature/m12-serial-and-module; **live half NOT DONE and
-                      not claimable from here** (OG-58). OG-9 and OG-12 both answer as
-                      the owner decided on 2026-08-23, with the evidence now recorded.
-                      OG-57, OG-58 and OG-59 raised. The M12 SCOPE came from the owner's
-                      instruction of 2026-08-25, which supplied what the repository
-                      lacked; the definitions of M8 and M10 are still missing.
-Phase 0 (v3):         COMPLETE, and it did not come out clean. Four premises measured
-                      false or missing; three of them change what a mission must do.
-Phase 1 (v3):         Owner answers 1, 2, 4, 5 confirmed present and consistent at
-                      00-progress.md:403-413. Answer 3 (M10) is recorded there as a
-                      DISCREPANCY by a previous session and remains one.
-e2e baseline:         30 failures, by NAME, at 00-progress.md:446-527. NOT re-derived
-                      here and not re-run — see the environment block.
-typecheck:            NOT RUN this session. Zero files under src/ changed, and
-                      node_modules is empty (0 entries). Baseline on record is 70.
-Production touched:   NO. Unreachable from here by construction — see below.
+Document in force:    AFRAKALA CHAINED EXECUTION — v4
+Last verified SHA:    <filled at merge — see the block below this one>
+Mission just done:    0-LOCAL — confirm M12's provisional findings against the live
+                      database. Read-only. No migration, no data change, no src/.
+Phase 2 position:     Mission 1 (OG-46, PR #347) COMPLETE. Mission 2 (M12, PR #348)
+                      COMPLETE and now **no longer provisional** — its live half is
+                      done. Next: **mission 3 (M8)**, whose definition is still
+                      MISSING from the repository (A2.6 stop-and-ask applies).
+Environment:          **Local — verified, not assumed.** `docker ps` shows all eight
+                      afrakala-lan containers; `psql -d afrakala -c "select 1;"`
+                      returns 1. OG-58's blocker does not apply to this session.
+OG-9:                 CONFIRMED LIVE, PROVISIONAL struck. Both serial mechanisms
+                      (`asan_assign_document_number` AND `assign_document_number`,
+                      the latter being the one migration 338 actually flagged) mint
+                      MAX+1 per doc_type with no year in the predicate.
+OG-12:                CONFIRMED LIVE, PROVISIONAL struck. 28 modules live,
+                      `ledger-documents` present, no competing wizard module,
+                      two-way census clean.
+OG-59:                **CLOSED** — `to_regclass`/`to_regproc` both NULL live. Not
+                      schema drift. Branch (b) confirmed by real output.
+OG-57:                Still OPEN, re-confirmed live (only seeded module with zero
+                      consumers in src/). Needs an owner decision, not agent action.
+Rule correction:      A5.32's "an unseeded module is open to all roles" is true only
+                      for `view`. See the section below — this matters for any future
+                      mission reasoning about unseeded modules.
+e2e:                  NOT RUN, correctly skipped per A4.16 — this mission changed no
+                      src/, no e2e spec and no database privilege. Baseline on record
+                      remains the 30-failure SET at 00-progress.md.
+typecheck:            NOT RUN — zero files under src/ changed (A7.39 conditions it on
+                      a code change). Baseline on record is 70.
+Production touched:   NO. 192.168.170.10 was not contacted in any way.
+Rotation verdict:     GOOD rotation point — the mission is self-contained, merged, and
+                      leaves no mid-flight state.
 ```
 
-## THE EXECUTION ENVIRONMENT IS NOT THE TEST COMPUTER
+## THE EXECUTION ENVIRONMENT IS NOT THE TEST COMPUTER — *(HISTORICAL: describes the M12 session of 2026-08-25, NOT the current one. The 0-LOCAL session that followed ran on the test computer with full database access — see HANDOFF STATE above. Kept because it is the evidence behind OG-58.)*
 
-This session runs in an ephemeral Linux cloud container holding a fresh clone of the
+That session ran in an ephemeral Linux cloud container holding a fresh clone of the
 repository and nothing else. It is **not** `D:\AfraKalaTest\app`. Measured, not assumed:
 
 ```
@@ -211,3 +222,82 @@ established so the next session on the test computer can settle it in one query.
 |---|---|---|---|
 | 2026-08-25 | Claude Code | Created this file. Phase 0 state sync and premise audit; four v3 premises refuted or unfound; six blocking questions raised. No src/, no migration, no data. | a94dc45a |
 | 2026-08-25 | Claude Code | M12 repository half. OG-9 and OG-12 answered with evidence; OG-57/58/59 raised; `docs/research/m12-serial-and-module.md` written. Live half explicitly NOT done — no psql ran. No src/, no migration, no data. | (this commit) |
+
+---
+
+# MISSION 0-LOCAL — 2026-08-25
+
+The live half of M12. M12 (PR #348) answered OG-9 and OG-12 from repository evidence
+only, executed from a cloud container that could not reach the database (OG-58), so
+every conclusion carried a **PROVISIONAL** stamp. This mission removes those stamps —
+or would have contradicted them, which is exactly why A5.28 requires the step.
+
+Full evidence with raw command output: `docs/research/0local-live-confirmation.md`.
+
+## Result
+
+| Item | Before | After | How |
+|---|---|---|---|
+| OG-9 | ANSWERED, PROVISIONAL | **CONFIRMED LIVE** | `pg_get_functiondef` on both serial functions |
+| OG-12 | ANSWERED, PROVISIONAL | **CONFIRMED LIVE** | `SELECT DISTINCT module` + two-way census |
+| OG-59 | OPEN (drift suspected) | **CLOSED — no drift** | `to_regclass`/`to_regproc` both NULL |
+| OG-57 | OPEN | OPEN, re-confirmed live | reverse census still names it alone |
+
+Nothing was contradicted. All three of M12's provisional conclusions survived live
+measurement.
+
+## What measurement ADDED beyond confirming
+
+**A second serial mechanism, and it is the one that raised OG-9.** M12's record names
+only `asan_export_numbers`. Live measurement found `document_numbers` +
+`assign_document_number` (migration 338) also present — and migration 338's own header
+comment is where OG-9 was flagged in the first place; it only *mentions* the asan
+function in prose. Both mechanisms mint `COALESCE(MAX(...),0)+1 WHERE doc_type =
+_doc_type`, both put the Jalali year in the display string only, and both carry a
+`UNIQUE (doc_type, serial)`-shaped constraint with no year column. So the owner's "do
+not reset" answer holds across the whole serial surface, and a reset remains a schema
+migration rather than a code change in both places.
+
+This is A2.13 doing its job: the mission's own recorded premise was narrower than
+reality, and planning on the row's text alone would have left half the surface
+unverified.
+
+## Rule correction — A5.32 on `has_dynamic_permission`
+
+A5.32 states *"a module with no `role_permissions` row is **open to all roles**."*
+The live function body shows that is true **only for `view`**. The fallback is a graded
+legacy matrix:
+
+| action | roles admitted when no row exists |
+|---|---|
+| `view` | admin, manager, accountant, sales, viewer — *all five; shorthand holds* |
+| `create`, `update` | admin, manager |
+| `delete` | admin |
+| `approve`, `export` | admin, manager, accountant |
+| `view_sensitive` | admin, manager, accountant |
+
+A NULL `_user_id` returns `false` before any of this, so anon gets nothing.
+
+This changed no decision here — the forward census found no unseeded module — but it is
+recorded because the shorthand would lead a future mission to treat an unseeded module as
+a wide-open **write** door. It is not; writes fall back to admin/manager.
+
+## Observation, not acted on
+
+The `Open Owner-Gates:` summary near the top of `00-progress.md` is **stale**: it lists
+23 open gates ending at OG-37, while the gate table below it now runs to OG-59. It was
+already stale before this mission. Recomputing all 59 statuses is error-prone and outside
+this mission's scope, so it was left alone and is flagged here instead of being silently
+"fixed" or silently ignored. The gate **table** is the authority.
+
+## Scope and verification
+
+- **Migration:** none written, none applied. Every query was `SELECT`-only, so
+  `docker restart afrakala-lan-rest` was not required (A5.29 conditions it on an applied
+  migration) and was not run.
+- **RLS/RBAC impact:** none. No policy, grant, role or privilege was changed.
+- **Audit log impact:** none. No data was written.
+- **e2e:** correctly skipped per A4.16 — no `src/`, no spec, no privilege changed.
+- **typecheck:** not run per A7.39 — zero files under `src/` changed.
+- **Data:** no row inserted, updated or deleted.
+- **production لمس نشد** — `192.168.170.10` was not contacted.
