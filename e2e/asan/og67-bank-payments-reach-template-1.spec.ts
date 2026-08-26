@@ -21,6 +21,7 @@
  * Every fixture is COMPUTED from live data (A2.11) and this spec WRITES NOTHING — it only reads
  * the export. RULE 12 does not apply because no document is created.
  */
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { buildBankDepositRows, type BankDepositRow } from "@/lib/asan/export-bank-deposit-rows";
 import { buildJournalRows, groupJournalRows } from "@/lib/asan/export-journal-rows";
@@ -95,41 +96,80 @@ test("a bank RECEIPT stays POSITIVE in the same file", async () => {
 });
 
 test("⛔ cash and cheque appear in NEITHER direction — they stay manual", () => {
-  // The rule the owner restated: only the BANK channel is automatic. Asserted against the
-  // database rather than the export, so it catches a row that should have been excluded even if
-  // the export currently happens to contain none.
-  const leaked = dbRows(`
-    select 'receipt ' || pr.id::text
-      from public.payment_receipts pr
-     where pr.status = 'approved' and pr.reversed_at is null
-       and pr.destination_bank_account_id is not null
-       and pr.document_channel in ('cash','cheque')
-    union all
-    select 'voucher ' || pv.id::text
-      from public.payment_vouchers pv
-     where pv.status = 'approved' and pv.reversed_at is null
-       and pv.document_channel in ('cash','cheque')
-     order by 1
-  `);
-  // These rows exist in the database; what matters is that the RPC's own filters exclude them.
-  // The source text is checked because a row that SHOULD be excluded may simply not exist today.
-  // Counted as OCCURRENCES, not as matching rows: there is one function, so a row-returning
-  // query can only ever answer 1 and could never distinguish "one branch excludes them" from
-  // "both do". An earlier draft asserted ["ok","ok"] and failed for exactly that reason.
-  const exclusions = Number(
-    dbRows(`
-      select (length(pg_get_functiondef(p.oid))
-              - length(replace(pg_get_functiondef(p.oid), 'NOT IN (''cash'', ''cheque'')', '')))
-             / length('NOT IN (''cash'', ''cheque'')')
-        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-       where n.nspname = 'public' and p.proname = 'asan_list_bank_deposit_export'
-    `)[0] ?? "0",
+  // BEHAVIOURAL, rewritten 2026-08-27. The previous version COUNTED OCCURRENCES of the literal
+  // string "NOT IN ('cash', 'cheque')" in `pg_get_functiondef` and asserted it appeared twice.
+  // An adversarial review deleted the voucher branch's real filter and left the literal behind
+  // in a COMMENT: a cash voucher then appeared in the automatic bank file, and the gate counted
+  // 2 and stayed green. A text match cannot tell code from prose.
+  //
+  // This inserts a real cash voucher and a real cheque voucher inside a transaction that never
+  // commits, then asks the export whether it can see them. Nothing survives the rollback.
+  const sql = `
+BEGIN;
+SELECT set_config('request.jwt.claims',
+  json_build_object('sub', (SELECT (array_agg(user_id ORDER BY user_id))[1]
+                              FROM public.user_roles WHERE role='admin'),
+                    'role','authenticated')::text, true);
+CREATE TEMP TABLE r(line text) ON COMMIT DROP;
+DO $c$
+DECLARE
+  v_sup uuid; v_bank uuid; v_cash uuid; v_cheque uuid; v_seen int;
+BEGIN
+  SELECT id INTO v_sup  FROM public.suppliers ORDER BY id LIMIT 1;
+  SELECT id INTO v_bank FROM public.bank_accounts WHERE coalesce(accounting_code,'') <> '' ORDER BY id LIMIT 1;
+  IF v_sup IS NULL OR v_bank IS NULL THEN INSERT INTO r VALUES ('SKIP'); RETURN; END IF;
+
+  INSERT INTO public.payment_vouchers
+    (id, amount, payment_date, payee_type, payee_supplier_id, document_channel,
+     source_bank_account_id, status, description)
+  VALUES (gen_random_uuid(), 12345, public.tehran_today(), 'supplier', v_sup, 'cash',
+          v_bank, 'approved', 'OG67 cash probe')
+  RETURNING id INTO v_cash;
+
+  INSERT INTO public.payment_vouchers
+    (id, amount, payment_date, payee_type, payee_supplier_id, document_channel,
+     source_bank_account_id, status, description, cheque_number, cheque_due_date)
+  VALUES (gen_random_uuid(), 23456, public.tehran_today(), 'supplier', v_sup, 'cheque',
+          v_bank, 'approved', 'OG67 cheque probe', 'CHQ-1', public.tehran_today())
+  RETURNING id INTO v_cheque;
+
+  SELECT count(*) INTO v_seen
+    FROM public.asan_list_bank_deposit_export('2000-01-01'::date, '2100-01-01'::date)
+   WHERE doc_id IN (v_cash, v_cheque);
+
+  INSERT INTO r VALUES (format('MANUAL leaked=%s', v_seen));
+EXCEPTION WHEN OTHERS THEN
+  INSERT INTO r VALUES ('MANUAL error=' || left(SQLERRM, 90));
+END $c$;
+SELECT line FROM r;
+ROLLBACK;
+`;
+  const out = execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "afrakala-lan-db",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "afrakala",
+      "-A",
+      "-t",
+      "-f",
+      "-",
+    ],
+    { input: sql, encoding: "utf8" },
   );
-  expect(
-    exclusions,
-    `both the receipt and the voucher branch must exclude cash and cheque; found ${exclusions} exclusion(s). ` +
-      `${leaked.length} cash/cheque rows exist in the database and would leak.`,
-  ).toBe(2);
+  const line = (
+    out.split(/[\r\n]+/).find((l) => l.trim().startsWith("MANUAL") || l.trim() === "SKIP") ?? ""
+  ).trim();
+  test.skip(line === "SKIP", "no supplier or coded bank account to build the probe from");
+  expect(line, `probe failed: ${out.slice(-260)}`).not.toContain("error=");
+  // Cash and cheque are MANUAL in both directions. Either appearing means the automatic file
+  // now contains a document an accountant already entered by hand — a double entry.
+  expect(line, "a cash or cheque voucher reached the automatic bank file").toBe("MANUAL leaked=0");
 });
 
 test("⛔ NO negative value reaches template 2 — the accounting document", async () => {

@@ -94,6 +94,45 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From the adversarial review OF THE GATES - six were vacuous
+
+An independent subagent was given migrations 399-406 and their gates, no mission context, and
+one instruction: break the thing each gate guards and see whether the gate notices. **Six gates
+stayed GREEN against a genuinely broken system.** All six were written in this session, most of
+them within hours of RULE 15 being recorded. The mechanisms are worth more than the count:
+
+- **RULE 16. A TEXT MATCH AGAINST `pg_get_functiondef` CANNOT TELL CODE FROM A COMMENT.**
+  Migration 403's assertion, duplicated verbatim in the M1 spec, checked
+  `pg_get_functiondef(...) ILIKE '%INSERT INTO public.document_attachments%'`. The reviewer
+  wrapped `create_dual_document`'s attachment INSERT in `/* ... */` and both gates passed while
+  the payload silently vanished from a POSTED document - correctable only by a reversing entry,
+  so the accountant would find the missing slip after the ledger was frozen. **It was the ONLY
+  evidence for two of the three write paths.** Fixed with real in-transaction probes asserting
+  `linked=1` on `voucher_id` and `dual_id`. The same shape defeated the OG-67 cash/cheque test,
+  which counted occurrences of a string literal - a comment counted.
+- **RULE 17. A "STILL ALLOWED" TEST THAT WRITES A COLUMN BACK TO ITS OWN VALUE PROVES NOTHING.**
+  The trigger compares with `IS DISTINCT FROM`, so a same-value write is never a change and can
+  never be refused. All three of OG-23's OPEN halves did exactly that, and stayed green after
+  `status` and `reversal_journal_entry_id` were added to the locked list - an over-broad lock
+  that genuinely breaks approve/reject on every posted receipt. **A permission test must write a
+  DIFFERENT value**, inside a rolled-back transaction if the real value must not move.
+- **Assert the CONTENT, not the existence of the container.** OG-78 checked that a
+  `pg_default_acl` row EXISTS. The reviewer kept the row and changed its ACL from `{=X/...}` to
+  `{supabase_admin=X/...}`, so functions in that schema would be created closed to anon,
+  authenticated AND service_role - and the gate passed. Now it explodes the ACL and requires
+  `grantee = 0` (PUBLIC) with EXECUTE.
+- **A claim in a comment is not a claim under test.** Migration 402's header says
+  `ON DELETE CASCADE` "closes that gap without anyone having to remember it", and NOTHING
+  asserted `confdeltype`. Recreating all three FKs as `NO ACTION` left both gates green while
+  parent deletes began raising `foreign_key_violation`.
+- **`RAISE NOTICE` is not an assertion.** Migration 404 reported the directions it found and
+  never required `payment` to be among them; its "no negative amounts" check was satisfied by
+  having no payment rows at all. The e2e gate caught it, which is the one case where a second
+  independent gate saved the first.
+- **The reviewer's own summary of why 403's was worst is the lesson to keep:** the migration
+  assertion and the e2e assertion were **the same query**, so they failed open together. Two
+  gates that share a mechanism are one gate.
+
 ### Method - the rule that would have caught most of this session's defects
 
 - **RULE 15 (owner-directed 2026-08-26). EVERY GATE MUST BE RUN AGAINST THE BROKEN STATE AND

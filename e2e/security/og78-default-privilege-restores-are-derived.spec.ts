@@ -35,13 +35,21 @@ const CRITERION = `
 `;
 
 test("⛔ no schema meets the criterion without a FUNCTIONS restore", () => {
+  // The row must EXIST **and GRANT EXECUTE TO PUBLIC**. Asserting existence alone was vacuous:
+  // an adversarial review kept the `pg_default_acl` row and changed its ACL from `{=X/...}` to
+  // `{supabase_admin=X/...}`, so a newly created function in that schema came out closed to
+  // anon, authenticated AND service_role — and this test stayed green, because the row was
+  // still there. `aclexplode` with `grantee = 0` is PUBLIC; that is the thing that actually
+  // matters, so that is what is checked.
   const gaps = dbRows(`
     select n.nspname ${CRITERION}
        and not exists (
-         select 1 from pg_default_acl d
+         select 1 from pg_default_acl d, aclexplode(d.defaclacl) a
           where d.defaclnamespace = n.oid
             and d.defaclobjtype = 'f'
-            and d.defaclrole = 'supabase_admin'::regrole)
+            and d.defaclrole = 'supabase_admin'::regrole
+            and a.grantee = 0                       -- 0 = PUBLIC
+            and a.privilege_type = 'EXECUTE')
      order by 1
   `);
   expect(
