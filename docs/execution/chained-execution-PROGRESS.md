@@ -94,6 +94,47 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From mission 12 - gate clean-up (OG-56/57/68/69/70, OG-38)
+
+- **RULE 5 (promoted - third strike, owner-directed 2026-08-26). A success signal from the
+  LAYER YOU ASKED is not evidence that the THING YOU WANTED happened.** Three members of one
+  family now, each of which cost real time:
+  1. **"Successfully copied"** - `docker cp` printed it three separate times while the file
+     never arrived in the container (OG-68).
+  2. **"a completed run"** - the suite exited normally reporting 375/59/27, and ~137 tests
+     had silently never run (OG-54).
+  3. **"a healthy container"** - Docker reported `afrakala-lan-web` **healthy** while the app
+     was unreachable from the host (`/login` 000), because the healthcheck runs INSIDE the
+     container and cannot see the host port-forward. The owner's phrasing, kept verbatim:
+     **«کانتینر سالم یعنی اپ در دسترس نیست»** - *a healthy container does not mean a reachable
+     app.* `docker restart afrakala-lan-web` restored the forward (`200 in 0.078s`).
+  The rule: **verify at the layer that MATTERS, from the side that CONSUMES it.** Delivery is
+  proven container-side (`ls`/md5), not by an exit code. A run is proven by reconciling
+  passed+failed+skipped against the total, not by the summary line. Reachability is proven
+  from the HOST (`curl http://192.168.170.8:3100/login`), not by a healthcheck that lives
+  inside the thing being tested. Every one of these three reported success from a layer that
+  structurally could not observe the failure.
+- **Fix what the remedy STARTED, not just what it named.** The owner's OG-56 remedy - exclude
+  the two undeletable rows by id - was correctly applied and stopped the teardown crashing,
+  so the row read as handled. It was not: the rows were still being COUNTED by 5.2/5 and still
+  displacing `rows[0]` in `export-journal:162`. A remedy applied at one site does not
+  propagate to every site the same fact reaches; re-run the specs before believing it closed.
+- **Exclude by ID, never by marker.** The same exclusion written as `description not like
+  'E2E_AUDIT_%'` would have passed today and hidden a genuine future leak behind the identical
+  clause. Two ids can only ever forgive two rows.
+- **Select a fixture by its PROPERTY, not by its position.** `rows[0]` meant "the corrupted
+  entry" and stopped being that the moment anything else shared the export. `rows.find(r => description contains '?')`
+  is what the assertion always meant, and it no longer depends on how many rows exist.
+- **A measurement that finds nothing is still a result - report the probe you made yourself.**
+  OG-38's window logged 7,849 authorized connections and exactly ONE for
+  `supabase_read_only_user`; that one was this agent's own verification probe, flagged when it
+  was made. Excluding it silently would have been indistinguishable from fabricating a clean
+  reading. Say which observations are yours.
+- **State what a window can and cannot establish.** 48 hours of zero consumers shows nothing
+  observably depends on the role; it cannot show nothing depends on it *ever* - a monthly job
+  would not appear. The owner's decision (keep the window open, do not `NOLOGIN` yet, revisit
+  at Phase 9) follows from that distinction, so the distinction belongs in the row.
+
 ### From mission 11 - OG-66 + baseline settlement
 
 - **A shared error signature is a hypothesis; the error TEXT is the diagnosis.** Seven
