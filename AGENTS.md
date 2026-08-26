@@ -109,7 +109,41 @@ it is narrower and stricter where it counts:
 - **Never run a migration on production without explicit owner approval**, and
   never as a side effect of a deploy.
 - **Never `docker compose down -v`.** The `-v` deletes the database volume.
-- A deploy touches the `web` service only: `git pull` → `build web` → `up -d web`.
+- A deploy touches the `web` service only. **The command MUST carry `--no-deps`:**
+
+  ```powershell
+  docker compose --env-file deploy/lan/.env.lan -f deploy/lan/docker-compose.yml `
+    up -d --no-deps --build web
+  ```
+
+  **Without `--no-deps` the app goes DOWN.** Measured on 2026-08-26: `web` depends on
+  `kong`, and `auth`, `rest`, `storage` and `meta` all declare `depends_on: db-role-fix`,
+  so a plain `up -d web` pulls the one-shot `db-role-fix` container into the start-up
+  graph. On this machine that container cannot start — it bind-mounts a script through
+  the same broken Docker Desktop mount layer as OG-68:
+
+  ```
+  Container afrakala-lan-db-role-fix Starting
+  Error response from daemon: error while creating mount source path
+  '/run/desktop/mnt/host/d/AfraKalaTest/app/deploy/lan/scripts/db-role-fix.sh':
+  mkdir /run/desktop/mnt/host/d: file exists
+
+  $ docker ps -a
+  afrakala-lan-web        Created                    <-- never started
+  afrakala-lan-db-role-fix Exited (128)
+
+  $ curl http://192.168.170.8:3100/login
+  login 000 2.058970s                                <-- the app is down
+  ```
+
+  Recovery, if it happens: `docker start afrakala-lan-web` — verified to bring it back
+  `Up (healthy)` with `/login` 200 in 0.09s. Then use `--no-deps` from then on.
+
+  **`db-role-fix` is NOT vestigial — do not delete it.** Checked 2026-08-26 because it
+  looked like a leftover: four services declare it as a dependency, and it re-applies the
+  service-role passwords that the documented `zz-10` init failure would otherwise leave
+  unset. It is a load-bearing workaround that happens to be unstartable while OG-68 lasts;
+  `--no-deps` steps around it without removing it. See OG-68.
 - Take a rollback tag on the current image before every deploy.
 
 `deploy/lan/scripts/update-lan.ps1` automates the safe path and pulls whatever

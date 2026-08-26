@@ -10,108 +10,82 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 ## HANDOFF STATE
 
 ```
-READ THIS FIRST. A fresh session should be able to continue from v9 + this block
-alone. Written 2026-08-26 under a quota cutoff; everything below is verified, and
-anything not verified says so.
+Document in force:    AFRAKALA CHAINED EXECUTION - v10 (RUN TO PRODUCTION)
+Mission just done:    **11 - OG-66 (party search) + its mandatory STEP 0 baseline settlement.**
+                      See the completion report's first line for the merge SHA.
+NEXT:                 **12 - gate clean-up** (OG-56, OG-57 close; OG-68/69 confirm-and-leave;
+                      OG-38 read the monitoring window and REPORT), then **13 - OG-64**.
+                      Neither is started.
 
-Document in force:    AFRAKALA CHAINED EXECUTION - v9
-Mission 10 (OG-65):   Asan bank template. **STATUS: see the completion report's first
-                      line** - branch `feature/og65-asan-bank-template`. If it is not
-                      merged, the merge is the only thing outstanding; the code, the gate,
-                      the build and the deploy are all done and verified.
-NEXT MISSION:         **11 - OG-66 (finish party search). NOT STARTED, deliberately** - the
-                      owner restricted this session to closing mission 10. All three of its
-                      decisions are already settled in v9 mission 11: (a) city search
-                      DROPPED, record and change nothing; (b) surname YES, "contains" not
-                      "starts with" - verify the live matching first and if it already
-                      contains-matches, prove it and close without building; (c) wire the
-                      ledger wizard to `search_visible_persons` YES, but measure the
-                      function's visibility filter per role before and after so the wizard
-                      does not start showing rows a role should not see.
+=== STEP 0: THE BASELINE IS SETTLED, NOT SUPERSEDED ===
+Mission 10's seven un-traced failures had ONE head, not seven causes:
+`e2e/asan/import-persons.spec.ts` tore down person_identifiers then persons and died on
+`suppliers_person_id_fkey`. A teardown that throws leaves its whole fixture behind, and that
+residue moved the `asan_export_numbers` high-water marks two other specs assert against
+(export-numbering:102 and export-shell:495 both got a number LOWER than the mark they had
+just captured), emptied a fixture id (product-asan-code:118, 'invalid input syntax for type
+uuid'), and shifted three more assertions. Fixed by clearing the ROLE tables first, scoped to
+that test's own person ids -- never by marker or name, which would delete another spec's data.
+Result: **zero new failures, a strict subset of the recorded 30.** No supersession needed.
 
-=== THINGS THAT CHANGED ON THIS MACHINE - DO NOT RE-DERIVE THEM ===
+=== e2e (this mission, post-change) ===
+601 tests -> **543 passed / 29 failed / 29 skipped**, 22.4 min. Reconciles exactly at 601.
+**601, not 598** - this mission added 3 tests, all passing:
+  e2e/persons/wizard-name-lookup.spec.ts:63 / :81 / :96
+Set vs the 30: **NEW <none>**; RECOVERED `persons/duplicate-mobile-blocked:59` (the known UI
+race). `asan/export-bank-deposits:108 -> :133` remains a LINE-SHIFT ARTEFACT of mission 10's
+edits - normalise it before comparing or it reads as one recovery plus one regression.
+payment_receipts 10 before and 10 after. typecheck **70**.
 
-APP_GIT_SHA:          **1da2a778, NOT a19fd811.** The web image was rebuilt and redeployed
-                      this mission (the first src/-changing mission, as A7.40 predicted).
-                      `build.ps1` needs `-Force` here because three untracked leftovers trip
-                      its dirty check; its own `-dirty` stamp test uses
-                      `--untracked-files=no`, so the image still stamps cleanly - verified.
-docker cp:            **BROKEN on this machine. Do not use it. See OG-68.**
-                      `docker cp <f> afrakala-lan-db:/tmp/x` fails with
-                      `mkdir /run/desktop/mnt/host/d: file exists`. It re-resolves the
-                      container's binds and four of them are recorded in VM form.
-                      **Deliver over stdin instead**, proven byte-identical by md5:
-                        cat f.sql | docker exec -i afrakala-lan-db sh -c 'cat > /tmp/f.sql'
-                      From Node pass a Buffer (no shell, no re-encoding). base64 is the
-                      fallback. **PowerShell's pipe FAILS md5** - it appends a trailing CRLF
-                      (167 bytes vs 165). The Persian bytes were intact; the damage was a
-                      line ending. It still fails, because md5-or-nothing is the rule that
-                      would have caught 2026-07-11.
-CLAUDE.md/AGENTS.md:  **Rule 1 amended together, verified identical.** docker cp is no longer
-                      the documented delivery path; stdin + md5 verification replaces it.
-e2e/helpers/db-write.ts: **CHANGED** to stream over `docker exec -i` with a Buffer. Proved
-                      before use: host md5 = container md5 = 33377c903e7e79ce3f031eb513ec8916,
-                      and Persian survived execution through the helper itself. Per the
-                      owner, this needs **no baseline supersession** - it restores the
-                      condition the 30-baseline was measured under rather than creating a
-                      new one.
-BACKUP:               `deploy/lan/backups/afrakala-pre-restart-20260826.dump`
-                      17,466,432 bytes, md5 3bd728e6b6c5cf41256b509e886bff9c, identical to
-                      the copy inside the container. Gitignored via `*.dump`.
-                      **A restore needs `--disable-triggers`** - pg_dump warned of circular
-                      foreign keys.
-DATABASE:             No migration this mission. Next free number is **396** (verify on disk
-                      AND remote before writing). Nothing is applied-but-uncommitted and
-                      nothing half-done was left on the database.
+=== OG-66: all three parts closed ===
+(a) city  - DROPPED by the owner. Recorded; nothing changed; no column, no join.
+(b) surname - ALREADY TRUE, proven not built: «تست» finds «محمدرضا تست» and «محمدی» finds
+    «خان محمدی», both matched_by=name. It contains-matches already, so per A1.5 no code
+    was written.
+(c) ledger wizard WIRED to search_visible_persons as a UNIQUE-HIT fallback, after every
+    exact identifier path misses. Ambiguous names are refused, not guessed, because
+    `pickKind` resolves exactly one party. Visibility measured per role BEFORE wiring -
+    admin/accountant/manager/viewer 36->84, sales 11->18 - and those are the same numbers
+    the persons PAGE already shows that role, so this aligns two surfaces rather than
+    granting new access. anon is refused outright.
+    Gate: 9 disturbances + control, **8 caught**. D1 (ignore p_limit) ESCAPED and that is
+    CORRECT, recorded as a principled escape: a unique name still returns 1 and an ambiguous
+    one still returns >1, so the wizard's contract is unbroken - asserting it would pin an
+    implementation detail. D6 failed to construct first (1/0 folded at creation) and was
+    REBUILT, not counted.
+    Gate ceiling stated honestly: lookup.ts imports the Supabase BROWSER client, so it is
+    not testable from Node; the gate asserts the CONTRACT through PostgREST as a real role
+    and says so rather than implying UI coverage.
 
-=== e2e ===
+=== ENVIRONMENT: read before any deploy ===
+**APP_GIT_SHA = b17b267c** (moved again this mission; rebuild + deploy were done).
+**THE DEPLOY COMMAND CHANGED. CLAUDE.md and AGENTS.md rule amended together, verified
+identical:**
+  docker compose --env-file deploy/lan/.env.lan -f deploy/lan/docker-compose.yml \
+    up -d --no-deps --build web
+**Without `--no-deps` the app goes DOWN** - this mission proved it by doing it. web ->
+kong -> (auth, rest, storage, meta) -> db-role-fix, and that one-shot container cannot start
+on this machine (OG-68's mount fault), so web was left `Created` and /login returned 000.
+Recovery: `docker start afrakala-lan-web`.
+**docker cp is still broken** - deliver over `docker exec -i` with a Buffer, verify md5.
+**OG-70 (NEW): cold recovery is broken.** db-role-fix creates the service roles, its script
+arrives by a FILE BIND (the dead class), and auth/rest/storage/meta depend on it with
+`service_completed_successfully` - the STRICT condition. So a from-scratch `up -d` would
+leave four core services unable to start. Nothing is wrong today: the job ran on 2026-08-02
+and its effects persist in the named volume - verified live, all roles/attributes/passwords
+correct. **The backup covers the DATA but a restore would land in a stack whose roles cannot
+be created, so the backup alone is NOT a recovery plan.** Owner decision.
+**Do NOT restart afrakala-lan-db, do NOT --force-recreate, do NOT delete db-role-fix or edit
+its script.**
 
-Last full run: 598 tests -> **527 passed / 40 failed / 29 skipped / 2 did not run**, 21.8 min.
-Arithmetic reconciles exactly (527+40+29+2 = 598), so the run is valid - unlike the
-2026-08-26 14:51 run, which was discarded because 137 tests silently did not execute.
-**Set comparison vs the recorded 30:**
-  * `asan/export-bank-deposits:108` -> `:133` is a **LINE-SHIFT ARTEFACT** of this mission's
-    edits to that spec file, not a recovery plus a regression. Name it explicitly.
-  * **10 genuinely new failures. TWO were mine and are FIXED and verified**
-    (`final-verification:397` and `:412` - a stale `docs/asan/asan-layouts.md` and an
-    assertion about empty-string cells; both now pass).
-  * **The other EIGHT are data/fixture drift, not code.** Fully traced example:
-    `customer-form-person:35` fails on the spec's own cleanup with
-    `update or delete on table "persons" violates foreign key constraint
-    "suppliers_person_id_fkey"` - accumulated test data, the A7.43 / OG-56 class. The Asan
-    numbering pair (`export-numbering:102`, `export-shell:495`) are register-counter drift
-    from repeated runs today. The remaining five share the fixture-state signature but were
-    characterised, not individually traced - said plainly.
-  * **A clean full re-run on a quiet database is OWED** before the next mission's own run is
-    compared to anything.
-typecheck:            **70**, the exact baseline, same 6 files.
-
-=== OWED / OPEN, do not lose ===
-
-INDEPENDENT REVIEW:   **Missions 4, 5 and 6 - still owed.** Three consecutive security
-                      migrations merged without a second pair of eyes. Owner deferred it to
-                      a separate session (A3.15 forbids self-review being called independent).
-OG-68:                `afrakala-lan-db` is DEGRADED - five file binds on
-                      /docker-entrypoint-initdb.d/ are dead (Input/output error). Harmless
-                      now (initdb reads them only against an empty data dir; live data is in
-                      a named volume) but **DO NOT restart the container, do not
-                      --force-recreate**: a restart must re-create the binds that are
-                      failing and it may not come back. Docker Desktop restart is the
-                      remedy and is the OWNER's call - it restarts their ~20 other project
-                      containers.
-OG-67:                Nothing feeds bank PAYMENTS into the Asan bank template. The mapping
-                      supports them and the gate proves both directions; no data source
-                      does. Needs an RPC change and it is a ROUTING decision. Owner's.
-OG-69:                The bank file is 15 columns but G–O read as `None` in openpyxl, not
-                      `''`. Column count (what a positional importer keys on) is correct.
-                      Owner to confirm against a real Asan import.
-OG-38:                Still OPEN, mission 4 still CONDITIONAL. Monitoring live since
-                      2026-08-26 11:57 Tehran via global `log_connections`. Read it with
-                      `docker logs --since 24h afrakala-lan-db | grep supabase_read_only_user`.
-                      **The only captured line so far is the agent's own probe** - do not
-                      miscount it as a real consumer.
-OG-61/OG-64/OG-30:    Open, unchanged, all owner decisions.
-Production:           **NOT touched. 192.168.170.10 was never contacted.**
+=== OWED ===
+INDEPENDENT REVIEW of missions 4, 5, 6 - still owed, needs a separate session (A3.15).
+PHASE 1 QUESTIONS - the five v10 names (Phase 7 items, Phase 8 items, OG-61, OG-67, and the
+OG-6 reminder) have NOT yet been put to the owner. Read MASTER-CHECKLIST.md first, then ask
+ONCE in one Persian message, and do not hold the chain waiting for the answer.
+OPEN GATES: OG-6, OG-30, OG-38, OG-53, OG-56, OG-57, OG-61, OG-64, OG-67, OG-68, OG-69,
+OG-70.
+Production: **NOT touched. 192.168.170.10 was never contacted.**
 ```
 
 ## LESSONS
@@ -119,6 +93,33 @@ Production:           **NOT touched. 192.168.170.10 was never contacted.**
 Started 2026-08-26 per A1.4b. Read this section at the START of every mission alongside the
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
+
+### From mission 11 - OG-66 + baseline settlement
+
+- **A shared error signature is a hypothesis; the error TEXT is the diagnosis.** Seven
+  failures were characterised as "data drift" by signature and left there. Read individually
+  they had ONE head - a teardown dying on an FK - and fixing that one teardown closed all
+  seven. Grouping by signature felt like diagnosis and was not.
+- **A failing teardown is not a local problem.** It leaves its whole fixture behind, and the
+  residue moves OTHER specs' baselines - here, two specs that capture a register's
+  high-water mark then assert `max+1` got a number lower than the mark they had just read.
+  When several unrelated specs fail on state, suspect a teardown before suspecting the code.
+- **Scope a cleanup predicate to the ids the test itself created.** The tempting fix was to
+  delete by marker or name; that would delete another spec's data, or the owner's. Bounded to
+  its own created ids, the fix cannot reach anything it did not make.
+- **An escaped disturbance is not automatically a gate failure.** D1 made the RPC ignore its
+  limit and the gate did not catch it - correctly, because a unique name still returns 1 and
+  an ambiguous one still returns >1, so the contract under test is unbroken. Adding an
+  assertion to "catch" it would have pinned an implementation detail the caller does not
+  depend on. Record the reasoning and leave it escaped.
+- **State a gate's ceiling in the gate.** `lookup.ts` imports the browser client and cannot
+  be tested from Node. The spec says that in its header instead of implying UI coverage it
+  does not have - a reader who assumes coverage that is absent is worse off than one told
+  where it stops.
+- **Running the documented command can be the outage.** `up -d web` is what CLAUDE.md said to
+  do, and it took the app down through a dependency chain nobody had traced. After changing
+  anything about the environment, re-read the documented procedures for assumptions the
+  change has invalidated - and fix the DOCUMENT, not just the gate log.
 
 ### From mission 10 - OG-65
 - **A suite that runs to completion can still be worthless, and the summary line will not say
