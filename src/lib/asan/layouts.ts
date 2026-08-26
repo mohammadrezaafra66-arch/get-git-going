@@ -70,15 +70,41 @@ export const JOURNAL_HEADERS: readonly string[] = [
   "بستانکار", // F
 ] as const;
 
-/** Layout 4 — bank deposits (`واریزیهای بانکی`). Latin headers, reproduced verbatim. */
+/**
+ * Layout 4 — the bank file (`واریزوپرداخت_بانکی.xlsx`). Latin headers, reproduced verbatim.
+ *
+ * **Corrected 2026-08-26 from the real Asan template, read cell by cell.** This file
+ * previously wrote `Name_Moshtari` and `Shomare_Peygiri`; the owner supplied the actual
+ * `.xlsx` and it holds `Name_Moshtare` (C) and `Shopmare_Peygeri` (D). Both look like
+ * misspellings and both are **legacy-intentional in Asan** — they must NOT be
+ * "corrected" back. A header that merely looks right imports into the wrong column of live
+ * accounting software, so the measured file wins over anyone's spelling instinct, including
+ * the two e2e specs that previously asserted the wrong pair.
+ *
+ * **G–O are empty strings, not absent cells.** The real template is 15 columns wide, and
+ * `aoa_to_sheet` writes no cell at all for `null` while `""` writes a real empty cell — so
+ * the padding has to be `""` for the sheet to come out `max_col = 15` like the original.
+ */
 export const BANK_DEPOSIT_HEADERS: readonly string[] = [
   "Date", // A
   "Code_M", // B
-  "Name_Moshtari", // C
-  "Shomare_Peygiri", // D
+  "Name_Moshtare", // C — legacy-intentional spelling, measured from the real template
+  "Shopmare_Peygeri", // D — legacy-intentional spelling, measured from the real template
   "Mablagh", // E
   "Bank_cod", // F
+  "", // G
+  "", // H
+  "", // I
+  "", // J
+  "", // K
+  "", // L
+  "", // M
+  "", // N
+  "", // O
 ] as const;
+
+/** The named part of layout 4 — A–F. G–O are padding and carry no header text. */
+export const BANK_DEPOSIT_NAMED_COLUMN_COUNT = 6;
 
 export type AsanLayoutKey = "sales" | "purchase" | "journal" | "bank_deposit";
 

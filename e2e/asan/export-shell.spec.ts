@@ -236,7 +236,8 @@ test.describe("the layouts are the contract with Asan", () => {
     expect(SALES_HEADERS.length).toBe(18);
     expect(PURCHASE_HEADERS.length).toBe(18);
     expect(JOURNAL_HEADERS.length).toBe(6);
-    expect(BANK_DEPOSIT_HEADERS.length).toBe(6);
+    // 15, not 6: the real template is 15 columns wide, G-O being empty strings.
+    expect(BANK_DEPOSIT_HEADERS.length).toBe(15);
 
     expect([...SALES_HEADERS]).toEqual([
       "شماره فاکتور",
@@ -269,15 +270,27 @@ test.describe("the layouts are the contract with Asan", () => {
     expect(PURCHASE_HEADERS[10]).toBe("پرداخت چک");
 
     expect([...JOURNAL_HEADERS]).toEqual(["کد حساب", "کد کالا", "شرح", "تعداد", "بدهکار", "بستانکار"]);
-    // Latin transliterations, reproduced as the Asan screen writes them — not translated and
-    // not spell-corrected.
+    // Latin transliterations, reproduced as the REAL TEMPLATE writes them — not translated
+    // and not spell-corrected. Corrected 2026-08-26 from the owner's actual .xlsx, read cell
+    // by cell: `Name_Moshtare` and `Shopmare_Peygeri`. Both look wrong and both are
+    // legacy-intentional in Asan; this spec previously asserted the "corrected" pair and was
+    // the thing keeping the wrong headers in place. G-O are empty strings, not absent cells.
     expect([...BANK_DEPOSIT_HEADERS]).toEqual([
       "Date",
       "Code_M",
-      "Name_Moshtari",
-      "Shomare_Peygiri",
+      "Name_Moshtare",
+      "Shopmare_Peygeri",
       "Mablagh",
       "Bank_cod",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
     ]);
 
     // No header may carry stray whitespace or a Persian-digit character that a copy-paste

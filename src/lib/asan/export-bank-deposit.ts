@@ -6,9 +6,20 @@
  * headers. The label and the note say which is which, because an accountant choosing between two
  * deposit exports needs to know which dialog each one feeds.
  *
- * Layout 4's transliterations (`Name_Moshtari`, `Shomare_Peygiri`, `Mablagh`, `Bank_cod`) are
- * reproduced exactly as the Asan screen writes them — not translated, not spell-corrected. They
+ * Layout 4's transliterations (`Name_Moshtare`, `Shopmare_Peygeri`, `Mablagh`, `Bank_cod`) are
+ * reproduced exactly as the real Asan template writes them — not translated, not
+ * spell-corrected. **Corrected 2026-08-26**: this file and `layouts.ts` previously said
+ * `Name_Moshtari` / `Shomare_Peygiri`, and two e2e specs asserted that pair. The owner
+ * supplied the actual `.xlsx` and it was read cell by cell; the measured spelling wins. They
  * live in `layouts.ts`; the mapping lives in `export-bank-deposit-rows.ts`.
+ *
+ * The template is **15 columns**, G–O being empty strings, and the mapping pads to that width.
+ *
+ * **Direction lives in the SIGN here** — receipt positive, payment negative — which is a
+ * property of this layout alone. The accounting document (layout 3) uses separate
+ * `بدهکار`/`بستانکار` columns and must never receive a negative amount. The only data source
+ * wired today reads `payment_receipts`, so every row it yields is a receipt; the mapping
+ * supports payments, but nothing feeds them into this layout yet.
  *
  * `docType` is **null**: this layout carries no document-number column, so it consumes no Asan
  * number. Numbering exists to make a re-export stable, and there is nothing here to keep stable.
