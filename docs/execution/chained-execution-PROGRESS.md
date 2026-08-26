@@ -94,6 +94,22 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From mission 12-14 - process hygiene
+
+- **RULE 7 (owner-directed 2026-08-26). A PROCESS IS NOT AN ORPHAN BECAUSE OF ITS NAME OR ITS
+  COUNT. The only test is whether its PARENT IS ALIVE. Check the parent before any kill.**
+  Four `chrome-headless-shell` processes were reported as returned orphans and queued for
+  killing. They were not orphans: `Get-CimInstance Win32_Process` showed one whose parent was
+  the live `node` running the suite, and three that were its own children, all created in the
+  same second. **Killing them would have broken a suite at test 257 of 606** - roughly twenty
+  minutes of work, and a baseline comparison lost. The owner's phrasing, kept: *«یتیم بودن یک
+  فرایند از روی نام یا تعدادش معلوم نمی‌شود - تنها معیار این است که والدش زنده است یا مرده.»*
+  This is **OG-54's lesson from the opposite direction**: there, a run that had completed was
+  trusted and was worthless; here, processes that looked like debris were load-bearing. In both
+  cases the name and the count were the misleading signal, and the structural relationship -
+  what reconciles, what parents what - was the true one. `ParentProcessId` resolving to a dead
+  pid is the evidence; anything else is a guess.
+
 ### From mission 14 step zero - Phase 7 measured
 
 - **RULE 5 has a database form, and it is the most dangerous one yet: AN `UPDATE` THAT MATCHES
