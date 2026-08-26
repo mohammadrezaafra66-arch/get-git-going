@@ -14,54 +14,39 @@ Document in force:    AFRAKALA CHAINED EXECUTION - v8
 Last verified SHA:    see the first line of this mission's completion report, which is the
                       raw `git log --oneline -2 origin/staging` taken after the merge (A0.8).
                       Branch: feature/og62-anon-price-definers, cut from staging @ 987c3a3d.
-Mission just done:    **Mission 7 - M10**, closed as a DUPLICATE of OG-61. No migration, no
-                      code, no data - a documentation closure with a corrected reason.
-                      Before it: **mission 6 - OG-62** (migration 395), merged.
+Mission just done:    **Mission 8 - OG-35**, audited. **Nothing built - and the audit
+                      changed what the mission is.** Before it: mission 7 (M10, closed as a
+                      duplicate of OG-61) and mission 6 (OG-62, migration 395).
 Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350), OG-60 (#351),
                       security trio + OG-31 (#352), OG-63 (#353) and now OG-62 are complete.
-                      **Next: mission 8 - OG-35 (Asan Excel). Phase 0 partly done here,
-                      re-verified in THIS session rather than quoted from the earlier one:**
-                      the surface is NOT unwired. `AsanLayoutNotConfiguredError` is declared
-                      at `src/lib/export/export-modes.ts:69`, `createUnconfiguredAsanAdapter`
-                      at :107 throws it at :116, and the accounting-receipts page consumes
-                      that module (`_app.accounting.receipts.tsx:29`, branching on
-                      `exportMode === "asan"` at :180). So «قالب پیکربندی نشده است» is a
-                      DELIBERATE refusal on a live seam, not a missing configuration, and
-                      OG-35 is a BUILD task.
-                      **BLOCKING CONFLICT, unchanged and still unanswered:** v8's template
-                      spec says `Name_Moshtare` / `Shopmare_Peygeri`; the repository ships
-                      `Name_Moshtari` (`src/lib/asan/layouts.ts:77`) and `Shomare_Peygiri`
-                      (:78), and TWO e2e specs assert them, one commenting that they are
-                      *"reproduced **exactly**"* (`e2e/asan/export-bank-deposits.spec.ts:27,
-                      98-99`). Three characters differ and they decide which column a file
-                      lands in inside live accounting software. Both sources are
-                      owner-sourced, so A2.6 forbids choosing. Also open: whether template 1
-                      carries bank PAYMENTS with a negative `Mablagh`, and whether columns
-                      G-O are emitted empty to max_col=15 (the shipped layout is six columns
-                      and deposit-only). These are questions 3 and 4 of this file's
-                      STOP-AND-ASK table, open since 2026-08-25.
-Environment:          Local - proven, not assumed.
-Migration:            395 applied to afrakala; PostgREST restarted. Next free number is 396
-                      (verify on disk AND remote before writing, as always).
-                      NOT inserted into supabase_migrations.schema_migrations - 388-394 are
-                      all absent too. Reconciling that ledger remains Phase 4's item.
-OG-62:                **CLOSED, and wider than the row asked.** 28 functions revoked from
-                      `anon` AND `PUBLIC`. Live: anon_can_execute_of_28 = 0,
-                      auth_can_execute_of_28 = 28; get_product_sale_price now raises 42501
-                      to anon instead of returning 79800000. The list came from a sweep of
-                      all 91 STABLE anon-executable definers, then a SECOND pass calling
-                      each returner with REAL arguments - because 47 functions returning
-                      rows is not 47 leaks (has_role(NULL,NULL) returns one row of false).
-                      RLS helpers and set_profile_field_value deliberately untouched.
-                      /api/public/products byte-identical: 200, 199, price on 199 and 0.
-OG-38:                **STILL OPEN; mission 4 stays CONDITIONAL.** Owner answered in part:
-                      do NOT NOLOGIN, monitor first. **Monitoring is LIVE since
-                      2026-08-26 11:57 Tehran.** ALTER ROLE ... SET log_connections is
-                      IMPOSSIBLE (backend-start parameter - measured, not assumed), so it is
-                      on globally by reload; reversible with ALTER SYSTEM RESET. Proven to
-                      capture the role. **The one captured line so far is the verification
-                      probe itself - do not count it as a real consumer.** Read with
-                      `docker logs --since 24h afrakala-lan-db 2>&1 | grep supabase_read_only_user`.
+                      **Next: mission 9 - task 6.7 + M2 (party search)**, which is ON the
+                      critical path to production. AUDIT FIRST with real code reads, per
+                      v8: whether `src/features/ledger-wizard/lookup.ts` passes the Asan
+                      code to `person_find_by_identifiers` or only the mobile. An earlier
+                      unverified report claimed only the mobile is sent; the file exists and
+                      calls the RPC at line 25, and `src/lib/persons/find-by-phone.ts:86` is
+                      the second caller, but **the argument-level answer was never
+                      measured** - it needs `pg_get_functiondef` against the live database.
+                      That is one query and it is now runnable (Local).
+                      **OG-35 is BLOCKED on OG-65, not startable as a build.** See below.
+OG-35 / OG-65:        **AUDITED, NOT BUILT - and it is not a build mission.** Both of v8's
+                      templates already exist. **Template 2 is an EXACT match** for the built
+                      layout 3 (`JOURNAL_HEADERS`, `src/lib/asan/layouts.ts:64`). **Template 1
+                      is the built layout 4** (`BANK_DEPOSIT_HEADERS`, :74) with the same six
+                      columns in the same order and **four of six headers identical** - the
+                      entire conflict is THREE CHARACTERS in two headers. Toman x10 -> Rial,
+                      Jalali `YYYY/MM/DD` in Latin digits converted in Asia/Tehran first, and
+                      `Bank_cod` from `bank_accounts` are all already built and match v8.
+                      **Not built:** a negative `Mablagh` for bank payments (no sign handling
+                      exists anywhere in `src/lib/asan/`; the export is deliberately
+                      deposit-only) and columns G-O to max_col=15 (six columns shipped).
+                      **The page error is a deliberate REFUSAL, not a missing config**, and it
+                      points at a DIFFERENT layout family: the five unconfigured adapters in
+                      `export-modes.ts` are `docs/asan/ASAN_BRIDGE.md`'s, not the seven built
+                      exports on /admin/asan-export - and that file says adopting it is a
+                      separate, owner-approved mission. **Raised as OG-65 with three narrow
+                      questions plus that scope question. A2.6 forbids picking the
+                      transliteration, so nothing was changed.**
 M10:                  **CLOSED 2026-08-26 as a DUPLICATE OF OG-61**, with a correction to
                       v8's pre-answer. v8 said: if the only in-repo definition is the batch
                       EXECUTE revoke, then 393 already did it, so close as covered-by-OG-31.
@@ -108,6 +93,25 @@ Rotation verdict:     **GOOD rotation point.** Migration applied, committed and 
 Started 2026-08-26 per A1.4b. Read this section at the START of every mission alongside the
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
+
+### From mission 8 - OG-35
+
+- **Audit the wiring before believing a specification is new information.** v8 supplied the
+  Asan template layouts as "the source of truth, NOT in the repository". Measured, template 2
+  already existed character-for-character and template 1 differed by three characters. A
+  mission briefed as "build the Asan Excel output" is actually three narrow questions. A1.5
+  says the problem here is almost never that the feature does not exist - this is the
+  strongest instance of it yet, because the spec itself looked like the missing piece.
+- **Two surfaces with similar names are not one surface.** `/admin/asan-export` has seven
+  built exports; the accounting-receipts page has five deliberately unconfigured adapters
+  from a DIFFERENT layout family (`ASAN_BRIDGE.md`). Wiring one to the other because both
+  say "asan" would have produced a file that looks authoritative and imports silently into
+  live accounting software - which is the exact failure the refusal was placed there to
+  prevent. Read what an error actually throws before calling it a configuration gap.
+- **A refusal in the code can be a decision someone already made.** `AsanLayoutNotConfiguredError`
+  is not a bug or an oversight; its header explains the reasoning and defers to the owner.
+  Treat a documented refusal as a recorded decision and look for its rationale before
+  "fixing" it.
 
 ### From mission 7 - M10
 
