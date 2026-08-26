@@ -10,109 +10,108 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 ## HANDOFF STATE
 
 ```
+READ THIS FIRST. A fresh session should be able to continue from v9 + this block
+alone. Written 2026-08-26 under a quota cutoff; everything below is verified, and
+anything not verified says so.
+
 Document in force:    AFRAKALA CHAINED EXECUTION - v9
-Last verified SHA:    origin/staging @ d21bc083 (PR #357). **Mission 10 is COMMITTED AND
-                      DEPLOYED BUT NOT MERGED** - branch feature/og65-asan-bank-template @
-                      1da2a778, pushed. It is held on ONE step, below.
-Mission just done:    **Mission 10 - OG-65, the Asan bank template.** Code complete, gate
-                      attacked, built and deployed to the LAN web container. **NOT MERGED.**
-BLOCKED ON:           **`docker cp` into `afrakala-lan-db` is BROKEN, which makes a valid
-                      e2e run impossible. The CPU question is CLOSED - it was never the
-                      problem.**
-                      The owner re-measured A4.18 distributionally and it PASSES: CPU mean
-                      18.71% / median 18.62%, chrome-headless-shell 0, /login 9-12ms. The
-                      37.7% this session reported was a transient ~2.5 sigma above the mean
-                      (now RULE 4 in LESSONS). The suite was then run, and failed for an
-                      unrelated reason.
-                      **The e2e run of 2026-08-26 14:51 Tehran is INVALID and must not be
-                      compared to any baseline.** 598 tests -> 375 passed / 59 failed / 27
-                      reported skipped, 16.1 min - but an independent count finds **164 `-`
-                      markers**, and 375+59+27 = 461 of 598. The missing ~137 are tests taken
-                      out when a shared `beforeAll` died, the OG-56 cascade shape.
-                      **Root cause, reproduced live after the run:**
-                      ```
-                      docker cp <file> afrakala-lan-db:/tmp/x.sql
-                      Error response from daemon: error while creating mount source path
-                      '/run/desktop/mnt/host/d/.../db/init/00-afrakala-pre-supabase-admin.sh':
-                      mkdir /run/desktop/mnt/host/d: file exists
-                      ```
-                      `e2e/helpers/db-write.ts:39` writes fixtures with `docker cp`, so every
-                      spec that writes to the database dies in setup and cascades out its file.
-                      **Scope, measured:** `afrakala-lan-db` carries **4 binds recorded in
-                      already-translated VM form** (`/run/desktop/mnt/host/d/...`);
-                      `afrakala-lan-web` and `afrakala-lan-rest` carry **zero**. `docker cp`
-                      re-resolves those binds and chokes because `/run/desktop/mnt/host/d` is
-                      a FILE inside the Docker Desktop VM.
-                      **Not transient** - reproduced twice, identically.
-                      **It appeared TODAY.** `docker cp` into this container worked repeatedly
-                      earlier in this session (migrations 393, 394 and 395 were all delivered
-                      that way). The most plausible trigger is this mission's own
-                      `docker compose up -d web`, which made Docker Desktop re-evaluate mounts.
-                      Said plainly rather than left as coincidence.
-                      **The database itself is FINE.** `docker exec -i ... psql` over stdin
-                      works; `payment_receipts` 10, `purchases` 240, all containers healthy.
-                      **DO NOT restart `afrakala-lan-db`.** A restart reuses the stored
-                      container config, so it would have to re-create the four failing binds -
-                      the exact operation erroring now - and the container may not come back.
-                      A `--force-recreate` has the same exposure.
-                      **Recommended fix is a Docker Desktop restart** (it rebuilds the VM mount
-                      table). That restarts the owner's ~20 other project containers, which the
-                      owner explicitly said not to stop - so it is their call, not the agent's.
-                      **Also blocks future migrations**: `docker cp` + `psql -f` is A5.30's
-                      mandated Persian-safe delivery path.
-                      Everything else in mission 10 is complete and verified.
-Environment:          Local - proven. **APP_GIT_SHA has MOVED for the first time:**
-                      a19fd811 -> **1da2a778**, equal to HEAD, as A7.40 predicted for the
-                      first src/-changing mission. Image afrakala-app:lan rebuilt, web
-                      container Up (healthy), /login 200. `build.ps1 -Force` was needed
-                      because three untracked leftovers from an earlier session trip its
-                      dirty check; the script's own `-dirty` stamp test uses
-                      `--untracked-files=no`, so the image is stamped cleanly - verified.
-Migration:            NONE this mission. Next free number is still 396 (verify on disk AND
-                      remote before writing).
-OG-65:                **CLOSED by code.** Headers corrected to the MEASURED spelling
-                      `Name_Moshtare` / `Shopmare_Peygeri`; sheet padded to 15 columns with
-                      G-O as empty STRINGS (null writes no cell at all and would yield a
-                      six-column file); direction now carried in the SIGN of `Mablagh` in
-                      layout 4 only. Template 2 measured identical to what ships - untouched.
-                      **Two e2e specs had ASSERTED the wrong headers**, one calling them
-                      "reproduced exactly" - a test asserting a wrong value defends the bug
-                      rather than catching it. Both corrected with the reason in place.
-OG-67 (NEW):          **RAISED.** Nothing feeds bank PAYMENTS into the bank template.
-                      `asan_list_bank_deposit_export` reads `payment_receipts` and returns no
-                      direction column; payments still route to template 2 via
-                      `asan_list_journal_export`. The MAPPING supports payments and the gate
-                      proves both directions on constructed rows, but no data source does.
-                      Wiring one needs an RPC change - outside the owner's
-                      `src/lib/asan/`-only scope - and it is a ROUTING change, not plumbing.
-Gate attack:          1 control + **12 disturbances, all CAUGHT**, including the "corrected"
-                      spelling, a null padding, a negative reaching template 2, and **an
-                      amount returned as a formatted string** - the first mission in this
-                      chain where A2.12(b)'s numeric-as-string class has a real attack
-                      surface, every earlier gate having made only catalogue/SQL checks.
-                      **D10 failed to CONSTRUCT on its first form and was rebuilt, not
-                      counted** (A2.12d, second firing in this chain).
-e2e:                  **RUN, and the run is INVALID - discarded, not compared.** See BLOCKED
-                      ON for the cause. No conclusion of any kind is drawn from its 59
-                      failures; a run whose fixtures cannot be written is not evidence about
-                      the code.
-                      Targeted runs of the two changed specs DID pass on a healthy path
-                      earlier: 42 passed / 1 failed, that one failure being the known baseline
-                      entry `asan/export-bank-deposits`. The 12-disturbance gate attack also
-                      ran clean.
-                      **Line-number shift to name explicitly in the next valid run's SET
-                      comparison:** this mission added lines to `export-bank-deposits.spec.ts`,
-                      moving that baseline failure from **:108 to :133**. It will read as one
-                      recovered plus one new. It is an editing artefact, not a regression.
-typecheck:            **70**, the exact baseline, same 6 files - re-run because src/ changed.
-Build:                DONE and deployed (see Environment).
-INDEPENDENT REVIEW:   **STILL OWED** - missions 4, 5 and 6, deferred by the owner to a
-                      separate session. Do not lose this.
-Production touched:   NO. 192.168.170.10 was not contacted.
-Rotation verdict:     **NOT a clean rotation point** - mission 10 is mid-flight: committed,
-                      pushed and deployed, but unmerged and awaiting one owner answer about
-                      the machine. A fresh session can resume from this block, but should
-                      resolve the CPU blocker and run the full suite before merging.
+Mission 10 (OG-65):   Asan bank template. **STATUS: see the completion report's first
+                      line** - branch `feature/og65-asan-bank-template`. If it is not
+                      merged, the merge is the only thing outstanding; the code, the gate,
+                      the build and the deploy are all done and verified.
+NEXT MISSION:         **11 - OG-66 (finish party search). NOT STARTED, deliberately** - the
+                      owner restricted this session to closing mission 10. All three of its
+                      decisions are already settled in v9 mission 11: (a) city search
+                      DROPPED, record and change nothing; (b) surname YES, "contains" not
+                      "starts with" - verify the live matching first and if it already
+                      contains-matches, prove it and close without building; (c) wire the
+                      ledger wizard to `search_visible_persons` YES, but measure the
+                      function's visibility filter per role before and after so the wizard
+                      does not start showing rows a role should not see.
+
+=== THINGS THAT CHANGED ON THIS MACHINE - DO NOT RE-DERIVE THEM ===
+
+APP_GIT_SHA:          **1da2a778, NOT a19fd811.** The web image was rebuilt and redeployed
+                      this mission (the first src/-changing mission, as A7.40 predicted).
+                      `build.ps1` needs `-Force` here because three untracked leftovers trip
+                      its dirty check; its own `-dirty` stamp test uses
+                      `--untracked-files=no`, so the image still stamps cleanly - verified.
+docker cp:            **BROKEN on this machine. Do not use it. See OG-68.**
+                      `docker cp <f> afrakala-lan-db:/tmp/x` fails with
+                      `mkdir /run/desktop/mnt/host/d: file exists`. It re-resolves the
+                      container's binds and four of them are recorded in VM form.
+                      **Deliver over stdin instead**, proven byte-identical by md5:
+                        cat f.sql | docker exec -i afrakala-lan-db sh -c 'cat > /tmp/f.sql'
+                      From Node pass a Buffer (no shell, no re-encoding). base64 is the
+                      fallback. **PowerShell's pipe FAILS md5** - it appends a trailing CRLF
+                      (167 bytes vs 165). The Persian bytes were intact; the damage was a
+                      line ending. It still fails, because md5-or-nothing is the rule that
+                      would have caught 2026-07-11.
+CLAUDE.md/AGENTS.md:  **Rule 1 amended together, verified identical.** docker cp is no longer
+                      the documented delivery path; stdin + md5 verification replaces it.
+e2e/helpers/db-write.ts: **CHANGED** to stream over `docker exec -i` with a Buffer. Proved
+                      before use: host md5 = container md5 = 33377c903e7e79ce3f031eb513ec8916,
+                      and Persian survived execution through the helper itself. Per the
+                      owner, this needs **no baseline supersession** - it restores the
+                      condition the 30-baseline was measured under rather than creating a
+                      new one.
+BACKUP:               `deploy/lan/backups/afrakala-pre-restart-20260826.dump`
+                      17,466,432 bytes, md5 3bd728e6b6c5cf41256b509e886bff9c, identical to
+                      the copy inside the container. Gitignored via `*.dump`.
+                      **A restore needs `--disable-triggers`** - pg_dump warned of circular
+                      foreign keys.
+DATABASE:             No migration this mission. Next free number is **396** (verify on disk
+                      AND remote before writing). Nothing is applied-but-uncommitted and
+                      nothing half-done was left on the database.
+
+=== e2e ===
+
+Last full run: 598 tests -> **527 passed / 40 failed / 29 skipped / 2 did not run**, 21.8 min.
+Arithmetic reconciles exactly (527+40+29+2 = 598), so the run is valid - unlike the
+2026-08-26 14:51 run, which was discarded because 137 tests silently did not execute.
+**Set comparison vs the recorded 30:**
+  * `asan/export-bank-deposits:108` -> `:133` is a **LINE-SHIFT ARTEFACT** of this mission's
+    edits to that spec file, not a recovery plus a regression. Name it explicitly.
+  * **10 genuinely new failures. TWO were mine and are FIXED and verified**
+    (`final-verification:397` and `:412` - a stale `docs/asan/asan-layouts.md` and an
+    assertion about empty-string cells; both now pass).
+  * **The other EIGHT are data/fixture drift, not code.** Fully traced example:
+    `customer-form-person:35` fails on the spec's own cleanup with
+    `update or delete on table "persons" violates foreign key constraint
+    "suppliers_person_id_fkey"` - accumulated test data, the A7.43 / OG-56 class. The Asan
+    numbering pair (`export-numbering:102`, `export-shell:495`) are register-counter drift
+    from repeated runs today. The remaining five share the fixture-state signature but were
+    characterised, not individually traced - said plainly.
+  * **A clean full re-run on a quiet database is OWED** before the next mission's own run is
+    compared to anything.
+typecheck:            **70**, the exact baseline, same 6 files.
+
+=== OWED / OPEN, do not lose ===
+
+INDEPENDENT REVIEW:   **Missions 4, 5 and 6 - still owed.** Three consecutive security
+                      migrations merged without a second pair of eyes. Owner deferred it to
+                      a separate session (A3.15 forbids self-review being called independent).
+OG-68:                `afrakala-lan-db` is DEGRADED - five file binds on
+                      /docker-entrypoint-initdb.d/ are dead (Input/output error). Harmless
+                      now (initdb reads them only against an empty data dir; live data is in
+                      a named volume) but **DO NOT restart the container, do not
+                      --force-recreate**: a restart must re-create the binds that are
+                      failing and it may not come back. Docker Desktop restart is the
+                      remedy and is the OWNER's call - it restarts their ~20 other project
+                      containers.
+OG-67:                Nothing feeds bank PAYMENTS into the Asan bank template. The mapping
+                      supports them and the gate proves both directions; no data source
+                      does. Needs an RPC change and it is a ROUTING decision. Owner's.
+OG-69:                The bank file is 15 columns but G–O read as `None` in openpyxl, not
+                      `''`. Column count (what a positional importer keys on) is correct.
+                      Owner to confirm against a real Asan import.
+OG-38:                Still OPEN, mission 4 still CONDITIONAL. Monitoring live since
+                      2026-08-26 11:57 Tehran via global `log_connections`. Read it with
+                      `docker logs --since 24h afrakala-lan-db | grep supabase_read_only_user`.
+                      **The only captured line so far is the agent's own probe** - do not
+                      miscount it as a real consumer.
+OG-61/OG-64/OG-30:    Open, unchanged, all owner decisions.
+Production:           **NOT touched. 192.168.170.10 was never contacted.**
 ```
 
 ## LESSONS
