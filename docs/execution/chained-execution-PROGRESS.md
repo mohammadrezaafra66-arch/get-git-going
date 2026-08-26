@@ -94,6 +94,30 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### Method - the rule that would have caught most of this session's defects
+
+- **RULE 15 (owner-directed 2026-08-26). EVERY GATE MUST BE RUN AGAINST THE BROKEN STATE AND
+  FAIL BEFORE IT IS TRUSTED. BEING GREEN ON THE HEALTHY STATE PROVES NOTHING ABOUT WHAT IT
+  MEASURES.** The owner's phrasing, kept: *«هر دروازه باید قبل از اعتماد، روی حالت خراب اجرا شود
+  و FAIL بدهد. سبز بودن روی حالت سالم اثبات نمی‌کند که چیزی را می‌سنجد.»*
+  Caught TWICE in one day, both times by disturbing a gate that was already green:
+  1. **OG-77's behavioural half** put `set_config('role', …)` in a scalar subquery beside the
+     scan. The role never took effect, the query ran as `postgres`, and the test stayed GREEN
+     through a disturbance that had removed the very grant it existed to check. `set_config`
+     must be its OWN statement.
+  2. **The RULE 12 static half** could have matched nothing at all and passed identically; it
+     was only trustworthy after checking that its regex finds one real spec and correctly sees
+     that spec's `ROLLBACK`.
+  And earlier the same day, an OG-64 assertion was TIME-OF-DAY dependent and would have passed
+  vacuously for most of every day. **The disturbance is not ceremony after the gate is written —
+  it is the only evidence the gate is a gate.**
+- **A DERIVED GATE CAN BE BLIND IN A NEW WAY: check the derivation itself.** Replacing 393's
+  hand-written schema array with a catalogue query fixes RULE 14's problem and introduces
+  another - narrowing the criterion until it selects nothing makes the gap check pass forever.
+  So the derived gate asserts its own criterion is non-vacuous, and asserts the two schemas that
+  must NOT be selected (`auth`, `storage`, whose functions carry a different grantor). A
+  criterion needs both an over-reach test and an under-reach test.
+
 ### From the adversarial review of 393/394/395
 
 - **RULE 14. A GATE THAT ENUMERATES ROLES BY HAND IS BLIND TO EVERY ROLE IT DID NOT NAME.
