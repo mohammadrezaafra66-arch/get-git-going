@@ -94,6 +94,34 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From mission 14 step zero - Phase 7 measured
+
+- **RULE 5 has a database form, and it is the most dangerous one yet: AN `UPDATE` THAT MATCHES
+  NO RLS POLICY DOES NOT RAISE - IT AFFECTS ZERO ROWS AND REPORTS SUCCESS.** The receipt OCR
+  write-back had no permissive UPDATE policy, so every extraction was discarded while the
+  client saw `error: null` and then wrote an audit row saying it had completed. Five such audit
+  rows exist for extractions that never landed. **`error === null` from a PostgREST write is
+  not evidence the write happened** - assert the row count, or read the row back. This is the
+  same family as "Successfully copied", "a completed run" and "a healthy container": a success
+  signal from a layer that structurally cannot observe the failure.
+- **A RESTRICTIVE policy is not a policy that grants.** `viewer_restricted` has `polcmd='*'`,
+  which reads like it covers every command - and it does, but only to NARROW. With no
+  permissive UPDATE policy alongside it, UPDATE was denied for everyone. When auditing RLS,
+  read `polpermissive` before concluding a command is covered; the command letter alone is
+  half the answer.
+- **When three sources disagree, the running code is the only witness.** `requirements.md`
+  said Tesseract, the function's own header comment said Lovable AI Gateway, the owner said
+  qwen3.6 - and the truth was that the engine is a database row. Two of those three documents
+  were stale, and both would have sent a reader looking for something that does not exist.
+- **A document that PREDICTED a bug is worth re-reading, not just the code.**
+  `docs/ocr/requirements.md` stated in its own Pipeline section that a write-back to
+  `payment_receipt_documents` would be "silently a no-op" - correct, specific, and acted on by
+  nobody for weeks. Before building what a requirements doc asks for, read what it WARNS about.
+- **Health tables answer questions logs cannot.** `ai_provider_health` established that the
+  cloud vision route was attempted as recently as 2026-08-19 and rejected with 401 - which is
+  what turned "the route points at the cloud" from a configuration observation into a
+  measured fact about where a banking image actually went.
+
 ### From mission 13 - OG-64, the CURRENT_DATE class
 
 - **RULE 6 (promoted - third strike). AN AUDIT'S BLIND SPOT IS THE SHAPE OF ITS QUERY, AND IT
