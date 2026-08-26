@@ -16,19 +16,50 @@ Last verified SHA:    origin/staging @ d21bc083 (PR #357). **Mission 10 is COMMI
                       1da2a778, pushed. It is held on ONE step, below.
 Mission just done:    **Mission 10 - OG-65, the Asan bank template.** Code complete, gate
                       attacked, built and deployed to the LAN web container. **NOT MERGED.**
-BLOCKED ON:           **The full e2e run, which A4.16 requires because src/ and specs both
-                      changed - and A4.18's health check FAILS on idle CPU.**
-                      Measured: mean 37.7% / median 39% / max 62% over a settled 60s window,
-                      against a ~25% threshold. The other two criteria PASS
-                      (chrome-headless-shell = 0; /login 200 in 0.18s).
-                      **Cause identified, and it is not this chain's doing:**
-                      `dllhost.exe /Processid:{DFB65C4C-B34F-435D-AFE9-A86218684AA8}`,
-                      PID 17904 - a Windows shell/thumbnail COM surrogate - running since
-                      **2026-08-16** and holding **84.2 CPU-hours**, currently ~39% of a
-                      core. Second consumer: a user `chrome` PID at ~25%.
-                      A4.18 says do not start the run; fix the environment or report. Killing
-                      a Windows system process on the owner's machine is not an agent's call,
-                      so it was reported instead. **The owner's answer unblocks the merge.**
+BLOCKED ON:           **`docker cp` into `afrakala-lan-db` is BROKEN, which makes a valid
+                      e2e run impossible. The CPU question is CLOSED - it was never the
+                      problem.**
+                      The owner re-measured A4.18 distributionally and it PASSES: CPU mean
+                      18.71% / median 18.62%, chrome-headless-shell 0, /login 9-12ms. The
+                      37.7% this session reported was a transient ~2.5 sigma above the mean
+                      (now RULE 4 in LESSONS). The suite was then run, and failed for an
+                      unrelated reason.
+                      **The e2e run of 2026-08-26 14:51 Tehran is INVALID and must not be
+                      compared to any baseline.** 598 tests -> 375 passed / 59 failed / 27
+                      reported skipped, 16.1 min - but an independent count finds **164 `-`
+                      markers**, and 375+59+27 = 461 of 598. The missing ~137 are tests taken
+                      out when a shared `beforeAll` died, the OG-56 cascade shape.
+                      **Root cause, reproduced live after the run:**
+                      ```
+                      docker cp <file> afrakala-lan-db:/tmp/x.sql
+                      Error response from daemon: error while creating mount source path
+                      '/run/desktop/mnt/host/d/.../db/init/00-afrakala-pre-supabase-admin.sh':
+                      mkdir /run/desktop/mnt/host/d: file exists
+                      ```
+                      `e2e/helpers/db-write.ts:39` writes fixtures with `docker cp`, so every
+                      spec that writes to the database dies in setup and cascades out its file.
+                      **Scope, measured:** `afrakala-lan-db` carries **4 binds recorded in
+                      already-translated VM form** (`/run/desktop/mnt/host/d/...`);
+                      `afrakala-lan-web` and `afrakala-lan-rest` carry **zero**. `docker cp`
+                      re-resolves those binds and chokes because `/run/desktop/mnt/host/d` is
+                      a FILE inside the Docker Desktop VM.
+                      **Not transient** - reproduced twice, identically.
+                      **It appeared TODAY.** `docker cp` into this container worked repeatedly
+                      earlier in this session (migrations 393, 394 and 395 were all delivered
+                      that way). The most plausible trigger is this mission's own
+                      `docker compose up -d web`, which made Docker Desktop re-evaluate mounts.
+                      Said plainly rather than left as coincidence.
+                      **The database itself is FINE.** `docker exec -i ... psql` over stdin
+                      works; `payment_receipts` 10, `purchases` 240, all containers healthy.
+                      **DO NOT restart `afrakala-lan-db`.** A restart reuses the stored
+                      container config, so it would have to re-create the four failing binds -
+                      the exact operation erroring now - and the container may not come back.
+                      A `--force-recreate` has the same exposure.
+                      **Recommended fix is a Docker Desktop restart** (it rebuilds the VM mount
+                      table). That restarts the owner's ~20 other project containers, which the
+                      owner explicitly said not to stop - so it is their call, not the agent's.
+                      **Also blocks future migrations**: `docker cp` + `psql -f` is A5.30's
+                      mandated Persian-safe delivery path.
                       Everything else in mission 10 is complete and verified.
 Environment:          Local - proven. **APP_GIT_SHA has MOVED for the first time:**
                       a19fd811 -> **1da2a778**, equal to HEAD, as A7.40 predicted for the
@@ -61,14 +92,18 @@ Gate attack:          1 control + **12 disturbances, all CAUGHT**, including the
                       surface, every earlier gate having made only catalogue/SQL checks.
                       **D10 failed to CONSTRUCT on its first form and was rebuilt, not
                       counted** (A2.12d, second firing in this chain).
-e2e:                  **NOT RUN.** See BLOCKED ON. Targeted runs of the two changed specs did
-                      pass: 42 passed / 1 failed, the single failure being the known baseline
-                      entry `asan/export-bank-deposits`. **Line-number shift to expect in the
-                      next full run's SET comparison:** this mission added lines to
-                      `export-bank-deposits.spec.ts`, moving that baseline failure from
-                      **:108 to :133**. It will look like one recovered + one new. It is an
-                      editing artefact, not a behaviour change - do not read it as a
-                      regression.
+e2e:                  **RUN, and the run is INVALID - discarded, not compared.** See BLOCKED
+                      ON for the cause. No conclusion of any kind is drawn from its 59
+                      failures; a run whose fixtures cannot be written is not evidence about
+                      the code.
+                      Targeted runs of the two changed specs DID pass on a healthy path
+                      earlier: 42 passed / 1 failed, that one failure being the known baseline
+                      entry `asan/export-bank-deposits`. The 12-disturbance gate attack also
+                      ran clean.
+                      **Line-number shift to name explicitly in the next valid run's SET
+                      comparison:** this mission added lines to `export-bank-deposits.spec.ts`,
+                      moving that baseline failure from **:108 to :133**. It will read as one
+                      recovered plus one new. It is an editing artefact, not a regression.
 typecheck:            **70**, the exact baseline, same 6 files - re-run because src/ changed.
 Build:                DONE and deployed (see Environment).
 INDEPENDENT REVIEW:   **STILL OWED** - missions 4, 5 and 6, deferred by the owner to a
@@ -87,6 +122,23 @@ HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbere
 single observations that have not yet earned rule status.
 
 ### From mission 10 - OG-65
+- **A suite that runs to completion can still be worthless, and the summary line will not say
+  so.** This run reported "375 passed / 59 failed / 27 skipped" and exited normally. The
+  arithmetic is what exposed it: 375+59+27 = 461 of 598, and an independent count found 164
+  `-` markers rather than 27. The missing ~137 were tests taken out when a shared `beforeAll`
+  died. **Always reconcile passed+failed+skipped against the total**, exactly as A4.21 says to
+  cross-check the summary against an independent count - the same discipline, applied to the
+  skip column instead of the failure column.
+- **When many specs fail at once, read the ERROR before the failing set.** The failing set
+  looked like a broad regression across the asan and persons families. The error was
+  `docker cp ... mkdir /run/desktop/mnt/host/d: file exists` - an infrastructure fault in the
+  fixture writer, with nothing to do with the code under test. A set comparison would have
+  produced a confident, entirely wrong story.
+- **Deploying can break the harness, not just the app.** `docker compose up -d web` is the
+  documented deploy step and it is the most plausible trigger for Docker Desktop re-evaluating
+  its mounts. After any deploy, prove the harness's own plumbing still works - one
+  `docker cp` probe - BEFORE spending 16-25 minutes on a suite.
+
 
 - **RULE 3 (promoted - third-strike, owner-directed 2026-08-26). A test that asserts a wrong
   value PROTECTS the bug, and "built but wrong / built but unwired" is now the expected shape
