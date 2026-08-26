@@ -10280,6 +10280,7 @@ export type Database = {
           bank_code: string | null
           bank_title: string | null
           blocked_reason: string | null
+          direction: string | null
         }[]
       }
       asan_list_journal_export: {
