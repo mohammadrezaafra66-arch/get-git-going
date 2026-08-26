@@ -18,6 +18,15 @@ import { ProformaList } from "./ProformaList";
 import { lookupParty } from "./lookup";
 import { listBankAccounts, listHeldCheques, listOpenProformas } from "./queries";
 import { callLedgerRpc } from "./rpc";
+import {
+  ReceiptDocumentPicker,
+  removeStagedAttachments,
+  uploadStagedAttachments,
+  type StagedAttachment,
+} from "@/components/accounting/PaymentReceiptDocuments";
+import { extractReceiptFromBytes } from "@/lib/receipt-ocr-bytes.functions";
+import type { ReceiptExtractionResult } from "@/lib/accounting/receipt-extraction";
+import { supabase } from "@/integrations/supabase/client";
 import type {
   ChequeKind,
   DocBranch,
@@ -92,6 +101,14 @@ export function DocumentWizard() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+
+  // M1 — attachments are staged in the BROWSER until submit. No row exists for them until the
+  // create RPC makes the document and the attachment together, which is what makes an orphaned
+  // attachment row impossible rather than merely unlikely.
+  const [files, setFiles] = useState<File[]>([]);
+  const [ocrByFile, setOcrByFile] = useState<Map<File, unknown>>(new Map());
+  const [ocrBusy, setOcrBusy] = useState(false);
+  const [ocrNote, setOcrNote] = useState<string | null>(null);
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["ledger-wizard-accounts"],
@@ -242,11 +259,98 @@ export function DocumentWizard() {
     }
   };
 
+  const fileToBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error("خواندن فایل ناموفق بود"));
+      reader.onload = () => {
+        const result = String(reader.result ?? "");
+        // strip the `data:<mime>;base64,` prefix — the server validator wants raw base64
+        resolve(result.slice(result.indexOf(",") + 1));
+      };
+      reader.readAsDataURL(file);
+    });
+
+  /**
+   * OCR runs the moment a file is picked — BEFORE submit — and fills only the fields the user
+   * has left EMPTY. It never overwrites typed input: `requirements.md` requires every pre-filled
+   * field to stay editable, and silently replacing something the accountant entered by hand is
+   * worse than filling nothing.
+   *
+   * Item 7.7 is why every failure path here is swallowed into a note rather than raised: OCR
+   * failing must never block manual entry. A refused or unavailable model degrades to typing.
+   */
+  const onFilesChange = async (next: File[]) => {
+    setFiles(next);
+    const fresh = next.find((f) => !ocrByFile.has(f));
+    if (!fresh) return;
+
+    setOcrBusy(true);
+    setOcrNote(null);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("no session");
+
+      const base64 = await fileToBase64(fresh);
+      const res = await extractReceiptFromBytes({
+        data: { file_name: fresh.name, mime: fresh.type || "application/octet-stream", base64 },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if ((res as { disabled?: boolean }).disabled) {
+        setOcrNote("خواندن خودکار فیش در این سامانه فعال نیست؛ مقادیر را دستی وارد کنید.");
+        return;
+      }
+
+      const parsed = (res as { structured?: ReceiptExtractionResult | null }).structured ?? null;
+      setOcrByFile((prev) => new Map(prev).set(fresh, res));
+      if (!parsed) {
+        setOcrNote("متن فیش خوانده شد اما فیلدی تشخیص داده نشد؛ مقادیر را دستی وارد کنید.");
+        return;
+      }
+
+      const filled: string[] = [];
+      if (parsed.amount != null && amountText.trim() === "") {
+        setAmountText(String(parsed.amount));
+        filled.push("مبلغ");
+      }
+      if (parsed.receipt_date && !date) {
+        setDate(parsed.receipt_date);
+        filled.push("تاریخ");
+      }
+      if (parsed.tracking_number && tracking.trim() === "") {
+        setTracking(parsed.tracking_number);
+        filled.push("شماره پیگیری");
+      }
+      if (parsed.source_bank && sourceBank.trim() === "") {
+        setSourceBank(parsed.source_bank);
+        filled.push("بانک مبدأ");
+      }
+      setOcrNote(
+        filled.length > 0
+          ? `از روی فیش پر شد: ${filled.join("، ")}. همه قابل ویرایش‌اند.`
+          : "فیش خوانده شد؛ فیلدی خالی نبود که پر شود.",
+      );
+    } catch {
+      setOcrNote("خواندن خودکار فیش ممکن نشد؛ مقادیر را دستی وارد کنید.");
+    } finally {
+      setOcrBusy(false);
+    }
+  };
+
   const submit = async () => {
     if (submitting) return;
     setSubmitting(true);
     setSubmitError(null);
+    // Declared OUTSIDE the try so the catch can roll them back. The storage object necessarily
+    // exists before the transaction that would own it, so this is the one orphan class the
+    // database cannot close for us.
+    let staged: StagedAttachment[] = [];
     try {
+      // Upload BEFORE the RPC, because the RPC needs the storage paths. It creates the document
+      // row and the attachment rows together, so either both exist or neither does.
+      staged = files.length > 0 ? await uploadStagedAttachments(files, ocrByFile) : [];
       let result;
       if (branch === "receipt" && payer) {
         result = await callLedgerRpc("create_receipt", {
@@ -263,6 +367,7 @@ export function DocumentWizard() {
           p_cheque_bank: channel === "cheque" ? chequeBank.trim() || null : null,
           p_description: description.trim() || null,
           p_allocations: allocations,
+          p_attachments: staged.length > 0 ? staged : null,
         });
       } else if (branch === "payment" && payee && channel) {
         result = await callLedgerRpc("create_payment", {
@@ -279,6 +384,7 @@ export function DocumentWizard() {
           p_cheque_due_date: channel === "cheque" && chequeKind === "own" ? chequeDue : null,
           p_endorsed_cheque_id: chequeKind === "endorsed" ? endorsedId : null,
           p_description: description.trim() || null,
+          p_attachments: staged.length > 0 ? staged : null,
         });
       } else if (branch === "dual" && payer && beneficiary) {
         result = await callLedgerRpc("create_dual_document", {
@@ -296,15 +402,24 @@ export function DocumentWizard() {
           p_transferrer_account_no: transferrerAccount.trim() || null,
           p_recipient_name: recipientName.trim() || null,
           p_recipient_account_no: recipientAccount.trim() || null,
+          p_attachments: staged.length > 0 ? staged : null,
         });
       } else {
+        // No RPC was called, so nothing owns the uploaded objects. Definite failure: safe to
+        // remove them.
+        await removeStagedAttachments(staged.map((a) => a.storage_path));
         setSubmitError("اطلاعات سند کامل نیست.");
         return;
       }
       if (!result.ok) {
+        // The RPC returned a DEFINITE failure, so the transaction rolled back and no
+        // document_attachments row references these objects. Safe to remove.
+        await removeStagedAttachments(staged.map((a) => a.storage_path));
         setSubmitError(result.message);
         return;
       }
+      setFiles([]);
+      setOcrByFile(new Map());
       setSuccess(result.documentNumber ?? "ثبت شد");
       if (branch === "payment") {
         await navigate({ to: "/accounting/payment-vouchers" });
@@ -312,6 +427,17 @@ export function DocumentWizard() {
         await navigate({ to: "/accounting/receipts" });
       }
     } catch (err) {
+      // DELIBERATELY NO ROLLBACK HERE. This branch means the outcome is UNKNOWN -- which is
+      // exactly what the message below has always said. The request may have reached the
+      // database and committed while the response was lost, in which case a document and its
+      // document_attachments rows now exist and point at these objects. Removing them would
+      // turn an uncertain success into a certain corruption: rows referencing files that are
+      // gone. Leaving them costs at most some unreferenced bytes, which a stale-object sweep
+      // can reclaim by looking for `draft/` paths with no matching storage_path.
+      //
+      // The two returns above are different: there the failure is DEFINITE -- no RPC ran, or
+      // the RPC reported failure and its transaction rolled back -- so nothing can reference
+      // the objects and removing them is safe.
       setSubmitError(
         err instanceof Error
           ? "نتیجه ثبت مشخص نیست. دوباره ارسال نکنید؛ ابتدا فهرست اسناد را بررسی کنید."
@@ -419,6 +545,22 @@ export function DocumentWizard() {
           <Field label="شرح" required>
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
           </Field>
+          <div className="sm:col-span-2">
+            <ReceiptDocumentPicker
+              files={files}
+              onChange={onFilesChange}
+              disabled={submitting || ocrBusy}
+            />
+            {ocrBusy ? (
+              <p className="mt-2 text-sm text-muted-foreground" data-testid="wizard-ocr-busy">
+                در حال خواندن فیش…
+              </p>
+            ) : ocrNote ? (
+              <p className="mt-2 text-sm text-muted-foreground" data-testid="wizard-ocr-note">
+                {ocrNote}
+              </p>
+            ) : null}
+          </div>
           <Field label="نام انتقال‌دهنده (فقط روی سند، بدون کد آسان)">
             <Input value={transferrerName} onChange={(e) => setTransferrerName(e.target.value)} />
           </Field>
@@ -587,6 +729,22 @@ export function DocumentWizard() {
           <Field label="شرح">
             <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
           </Field>
+          <div className="sm:col-span-2">
+            <ReceiptDocumentPicker
+              files={files}
+              onChange={onFilesChange}
+              disabled={submitting || ocrBusy}
+            />
+            {ocrBusy ? (
+              <p className="mt-2 text-sm text-muted-foreground" data-testid="wizard-ocr-busy">
+                در حال خواندن فیش…
+              </p>
+            ) : ocrNote ? (
+              <p className="mt-2 text-sm text-muted-foreground" data-testid="wizard-ocr-note">
+                {ocrNote}
+              </p>
+            ) : null}
+          </div>
 
           {branch === "receipt" && payer?.customerId ? (
             <div className="sm:col-span-2">

@@ -289,10 +289,16 @@ test("the alternative deposit path is offered on the page, clearly labelled", as
 // Two-sided on purpose: a receipt must stay positive AND a payment must go negative. A
 // change that negated everything, or nothing, passes one half and fails the other.
 //
-// These rows are constructed rather than read from the database: the only wired source
-// (`asan_list_bank_deposit_export`) reads `payment_receipts` and yields receipts only, so a
-// payment row cannot be obtained from live data today. Constructing it asserts the SHIPPED
-// mapping, which is the same reason the row builder was split out of the data access.
+// These rows are constructed rather than read from the database, and that is still the right
+// choice here: constructing them asserts the SHIPPED mapping in isolation, which is why the row
+// builder was split out of the data access in the first place.
+//
+// CORRECTED 2026-08-26 (OG-67 / migration 404): this block used to say a payment row "cannot be
+// obtained from live data today", because the export read `payment_receipts` only. That is no
+// longer true — `asan_list_bank_deposit_export` now UNIONs `payment_vouchers` and returns a
+// `direction` column. The end-to-end claim, on real rows, is asserted by
+// `e2e/asan/og67-bank-payments-reach-template-1.spec.ts`; this spec keeps the unit-level
+// coverage of the mapping itself.
 // ---------------------------------------------------------------------------
 
 function bankRow(over: Partial<BankDepositRow> = {}): BankDepositRow {

@@ -56,9 +56,14 @@ export const BANK_DEPOSIT_EXPORT: AsanExportDefinition = {
   docType: null,
   oneDocumentPerFile: false,
   available: true,
+  // OG-67: this file now carries BOTH directions, so the receipts-only wording was wrong the
+  // moment migration 404 landed. Payments appear with a NEGATIVE Mablagh, which is what the
+  // accountant needs to see stated before they open the file. Cash and cheque stay manual in
+  // both directions and are excluded by the RPC itself.
   unverifiedNote:
-    "این مسیرِ جایگزین است؛ مسیر پیش‌فرض برای دریافت‌ها «سند حسابداری» است. فقط فیش‌های " +
-    "تأییدشده‌ای که به یکی از حساب‌های بانکی ما واریز شده‌اند در این فهرست می‌آیند.",
+    "این مسیرِ جایگزین است؛ مسیر پیش‌فرض برای دریافت‌ها «سند حسابداری» است. دریافت‌ها و " +
+    "پرداخت‌های بانکیِ تأییدشده هر دو در این فهرست می‌آیند؛ مبلغ پرداخت‌ها منفی است. " +
+    "نقدی و چکی به‌صورت دستی ثبت می‌شوند و در این فایل نمی‌آیند.",
   list: listBankDeposits,
   buildRows: (doc) => buildBankDepositRows(doc.payload as BankDepositPayload),
 };

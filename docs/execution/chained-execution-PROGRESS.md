@@ -94,6 +94,100 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From the adversarial review of 393/394/395
+
+- **RULE 14. A GATE THAT ENUMERATES ROLES BY HAND IS BLIND TO EVERY ROLE IT DID NOT NAME.
+  DERIVE THE SET FROM THE CATALOGUE INSTEAD.** 395's gate asserted "legitimate roles keep
+  access" and listed `authenticated` and `service_role`. The role it broke was
+  `products_api_readonly` - NOINHERIT, request-facing, reached by `SET ROLE` from a JWT claim,
+  and therefore invisible to any inheritance-based check. **The repository had recorded exactly
+  that blind spot two days earlier**, in migration 385's repair of 384's gate, and 395 still
+  hand-wrote two role names. Same shape as the `persons` FK registry (shipped three times) and
+  the REVOKE-then-GRANT trap (four times): the lesson existed, in this repo, and the next
+  migration did not consult it. **Before writing `roles IN ('a','b')` in a gate, ask what
+  QUERY would produce that list, and use the query.**
+- **A VIEW DOES NOT SHIELD ITS CALLER FROM A FUNCTION GRANT.** For a non-`security_invoker`
+  view, RELATION access is checked against the view's OWNER - that is what `checkAsUser` on the
+  rewritten range-table entries does. **Function EXECUTE has no such mechanism** and is checked
+  against the CURRENT user. So "role X can SELECT this view" and "role X can run what the view
+  calls" are independent facts, and a revoke can leave a view readable and unusable at once.
+- **AN INDEPENDENT REVIEW EARNS ITS COST ON ONE FINDING.** The review was owed for days and
+  kept being deferred as ceremony. It found a live, credentialed, request-facing API returning
+  42501 on every call - something no gate in three migrations mentioned, because none of them
+  named the role. It also found a latent hole (`graphql_public`) that the audit's METHOD could
+  not see, since the method censused schemas that hold functions today and that schema holds
+  none. **A review that is given the artefacts and NOT the mission's reasoning finds what the
+  reasoning excluded.**
+- **The same query shape found both a bug and a deliberate design.** Twelve role/view/function
+  pairs are "readable but not executable"; eleven are OG-45's intentional pin and one was the
+  break. A repair that fixed all twelve would have silently dismantled a security control while
+  looking like a bug fix. **When a general query finds your bug, check what ELSE it finds
+  before acting on it.**
+- **My own gate for this was vacuous on first run, and the disturbance is what proved it.**
+  Its behavioural half put `set_config('role', …)` in a scalar subquery beside the scan; the
+  role never took effect, the query ran as `postgres`, and the test stayed GREEN through a
+  disturbance that had removed the grant. `set_config` must be its OWN statement. **Run the
+  disturbance even when the gate is already green - green is not evidence that it measures.**
+
+### From M1 - constraints, and what a gate may create
+
+- **RULE 12 (owner-directed 2026-08-26). A GATE THAT CREATES A FINANCIAL DOCUMENT MUST DO IT
+  INSIDE `BEGIN … ROLLBACK`, OR NOT CREATE ONE AT ALL.** `create_receipt`, `create_payment` and
+  `create_dual_document` all POST their document and write a journal entry, and both the
+  receipt DELETE and the journal DELETE are then refused - «سند ثبت‌شده فقط با سند برگشتی اصلاح
+  می‌شود». So any gate that calls them through PostgREST leaves permanent residue **on every
+  run**, and there is no teardown that can undo it. This is the owner's Phase 8 condition (b)
+  generalised from seeds to gates: **a row that cannot be deleted must not be created.**
+  Audited on 2026-08-26: only M1's gate ever called one, and it now runs inside a rolled-back
+  transaction. The three other specs that write `journal_entries` insert `status='draft'` with
+  `posted_at = null`, which the immutability trigger does not lock, so they are correct as they
+  stand. `e2e/security/rule12-no-gate-creates-posted-documents.spec.ts` pins the known residue
+  BY ID so a fourth is caught the run it appears.
+- **RULE 13 (owner-directed 2026-08-26). WHEN A CONSTRAINT IS STRUCTURALLY IMPOSSIBLE, NEITHER
+  OBEY IT BLINDLY NOR REFUSE IT - REACH THE GOAL BEHIND IT ANOTHER WAY.** The owner's phrasing,
+  kept: *«وقتی مالک قیدی می‌گذارد که ساختاراً ناممکن است، راه درست نه اجرای کورکورانه است نه رد
+  کردن — بلکه رسیدن به هدفِ پشتِ قید از راه دیگر.»*
+  The instruction was a real FK on `document_attachments.document_id`. That is impossible: the
+  column is POLYMORPHIC, so a single FK would have to point at three tables at once - which is
+  precisely why the previous author hand-rolled a trigger rather than being careless. Obeying
+  literally was impossible; refusing would have left a fragile trigger in place. The goal behind
+  the constraint was **integrity enforced by the engine rather than by a trigger**, and that was
+  reached by removing the polymorphism itself: three typed columns, three real FKs, `ON DELETE
+  CASCADE`, and a CHECK for exactly one parent. It also closed a leak nobody had asked about -
+  `dual_documents` had no attachment cleanup at all - and dissolved the separate instruction to
+  stop refusing `dual`, because with a typed column per parent there was nothing left to refuse.
+  **State the impossibility with its evidence, then deliver the goal.**
+
+### From M1 - the label that lied, and the gate that set the trap
+
+- **RULE 11. THE DEPLOY VERIFICATION STEP CAN ITSELF BE STALE.** CLAUDE.md's check is
+  "`APP_GIT_SHA` must equal `git rev-parse --short HEAD`" - and the documented `--no-deps`
+  command never set `GIT_SHA`, so compose took it from `deploy/lan/.env.lan` where a value had
+  been pinned long ago. A rebuild of current code stamped `APP_GIT_SHA=1ca72316`: a real commit,
+  and not HEAD. **The build was correct and the label lied**, which is worse than either, because
+  that label is the ONLY check that the right code is deployed. Proven correct the only way that
+  works - by looking for a string that exists solely in the new code:
+  `docker exec afrakala-lan-web sh -c "grep -rl 'uploadStagedAttachments' /app/.output"`.
+  Both files amended to export `GIT_SHA` first. Same family as "Successfully copied": a
+  reassuring signal produced by a layer that cannot see the thing it claims to confirm.
+- **A GATE CAN SET THE VERY TRAP IT WAS WRITTEN TO PREVENT.** M1's gate exists to prove no
+  orphan attachment survives. Its first draft created a real receipt through PostgREST and
+  deleted it in teardown - except `create_receipt` POSTS the receipt and writes a journal entry,
+  and both deletions are refused with «سند ثبت‌شده فقط با سند برگشتی اصلاح می‌شود». It left an
+  undeletable posted row: **the OG-56 trap, reproduced by a gate written against orphans.**
+  Corrected the way the system prescribes rather than by force - `reverse_document` - and
+  recorded as OG-76.
+  **The rule, which is the owner's Phase 8 condition (b) applied to gates rather than seeds: a
+  row that cannot be deleted must not be created.** The success path now runs inside
+  `BEGIN … ROLLBACK` and asserts INSIDE the transaction, so it creates nothing at all. When a
+  test needs a real write to prove something, the transaction is the fixture.
+- **ESM bites twice, in different disguises.** `__dirname` in the OCR gate and `require` here.
+  Both throw ReferenceError rather than resolving to something wrong, so both were cheap - but
+  only because a test ran them. In a rarely-hit branch either would sit undetected.
+- **psql writes NOTICE to STDERR, and `execFileSync` returns only STDOUT.** A probe reporting
+  through `RAISE NOTICE` handed back the string "BEGIN" and the assertion failed for a reason
+  unrelated to the feature. Return results through a TEMP TABLE and a SELECT.
+
 ### From the run cadence - my own repeated error
 
 - **RULE 10 (third strike, self-inflicted). NEVER APPLY A MIGRATION WHILE A SUITE IS RUNNING.

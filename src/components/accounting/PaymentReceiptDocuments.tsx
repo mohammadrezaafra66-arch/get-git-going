@@ -416,6 +416,87 @@ export async function uploadReceiptDocuments(
   return { uploaded, failed };
 }
 
+/** One staged attachment, in the shape the create RPCs' `p_attachments jsonb` expects. */
+export interface StagedAttachment {
+  storage_path: string;
+  mime_type: string;
+  ocr_payload: unknown | null;
+  ocr_status: "pending" | "done" | "failed";
+}
+
+/**
+ * Uploads staged files BEFORE any document row exists, and returns the descriptors that
+ * `create_receipt` / `create_payment` / `create_dual_document` now accept as `p_attachments`.
+ *
+ * WHY A DRAFT PATH IS SAFE. `uploadReceiptDocuments` above needs a `receiptId` purely to build
+ * its storage path — the bucket's own policies gate on `bucket_id` and role and never on the
+ * object path (verified against `storage.objects`' three `prd_storage_*` policies). So a
+ * `draft/<uuid>/…` prefix is accepted exactly as a `<receiptId>/…` prefix is, and the
+ * `storage_path` UNIQUE constraint still holds because the uuid is fresh per upload.
+ *
+ * WHY THIS IS NOT A DUPLICATE OF `uploadReceiptDocuments`. That one writes rows into
+ * `payment_receipt_documents` for a receipt that already exists — the post-creation surface,
+ * still in use on the detail page. This one writes NO rows at all: it returns descriptors, and
+ * the create RPC inserts the `document_attachments` rows inside the same transaction as the
+ * document. They share the bucket, the validation and the filename rules deliberately.
+ *
+ * Throws on the first failure rather than continuing best-effort, because a partial upload
+ * would produce a document claiming attachments it does not have. The caller is responsible for
+ * calling `removeStagedAttachments` with whatever came back if the RPC then fails.
+ */
+export async function uploadStagedAttachments(
+  files: File[],
+  ocrByFile?: Map<File, unknown>,
+): Promise<StagedAttachment[]> {
+  const draftId = safeRandomUUID();
+  const staged: StagedAttachment[] = [];
+  try {
+    for (const file of files) {
+      const invalid = validateReceiptFile(file);
+      if (invalid) throw new Error(invalid);
+
+      const path = `draft/${draftId}/${safeRandomUUID()}-${safeFileName(file.name)}`;
+      const contentType = resolveUploadContentType(file);
+      const { error } = await supabase.storage.from(RECEIPT_DOCS_BUCKET).upload(path, file, {
+        contentType,
+        upsert: false,
+      });
+      if (error) throw error;
+
+      const ocr = ocrByFile?.get(file) ?? null;
+      staged.push({
+        storage_path: path,
+        mime_type: contentType,
+        ocr_payload: ocr,
+        ocr_status: ocr ? "done" : "pending",
+      });
+    }
+    return staged;
+  } catch (err) {
+    // Anything already uploaded in THIS call is removed before rethrowing, so a mid-way failure
+    // does not leave objects nobody will ever reference.
+    await removeStagedAttachments(staged.map((s) => s.storage_path));
+    throw err;
+  }
+}
+
+/**
+ * Removes staged storage objects. Used when the create RPC fails after the upload succeeded —
+ * the one orphan class that cannot be closed in the database, because the object exists before
+ * the transaction that would own it.
+ *
+ * Deliberately swallows its own errors: it runs on a failure path, and a cleanup that throws
+ * would replace the real error with a less useful one.
+ */
+export async function removeStagedAttachments(paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  try {
+    await supabase.storage.from(RECEIPT_DOCS_BUCKET).remove(paths);
+  } catch {
+    // Intentionally ignored — see above.
+  }
+}
+
 function formatBytes(bytes: number) {
   if (bytes < 1024) return `${toFaDigits(String(bytes))} B`;
   if (bytes < 1024 * 1024) return `${toFaDigits((bytes / 1024).toFixed(1))} KB`;
