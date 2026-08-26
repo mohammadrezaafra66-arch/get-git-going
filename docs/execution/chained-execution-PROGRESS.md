@@ -14,13 +14,32 @@ Document in force:    AFRAKALA CHAINED EXECUTION - v8
 Last verified SHA:    see the first line of this mission's completion report, which is the
                       raw `git log --oneline -2 origin/staging` taken after the merge (A0.8).
                       Branch: feature/og62-anon-price-definers, cut from staging @ 987c3a3d.
-Mission just done:    **Mission 6 - OG-62, the anon-reachable definer leaks.** Migration 395.
+Mission just done:    **Mission 7 - M10**, closed as a DUPLICATE of OG-61. No migration, no
+                      code, no data - a documentation closure with a corrected reason.
+                      Before it: **mission 6 - OG-62** (migration 395), merged.
 Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350), OG-60 (#351),
                       security trio + OG-31 (#352), OG-63 (#353) and now OG-62 are complete.
-                      **Next: mission 7 - M10.** Its Phase 0 is already done, read-only, and
-                      the answer is below - it needs NO migration.
-                      Then mission 8 - OG-35 (Asan Excel), audit wiring FIRST; the full
-                      template specification is in v8 and is the source of truth.
+                      **Next: mission 8 - OG-35 (Asan Excel). Phase 0 partly done here,
+                      re-verified in THIS session rather than quoted from the earlier one:**
+                      the surface is NOT unwired. `AsanLayoutNotConfiguredError` is declared
+                      at `src/lib/export/export-modes.ts:69`, `createUnconfiguredAsanAdapter`
+                      at :107 throws it at :116, and the accounting-receipts page consumes
+                      that module (`_app.accounting.receipts.tsx:29`, branching on
+                      `exportMode === "asan"` at :180). So «قالب پیکربندی نشده است» is a
+                      DELIBERATE refusal on a live seam, not a missing configuration, and
+                      OG-35 is a BUILD task.
+                      **BLOCKING CONFLICT, unchanged and still unanswered:** v8's template
+                      spec says `Name_Moshtare` / `Shopmare_Peygeri`; the repository ships
+                      `Name_Moshtari` (`src/lib/asan/layouts.ts:77`) and `Shomare_Peygiri`
+                      (:78), and TWO e2e specs assert them, one commenting that they are
+                      *"reproduced **exactly**"* (`e2e/asan/export-bank-deposits.spec.ts:27,
+                      98-99`). Three characters differ and they decide which column a file
+                      lands in inside live accounting software. Both sources are
+                      owner-sourced, so A2.6 forbids choosing. Also open: whether template 1
+                      carries bank PAYMENTS with a negative `Mablagh`, and whether columns
+                      G-O are emitted empty to max_col=15 (the shipped layout is six columns
+                      and deposit-only). These are questions 3 and 4 of this file's
+                      STOP-AND-ASK table, open since 2026-08-25.
 Environment:          Local - proven, not assumed.
 Migration:            395 applied to afrakala; PostgREST restarted. Next free number is 396
                       (verify on disk AND remote before writing, as always).
@@ -43,18 +62,18 @@ OG-38:                **STILL OPEN; mission 4 stays CONDITIONAL.** Owner answere
                       capture the role. **The one captured line so far is the verification
                       probe itself - do not count it as a real consumer.** Read with
                       `docker logs --since 24h afrakala-lan-db 2>&1 | grep supabase_read_only_user`.
-M10 (Phase 0 DONE):   **Ready to close, with a CORRECTION to v8's pre-answer.** v8 says: if
-                      the repository's only definition is the batch EXECUTE revoke, then
-                      migration 393 already did that work, so close it as covered-by-OG-31.
-                      The first half of that premise holds - the only in-repo definition is
-                      `m3-function-execute-leak-PROGRESS.md:177`, and it IS the batch revoke.
-                      **The second half does not.** That text scopes M10 to the ~746
-                      EXISTING functions ("این دامنهٔ M10 است، نه M3"), and migration 393
-                      revoked NOTHING existing - it closed only the future default-privilege
-                      tap. So M10 is **not** covered by OG-31; it is the same work as
-                      **OG-61**, which is already recorded and OPEN. Close M10 as a
-                      DUPLICATE OF OG-61, not as covered-by-OG-31: same outcome the owner
-                      wanted (no migration, no duplicate work), accurate reasoning.
+M10:                  **CLOSED 2026-08-26 as a DUPLICATE OF OG-61**, with a correction to
+                      v8's pre-answer. v8 said: if the only in-repo definition is the batch
+                      EXECUTE revoke, then 393 already did it, so close as covered-by-OG-31.
+                      First half holds - `m3-function-execute-leak-PROGRESS.md:177` IS the
+                      batch revoke, scoping M10 to the ~746 EXISTING functions. **Second
+                      half refuted by measurement:** migration 393 contains ZERO
+                      REVOKE/GRANT on any existing function, only 8 ALTER DEFAULT PRIVILEGES
+                      lines - it closed the future tap and nothing else. So M10 is the same
+                      work as OG-61, not covered by OG-31. Closed as a duplicate: no
+                      migration, no duplicate revoke, and the decision now lives in ONE
+                      place. Count drift to re-derive rather than quote: 746 (M3) -> 741
+                      (mission 4) -> **713 of 840** live after 395.
 INDEPENDENT REVIEW:   **OWED, and deliberately deferred by the owner - do not lose this.**
                       Mission 5 was independently confirmed PASS by the owner. Missions
                       **4, 5 and 6** are to be reviewed TOGETHER in a separate session after
@@ -89,6 +108,22 @@ Rotation verdict:     **GOOD rotation point.** Migration applied, committed and 
 Started 2026-08-26 per A1.4b. Read this section at the START of every mission alongside the
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
+
+### From mission 7 - M10
+
+- **A pre-answer is a conclusion plus a premise; verify the premise, keep the conclusion.**
+  v8 told this mission to close M10 as *covered by OG-31* if the repository's only definition
+  was the batch EXECUTE revoke. It was - and the conclusion (close it, no migration) was
+  right - but the stated REASON was wrong, because migration 393 revoked nothing existing.
+  Recording "covered by OG-31" would have left a false trail: a later reader would believe
+  the existing-function revoke had been done. Applying the owner's intent while correcting
+  the reason costs one paragraph and keeps the record true.
+- **Closing a duplicate is worth more than closing a mission.** M10 and OG-61 were the same
+  work under two names, and an open decision recorded in two places drifts. Merging the name
+  into the gate that carries the evidence means the owner answers once.
+- **Re-derive counts, never quote them.** The same population has been 746 (M3), 741
+  (mission 4) and 713 (now, after 395 closed 28). Every one of those was correct when
+  measured. A gate row that quotes a number is a gate row that will mislead somebody.
 
 ### From mission 6 - OG-62, the anon-reachable definer leaks
 
