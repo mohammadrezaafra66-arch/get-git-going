@@ -94,6 +94,31 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From OG-61 - the disturbance that became the attack
+
+- **RULE 8 (owner-directed 2026-08-26). A DISTURBANCE THAT OPENS A REAL ATTACK PATH IS ITSELF
+  AN ATTACK.** If a gate contains a LIVE attack, that attack must be non-destructive **in the
+  disturbed state** - a throwaway target, a `BEGIN … ROLLBACK`, or an assertion about the
+  PERMISSION rather than an actual execution. The owner's phrasing, kept: *«اختلالی که یک مسیر
+  حملهٔ واقعی را باز می‌کند، خودش یک حمله است.»*
+  What happened: the OG-61 gate aimed its live attack at a REAL admin (`order by user_id limit
+  1`) and asserted the call was refused. The forced disturbance exists precisely to REMOVE that
+  refusal - so when the anon grant was restored to prove the gate catches it, the gate's own
+  call went through and **stripped the admin role from `ADMIN_USER_ID`, the harness account the
+  whole suite runs as.** Admin rows 14 -> 13. Restored 54 seconds later, but the full run in
+  flight had reached test 346 and was invalidated.
+  **The generalisation: a gate proving a destructive action is REFUSED must never aim at a
+  target whose loss would matter.** The refusal is the assertion; the target only has to be
+  SHAPED right. Both halves now use a non-existent uuid, and the re-run confirms the gate still
+  fails on a re-grant while admin rows stay at 14.
+- **When you damage something, prove the BLAST RADIUS, not just the headline number.**
+  Restoring the admin count to 14 does not show that nothing else changed. `audit_logs` did:
+  exactly two role events in the window - `role_revoked` then `role_assigned`, same user, 54
+  seconds apart. That evidence is only usable because the restore, done as a DIRECT SQL insert
+  rather than through the RPC, was **itself audited** - which proves the audit covers direct
+  table writes and is therefore a complete record of role changes, not a partial one. Check
+  whether your evidence source would have SEEN the thing you are claiming did not happen.
+
 ### From mission 12-14 - process hygiene
 
 - **RULE 7 (owner-directed 2026-08-26). A PROCESS IS NOT AN ORPHAN BECAUSE OF ITS NAME OR ITS
