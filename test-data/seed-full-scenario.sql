@@ -48,10 +48,16 @@ BEGIN;
 -- accounting_code is mandatory: post_receipt_accounting raises without it and
 -- the Asan export blocks on it.
 
+-- accounting_code carries its OWN unique index (`bank_accounts_accounting_code_unique_idx`), so
+-- `ON CONFLICT (id)` does not protect against a code collision — it only forgives a repeated id.
+-- The original codes were '8' and '101'; '8' is already taken by a live bank account on this
+-- server, which made this the FOURTH statement to abort the file. 9001/9002 are chosen to be
+-- obviously outside the range a real account would use, so a future collision is a loud failure
+-- rather than a silent overlap with the owner's data.
 INSERT INTO public.bank_accounts (id, title, bank_name, account_type, accounting_code, currency, is_active, opening_balance)
 VALUES
-  ('aaaaaaaa-0000-4000-8000-000000000001', 'E2E Bank Mellat', 'Mellat', 'bank', '8',   'IRR', true, 0),
-  ('aaaaaaaa-0000-4000-8000-000000000002', 'E2E Cash Box',    'Cash',   'cash', '101', 'IRR', true, 0)
+  ('aaaaaaaa-0000-4000-8000-000000000001', 'E2E Bank Mellat', 'Mellat', 'bank', '9001', 'IRR', true, 0),
+  ('aaaaaaaa-0000-4000-8000-000000000002', 'E2E Cash Box',    'Cash',   'cash', '9002', 'IRR', true, 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- -------------------------------------------------------------- persons -----
@@ -75,7 +81,15 @@ ON CONFLICT (id) DO NOTHING;
 -- Person ...0002 deliberately has NO code: the negative test needs a party
 -- that must be refused.
 
-INSERT INTO public.person_identifiers (person_id, kind, value_normalized, status)
+-- value_raw, NOT value_normalized. `trg_person_identifiers_normalize` is a BEFORE INSERT
+-- trigger whose whole body is
+--     NEW.value_normalized := public.normalize_identifier(NEW.kind, NEW.value_raw, true);
+-- so it OVERWRITES whatever value_normalized was supplied, computing it from value_raw. With
+-- value_raw NULL that call raises «مقدار شناسه نامعتبر است» and, under \set ON_ERROR_STOP on
+-- inside an open transaction, aborted this entire file at its third statement and rolled back
+-- to zero rows. Supplying value_raw is both necessary and sufficient: BEFORE triggers run
+-- before NOT NULL is checked, so value_normalized is populated by the time it matters.
+INSERT INTO public.person_identifiers (person_id, kind, value_raw, status)
 VALUES
   ('bbbbbbbb-0000-4000-8000-000000000001', 'asan_person_code', '100001', 'provisional'),
   ('bbbbbbbb-0000-4000-8000-000000000003', 'asan_person_code', '200001', 'provisional'),
@@ -89,10 +103,13 @@ ON CONFLICT DO NOTHING;
 -- the same person (task 6.7 acceptance).  Stored canonical; the lookup is what
 -- must normalise the input.
 
-INSERT INTO public.person_identifiers (person_id, kind, value_normalized, status)
+-- `mobile_e164`, not `mobile`. `normalize_identifier` raises «نوع شناسه پشتیبانی نمی‌شود» for
+-- an unknown kind, and `mobile` is not among the ones it handles. The live table confirms it:
+-- every existing row is either `asan_person_code` or `mobile_e164`, and nothing is `mobile`.
+INSERT INTO public.person_identifiers (person_id, kind, value_raw, status)
 VALUES
-  ('bbbbbbbb-0000-4000-8000-000000000001', 'mobile', '+989120000001', 'provisional'),
-  ('bbbbbbbb-0000-4000-8000-000000000004', 'mobile', '+989120000004', 'provisional')
+  ('bbbbbbbb-0000-4000-8000-000000000001', 'mobile_e164', '+989120000001', 'provisional'),
+  ('bbbbbbbb-0000-4000-8000-000000000004', 'mobile_e164', '+989120000004', 'provisional')
 ON CONFLICT DO NOTHING;
 
 -- ------------------------------------------------ customers / suppliers -----
@@ -115,19 +132,31 @@ ON CONFLICT (id) DO NOTHING;
 -- ------------------------------------------------------ external party ------
 -- accounting_code is required or the Asan export blocks the whole document.
 
-INSERT INTO public.external_parties (id, full_name, accounting_code)
+-- person_id is NOT NULL with no default, and neither trigger on this table sets it
+-- (`trg_external_parties_updated_at` is BEFORE UPDATE only; `trg_normalize_phone` touches phone
+-- columns). Person ...0006 is the intermediary this row represents — the same person whose
+-- asan_person_code 300006 is seeded above, so the two agree by construction.
+INSERT INTO public.external_parties (id, full_name, person_id, accounting_code)
 VALUES
-  ('eeeeeeee-0000-4000-8000-000000000006', 'E2E Intermediary Sarraf', '300006')
+  ('eeeeeeee-0000-4000-8000-000000000006', 'E2E Intermediary Sarraf',
+   'bbbbbbbb-0000-4000-8000-000000000006', '300006')
 ON CONFLICT (id) DO NOTHING;
 
 -- ------------------------------------------------------- open proforma ------
 -- One accepted quote for the receipt-allocation test.  Whole Toman: a
 -- fractional amount is rejected at creation and blocked by the export.
 
-INSERT INTO public.sales_quotes (id, quote_number, customer_id, customer_person_id, status, final_amount)
+-- customer_name AND customer_phone are both NOT NULL with no default.
+-- `tg_sales_quotes_derive_person` sets only customer_person_id, so neither is filled for us.
+-- quote_number is supplied deliberately: `sales_quotes_assign_number` only assigns when it is
+-- NULL or blank, so naming it here consumes no Asan sequence number.
+INSERT INTO public.sales_quotes
+  (id, quote_number, customer_id, customer_person_id, customer_name, customer_phone,
+   status, final_amount)
 VALUES
   ('ffffffff-0000-4000-8000-000000000001', 'E2E-Q-0001',
    'cccccccc-0000-4000-8000-000000000001', 'bbbbbbbb-0000-4000-8000-000000000001',
+   'E2E Customer With Code', '+989120000001',
    'accepted', 5000000)
 ON CONFLICT (id) DO NOTHING;
 
