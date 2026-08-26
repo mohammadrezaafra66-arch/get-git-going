@@ -230,6 +230,31 @@ already cost this project real damage.
    saved as UTF-8 without BOM.
 2. **`--single-transaction` + `-v ON_ERROR_STOP=1` always**, so a partial
    failure rolls back instead of leaving the schema half-applied.
+2b. **RECORD THE LEDGER ROW IN THE SAME BREATH — added 2026-08-27.** Applying by
+   `psql` (rule 1) does NOT write to `supabase_migrations.schema_migrations`; only
+   the Supabase CLI does. Nothing here ever said so, and by 2026-08-27 the ledger
+   held **552 rows against 597 files on disk — 45 applied migrations were
+   unrecorded**, and it had stopped updating on 2026-08-22.
+
+   That is a deploy hazard, not untidiness: anyone reading the ledger to decide
+   what to run on production would conclude 45 migrations were outstanding and
+   **re-run them**. Several are not idempotent — 402 drops columns, 404 drops and
+   recreates a function, 409 drops a signature — so a re-run fails partway or
+   succeeds destructively.
+
+   So every direct application is two steps, not one:
+
+   ```bash
+   # 1. apply
+   docker exec -i -e PGPASSWORD=$pw afrakala-lan-db psql -U supabase_admin -d afrakala      -v ON_ERROR_STOP=1 --single-transaction -f - < <migration>.sql
+   # 2. record it — the VERSION is the filename's leading timestamp
+   docker exec -e PGPASSWORD=$pw afrakala-lan-db psql -U supabase_admin -d afrakala -c      "INSERT INTO supabase_migrations.schema_migrations (version) VALUES ('20260827120000')
+        ON CONFLICT (version) DO NOTHING;"
+   ```
+
+   **If you find a migration already applied but unrecorded, RECORD THE ROW — never
+   re-run the migration to "make the ledger right".** `e2e/security/og81-migration-ledger-matches-disk.spec.ts`
+   fails the moment the two disagree, in either direction.
 3. **No `DROP TABLE`, `TRUNCATE`, or `DELETE` on a table holding data.**
    Permitted: `CREATE OR REPLACE`, `ALTER TABLE ... ADD COLUMN`,
    `CREATE POLICY`, `INSERT`. (`DROP FUNCTION` is fine — see rule 5.)
