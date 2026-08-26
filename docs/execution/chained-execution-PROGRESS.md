@@ -94,6 +94,35 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From M1 - constraints, and what a gate may create
+
+- **RULE 12 (owner-directed 2026-08-26). A GATE THAT CREATES A FINANCIAL DOCUMENT MUST DO IT
+  INSIDE `BEGIN … ROLLBACK`, OR NOT CREATE ONE AT ALL.** `create_receipt`, `create_payment` and
+  `create_dual_document` all POST their document and write a journal entry, and both the
+  receipt DELETE and the journal DELETE are then refused - «سند ثبت‌شده فقط با سند برگشتی اصلاح
+  می‌شود». So any gate that calls them through PostgREST leaves permanent residue **on every
+  run**, and there is no teardown that can undo it. This is the owner's Phase 8 condition (b)
+  generalised from seeds to gates: **a row that cannot be deleted must not be created.**
+  Audited on 2026-08-26: only M1's gate ever called one, and it now runs inside a rolled-back
+  transaction. The three other specs that write `journal_entries` insert `status='draft'` with
+  `posted_at = null`, which the immutability trigger does not lock, so they are correct as they
+  stand. `e2e/security/rule12-no-gate-creates-posted-documents.spec.ts` pins the known residue
+  BY ID so a fourth is caught the run it appears.
+- **RULE 13 (owner-directed 2026-08-26). WHEN A CONSTRAINT IS STRUCTURALLY IMPOSSIBLE, NEITHER
+  OBEY IT BLINDLY NOR REFUSE IT - REACH THE GOAL BEHIND IT ANOTHER WAY.** The owner's phrasing,
+  kept: *«وقتی مالک قیدی می‌گذارد که ساختاراً ناممکن است، راه درست نه اجرای کورکورانه است نه رد
+  کردن — بلکه رسیدن به هدفِ پشتِ قید از راه دیگر.»*
+  The instruction was a real FK on `document_attachments.document_id`. That is impossible: the
+  column is POLYMORPHIC, so a single FK would have to point at three tables at once - which is
+  precisely why the previous author hand-rolled a trigger rather than being careless. Obeying
+  literally was impossible; refusing would have left a fragile trigger in place. The goal behind
+  the constraint was **integrity enforced by the engine rather than by a trigger**, and that was
+  reached by removing the polymorphism itself: three typed columns, three real FKs, `ON DELETE
+  CASCADE`, and a CHECK for exactly one parent. It also closed a leak nobody had asked about -
+  `dual_documents` had no attachment cleanup at all - and dissolved the separate instruction to
+  stop refusing `dual`, because with a typed column per parent there was nothing left to refuse.
+  **State the impossibility with its evidence, then deliver the goal.**
+
 ### From M1 - the label that lied, and the gate that set the trap
 
 - **RULE 11. THE DEPLOY VERIFICATION STEP CAN ITSELF BE STALE.** CLAUDE.md's check is
