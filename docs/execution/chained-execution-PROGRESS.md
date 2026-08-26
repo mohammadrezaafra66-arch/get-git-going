@@ -10,99 +10,74 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 ## HANDOFF STATE
 
 ```
-Document in force:    AFRAKALA CHAINED EXECUTION - v8
-Last verified SHA:    see the first line of this mission's completion report, which is the
-                      raw `git log --oneline -2 origin/staging` taken after the merge (A0.8).
-                      Branch: feature/og62-anon-price-definers, cut from staging @ 987c3a3d.
-Mission just done:    **Mission 9 - task 6.7 / M2 (party search), Phase 0 audited.**
-                      **Nothing built** - most of it already is, and what remains is a
-                      modelling question (OG-66). Before it: mission 8 (OG-35 audited,
-                      OG-65 raised), mission 7 (M10 closed as a duplicate of OG-61) and
-                      mission 6 (OG-62, migration 395).
-Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350), OG-60 (#351),
-                      security trio + OG-31 (#352), OG-63 (#353) and now OG-62 are complete.
-                      **Next: mission 10 - Phase 7 (OCR).** Items 7.1-7.7 are `[U]` until
-                      read from MASTER-CHECKLIST.md; if absent there they are owner
-                      questions. HTTPS is live so the Secure-Context blockers are cleared.
-                      Ollama at 192.168.170.8:11434. **Known trap to resolve explicitly, not
-                      assume away:** pgvector dimension mismatch - `bge-m3` emits 1024-dim
-                      and `message_embeddings` is fixed at 1536.
-                      **Two missions are now BLOCKED on owner questions and cannot be
-                      started as builds: OG-35 (on OG-65) and task 6.7/M2 (on OG-66).**
-                      **OG-35 is BLOCKED on OG-65, not startable as a build.** See below.
-M2 / task 6.7 / OG-66:  **AUDITED, NOT BUILT - and most of it already exists.**
-                      `search_visible_persons` (migration 299) already searches display_name
-                      and legal_name plus mobile_e164 / national_id_ir / asan_person_code,
-                      and is already wired at `lib/persons/functions.ts:482` and
-                      `_app.persons.tsx:201`. So name + Asan code + mobile are DONE.
-                      **`city` is the blocker and it is a modelling question, not a feature:**
-                      the person core has NO city column; city exists only as
-                      `customers.city` / `suppliers.city`, i.e. on the ROLE tables, and
-                      CLAUDE.md's phase rule pushes against the person core depending on
-                      them. Raised as OG-66 with surname and the ledger-wizard wiring.
-                      **A standing `[U]` closed on the way:** `lookup.ts` DOES pass the Asan
-                      code to `person_find_by_identifiers`, and tries it FIRST (lines 81-84);
-                      the RPC honours the kind rather than assuming mobile. The earlier
-                      unverified report was wrong.
-                      Mobile format measured: 34 of 34 stored mobiles are national
-                      leading-zero form, zero +98, zero bare-9 - consistent with OG-4.
-OG-35 / OG-65:        **AUDITED, NOT BUILT - and it is not a build mission.** Both of v8's
-                      templates already exist. **Template 2 is an EXACT match** for the built
-                      layout 3 (`JOURNAL_HEADERS`, `src/lib/asan/layouts.ts:64`). **Template 1
-                      is the built layout 4** (`BANK_DEPOSIT_HEADERS`, :74) with the same six
-                      columns in the same order and **four of six headers identical** - the
-                      entire conflict is THREE CHARACTERS in two headers. Toman x10 -> Rial,
-                      Jalali `YYYY/MM/DD` in Latin digits converted in Asia/Tehran first, and
-                      `Bank_cod` from `bank_accounts` are all already built and match v8.
-                      **Not built:** a negative `Mablagh` for bank payments (no sign handling
-                      exists anywhere in `src/lib/asan/`; the export is deliberately
-                      deposit-only) and columns G-O to max_col=15 (six columns shipped).
-                      **The page error is a deliberate REFUSAL, not a missing config**, and it
-                      points at a DIFFERENT layout family: the five unconfigured adapters in
-                      `export-modes.ts` are `docs/asan/ASAN_BRIDGE.md`'s, not the seven built
-                      exports on /admin/asan-export - and that file says adopting it is a
-                      separate, owner-approved mission. **Raised as OG-65 with three narrow
-                      questions plus that scope question. A2.6 forbids picking the
-                      transliteration, so nothing was changed.**
-M10:                  **CLOSED 2026-08-26 as a DUPLICATE OF OG-61**, with a correction to
-                      v8's pre-answer. v8 said: if the only in-repo definition is the batch
-                      EXECUTE revoke, then 393 already did it, so close as covered-by-OG-31.
-                      First half holds - `m3-function-execute-leak-PROGRESS.md:177` IS the
-                      batch revoke, scoping M10 to the ~746 EXISTING functions. **Second
-                      half refuted by measurement:** migration 393 contains ZERO
-                      REVOKE/GRANT on any existing function, only 8 ALTER DEFAULT PRIVILEGES
-                      lines - it closed the future tap and nothing else. So M10 is the same
-                      work as OG-61, not covered by OG-31. Closed as a duplicate: no
-                      migration, no duplicate revoke, and the decision now lives in ONE
-                      place. Count drift to re-derive rather than quote: 746 (M3) -> 741
-                      (mission 4) -> **713 of 840** live after 395.
-INDEPENDENT REVIEW:   **OWED, and deliberately deferred by the owner - do not lose this.**
-                      Mission 5 was independently confirmed PASS by the owner. Missions
-                      **4, 5 and 6** are to be reviewed TOGETHER in a separate session after
-                      OG-62. A3.15 forbids calling self-review independent, and this session
-                      cannot spawn subagents, so it must be a fresh session.
-e2e:                  RAN - privileges changed. **536 passed / 29 failed / 29 skipped in
-                      23.2 min.** Independent marker count agrees. **ZERO new failures - a
-                      strict subset of the recorded 30**, the only difference being
-                      persons/duplicate-mobile-blocked:59 recovering (the known UI race).
-                      Error census: zero 42501, zero permission denials, zero PGRST - which
-                      matters here, because 28 functions were revoked and a broken signed-in
-                      path would have surfaced as exactly those. Baseline NOT superseded.
-                      payment_receipts 10 and 10; chrome-headless-shell 0 and 0;
-                      purchases 212 -> 226 (the purchase specs each create one by design).
-                      **Health check honesty:** the first CPU reading was 25.1%, over
-                      threshold, and the run was NOT started on it; a re-measure moved the
-                      WRONG way (29.6%); a 30s window gave mean 26.1% / median 23% / max 62%
-                      - spiky, median under threshold. Started on that, with A4.19's ceiling
-                      as the guard. Both readings are recorded rather than the good one.
-typecheck:            see the mission progress file - run once at mission end per A7.39.
-Build:                Not run and not required - zero src/ files changed.
-Config change:        `log_connections = on` globally, by reload, for the OG-38 monitoring.
-                      Recorded because it is a server setting rather than a migration.
+Document in force:    AFRAKALA CHAINED EXECUTION - v9
+Last verified SHA:    origin/staging @ d21bc083 (PR #357). **Mission 10 is COMMITTED AND
+                      DEPLOYED BUT NOT MERGED** - branch feature/og65-asan-bank-template @
+                      1da2a778, pushed. It is held on ONE step, below.
+Mission just done:    **Mission 10 - OG-65, the Asan bank template.** Code complete, gate
+                      attacked, built and deployed to the LAN web container. **NOT MERGED.**
+BLOCKED ON:           **The full e2e run, which A4.16 requires because src/ and specs both
+                      changed - and A4.18's health check FAILS on idle CPU.**
+                      Measured: mean 37.7% / median 39% / max 62% over a settled 60s window,
+                      against a ~25% threshold. The other two criteria PASS
+                      (chrome-headless-shell = 0; /login 200 in 0.18s).
+                      **Cause identified, and it is not this chain's doing:**
+                      `dllhost.exe /Processid:{DFB65C4C-B34F-435D-AFE9-A86218684AA8}`,
+                      PID 17904 - a Windows shell/thumbnail COM surrogate - running since
+                      **2026-08-16** and holding **84.2 CPU-hours**, currently ~39% of a
+                      core. Second consumer: a user `chrome` PID at ~25%.
+                      A4.18 says do not start the run; fix the environment or report. Killing
+                      a Windows system process on the owner's machine is not an agent's call,
+                      so it was reported instead. **The owner's answer unblocks the merge.**
+                      Everything else in mission 10 is complete and verified.
+Environment:          Local - proven. **APP_GIT_SHA has MOVED for the first time:**
+                      a19fd811 -> **1da2a778**, equal to HEAD, as A7.40 predicted for the
+                      first src/-changing mission. Image afrakala-app:lan rebuilt, web
+                      container Up (healthy), /login 200. `build.ps1 -Force` was needed
+                      because three untracked leftovers from an earlier session trip its
+                      dirty check; the script's own `-dirty` stamp test uses
+                      `--untracked-files=no`, so the image is stamped cleanly - verified.
+Migration:            NONE this mission. Next free number is still 396 (verify on disk AND
+                      remote before writing).
+OG-65:                **CLOSED by code.** Headers corrected to the MEASURED spelling
+                      `Name_Moshtare` / `Shopmare_Peygeri`; sheet padded to 15 columns with
+                      G-O as empty STRINGS (null writes no cell at all and would yield a
+                      six-column file); direction now carried in the SIGN of `Mablagh` in
+                      layout 4 only. Template 2 measured identical to what ships - untouched.
+                      **Two e2e specs had ASSERTED the wrong headers**, one calling them
+                      "reproduced exactly" - a test asserting a wrong value defends the bug
+                      rather than catching it. Both corrected with the reason in place.
+OG-67 (NEW):          **RAISED.** Nothing feeds bank PAYMENTS into the bank template.
+                      `asan_list_bank_deposit_export` reads `payment_receipts` and returns no
+                      direction column; payments still route to template 2 via
+                      `asan_list_journal_export`. The MAPPING supports payments and the gate
+                      proves both directions on constructed rows, but no data source does.
+                      Wiring one needs an RPC change - outside the owner's
+                      `src/lib/asan/`-only scope - and it is a ROUTING change, not plumbing.
+Gate attack:          1 control + **12 disturbances, all CAUGHT**, including the "corrected"
+                      spelling, a null padding, a negative reaching template 2, and **an
+                      amount returned as a formatted string** - the first mission in this
+                      chain where A2.12(b)'s numeric-as-string class has a real attack
+                      surface, every earlier gate having made only catalogue/SQL checks.
+                      **D10 failed to CONSTRUCT on its first form and was rebuilt, not
+                      counted** (A2.12d, second firing in this chain).
+e2e:                  **NOT RUN.** See BLOCKED ON. Targeted runs of the two changed specs did
+                      pass: 42 passed / 1 failed, the single failure being the known baseline
+                      entry `asan/export-bank-deposits`. **Line-number shift to expect in the
+                      next full run's SET comparison:** this mission added lines to
+                      `export-bank-deposits.spec.ts`, moving that baseline failure from
+                      **:108 to :133**. It will look like one recovered + one new. It is an
+                      editing artefact, not a behaviour change - do not read it as a
+                      regression.
+typecheck:            **70**, the exact baseline, same 6 files - re-run because src/ changed.
+Build:                DONE and deployed (see Environment).
+INDEPENDENT REVIEW:   **STILL OWED** - missions 4, 5 and 6, deferred by the owner to a
+                      separate session. Do not lose this.
 Production touched:   NO. 192.168.170.10 was not contacted.
-Rotation verdict:     **GOOD rotation point.** Migration applied, committed and merged; gate
-                      attacked and green; e2e a strict subset of baseline; M10's Phase 0
-                      done so the next mission starts from an answer rather than a question.
+Rotation verdict:     **NOT a clean rotation point** - mission 10 is mid-flight: committed,
+                      pushed and deployed, but unmerged and awaiting one owner answer about
+                      the machine. A fresh session can resume from this block, but should
+                      resolve the CPU blocker and run the full suite before merging.
 ```
 
 ## LESSONS
@@ -110,6 +85,33 @@ Rotation verdict:     **GOOD rotation point.** Migration applied, committed and 
 Started 2026-08-26 per A1.4b. Read this section at the START of every mission alongside the
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
+
+### From mission 10 - OG-65
+
+- **A test that asserts a wrong value defends the bug.** Two e2e specs asserted
+  `Name_Moshtari`/`Shomare_Peygiri`, one of them commenting that the transliteration was
+  "reproduced **exactly**". They did not merely fail to catch the wrong headers - they made
+  the correct fix look like a regression, and they are the reason it shipped that way for
+  months. When a spec and an external artefact disagree, the artefact is the authority and
+  the spec is a claim; measure the artefact.
+- **`null` and `""` are not interchangeable when writing a spreadsheet.** `aoa_to_sheet`
+  writes no cell at all for `null` and a real empty cell for `""`, so padding with `null`
+  produces a six-column file that looks correct in a code diff and is the wrong width in the
+  target system. Assert the CELL TYPE, not just the count.
+- **A2.12(b)'s numeric-as-string disturbance finally had a surface, and it caught something.**
+  Every earlier gate in this chain recorded that class as inapplicable because it made only
+  catalogue and SQL checks. This gate reads spreadsheet cells, so `"-15000"` versus `-15000`
+  became a real attack - identical in the file, not summable in Excel. When a gate's medium
+  changes, re-read the attack protocol rather than carrying forward "not applicable".
+- **State the scope boundary as a gate, not as a silent half-build.** The mapping supports
+  bank payments; no data source feeds them. Shipping that without saying so would let
+  "payments work" read as more than it is. OG-67 records exactly where the capability stops
+  and why crossing the line needed a decision.
+- **A4.18 is a precondition, not a formality, and the blocker was not ours.** Idle CPU came in
+  at 37.7% against a ~25% threshold, traced to a Windows thumbnail COM surrogate running
+  since 2026-08-16 with 84 CPU-hours. The suite was NOT started. Note the other two criteria
+  passed, including `/login` at 0.18s - responsiveness looked fine while the machine was
+  loaded, which is precisely how the 4.7-hour invalid run happened before.
 
 ### From mission 9 - task 6.7 / M2
 
