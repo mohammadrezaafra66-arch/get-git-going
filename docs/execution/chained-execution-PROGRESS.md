@@ -13,65 +13,75 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 Document in force:    AFRAKALA CHAINED EXECUTION - v8
 Last verified SHA:    see the first line of this mission's completion report, which is the
                       raw `git log --oneline -2 origin/staging` taken after the merge (A0.8).
-                      Branch: feature/og63-purchase-date-tehran, cut from staging @ b0986dcf.
-Mission just done:    **Mission 5 - OG-63, the Tehran/UTC purchase-date defect.** Migration 394.
+                      Branch: feature/og62-anon-price-definers, cut from staging @ 987c3a3d.
+Mission just done:    **Mission 6 - OG-62, the anon-reachable definer leaks.** Migration 395.
 Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350), OG-60 (#351),
-                      security trio + OG-31 (#352) and now OG-63 are complete.
-                      **Next: mission 6 - OG-62** (close the anon-readable sale prices),
-                      which the owner has already answered YES to. Then M10, which the owner
-                      pre-answered: if the repository's only definition is the batch EXECUTE
-                      revoke, CLOSE it as covered by OG-31 and move on without a migration.
-Environment:          Local - proven, not assumed (both v8 STOP-block commands pasted in the
-                      mission progress file).
-Migration:            394 applied to afrakala; PostgREST restarted. Next free number is 395
-                      (verified free on disk AND on origin/staging before 394 was written).
-                      NOT inserted into supabase_migrations.schema_migrations - 388-393 are
-                      all absent too, so 394 follows the existing convention. Reconciling
-                      that ledger remains Phase 4's item.
-OG-63:                **CLOSED for `create_purchase`** - the owner's scope. One line:
-                      `> CURRENT_DATE` became `> public.tehran_today()`. Live prosrc md5
-                      d4b56b29cf3339f053cccc10805076fc, equal to the dry-run's, so the
-                      delivery path corrupted no Persian. Rollback proved byte-identical
-                      BEFORE the forward file was applied.
-OG-64:                **RAISED** - the 21 functions left behind, split by what they DO rather
-                      than counted: 1 more outright refusal
-                      (upsert_staff_daily_performance_metric), 4 bucketing filters on the
-                      payables/receivables screens that MISCLASSIFY due-dates silently
-                      inside the window (no error, plausible numbers - harder to notice than
-                      the purchase outage), and 16 that stamp or bound by date without
-                      refusing anything. The 16 were LOCATED, not assessed.
-OG-38:                **STILL OPEN and still owed an answer.** v8 Phase 1 asks it directly:
-                      «آیا ابزار یا اسکریپتی به supabase_read_only_user وصل است (BI،
-                      گزارش‌گیری، کوئری مستقیم)؟ و آیا باید NOLOGIN شود؟» Asked in this
-                      mission's progress note; not yet answered, so mission 4 stays
-                      CONDITIONAL on it. Conservative option applied: the role is untouched.
-e2e:                  RAN - a SECURITY DEFINER RPC was replaced. **535 passed / 30 failed /
-                      29 skipped in 21.1 min**, health-checked (CPU 23.1%, 0 orphan shells,
-                      /login 0.08s) and locked. Independent marker count agrees with the
-                      summary line. **The count matches the baseline but the SET does NOT -
-                      compare sets, never counts:** `persons/duplicate-mobile-blocked:59`
-                      RECOVERED and `persons/filters-ui:138` appeared. Both are the same
-                      known viewer-login race class (fills the password, stays on /login);
-                      filters-ui:138 is one of the three OG-47 flakes the baseline attributes
-                      to machine load. Neither touches purchases. **All 14 purchase/*
-                      failures from mission 4 are gone: 0 failed, 69 passed.** Zero 42501,
-                      zero permission denials, zero PGRST, zero PURCHASE_DATE_FUTURE;
-                      timeouts down from 41 to 11. Baseline NOT superseded - no spec changed.
-                      payment_receipts 10 before and 10 after. chrome-headless-shell 0 and 0.
-                      **purchases 198 -> 212**: the 14 purchase specs each create one on
-                      purpose and document that they must not be deleted (deleting a purchase
-                      orphans its stock_movement). In mission 4's run they created none
-                      because they failed.
-                      **CAVEAT, and it is the important line here:** this run started at
-                      ~11:00 Tehran, OUTSIDE the 00:00-03:30 window, so those 14 tests would
-                      pass with or without migration 394. **The suite does not discriminate.**
-                      The proof the fix works is the time-independent gate, not this run.
+                      security trio + OG-31 (#352), OG-63 (#353) and now OG-62 are complete.
+                      **Next: mission 7 - M10.** Its Phase 0 is already done, read-only, and
+                      the answer is below - it needs NO migration.
+                      Then mission 8 - OG-35 (Asan Excel), audit wiring FIRST; the full
+                      template specification is in v8 and is the source of truth.
+Environment:          Local - proven, not assumed.
+Migration:            395 applied to afrakala; PostgREST restarted. Next free number is 396
+                      (verify on disk AND remote before writing, as always).
+                      NOT inserted into supabase_migrations.schema_migrations - 388-394 are
+                      all absent too. Reconciling that ledger remains Phase 4's item.
+OG-62:                **CLOSED, and wider than the row asked.** 28 functions revoked from
+                      `anon` AND `PUBLIC`. Live: anon_can_execute_of_28 = 0,
+                      auth_can_execute_of_28 = 28; get_product_sale_price now raises 42501
+                      to anon instead of returning 79800000. The list came from a sweep of
+                      all 91 STABLE anon-executable definers, then a SECOND pass calling
+                      each returner with REAL arguments - because 47 functions returning
+                      rows is not 47 leaks (has_role(NULL,NULL) returns one row of false).
+                      RLS helpers and set_profile_field_value deliberately untouched.
+                      /api/public/products byte-identical: 200, 199, price on 199 and 0.
+OG-38:                **STILL OPEN; mission 4 stays CONDITIONAL.** Owner answered in part:
+                      do NOT NOLOGIN, monitor first. **Monitoring is LIVE since
+                      2026-08-26 11:57 Tehran.** ALTER ROLE ... SET log_connections is
+                      IMPOSSIBLE (backend-start parameter - measured, not assumed), so it is
+                      on globally by reload; reversible with ALTER SYSTEM RESET. Proven to
+                      capture the role. **The one captured line so far is the verification
+                      probe itself - do not count it as a real consumer.** Read with
+                      `docker logs --since 24h afrakala-lan-db 2>&1 | grep supabase_read_only_user`.
+M10 (Phase 0 DONE):   **Ready to close, with a CORRECTION to v8's pre-answer.** v8 says: if
+                      the repository's only definition is the batch EXECUTE revoke, then
+                      migration 393 already did that work, so close it as covered-by-OG-31.
+                      The first half of that premise holds - the only in-repo definition is
+                      `m3-function-execute-leak-PROGRESS.md:177`, and it IS the batch revoke.
+                      **The second half does not.** That text scopes M10 to the ~746
+                      EXISTING functions ("این دامنهٔ M10 است، نه M3"), and migration 393
+                      revoked NOTHING existing - it closed only the future default-privilege
+                      tap. So M10 is **not** covered by OG-31; it is the same work as
+                      **OG-61**, which is already recorded and OPEN. Close M10 as a
+                      DUPLICATE OF OG-61, not as covered-by-OG-31: same outcome the owner
+                      wanted (no migration, no duplicate work), accurate reasoning.
+INDEPENDENT REVIEW:   **OWED, and deliberately deferred by the owner - do not lose this.**
+                      Mission 5 was independently confirmed PASS by the owner. Missions
+                      **4, 5 and 6** are to be reviewed TOGETHER in a separate session after
+                      OG-62. A3.15 forbids calling self-review independent, and this session
+                      cannot spawn subagents, so it must be a fresh session.
+e2e:                  RAN - privileges changed. **536 passed / 29 failed / 29 skipped in
+                      23.2 min.** Independent marker count agrees. **ZERO new failures - a
+                      strict subset of the recorded 30**, the only difference being
+                      persons/duplicate-mobile-blocked:59 recovering (the known UI race).
+                      Error census: zero 42501, zero permission denials, zero PGRST - which
+                      matters here, because 28 functions were revoked and a broken signed-in
+                      path would have surfaced as exactly those. Baseline NOT superseded.
+                      payment_receipts 10 and 10; chrome-headless-shell 0 and 0;
+                      purchases 212 -> 226 (the purchase specs each create one by design).
+                      **Health check honesty:** the first CPU reading was 25.1%, over
+                      threshold, and the run was NOT started on it; a re-measure moved the
+                      WRONG way (29.6%); a 30s window gave mean 26.1% / median 23% / max 62%
+                      - spiky, median under threshold. Started on that, with A4.19's ceiling
+                      as the guard. Both readings are recorded rather than the good one.
 typecheck:            see the mission progress file - run once at mission end per A7.39.
 Build:                Not run and not required - zero src/ files changed.
+Config change:        `log_connections = on` globally, by reload, for the OG-38 monitoring.
+                      Recorded because it is a server setting rather than a migration.
 Production touched:   NO. 192.168.170.10 was not contacted.
-Rotation verdict:     **GOOD rotation point.** The migration is applied, committed and
-                      merged, the gate is attacked and green, the e2e set difference is
-                      named in both directions, and mission 6 is deliberately not started.
+Rotation verdict:     **GOOD rotation point.** Migration applied, committed and merged; gate
+                      attacked and green; e2e a strict subset of baseline; M10's Phase 0
+                      done so the next mission starts from an answer rather than a question.
 ```
 
 ## LESSONS
@@ -79,6 +89,36 @@ Rotation verdict:     **GOOD rotation point.** The migration is applied, committ
 Started 2026-08-26 per A1.4b. Read this section at the START of every mission alongside the
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
+
+### From mission 6 - OG-62, the anon-reachable definer leaks
+
+- **RULE 2 (promoted - third strike). Assert the EFFECT, never the identity of a grant.**
+  Disturbance D10 granted a group role EXECUTE and made `anon` a member: no grant named
+  `anon` anywhere (`grants_naming_anon = 0`) and `anon` still reached the function. Counting
+  from this log: migration 375 was defeated by a PUBLIC grant and an inherited role, 379 was
+  defeated by pinning set membership instead of the privilege set, and D10 here is the third.
+  So it is a rule: **privilege gates use `has_*_privilege` (effect), never a scan of
+  `proacl`/`relacl` for an entry naming the role.**
+- **A row count is not a disclosure.** The sweep returned "47 functions returned rows to
+  anon", which reads alarming and is nearly meaningless - `has_role(NULL,NULL)` returns one
+  row containing `false`. Only a second pass, calling each with REAL arguments and looking
+  at the VALUES, separated 28 genuine leaks from boolean RLS helpers. Reporting the 47 as
+  leaks would have been true-sounding and wrong, and would have led to revoking the helpers
+  that 93 RLS policies depend on.
+- **When a verification fails for two reasons at once, fix both before relaxing either.**
+  The forward→rollback ACL check failed with a mismatch that had a harmless cause (a
+  REVOKE-then-GRANT re-appends the aclitem, so `proacl::text` re-orders) and a real one (two
+  functions gaining a PUBLIC grant they never had). The tempting move - "it's just ordering,
+  loosen the check" - would have shipped a rollback that left objects MORE open than it
+  found them. Comparing the ACL as a SET separated the two causes instead of averaging them.
+- **A rollback can be wrong in the opening direction, not just the closing one.** Every
+  rollback in this chain so far restored too little or exactly enough; this one would have
+  restored too MUCH. Assert the restored state as a set equal to the capture, in both
+  directions - `EXCEPT ALL` each way - rather than checking only that nothing was lost.
+- **Check the caller before believing an old research note.** `K-currency.md` names
+  `InvoiceForm.tsx` as the consumer of `get_product_sale_price`. That file no longer exists,
+  and neither price function has any `src/` caller today. A note is evidence of what was
+  true when it was written (A2.13 applies to the repository's own documents too).
 
 ### From mission 5 - OG-63, the Tehran/UTC purchase-date defect
 
