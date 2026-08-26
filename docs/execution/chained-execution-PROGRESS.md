@@ -94,6 +94,36 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From M1 - the label that lied, and the gate that set the trap
+
+- **RULE 11. THE DEPLOY VERIFICATION STEP CAN ITSELF BE STALE.** CLAUDE.md's check is
+  "`APP_GIT_SHA` must equal `git rev-parse --short HEAD`" - and the documented `--no-deps`
+  command never set `GIT_SHA`, so compose took it from `deploy/lan/.env.lan` where a value had
+  been pinned long ago. A rebuild of current code stamped `APP_GIT_SHA=1ca72316`: a real commit,
+  and not HEAD. **The build was correct and the label lied**, which is worse than either, because
+  that label is the ONLY check that the right code is deployed. Proven correct the only way that
+  works - by looking for a string that exists solely in the new code:
+  `docker exec afrakala-lan-web sh -c "grep -rl 'uploadStagedAttachments' /app/.output"`.
+  Both files amended to export `GIT_SHA` first. Same family as "Successfully copied": a
+  reassuring signal produced by a layer that cannot see the thing it claims to confirm.
+- **A GATE CAN SET THE VERY TRAP IT WAS WRITTEN TO PREVENT.** M1's gate exists to prove no
+  orphan attachment survives. Its first draft created a real receipt through PostgREST and
+  deleted it in teardown - except `create_receipt` POSTS the receipt and writes a journal entry,
+  and both deletions are refused with «سند ثبت‌شده فقط با سند برگشتی اصلاح می‌شود». It left an
+  undeletable posted row: **the OG-56 trap, reproduced by a gate written against orphans.**
+  Corrected the way the system prescribes rather than by force - `reverse_document` - and
+  recorded as OG-76.
+  **The rule, which is the owner's Phase 8 condition (b) applied to gates rather than seeds: a
+  row that cannot be deleted must not be created.** The success path now runs inside
+  `BEGIN … ROLLBACK` and asserts INSIDE the transaction, so it creates nothing at all. When a
+  test needs a real write to prove something, the transaction is the fixture.
+- **ESM bites twice, in different disguises.** `__dirname` in the OCR gate and `require` here.
+  Both throw ReferenceError rather than resolving to something wrong, so both were cheap - but
+  only because a test ran them. In a rarely-hit branch either would sit undetected.
+- **psql writes NOTICE to STDERR, and `execFileSync` returns only STDOUT.** A probe reporting
+  through `RAISE NOTICE` handed back the string "BEGIN" and the assertion failed for a reason
+  unrelated to the feature. Return results through a TEMP TABLE and a SELECT.
+
 ### From the run cadence - my own repeated error
 
 - **RULE 10 (third strike, self-inflicted). NEVER APPLY A MIGRATION WHILE A SUITE IS RUNNING.

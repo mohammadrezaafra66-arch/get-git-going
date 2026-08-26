@@ -112,9 +112,21 @@ it is narrower and stricter where it counts:
 - A deploy touches the `web` service only. **The command MUST carry `--no-deps`:**
 
   ```powershell
+  $env:GIT_SHA = (git rev-parse --short HEAD)
+  $env:BUILD_TIME = (Get-Date -Format o)
   docker compose --env-file deploy/lan/.env.lan -f deploy/lan/docker-compose.yml `
     up -d --no-deps --build web
   ```
+
+  **`GIT_SHA` MUST be set on the command line — amended 2026-08-26.** The compose file reads
+  `GIT_SHA: ${GIT_SHA:-local-unknown}` as a build arg, and `--env-file deploy/lan/.env.lan`
+  supplies a value that was pinned there long ago. Without the export the build is CORRECT and
+  the label LIES: measured on 2026-08-26, a rebuild of current code stamped
+  `APP_GIT_SHA=1ca72316` — a real commit, but not `HEAD`. The verification step below
+  ("`APP_GIT_SHA` must equal `git rev-parse --short HEAD`") is the only check that the right
+  code is running, so a stale label silently disables the one thing that would catch a failed
+  deploy. To tell them apart when it happens, look for a string only your change contains:
+  `docker exec afrakala-lan-web sh -c "grep -rl '<your new symbol>' /app/.output"`.
 
   **Without `--no-deps` the app goes DOWN.** Measured on 2026-08-26: `web` depends on
   `kong`, and `auth`, `rest`, `storage` and `meta` all declare `depends_on: db-role-fix`,
