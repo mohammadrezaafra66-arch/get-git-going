@@ -279,12 +279,27 @@ test.describe("M3.3 — Asan person import", () => {
        where batch_id = '${batchId}' and applied_at is not null and matched_person_id is not null
     `);
     expect(createdIds.length, "the commit did not record which persons it created").toBe(3);
+    // OG-46's writing half, completed 2026-08-26. This teardown used to delete
+    // `person_identifiers` and then `persons`, and on 2026-08-26 it died with
+    //
+    //   ERROR: update or delete on table "persons" violates foreign key constraint
+    //          "suppliers_person_id_fkey" on table "suppliers"
+    //
+    // A teardown that throws leaves its whole fixture behind, and the residue then moves other
+    // specs' baselines — that one FK is the traceable head of seven failures in that run,
+    // including two that read `asan_export_numbers`' high-water mark and got a number lower
+    // than the mark they had just captured.
+    //
+    // The role tables are cleared FIRST, and scoped to exactly the person ids this test created
+    // — never by marker or name. A broader predicate here would delete another spec's data, or
+    // the owner's, which is the opposite of the problem being fixed.
+    const idList = createdIds.map((i) => `'${i}'`).join(",");
     dbExecE2e(`
       -- E2E_AUDIT_20260729_asan_m33_teardown
-      delete from public.person_identifiers where person_id in (${createdIds
-        .map((i) => `'${i}'`)
-        .join(",")});
-      delete from public.persons where id in (${createdIds.map((i) => `'${i}'`).join(",")});
+      delete from public.suppliers where person_id in (${idList});
+      delete from public.customers where person_id in (${idList});
+      delete from public.person_identifiers where person_id in (${idList});
+      delete from public.persons where id in (${idList});
     `);
     expect(
       Number(dbScalar("select count(*) from public.persons")),

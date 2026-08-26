@@ -83,13 +83,52 @@ export async function lookupParty(raw: string, required: PartyKind | "any"): Pro
     (await findByIdentifiers("asan_person_code", query)) ??
     (await findByIdentifiers("mobile_e164", query));
 
+  // OG-66(c). The identifier paths above are exact and resolve at most one person. They also
+  // cannot find anyone by NAME, so a party visible on /persons was simply unfindable here —
+  // the "built but never wired" shape: `search_visible_persons` already backs the persons
+  // page and was never reachable from this wizard, which pushes an operator toward creating a
+  // duplicate person.
+  //
+  // It runs only as a FALLBACK, after every exact path has missed, and it is accepted only on
+  // a UNIQUE hit. `pickKind` below resolves one party; handing it an ambiguous name match
+  // would make the wizard silently choose between two people, which is worse than finding
+  // nobody.
+  //
+  // Visibility measured per role BEFORE wiring, because widening what this wizard can reach
+  // is the real risk here — not narrowing it:
+  //   role                          identifier paths    search_visible_persons
+  //   admin/accountant/manager/viewer      36                    84
+  //   sales                                11                    18
+  // The function is SECURITY INVOKER, so RLS applies to the caller, and those are the same
+  // numbers the persons PAGE already shows that role. This aligns two surfaces rather than
+  // granting new access; `anon` is refused outright (`permission denied for function`).
+  if (!personId) {
+    const { data: byName, error: nameError } = await supabase.rpc("search_visible_persons", {
+      p_query: query,
+      p_limit: 2, // 2, not 1: enough to DETECT ambiguity, never enough to hide it
+      p_offset: 0,
+    });
+    if (nameError) throw nameError;
+    const hits = (byName ?? []) as { id: string }[];
+    if (hits.length === 1) personId = hits[0].id;
+    else if (hits.length > 1) {
+      return {
+        status: "not_found",
+        query,
+        party: null,
+        missingName: null,
+        message: "بیش از یک شخص با این نام پیدا شد. کد آسان یا شمارهٔ موبایل را وارد کنید.",
+      };
+    }
+  }
+
   if (!personId) {
     return {
       status: "not_found",
       query,
       party: null,
       missingName: null,
-      message: "شخصی با این کد یا شماره پیدا نشد.",
+      message: "شخصی با این کد، شماره یا نام پیدا نشد.",
     };
   }
 
