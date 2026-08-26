@@ -147,8 +147,8 @@ Controls: `شروع کد از کد` = `101` · `تعریف کد جدید` · `ک
 |---|---|---|---|---|
 | A | `Date` | **yes** | Jalali date | `YYYY/MM/DD` |
 | B | `Code_M` | **yes** | account code | customer's Asan code |
-| C | `Name_Moshtari` | no | text | customer name |
-| D | `Shomare_Peygiri` | no | text | `payment_receipts.tracking_number` |
+| C | `Name_Moshtare` | no | text | customer name (spelling measured from the real Asan .xlsx, 2026-08-26; legacy-intentional, do NOT 'correct' it) |
+| D | `Shopmare_Peygeri` | no | text | `payment_receipts.tracking_number` (spelling measured from the real Asan .xlsx, 2026-08-26; legacy-intentional) |
 | E | `Mablagh` | **yes** | amount | `payment_receipts.amount` |
 | F | `Bank_cod` | no | account code | `bank_accounts.accounting_code` |
 

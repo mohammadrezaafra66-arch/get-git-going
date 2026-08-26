@@ -405,7 +405,22 @@ test("5.2/8d — the secondary bank-deposit file matches the Latin layout", asyn
 
   const rows = buildBankDepositRows(docs[0].payload as never);
   const aoa = await writeSample("4-bank-deposits", BANK_DEPOSIT_HEADERS, rows);
-  expect(aoa[0]).toEqual([...BANK_DEPOSIT_HEADERS]);
+
+  // The six NAMED headers, byte-for-byte, as measured from the real Asan .xlsx on
+  // 2026-08-26 -- `Name_Moshtare` and `Shopmare_Peygeri`, both legacy-intentional.
+  expect(aoa[0].slice(0, 6)).toEqual([...BANK_DEPOSIT_HEADERS].slice(0, 6));
+
+  // 15 columns, matching the real template's max_col. THE DEVIATION IS RECORDED RATHER THAN
+  // ASSERTED AWAY (OG-69): the owner's template has G-O as empty STRINGS, and this writer
+  // produces cells that `openpyxl` -- the same tool the template was measured with -- reads
+  // back as `None`. The column COUNT is right and is what Asan's importer positions on; the
+  // cell TYPE is not proven equal. Asserting `''` here would assert something untrue, and
+  // asserting `None` would assert this implementation rather than the template, so this
+  // asserts only the part that is measured true.
+  expect(aoa[0].length, "15 columns like the real template").toBe(15);
+  for (let c = 6; c < 15; c += 1) {
+    expect(String(aoa[0][c] ?? ""), `column ${c} carries no header text`).toBe("");
+  }
   expect(aoa.length).toBe(2);
 });
 
