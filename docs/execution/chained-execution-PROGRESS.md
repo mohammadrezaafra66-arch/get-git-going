@@ -88,12 +88,23 @@ single observations that have not yet earned rule status.
 
 ### From mission 10 - OG-65
 
-- **A test that asserts a wrong value defends the bug.** Two e2e specs asserted
-  `Name_Moshtari`/`Shomare_Peygiri`, one of them commenting that the transliteration was
-  "reproduced **exactly**". They did not merely fail to catch the wrong headers - they made
-  the correct fix look like a regression, and they are the reason it shipped that way for
-  months. When a spec and an external artefact disagree, the artefact is the authority and
-  the spec is a claim; measure the artefact.
+- **RULE 3 (promoted - third-strike, owner-directed 2026-08-26). A test that asserts a wrong
+  value PROTECTS the bug, and "built but wrong / built but unwired" is now the expected shape
+  on this project.** Two e2e specs asserted `Name_Moshtari`/`Shomare_Peygiri`, one commenting
+  that the transliteration was "reproduced **exactly**". They did not merely fail to catch the
+  wrong headers - they made the correct fix look like a regression, which is why it shipped
+  that way. Counting the pattern from this log: `/purchase` built and in no menu; the Asan
+  templates built and matching the spec already (#356); party search built and wired but the
+  ledger wizard using a narrower path (#357); and now the bank headers built, asserted, and
+  wrong. **Fourth occurrence, so it is a rule:**
+  1. When a spec and an external artefact disagree, **the artefact is the authority and the
+     spec is a claim.** Measure the artefact before changing either.
+  2. A green test proves the code matches the test, never that the test matches reality. For
+     anything crossing a system boundary - a file another program imports, a header, a wire
+     format - the assertion's SOURCE must be recorded next to it, so the next reader can tell
+     a measurement from a guess.
+  3. Start every mission by asking *what does this already do*, not *what must I build*.
+     Three consecutive missions have been briefed as builds and measured as questions.
 - **`null` and `""` are not interchangeable when writing a spreadsheet.** `aoa_to_sheet`
   writes no cell at all for `null` and a real empty cell for `""`, so padding with `null`
   produces a six-column file that looks correct in a code diff and is the wrong width in the
@@ -107,11 +118,20 @@ single observations that have not yet earned rule status.
   bank payments; no data source feeds them. Shipping that without saying so would let
   "payments work" read as more than it is. OG-67 records exactly where the capability stops
   and why crossing the line needed a decision.
-- **A4.18 is a precondition, not a formality, and the blocker was not ours.** Idle CPU came in
-  at 37.7% against a ~25% threshold, traced to a Windows thumbnail COM surrogate running
-  since 2026-08-16 with 84 CPU-hours. The suite was NOT started. Note the other two criteria
-  passed, including `/login` at 0.18s - responsiveness looked fine while the machine was
-  loaded, which is precisely how the 4.7-hour invalid run happened before.
+- **RULE 4 (promoted - owner-directed 2026-08-26). Every machine-load measurement must be
+  DISTRIBUTIONAL, never a single sample.** This mission held the suite on an idle-CPU reading
+  of 37.7%; the owner re-measured the same machine as **mean 18.71% / median 18.62%**, and the
+  high figure was a transient ~2.5 sigma above the mean. Single samples misled the diagnosis
+  **three separate times** in this one episode: a 49% spike, a 40.5% reading for one
+  container, and a container total that swung between 0.73% and 19%. So:
+  1. Report **mean AND median over a window**, never one reading, and never the max.
+  2. A spiky maximum is not a threshold breach; the median is the honest summary of idle load.
+  3. Apply the same rule to per-process and per-container attribution - a one-shot `top`
+     equivalent will finger whichever process happened to be scheduled.
+  Corollary that still stands: the other two A4.18 criteria passed here, `/login` at 0.18s
+  included. **Responsiveness can look fine while the machine is loaded** - that is how the
+  4.7-hour invalid run (OG-54) happened - so do not substitute a latency probe for the CPU
+  distribution either.
 
 ### From mission 9 - task 6.7 / M2
 
