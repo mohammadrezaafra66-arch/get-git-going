@@ -94,6 +94,46 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From mission 13 - OG-64, the CURRENT_DATE class
+
+- **RULE 6 (promoted - third strike). AN AUDIT'S BLIND SPOT IS THE SHAPE OF ITS QUERY, AND IT
+  NEVER APPEARS IN ITS OWN OUTPUT.** The OG-64 audit enumerated `pg_proc` and reported "21
+  functions". That is the right query for functions and the wrong query for the CLASS: a full
+  catalogue sweep found **2 views, 7 column defaults, 4 RLS policies and 2 check constraints**
+  carrying the same comparison, none of them in `pg_proc`. The count read as complete because
+  nothing in the result said "functions only". Third strike of this shape: OG-62's "47
+  functions returned rows" (row COUNT, not value, so 47 was really 28); OG-38's "the role
+  exists and can log in" (catalogue, not usage, so it looked live and had zero consumers); and
+  now this. **Before trusting an enumeration, ask what KINDS of object could hold the thing
+  being counted, and confirm the query reaches all of them.** Write the sweep into the
+  research doc so the next mission re-runs it instead of re-deriving it.
+- **A fix scoped to what was NAMED can be a no-op that reads as a success.** Mission 13 was
+  scoped to five functions. Converting exactly those five would have produced (a) a payables
+  row that contradicts itself on screen - listed under «امروز» by the fixed filter while the
+  same row reports `days_until_due = 1` from the unfixed view - and (b) a staff-metric write
+  that clears the function's guard and then dies on an RLS policy carrying the SAME
+  `CURRENT_DATE`, swapping a clean Persian message for a row-level-security violation. **The
+  scoped fix would have been strictly worse than the bug.** Before converting a guard, ask
+  what ELSE enforces the same rule; the function is often not the gate.
+- **A gate that is only true at some hours is not a gate.** The first assertion reconstructed
+  the broken window with one fixed offset (`Etc/GMT+12`) and FAILED at 18:30 Tehran, because
+  at that hour the offset's date happened to match Tehran's. Replaced with a claim that holds
+  at every hour: UTC-12 and UTC+14 are 26 hours apart, and 26 > 24, so their dates ALWAYS
+  differ. **Assert the PROPERTY, not one instance of it.**
+- **A control that measures nothing will report "no bug found".** The first control ran
+  without a JWT claim; the views are RLS-filtered to EMPTY without one, so it compared 0
+  against 0 and concluded the bug was unreproducible on this data. The same query with the
+  claim showed **349,800 against 13,000,000,024.95**. A negative result from an instrument you
+  have not shown to be live is not a negative result.
+- **`set_config` in a scalar SUBQUERY does not reliably run first.** PostgreSQL may evaluate
+  it after the aggregate has already read the table. It must be a separate statement - which
+  works through `psql -c`, because multiple statements there run in ONE transaction.
+- **Quantify the consequence, then rank by it.** The 16 remaining functions were "located, not
+  assessed", and assessing them changed the picture completely: four WRITE a wrong date into a
+  record that cannot be corrected afterwards (`post_mutual_settlement` feeds
+  `journal_entries.entry_date`, which the immutability trigger then locks), while two are
+  wrong only on the first of a month. A flat count of 16 hides both facts.
+
 ### From mission 12 - gate clean-up (OG-56/57/68/69/70, OG-38)
 
 - **RULE 5 (promoted - third strike, owner-directed 2026-08-26). A success signal from the
