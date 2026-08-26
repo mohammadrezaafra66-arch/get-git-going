@@ -14,21 +14,38 @@ Document in force:    AFRAKALA CHAINED EXECUTION - v8
 Last verified SHA:    see the first line of this mission's completion report, which is the
                       raw `git log --oneline -2 origin/staging` taken after the merge (A0.8).
                       Branch: feature/og62-anon-price-definers, cut from staging @ 987c3a3d.
-Mission just done:    **Mission 8 - OG-35**, audited. **Nothing built - and the audit
-                      changed what the mission is.** Before it: mission 7 (M10, closed as a
-                      duplicate of OG-61) and mission 6 (OG-62, migration 395).
+Mission just done:    **Mission 9 - task 6.7 / M2 (party search), Phase 0 audited.**
+                      **Nothing built** - most of it already is, and what remains is a
+                      modelling question (OG-66). Before it: mission 8 (OG-35 audited,
+                      OG-65 raised), mission 7 (M10 closed as a duplicate of OG-61) and
+                      mission 6 (OG-62, migration 395).
 Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350), OG-60 (#351),
                       security trio + OG-31 (#352), OG-63 (#353) and now OG-62 are complete.
-                      **Next: mission 9 - task 6.7 + M2 (party search)**, which is ON the
-                      critical path to production. AUDIT FIRST with real code reads, per
-                      v8: whether `src/features/ledger-wizard/lookup.ts` passes the Asan
-                      code to `person_find_by_identifiers` or only the mobile. An earlier
-                      unverified report claimed only the mobile is sent; the file exists and
-                      calls the RPC at line 25, and `src/lib/persons/find-by-phone.ts:86` is
-                      the second caller, but **the argument-level answer was never
-                      measured** - it needs `pg_get_functiondef` against the live database.
-                      That is one query and it is now runnable (Local).
+                      **Next: mission 10 - Phase 7 (OCR).** Items 7.1-7.7 are `[U]` until
+                      read from MASTER-CHECKLIST.md; if absent there they are owner
+                      questions. HTTPS is live so the Secure-Context blockers are cleared.
+                      Ollama at 192.168.170.8:11434. **Known trap to resolve explicitly, not
+                      assume away:** pgvector dimension mismatch - `bge-m3` emits 1024-dim
+                      and `message_embeddings` is fixed at 1536.
+                      **Two missions are now BLOCKED on owner questions and cannot be
+                      started as builds: OG-35 (on OG-65) and task 6.7/M2 (on OG-66).**
                       **OG-35 is BLOCKED on OG-65, not startable as a build.** See below.
+M2 / task 6.7 / OG-66:  **AUDITED, NOT BUILT - and most of it already exists.**
+                      `search_visible_persons` (migration 299) already searches display_name
+                      and legal_name plus mobile_e164 / national_id_ir / asan_person_code,
+                      and is already wired at `lib/persons/functions.ts:482` and
+                      `_app.persons.tsx:201`. So name + Asan code + mobile are DONE.
+                      **`city` is the blocker and it is a modelling question, not a feature:**
+                      the person core has NO city column; city exists only as
+                      `customers.city` / `suppliers.city`, i.e. on the ROLE tables, and
+                      CLAUDE.md's phase rule pushes against the person core depending on
+                      them. Raised as OG-66 with surname and the ledger-wizard wiring.
+                      **A standing `[U]` closed on the way:** `lookup.ts` DOES pass the Asan
+                      code to `person_find_by_identifiers`, and tries it FIRST (lines 81-84);
+                      the RPC honours the kind rather than assuming mobile. The earlier
+                      unverified report was wrong.
+                      Mobile format measured: 34 of 34 stored mobiles are national
+                      leading-zero form, zero +98, zero bare-9 - consistent with OG-4.
 OG-35 / OG-65:        **AUDITED, NOT BUILT - and it is not a build mission.** Both of v8's
                       templates already exist. **Template 2 is an EXACT match** for the built
                       layout 3 (`JOURNAL_HEADERS`, `src/lib/asan/layouts.ts:64`). **Template 1
@@ -93,6 +110,24 @@ Rotation verdict:     **GOOD rotation point.** Migration applied, committed and 
 Started 2026-08-26 per A1.4b. Read this section at the START of every mission alongside the
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
+
+### From mission 9 - task 6.7 / M2
+
+- **"Confirm against the real file" can close a question the previous session could not.**
+  The claim that `lookup.ts` sends only the mobile had been carried as `[U]` since
+  2026-08-25 because the argument-level half needed the live database. One file read plus
+  one `pg_get_functiondef` refuted it outright - the Asan code is passed, and tried FIRST.
+  Unverified claims survive by being expensive to check; they are usually cheap once the
+  environment is right.
+- **A missing feature and a missing column are different problems.** "Search must match
+  city" reads like a feature gap. Measured, the person core has no city at all and city
+  lives on the role tables - so it is a data-modelling decision that CLAUDE.md's phase rule
+  has an opinion about, not something to bolt on. Check where the data IS before estimating
+  the work.
+- **Two audits in a row turned build missions into question missions.** OG-35 and this one
+  both arrived briefed as "build X" and measured as "X mostly exists; a small decision
+  blocks it". That is now the expected shape on this project, not a surprise - budget Phase
+  0 accordingly and resist writing code before it is done.
 
 ### From mission 8 - OG-35
 
