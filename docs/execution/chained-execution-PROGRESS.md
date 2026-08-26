@@ -94,6 +94,198 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From the run cadence - my own repeated error
+
+- **RULE 10 (third strike, self-inflicted). NEVER APPLY A MIGRATION WHILE A SUITE IS RUNNING.
+  A run that spans a schema change cannot be attributed and is worth nothing.** Three times in
+  this session:
+  1. 396 landed at test ~270 of a 606-test run - killed.
+  2. The OG-61 disturbance stripped the harness admin's role at test 346 - killed.
+  3. 400 (20:56) and 401 (21:17) both landed inside a run started at ~20:50 - killed.
+  Each cost 20-40 minutes and produced nothing. The failure is a scheduling one, not a
+  technical one: a full run is a MEASUREMENT, and measurements need a still subject.
+  **The cadence that works: finish ALL database changes for a phase, THEN run the suite once,
+  THEN compare against the baseline.** Individual gates can and should be run at any time - they
+  are seconds long and scoped - but the full suite is the last step before a merge, not a
+  background task to be worked around.
+
+### From Phase 7 - the pin that resolved to nothing
+
+- **RULE 9 (owner-directed 2026-08-26). A PINNED ROUTE DOES NOT GUARANTEE THE DESTINATION IS
+  REACHABLE. If an earlier layer filters the destination out, the pin resolves to EMPTY - and
+  with fallback disabled, empty means NOTHING.** The owner's phrasing, kept: *«یک مسیر pin شده
+  تضمین نمی‌کند مقصد در دسترس است ... pin به خالی می‌رسد و fallback خاموش یعنی هیچ.»*
+  Migration 397 pinned `receipt_ocr.vision` to the local Ollama provider and turned cloud
+  fallback OFF. Every column read exactly as intended. **It switched receipt OCR off entirely**,
+  because `listProvidersFor()` filters on `capabilities` BEFORE applying the route, and the
+  ollama row declared `{chat,embeddings}` - no `vision`. The filter dropped it, `applyUsageRoute`
+  could not find its pinned provider, `fallback_enabled = false` turned that into `[]`, and the
+  OCR function reported `disabled`. Same family as "Successfully copied" and "a healthy
+  container": every layer reported something reasonable while the thing did not happen.
+  **The check that catches it is behavioural: reproduce the resolution the CODE performs,
+  including the filter, rather than asserting the configured value is present.** A test for
+  `'vision' = ANY(capabilities)` would have passed throughout the outage.
+- **Prove the destination SERVES the capability, do not infer it from a name.** `qwen3.6` sounds
+  like a vision model and that is not evidence. A live `POST /api/generate` with a real
+  `images[]` payload returning 200 is. Doing that first is also what made it safe to proceed
+  without asking the owner to choose a different model.
+- **A fixture in the wrong script proves nothing about the real job.** The first OCR gate used a
+  Latin-script slip, which would have demonstrated only that the endpoint accepts an image. The
+  feature exists to read PERSIAN slips with PERSIAN digits, so the fixture had to be that -
+  rendered through Chromium, because Pillow here has no `raqm` and no `arabic_reshaper` and
+  would have drawn disconnected letters in reversed order. Failing to read THAT would have been
+  the fixture's fault, and would have looked like the model's.
+
+### From OG-61 - the disturbance that became the attack
+
+- **RULE 8 (owner-directed 2026-08-26). A DISTURBANCE THAT OPENS A REAL ATTACK PATH IS ITSELF
+  AN ATTACK.** If a gate contains a LIVE attack, that attack must be non-destructive **in the
+  disturbed state** - a throwaway target, a `BEGIN … ROLLBACK`, or an assertion about the
+  PERMISSION rather than an actual execution. The owner's phrasing, kept: *«اختلالی که یک مسیر
+  حملهٔ واقعی را باز می‌کند، خودش یک حمله است.»*
+  What happened: the OG-61 gate aimed its live attack at a REAL admin (`order by user_id limit
+  1`) and asserted the call was refused. The forced disturbance exists precisely to REMOVE that
+  refusal - so when the anon grant was restored to prove the gate catches it, the gate's own
+  call went through and **stripped the admin role from `ADMIN_USER_ID`, the harness account the
+  whole suite runs as.** Admin rows 14 -> 13. Restored 54 seconds later, but the full run in
+  flight had reached test 346 and was invalidated.
+  **The generalisation: a gate proving a destructive action is REFUSED must never aim at a
+  target whose loss would matter.** The refusal is the assertion; the target only has to be
+  SHAPED right. Both halves now use a non-existent uuid, and the re-run confirms the gate still
+  fails on a re-grant while admin rows stay at 14.
+- **When you damage something, prove the BLAST RADIUS, not just the headline number.**
+  Restoring the admin count to 14 does not show that nothing else changed. `audit_logs` did:
+  exactly two role events in the window - `role_revoked` then `role_assigned`, same user, 54
+  seconds apart. That evidence is only usable because the restore, done as a DIRECT SQL insert
+  rather than through the RPC, was **itself audited** - which proves the audit covers direct
+  table writes and is therefore a complete record of role changes, not a partial one. Check
+  whether your evidence source would have SEEN the thing you are claiming did not happen.
+
+### From mission 12-14 - process hygiene
+
+- **RULE 7 (owner-directed 2026-08-26). A PROCESS IS NOT AN ORPHAN BECAUSE OF ITS NAME OR ITS
+  COUNT. The only test is whether its PARENT IS ALIVE. Check the parent before any kill.**
+  Four `chrome-headless-shell` processes were reported as returned orphans and queued for
+  killing. They were not orphans: `Get-CimInstance Win32_Process` showed one whose parent was
+  the live `node` running the suite, and three that were its own children, all created in the
+  same second. **Killing them would have broken a suite at test 257 of 606** - roughly twenty
+  minutes of work, and a baseline comparison lost. The owner's phrasing, kept: *«یتیم بودن یک
+  فرایند از روی نام یا تعدادش معلوم نمی‌شود - تنها معیار این است که والدش زنده است یا مرده.»*
+  This is **OG-54's lesson from the opposite direction**: there, a run that had completed was
+  trusted and was worthless; here, processes that looked like debris were load-bearing. In both
+  cases the name and the count were the misleading signal, and the structural relationship -
+  what reconciles, what parents what - was the true one. `ParentProcessId` resolving to a dead
+  pid is the evidence; anything else is a guess.
+
+### From mission 14 step zero - Phase 7 measured
+
+- **RULE 5 has a database form, and it is the most dangerous one yet: AN `UPDATE` THAT MATCHES
+  NO RLS POLICY DOES NOT RAISE - IT AFFECTS ZERO ROWS AND REPORTS SUCCESS.** The receipt OCR
+  write-back had no permissive UPDATE policy, so every extraction was discarded while the
+  client saw `error: null` and then wrote an audit row saying it had completed. Five such audit
+  rows exist for extractions that never landed. **`error === null` from a PostgREST write is
+  not evidence the write happened** - assert the row count, or read the row back. This is the
+  same family as "Successfully copied", "a completed run" and "a healthy container": a success
+  signal from a layer that structurally cannot observe the failure.
+- **A RESTRICTIVE policy is not a policy that grants.** `viewer_restricted` has `polcmd='*'`,
+  which reads like it covers every command - and it does, but only to NARROW. With no
+  permissive UPDATE policy alongside it, UPDATE was denied for everyone. When auditing RLS,
+  read `polpermissive` before concluding a command is covered; the command letter alone is
+  half the answer.
+- **When three sources disagree, the running code is the only witness.** `requirements.md`
+  said Tesseract, the function's own header comment said Lovable AI Gateway, the owner said
+  qwen3.6 - and the truth was that the engine is a database row. Two of those three documents
+  were stale, and both would have sent a reader looking for something that does not exist.
+- **A document that PREDICTED a bug is worth re-reading, not just the code.**
+  `docs/ocr/requirements.md` stated in its own Pipeline section that a write-back to
+  `payment_receipt_documents` would be "silently a no-op" - correct, specific, and acted on by
+  nobody for weeks. Before building what a requirements doc asks for, read what it WARNS about.
+- **Health tables answer questions logs cannot.** `ai_provider_health` established that the
+  cloud vision route was attempted as recently as 2026-08-19 and rejected with 401 - which is
+  what turned "the route points at the cloud" from a configuration observation into a
+  measured fact about where a banking image actually went.
+
+### From mission 13 - OG-64, the CURRENT_DATE class
+
+- **RULE 6 (promoted - third strike). AN AUDIT'S BLIND SPOT IS THE SHAPE OF ITS QUERY, AND IT
+  NEVER APPEARS IN ITS OWN OUTPUT.** The OG-64 audit enumerated `pg_proc` and reported "21
+  functions". That is the right query for functions and the wrong query for the CLASS: a full
+  catalogue sweep found **2 views, 7 column defaults, 4 RLS policies and 2 check constraints**
+  carrying the same comparison, none of them in `pg_proc`. The count read as complete because
+  nothing in the result said "functions only". Third strike of this shape: OG-62's "47
+  functions returned rows" (row COUNT, not value, so 47 was really 28); OG-38's "the role
+  exists and can log in" (catalogue, not usage, so it looked live and had zero consumers); and
+  now this. **Before trusting an enumeration, ask what KINDS of object could hold the thing
+  being counted, and confirm the query reaches all of them.** Write the sweep into the
+  research doc so the next mission re-runs it instead of re-deriving it.
+- **A fix scoped to what was NAMED can be a no-op that reads as a success.** Mission 13 was
+  scoped to five functions. Converting exactly those five would have produced (a) a payables
+  row that contradicts itself on screen - listed under «امروز» by the fixed filter while the
+  same row reports `days_until_due = 1` from the unfixed view - and (b) a staff-metric write
+  that clears the function's guard and then dies on an RLS policy carrying the SAME
+  `CURRENT_DATE`, swapping a clean Persian message for a row-level-security violation. **The
+  scoped fix would have been strictly worse than the bug.** Before converting a guard, ask
+  what ELSE enforces the same rule; the function is often not the gate.
+- **A gate that is only true at some hours is not a gate.** The first assertion reconstructed
+  the broken window with one fixed offset (`Etc/GMT+12`) and FAILED at 18:30 Tehran, because
+  at that hour the offset's date happened to match Tehran's. Replaced with a claim that holds
+  at every hour: UTC-12 and UTC+14 are 26 hours apart, and 26 > 24, so their dates ALWAYS
+  differ. **Assert the PROPERTY, not one instance of it.**
+- **A control that measures nothing will report "no bug found".** The first control ran
+  without a JWT claim; the views are RLS-filtered to EMPTY without one, so it compared 0
+  against 0 and concluded the bug was unreproducible on this data. The same query with the
+  claim showed **349,800 against 13,000,000,024.95**. A negative result from an instrument you
+  have not shown to be live is not a negative result.
+- **`set_config` in a scalar SUBQUERY does not reliably run first.** PostgreSQL may evaluate
+  it after the aggregate has already read the table. It must be a separate statement - which
+  works through `psql -c`, because multiple statements there run in ONE transaction.
+- **Quantify the consequence, then rank by it.** The 16 remaining functions were "located, not
+  assessed", and assessing them changed the picture completely: four WRITE a wrong date into a
+  record that cannot be corrected afterwards (`post_mutual_settlement` feeds
+  `journal_entries.entry_date`, which the immutability trigger then locks), while two are
+  wrong only on the first of a month. A flat count of 16 hides both facts.
+
+### From mission 12 - gate clean-up (OG-56/57/68/69/70, OG-38)
+
+- **RULE 5 (promoted - third strike, owner-directed 2026-08-26). A success signal from the
+  LAYER YOU ASKED is not evidence that the THING YOU WANTED happened.** Three members of one
+  family now, each of which cost real time:
+  1. **"Successfully copied"** - `docker cp` printed it three separate times while the file
+     never arrived in the container (OG-68).
+  2. **"a completed run"** - the suite exited normally reporting 375/59/27, and ~137 tests
+     had silently never run (OG-54).
+  3. **"a healthy container"** - Docker reported `afrakala-lan-web` **healthy** while the app
+     was unreachable from the host (`/login` 000), because the healthcheck runs INSIDE the
+     container and cannot see the host port-forward. The owner's phrasing, kept verbatim:
+     **«کانتینر سالم یعنی اپ در دسترس نیست»** - *a healthy container does not mean a reachable
+     app.* `docker restart afrakala-lan-web` restored the forward (`200 in 0.078s`).
+  The rule: **verify at the layer that MATTERS, from the side that CONSUMES it.** Delivery is
+  proven container-side (`ls`/md5), not by an exit code. A run is proven by reconciling
+  passed+failed+skipped against the total, not by the summary line. Reachability is proven
+  from the HOST (`curl http://192.168.170.8:3100/login`), not by a healthcheck that lives
+  inside the thing being tested. Every one of these three reported success from a layer that
+  structurally could not observe the failure.
+- **Fix what the remedy STARTED, not just what it named.** The owner's OG-56 remedy - exclude
+  the two undeletable rows by id - was correctly applied and stopped the teardown crashing,
+  so the row read as handled. It was not: the rows were still being COUNTED by 5.2/5 and still
+  displacing `rows[0]` in `export-journal:162`. A remedy applied at one site does not
+  propagate to every site the same fact reaches; re-run the specs before believing it closed.
+- **Exclude by ID, never by marker.** The same exclusion written as `description not like
+  'E2E_AUDIT_%'` would have passed today and hidden a genuine future leak behind the identical
+  clause. Two ids can only ever forgive two rows.
+- **Select a fixture by its PROPERTY, not by its position.** `rows[0]` meant "the corrupted
+  entry" and stopped being that the moment anything else shared the export. `rows.find(r => description contains '?')`
+  is what the assertion always meant, and it no longer depends on how many rows exist.
+- **A measurement that finds nothing is still a result - report the probe you made yourself.**
+  OG-38's window logged 7,849 authorized connections and exactly ONE for
+  `supabase_read_only_user`; that one was this agent's own verification probe, flagged when it
+  was made. Excluding it silently would have been indistinguishable from fabricating a clean
+  reading. Say which observations are yours.
+- **State what a window can and cannot establish.** 48 hours of zero consumers shows nothing
+  observably depends on the role; it cannot show nothing depends on it *ever* - a monthly job
+  would not appear. The owner's decision (keep the window open, do not `NOLOGIN` yet, revisit
+  at Phase 9) follows from that distinction, so the distinction belongs in the row.
+
 ### From mission 11 - OG-66 + baseline settlement
 
 - **A shared error signature is a hypothesis; the error TEXT is the diagnosis.** Seven

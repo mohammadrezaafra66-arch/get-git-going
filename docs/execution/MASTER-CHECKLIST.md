@@ -241,6 +241,21 @@ sample in Asan before phase 9** — nothing here can verify Asan accepts the fil
 - [ ] **7.7** Failure behaviour: OCR failure never blocks manual entry — Scope: `src/features/` — S
   **Accept:** with OCR disabled, all three branches still create documents.
 
+**Scope answered by the owner 2026-08-26 — read this before starting Phase 7:**
+
+- **Phase 7 is READ-A-SLIP-AND-PRE-FILL-A-FORM. Nothing more.** **Embeddings are OUT OF
+  SCOPE**, and this note exists so the next mission does not go looking for them.
+- **The pgvector dimension trap belongs to the MESSENGER, not to Phase 7.**
+  `message_embeddings.embedding` is `vector(1536)` while `bge-m3` emits 1024 — a real mismatch,
+  and **entirely irrelevant here**: it is the messenger's semantic-search table. OCR persists to
+  `document_attachments.ocr_payload`, which is **`jsonb` and ALREADY EXISTS** (verified live
+  2026-08-26). No vector column is involved on this path at all.
+- **Model: `qwen3.6` (vision)** reads the image. **Fallback if it proves insufficient:**
+  `qwen2.5:14b` for post-processing the extracted TEXT — the vision model still does the
+  reading; the second model only cleans up what it returned. Owner's instruction: **try the
+  first, and REPORT if it does not work** rather than silently escalating to the second.
+- 7.7 is the invariant that outranks the rest: **OCR failure must never block manual entry.**
+
 **Phase 7 exit:** a scanned slip pre-fills each branch; manual entry always remains possible.
 
 ---
@@ -253,6 +268,25 @@ sample in Asan before phase 9** — nothing here can verify Asan accepts the fil
 - [ ] **8.4** Role matrix test: each role can do exactly what it should — Scope: tests — M
 - [ ] **8.5** Negative tests: no Asan code, unbalanced, fractional, duplicate — Scope: tests — M
   **Accept:** each is refused with the correct error code and leaves zero rows.
+
+**Seeding authorised by the owner 2026-08-26 — with three binding conditions.**
+`test-data/seed-full-scenario.sql` **already exists** (verified 2026-08-26) and MAY be run
+against the shared test database. It writes real rows into a database the owner is also
+working in, so:
+
+1. **A fresh backup FIRST**, by the pattern already proven in this chain: `pg_dump` inside the
+   container → stream to the host → **md5 compared on BOTH sides**. Not "a backup exists" — a
+   backup verified identical.
+2. **Only MARKED rows, and only rows whose cleanup can be PROVEN.** This is OG-56's lesson
+   promoted to a build rule: **a row that cannot be deleted must not be created.** Before
+   seeding a kind of row, establish that the teardown can actually remove it.
+3. **No `posted` ledger rows.** The immutability trigger blocks their deletion **even for a
+   superuser** — that is precisely how OG-56's two undeletable rows came to exist, and they
+   are still in the database today. Seed drafts; never seed posted documents.
+
+**OG-46 option (b) — per-spec isolated fixtures — lands HERE**, by the owner's decision. The
+justification is mission 11: **a single teardown that dies moves the baseline of seven
+unrelated specs**, so isolation is what stops one bad cleanup becoming a suite-wide event.
 
 **Phase 8 exit:** the whole loop verified on test. `FINAL-REPORT.md` drafted.
 

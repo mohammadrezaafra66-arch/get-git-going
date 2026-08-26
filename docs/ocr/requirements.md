@@ -17,8 +17,15 @@ failure that blocks document creation is worse than no OCR at all.
 
 1. User uploads an image or PDF at the branch's document step.
 2. File is stored; a `document_attachments` row is created with `ocr_status='pending'`.
-3. OCR runs (pytesseract + Tesseract 5.4.0 — EasyOCR was abandoned because Iranian network filtering
-   blocks its model downloads).
+3. OCR runs. **Corrected 2026-08-26 against the running code:** this is NOT Tesseract and never
+   was. `extractReceiptDocumentOcr` calls `aiVision()`, which resolves a provider from
+   `ai_providers` and the per-usage route in `ai_usage_routes` — so the engine is configuration,
+   not a hard-coded library. Migration 397 pins `receipt_ocr.vision` to the **local Ollama
+   provider with `qwen3.6:latest`**, with cloud fallback **off**, because the slip may carry a
+   bank account number, a name and a signature (see Privacy below). The earlier text named
+   pytesseract + Tesseract 5.4.0 (EasyOCR having been abandoned when Iranian network filtering
+   blocked its model downloads); that plan was not what shipped, and a reader who trusted it
+   would look for an engine that is not there.
 4. The extracted payload is written to `document_attachments.ocr_payload` (jsonb) and `ocr_status`
    becomes `done` or `failed`.
 5. The form pre-fills from the payload. **Every pre-filled field is marked as OCR-derived and stays
