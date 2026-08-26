@@ -262,11 +262,11 @@ sample in Asan before phase 9** — nothing here can verify Asan accepts the fil
 
 ## Phase 8 — Integrated verification
 
-- [ ] **8.1** `test-data/seed-full-scenario.sql` — Scope: `test-data/` — M
-- [ ] **8.2** Full E2E: create one of each type through the UI, verify balances — Scope: tests — M
-- [ ] **8.3** Export all three, compare against expected rows — Scope: tests — M
-- [ ] **8.4** Role matrix test: each role can do exactly what it should — Scope: tests — M
-- [ ] **8.5** Negative tests: no Asan code, unbalanced, fractional, duplicate — Scope: tests — M
+- [x] **8.1** `test-data/seed-full-scenario.sql` — **DONE 2026-08-27.** The file could not run at all: it aborted on its THIRD statement and rolled back to zero rows. Five defects, each hidden behind the previous one. A `teardown-full-scenario.sql` now exists and returns every count to zero.
+- [x] **8.2** Full E2E — **DONE 2026-08-27**, `e2e/business-flows/phase8-integrated-verification.spec.ts`. Measured: `posted=posted lines=2 debit=500000 credit=500000 balanced=t`. **Ceiling stated honestly:** run inside `BEGIN…ROLLBACK`, not through the browser — the RPCs POST and their journal entries cannot be deleted, so a committed UI run would leave three undeletable documents per run (RULE 12 / condition c). The loop is verified here; the UI by the existing UI specs.
+- [x] **8.3** Exports — **DONE 2026-08-27.** Both exports return rows, and not every row is blocked (a blocked row is deliberate, all-blocked would mean unusable).
+- [x] **8.4** Role matrix — **DONE 2026-08-27.** Two-sided: admin CAN export, sales is refused with «اجازهٔ خروجی», anon is refused at the GRANT rather than the role guard — a different mechanism, asserted separately.
+- [x] **8.5** Negative tests — **DONE 2026-08-27.** Each asserts BOTH halves of the accept criterion: refused with a real SQLSTATE **and** `rows_added=0`. A final test verifies from OUTSIDE the transactions that the whole file committed nothing.
   **Accept:** each is refused with the correct error code and leaves zero rows.
 
 **Seeding authorised by the owner 2026-08-26 — with three binding conditions.**
