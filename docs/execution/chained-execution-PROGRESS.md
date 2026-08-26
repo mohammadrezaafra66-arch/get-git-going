@@ -94,6 +94,41 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From the adversarial review of 393/394/395
+
+- **RULE 14. A GATE THAT ENUMERATES ROLES BY HAND IS BLIND TO EVERY ROLE IT DID NOT NAME.
+  DERIVE THE SET FROM THE CATALOGUE INSTEAD.** 395's gate asserted "legitimate roles keep
+  access" and listed `authenticated` and `service_role`. The role it broke was
+  `products_api_readonly` - NOINHERIT, request-facing, reached by `SET ROLE` from a JWT claim,
+  and therefore invisible to any inheritance-based check. **The repository had recorded exactly
+  that blind spot two days earlier**, in migration 385's repair of 384's gate, and 395 still
+  hand-wrote two role names. Same shape as the `persons` FK registry (shipped three times) and
+  the REVOKE-then-GRANT trap (four times): the lesson existed, in this repo, and the next
+  migration did not consult it. **Before writing `roles IN ('a','b')` in a gate, ask what
+  QUERY would produce that list, and use the query.**
+- **A VIEW DOES NOT SHIELD ITS CALLER FROM A FUNCTION GRANT.** For a non-`security_invoker`
+  view, RELATION access is checked against the view's OWNER - that is what `checkAsUser` on the
+  rewritten range-table entries does. **Function EXECUTE has no such mechanism** and is checked
+  against the CURRENT user. So "role X can SELECT this view" and "role X can run what the view
+  calls" are independent facts, and a revoke can leave a view readable and unusable at once.
+- **AN INDEPENDENT REVIEW EARNS ITS COST ON ONE FINDING.** The review was owed for days and
+  kept being deferred as ceremony. It found a live, credentialed, request-facing API returning
+  42501 on every call - something no gate in three migrations mentioned, because none of them
+  named the role. It also found a latent hole (`graphql_public`) that the audit's METHOD could
+  not see, since the method censused schemas that hold functions today and that schema holds
+  none. **A review that is given the artefacts and NOT the mission's reasoning finds what the
+  reasoning excluded.**
+- **The same query shape found both a bug and a deliberate design.** Twelve role/view/function
+  pairs are "readable but not executable"; eleven are OG-45's intentional pin and one was the
+  break. A repair that fixed all twelve would have silently dismantled a security control while
+  looking like a bug fix. **When a general query finds your bug, check what ELSE it finds
+  before acting on it.**
+- **My own gate for this was vacuous on first run, and the disturbance is what proved it.**
+  Its behavioural half put `set_config('role', …)` in a scalar subquery beside the scan; the
+  role never took effect, the query ran as `postgres`, and the test stayed GREEN through a
+  disturbance that had removed the grant. `set_config` must be its OWN statement. **Run the
+  disturbance even when the gate is already green - green is not evidence that it measures.**
+
 ### From M1 - constraints, and what a gate may create
 
 - **RULE 12 (owner-directed 2026-08-26). A GATE THAT CREATES A FINANCIAL DOCUMENT MUST DO IT
