@@ -163,10 +163,16 @@ test.describe("the one posted entry on this database", () => {
     // The single posted entry is the bucket-C row migration 279 deliberately left corrupted.
     // Using the entry text would write that corruption straight into Asan.
     const rows = await listOk();
-    const entryDesc = dbScalar(
-      `select description from journal_entries where id = '${rows[0].doc_id}'`,
+    // Pick the corrupted entry by its PROPERTY, not by its position. `rows[0]` assumed this
+    // export contained exactly one posted entry; OG-56's two stuck rows now share it, so the
+    // first row is whichever the ordering happens to yield. Selecting on the corruption itself
+    // is what this test actually means, and it stops depending on how many rows are present.
+    const corrupted = rows.find((r) =>
+      (dbScalar(`select description from journal_entries where id = '${r.doc_id}'`) ?? "").includes(
+        "?",
+      ),
     );
-    expect(entryDesc, "the fixture for this test is the corrupted entry").toContain("?");
+    expect(corrupted, "the fixture for this test is the corrupted entry").toBeTruthy();
     for (const r of rows) {
       expect(r.line_description, "column C must not carry the corruption").not.toContain("?");
       expect((r.line_description ?? "").length).toBeGreaterThan(0);

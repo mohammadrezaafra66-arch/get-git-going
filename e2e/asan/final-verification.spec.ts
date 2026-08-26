@@ -274,8 +274,16 @@ test("5.2/5 — no fixture from any phase of this program survives", () => {
     ["E2E-marked products", "select count(*) from products where name like 'E2E_AUDIT_%'"],
     ["E2E-marked quotes", "select count(*) from sales_quotes where customer_name like 'E2E_AUDIT_%'"],
     [
+      // OG-56: two posted journal rows cannot be deleted by anyone -- `trg_journal_entry_immutable`
+      // refuses every UPDATE and DELETE where OLD.status='posted', verified as superuser. The
+      // owner decided: exclude by id, do NOT reverse them, do NOT touch the trigger. That
+      // exclusion already guards `cleanupConstructed`; it belongs here too, because otherwise
+      // this assertion stays permanently red for a reason the owner has already ruled on.
+      // Excluded BY ID, never by marker -- a marker-wide exemption would hide a genuine future
+      // leak behind the same clause.
       "E2E-marked journal entries",
-      "select count(*) from journal_entries where description like 'E2E_AUDIT_%'",
+      "select count(*) from journal_entries where description like 'E2E_AUDIT_%'"
+        + " and id not in ('db8a628c-d560-45f6-8083-be6804f4c345','81903a4c-a8f9-4d8c-869e-dad1595ae897')",
     ],
     [
       "constructed external-party codes",
