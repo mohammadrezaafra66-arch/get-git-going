@@ -94,6 +94,21 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From the run cadence - my own repeated error
+
+- **RULE 10 (third strike, self-inflicted). NEVER APPLY A MIGRATION WHILE A SUITE IS RUNNING.
+  A run that spans a schema change cannot be attributed and is worth nothing.** Three times in
+  this session:
+  1. 396 landed at test ~270 of a 606-test run - killed.
+  2. The OG-61 disturbance stripped the harness admin's role at test 346 - killed.
+  3. 400 (20:56) and 401 (21:17) both landed inside a run started at ~20:50 - killed.
+  Each cost 20-40 minutes and produced nothing. The failure is a scheduling one, not a
+  technical one: a full run is a MEASUREMENT, and measurements need a still subject.
+  **The cadence that works: finish ALL database changes for a phase, THEN run the suite once,
+  THEN compare against the baseline.** Individual gates can and should be run at any time - they
+  are seconds long and scoped - but the full suite is the last step before a merge, not a
+  background task to be worked around.
+
 ### From Phase 7 - the pin that resolved to nothing
 
 - **RULE 9 (owner-directed 2026-08-26). A PINNED ROUTE DOES NOT GUARANTEE THE DESTINATION IS
