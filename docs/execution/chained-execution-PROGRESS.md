@@ -94,6 +94,33 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From Phase 7 - the pin that resolved to nothing
+
+- **RULE 9 (owner-directed 2026-08-26). A PINNED ROUTE DOES NOT GUARANTEE THE DESTINATION IS
+  REACHABLE. If an earlier layer filters the destination out, the pin resolves to EMPTY - and
+  with fallback disabled, empty means NOTHING.** The owner's phrasing, kept: *«یک مسیر pin شده
+  تضمین نمی‌کند مقصد در دسترس است ... pin به خالی می‌رسد و fallback خاموش یعنی هیچ.»*
+  Migration 397 pinned `receipt_ocr.vision` to the local Ollama provider and turned cloud
+  fallback OFF. Every column read exactly as intended. **It switched receipt OCR off entirely**,
+  because `listProvidersFor()` filters on `capabilities` BEFORE applying the route, and the
+  ollama row declared `{chat,embeddings}` - no `vision`. The filter dropped it, `applyUsageRoute`
+  could not find its pinned provider, `fallback_enabled = false` turned that into `[]`, and the
+  OCR function reported `disabled`. Same family as "Successfully copied" and "a healthy
+  container": every layer reported something reasonable while the thing did not happen.
+  **The check that catches it is behavioural: reproduce the resolution the CODE performs,
+  including the filter, rather than asserting the configured value is present.** A test for
+  `'vision' = ANY(capabilities)` would have passed throughout the outage.
+- **Prove the destination SERVES the capability, do not infer it from a name.** `qwen3.6` sounds
+  like a vision model and that is not evidence. A live `POST /api/generate` with a real
+  `images[]` payload returning 200 is. Doing that first is also what made it safe to proceed
+  without asking the owner to choose a different model.
+- **A fixture in the wrong script proves nothing about the real job.** The first OCR gate used a
+  Latin-script slip, which would have demonstrated only that the endpoint accepts an image. The
+  feature exists to read PERSIAN slips with PERSIAN digits, so the fixture had to be that -
+  rendered through Chromium, because Pillow here has no `raqm` and no `arabic_reshaper` and
+  would have drawn disconnected letters in reversed order. Failing to read THAT would have been
+  the fixture's fault, and would have looked like the model's.
+
 ### From OG-61 - the disturbance that became the attack
 
 - **RULE 8 (owner-directed 2026-08-26). A DISTURBANCE THAT OPENS A REAL ATTACK PATH IS ITSELF
