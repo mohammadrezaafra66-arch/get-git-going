@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { writeFileSync, unlinkSync } from "node:fs";
+import { writeFileSync, unlinkSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -36,7 +36,31 @@ export function dbExecE2e(sql: string): string {
     encoding: "utf8",
   });
   try {
-    execFileSync("docker", ["cp", local, `afrakala-lan-db:${remote}`], { encoding: "utf8" });
+    // Delivery is a STDIN STREAM, not `docker cp`, and that is not a style choice.
+    //
+    // On 2026-08-26 `docker cp` into `afrakala-lan-db` began failing at the Docker Desktop
+    // mount layer:
+    //
+    //   Error response from daemon: error while creating mount source path
+    //   '/run/desktop/mnt/host/d/.../db/init/00-afrakala-pre-supabase-admin.sh':
+    //   mkdir /run/desktop/mnt/host/d: file exists
+    //
+    // `docker cp` re-resolves the container's binds, and this container carries four of them
+    // recorded in already-translated VM form. Every fixture write therefore died in setup and
+    // cascaded its whole spec file out of the run — 137 tests silently did not execute while
+    // the summary line still read "375 passed / 59 failed / 27 skipped".
+    //
+    // `docker exec -i` never touches the mount layer. `readFileSync` with no encoding returns
+    // a Buffer, and passing a Buffer as `input` hands those exact bytes to stdin with no
+    // shell and no re-encoding in between — which matters because this SQL carries Persian,
+    // and a PowerShell pipe was measured appending a trailing CRLF (md5 mismatch) on the same
+    // content. Verified byte-for-byte before this change shipped: a 36,006-byte Persian
+    // migration arrived with an identical md5.
+    execFileSync(
+      "docker",
+      ["exec", "-i", "afrakala-lan-db", "sh", "-c", `cat > ${remote}`],
+      { input: readFileSync(local) },
+    );
     return execFileSync(
       "docker",
       [

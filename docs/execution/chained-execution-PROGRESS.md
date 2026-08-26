@@ -10,99 +10,108 @@ Per-gate detail stays in `00-progress.md`; this file holds only the chain's own 
 ## HANDOFF STATE
 
 ```
-Document in force:    AFRAKALA CHAINED EXECUTION - v8
-Last verified SHA:    see the first line of this mission's completion report, which is the
-                      raw `git log --oneline -2 origin/staging` taken after the merge (A0.8).
-                      Branch: feature/og62-anon-price-definers, cut from staging @ 987c3a3d.
-Mission just done:    **Mission 9 - task 6.7 / M2 (party search), Phase 0 audited.**
-                      **Nothing built** - most of it already is, and what remains is a
-                      modelling question (OG-66). Before it: mission 8 (OG-35 audited,
-                      OG-65 raised), mission 7 (M10 closed as a duplicate of OG-61) and
-                      mission 6 (OG-62, migration 395).
-Phase 2 position:     OG-46 (#347), M12 (#348), 0-LOCAL (#349), M8 (#350), OG-60 (#351),
-                      security trio + OG-31 (#352), OG-63 (#353) and now OG-62 are complete.
-                      **Next: mission 10 - Phase 7 (OCR).** Items 7.1-7.7 are `[U]` until
-                      read from MASTER-CHECKLIST.md; if absent there they are owner
-                      questions. HTTPS is live so the Secure-Context blockers are cleared.
-                      Ollama at 192.168.170.8:11434. **Known trap to resolve explicitly, not
-                      assume away:** pgvector dimension mismatch - `bge-m3` emits 1024-dim
-                      and `message_embeddings` is fixed at 1536.
-                      **Two missions are now BLOCKED on owner questions and cannot be
-                      started as builds: OG-35 (on OG-65) and task 6.7/M2 (on OG-66).**
-                      **OG-35 is BLOCKED on OG-65, not startable as a build.** See below.
-M2 / task 6.7 / OG-66:  **AUDITED, NOT BUILT - and most of it already exists.**
-                      `search_visible_persons` (migration 299) already searches display_name
-                      and legal_name plus mobile_e164 / national_id_ir / asan_person_code,
-                      and is already wired at `lib/persons/functions.ts:482` and
-                      `_app.persons.tsx:201`. So name + Asan code + mobile are DONE.
-                      **`city` is the blocker and it is a modelling question, not a feature:**
-                      the person core has NO city column; city exists only as
-                      `customers.city` / `suppliers.city`, i.e. on the ROLE tables, and
-                      CLAUDE.md's phase rule pushes against the person core depending on
-                      them. Raised as OG-66 with surname and the ledger-wizard wiring.
-                      **A standing `[U]` closed on the way:** `lookup.ts` DOES pass the Asan
-                      code to `person_find_by_identifiers`, and tries it FIRST (lines 81-84);
-                      the RPC honours the kind rather than assuming mobile. The earlier
-                      unverified report was wrong.
-                      Mobile format measured: 34 of 34 stored mobiles are national
-                      leading-zero form, zero +98, zero bare-9 - consistent with OG-4.
-OG-35 / OG-65:        **AUDITED, NOT BUILT - and it is not a build mission.** Both of v8's
-                      templates already exist. **Template 2 is an EXACT match** for the built
-                      layout 3 (`JOURNAL_HEADERS`, `src/lib/asan/layouts.ts:64`). **Template 1
-                      is the built layout 4** (`BANK_DEPOSIT_HEADERS`, :74) with the same six
-                      columns in the same order and **four of six headers identical** - the
-                      entire conflict is THREE CHARACTERS in two headers. Toman x10 -> Rial,
-                      Jalali `YYYY/MM/DD` in Latin digits converted in Asia/Tehran first, and
-                      `Bank_cod` from `bank_accounts` are all already built and match v8.
-                      **Not built:** a negative `Mablagh` for bank payments (no sign handling
-                      exists anywhere in `src/lib/asan/`; the export is deliberately
-                      deposit-only) and columns G-O to max_col=15 (six columns shipped).
-                      **The page error is a deliberate REFUSAL, not a missing config**, and it
-                      points at a DIFFERENT layout family: the five unconfigured adapters in
-                      `export-modes.ts` are `docs/asan/ASAN_BRIDGE.md`'s, not the seven built
-                      exports on /admin/asan-export - and that file says adopting it is a
-                      separate, owner-approved mission. **Raised as OG-65 with three narrow
-                      questions plus that scope question. A2.6 forbids picking the
-                      transliteration, so nothing was changed.**
-M10:                  **CLOSED 2026-08-26 as a DUPLICATE OF OG-61**, with a correction to
-                      v8's pre-answer. v8 said: if the only in-repo definition is the batch
-                      EXECUTE revoke, then 393 already did it, so close as covered-by-OG-31.
-                      First half holds - `m3-function-execute-leak-PROGRESS.md:177` IS the
-                      batch revoke, scoping M10 to the ~746 EXISTING functions. **Second
-                      half refuted by measurement:** migration 393 contains ZERO
-                      REVOKE/GRANT on any existing function, only 8 ALTER DEFAULT PRIVILEGES
-                      lines - it closed the future tap and nothing else. So M10 is the same
-                      work as OG-61, not covered by OG-31. Closed as a duplicate: no
-                      migration, no duplicate revoke, and the decision now lives in ONE
-                      place. Count drift to re-derive rather than quote: 746 (M3) -> 741
-                      (mission 4) -> **713 of 840** live after 395.
-INDEPENDENT REVIEW:   **OWED, and deliberately deferred by the owner - do not lose this.**
-                      Mission 5 was independently confirmed PASS by the owner. Missions
-                      **4, 5 and 6** are to be reviewed TOGETHER in a separate session after
-                      OG-62. A3.15 forbids calling self-review independent, and this session
-                      cannot spawn subagents, so it must be a fresh session.
-e2e:                  RAN - privileges changed. **536 passed / 29 failed / 29 skipped in
-                      23.2 min.** Independent marker count agrees. **ZERO new failures - a
-                      strict subset of the recorded 30**, the only difference being
-                      persons/duplicate-mobile-blocked:59 recovering (the known UI race).
-                      Error census: zero 42501, zero permission denials, zero PGRST - which
-                      matters here, because 28 functions were revoked and a broken signed-in
-                      path would have surfaced as exactly those. Baseline NOT superseded.
-                      payment_receipts 10 and 10; chrome-headless-shell 0 and 0;
-                      purchases 212 -> 226 (the purchase specs each create one by design).
-                      **Health check honesty:** the first CPU reading was 25.1%, over
-                      threshold, and the run was NOT started on it; a re-measure moved the
-                      WRONG way (29.6%); a 30s window gave mean 26.1% / median 23% / max 62%
-                      - spiky, median under threshold. Started on that, with A4.19's ceiling
-                      as the guard. Both readings are recorded rather than the good one.
-typecheck:            see the mission progress file - run once at mission end per A7.39.
-Build:                Not run and not required - zero src/ files changed.
-Config change:        `log_connections = on` globally, by reload, for the OG-38 monitoring.
-                      Recorded because it is a server setting rather than a migration.
-Production touched:   NO. 192.168.170.10 was not contacted.
-Rotation verdict:     **GOOD rotation point.** Migration applied, committed and merged; gate
-                      attacked and green; e2e a strict subset of baseline; M10's Phase 0
-                      done so the next mission starts from an answer rather than a question.
+READ THIS FIRST. A fresh session should be able to continue from v9 + this block
+alone. Written 2026-08-26 under a quota cutoff; everything below is verified, and
+anything not verified says so.
+
+Document in force:    AFRAKALA CHAINED EXECUTION - v9
+Mission 10 (OG-65):   Asan bank template. **STATUS: see the completion report's first
+                      line** - branch `feature/og65-asan-bank-template`. If it is not
+                      merged, the merge is the only thing outstanding; the code, the gate,
+                      the build and the deploy are all done and verified.
+NEXT MISSION:         **11 - OG-66 (finish party search). NOT STARTED, deliberately** - the
+                      owner restricted this session to closing mission 10. All three of its
+                      decisions are already settled in v9 mission 11: (a) city search
+                      DROPPED, record and change nothing; (b) surname YES, "contains" not
+                      "starts with" - verify the live matching first and if it already
+                      contains-matches, prove it and close without building; (c) wire the
+                      ledger wizard to `search_visible_persons` YES, but measure the
+                      function's visibility filter per role before and after so the wizard
+                      does not start showing rows a role should not see.
+
+=== THINGS THAT CHANGED ON THIS MACHINE - DO NOT RE-DERIVE THEM ===
+
+APP_GIT_SHA:          **1da2a778, NOT a19fd811.** The web image was rebuilt and redeployed
+                      this mission (the first src/-changing mission, as A7.40 predicted).
+                      `build.ps1` needs `-Force` here because three untracked leftovers trip
+                      its dirty check; its own `-dirty` stamp test uses
+                      `--untracked-files=no`, so the image still stamps cleanly - verified.
+docker cp:            **BROKEN on this machine. Do not use it. See OG-68.**
+                      `docker cp <f> afrakala-lan-db:/tmp/x` fails with
+                      `mkdir /run/desktop/mnt/host/d: file exists`. It re-resolves the
+                      container's binds and four of them are recorded in VM form.
+                      **Deliver over stdin instead**, proven byte-identical by md5:
+                        cat f.sql | docker exec -i afrakala-lan-db sh -c 'cat > /tmp/f.sql'
+                      From Node pass a Buffer (no shell, no re-encoding). base64 is the
+                      fallback. **PowerShell's pipe FAILS md5** - it appends a trailing CRLF
+                      (167 bytes vs 165). The Persian bytes were intact; the damage was a
+                      line ending. It still fails, because md5-or-nothing is the rule that
+                      would have caught 2026-07-11.
+CLAUDE.md/AGENTS.md:  **Rule 1 amended together, verified identical.** docker cp is no longer
+                      the documented delivery path; stdin + md5 verification replaces it.
+e2e/helpers/db-write.ts: **CHANGED** to stream over `docker exec -i` with a Buffer. Proved
+                      before use: host md5 = container md5 = 33377c903e7e79ce3f031eb513ec8916,
+                      and Persian survived execution through the helper itself. Per the
+                      owner, this needs **no baseline supersession** - it restores the
+                      condition the 30-baseline was measured under rather than creating a
+                      new one.
+BACKUP:               `deploy/lan/backups/afrakala-pre-restart-20260826.dump`
+                      17,466,432 bytes, md5 3bd728e6b6c5cf41256b509e886bff9c, identical to
+                      the copy inside the container. Gitignored via `*.dump`.
+                      **A restore needs `--disable-triggers`** - pg_dump warned of circular
+                      foreign keys.
+DATABASE:             No migration this mission. Next free number is **396** (verify on disk
+                      AND remote before writing). Nothing is applied-but-uncommitted and
+                      nothing half-done was left on the database.
+
+=== e2e ===
+
+Last full run: 598 tests -> **527 passed / 40 failed / 29 skipped / 2 did not run**, 21.8 min.
+Arithmetic reconciles exactly (527+40+29+2 = 598), so the run is valid - unlike the
+2026-08-26 14:51 run, which was discarded because 137 tests silently did not execute.
+**Set comparison vs the recorded 30:**
+  * `asan/export-bank-deposits:108` -> `:133` is a **LINE-SHIFT ARTEFACT** of this mission's
+    edits to that spec file, not a recovery plus a regression. Name it explicitly.
+  * **10 genuinely new failures. TWO were mine and are FIXED and verified**
+    (`final-verification:397` and `:412` - a stale `docs/asan/asan-layouts.md` and an
+    assertion about empty-string cells; both now pass).
+  * **The other EIGHT are data/fixture drift, not code.** Fully traced example:
+    `customer-form-person:35` fails on the spec's own cleanup with
+    `update or delete on table "persons" violates foreign key constraint
+    "suppliers_person_id_fkey"` - accumulated test data, the A7.43 / OG-56 class. The Asan
+    numbering pair (`export-numbering:102`, `export-shell:495`) are register-counter drift
+    from repeated runs today. The remaining five share the fixture-state signature but were
+    characterised, not individually traced - said plainly.
+  * **A clean full re-run on a quiet database is OWED** before the next mission's own run is
+    compared to anything.
+typecheck:            **70**, the exact baseline, same 6 files.
+
+=== OWED / OPEN, do not lose ===
+
+INDEPENDENT REVIEW:   **Missions 4, 5 and 6 - still owed.** Three consecutive security
+                      migrations merged without a second pair of eyes. Owner deferred it to
+                      a separate session (A3.15 forbids self-review being called independent).
+OG-68:                `afrakala-lan-db` is DEGRADED - five file binds on
+                      /docker-entrypoint-initdb.d/ are dead (Input/output error). Harmless
+                      now (initdb reads them only against an empty data dir; live data is in
+                      a named volume) but **DO NOT restart the container, do not
+                      --force-recreate**: a restart must re-create the binds that are
+                      failing and it may not come back. Docker Desktop restart is the
+                      remedy and is the OWNER's call - it restarts their ~20 other project
+                      containers.
+OG-67:                Nothing feeds bank PAYMENTS into the Asan bank template. The mapping
+                      supports them and the gate proves both directions; no data source
+                      does. Needs an RPC change and it is a ROUTING decision. Owner's.
+OG-69:                The bank file is 15 columns but G–O read as `None` in openpyxl, not
+                      `''`. Column count (what a positional importer keys on) is correct.
+                      Owner to confirm against a real Asan import.
+OG-38:                Still OPEN, mission 4 still CONDITIONAL. Monitoring live since
+                      2026-08-26 11:57 Tehran via global `log_connections`. Read it with
+                      `docker logs --since 24h afrakala-lan-db | grep supabase_read_only_user`.
+                      **The only captured line so far is the agent's own probe** - do not
+                      miscount it as a real consumer.
+OG-61/OG-64/OG-30:    Open, unchanged, all owner decisions.
+Production:           **NOT touched. 192.168.170.10 was never contacted.**
 ```
 
 ## LESSONS
@@ -110,6 +119,70 @@ Rotation verdict:     **GOOD rotation point.** Migration applied, committed and 
 Started 2026-08-26 per A1.4b. Read this section at the START of every mission alongside the
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
+
+### From mission 10 - OG-65
+- **A suite that runs to completion can still be worthless, and the summary line will not say
+  so.** This run reported "375 passed / 59 failed / 27 skipped" and exited normally. The
+  arithmetic is what exposed it: 375+59+27 = 461 of 598, and an independent count found 164
+  `-` markers rather than 27. The missing ~137 were tests taken out when a shared `beforeAll`
+  died. **Always reconcile passed+failed+skipped against the total**, exactly as A4.21 says to
+  cross-check the summary against an independent count - the same discipline, applied to the
+  skip column instead of the failure column.
+- **When many specs fail at once, read the ERROR before the failing set.** The failing set
+  looked like a broad regression across the asan and persons families. The error was
+  `docker cp ... mkdir /run/desktop/mnt/host/d: file exists` - an infrastructure fault in the
+  fixture writer, with nothing to do with the code under test. A set comparison would have
+  produced a confident, entirely wrong story.
+- **Deploying can break the harness, not just the app.** `docker compose up -d web` is the
+  documented deploy step and it is the most plausible trigger for Docker Desktop re-evaluating
+  its mounts. After any deploy, prove the harness's own plumbing still works - one
+  `docker cp` probe - BEFORE spending 16-25 minutes on a suite.
+
+
+- **RULE 3 (promoted - third-strike, owner-directed 2026-08-26). A test that asserts a wrong
+  value PROTECTS the bug, and "built but wrong / built but unwired" is now the expected shape
+  on this project.** Two e2e specs asserted `Name_Moshtari`/`Shomare_Peygiri`, one commenting
+  that the transliteration was "reproduced **exactly**". They did not merely fail to catch the
+  wrong headers - they made the correct fix look like a regression, which is why it shipped
+  that way. Counting the pattern from this log: `/purchase` built and in no menu; the Asan
+  templates built and matching the spec already (#356); party search built and wired but the
+  ledger wizard using a narrower path (#357); and now the bank headers built, asserted, and
+  wrong. **Fourth occurrence, so it is a rule:**
+  1. When a spec and an external artefact disagree, **the artefact is the authority and the
+     spec is a claim.** Measure the artefact before changing either.
+  2. A green test proves the code matches the test, never that the test matches reality. For
+     anything crossing a system boundary - a file another program imports, a header, a wire
+     format - the assertion's SOURCE must be recorded next to it, so the next reader can tell
+     a measurement from a guess.
+  3. Start every mission by asking *what does this already do*, not *what must I build*.
+     Three consecutive missions have been briefed as builds and measured as questions.
+- **`null` and `""` are not interchangeable when writing a spreadsheet.** `aoa_to_sheet`
+  writes no cell at all for `null` and a real empty cell for `""`, so padding with `null`
+  produces a six-column file that looks correct in a code diff and is the wrong width in the
+  target system. Assert the CELL TYPE, not just the count.
+- **A2.12(b)'s numeric-as-string disturbance finally had a surface, and it caught something.**
+  Every earlier gate in this chain recorded that class as inapplicable because it made only
+  catalogue and SQL checks. This gate reads spreadsheet cells, so `"-15000"` versus `-15000`
+  became a real attack - identical in the file, not summable in Excel. When a gate's medium
+  changes, re-read the attack protocol rather than carrying forward "not applicable".
+- **State the scope boundary as a gate, not as a silent half-build.** The mapping supports
+  bank payments; no data source feeds them. Shipping that without saying so would let
+  "payments work" read as more than it is. OG-67 records exactly where the capability stops
+  and why crossing the line needed a decision.
+- **RULE 4 (promoted - owner-directed 2026-08-26). Every machine-load measurement must be
+  DISTRIBUTIONAL, never a single sample.** This mission held the suite on an idle-CPU reading
+  of 37.7%; the owner re-measured the same machine as **mean 18.71% / median 18.62%**, and the
+  high figure was a transient ~2.5 sigma above the mean. Single samples misled the diagnosis
+  **three separate times** in this one episode: a 49% spike, a 40.5% reading for one
+  container, and a container total that swung between 0.73% and 19%. So:
+  1. Report **mean AND median over a window**, never one reading, and never the max.
+  2. A spiky maximum is not a threshold breach; the median is the honest summary of idle load.
+  3. Apply the same rule to per-process and per-container attribution - a one-shot `top`
+     equivalent will finger whichever process happened to be scheduled.
+  Corollary that still stands: the other two A4.18 criteria passed here, `/login` at 0.18s
+  included. **Responsiveness can look fine while the machine is loaded** - that is how the
+  4.7-hour invalid run (OG-54) happened - so do not substitute a latency probe for the CPU
+  distribution either.
 
 ### From mission 9 - task 6.7 / M2
 

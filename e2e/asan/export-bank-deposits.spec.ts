@@ -24,8 +24,15 @@ import {
  * An alternative path for deposits, so the assertions that matter are the ones that tie it back
  * to the default path:
  *
- *   * the Latin transliterations are reproduced **exactly** — `Name_Moshtari`, not
- *     "Name_Moshtary" and not `نام مشتری`;
+ *   * the Latin transliterations are reproduced **exactly** — `Name_Moshtare`, not
+ *     "Name_Moshtari" and not `نام مشتری`. **Corrected 2026-08-26**: this spec previously
+ *     asserted `Name_Moshtari`/`Shomare_Peygiri`, and being asserted is what kept the wrong
+ *     headers shipping. The owner supplied the real Asan `.xlsx` and it was read cell by
+ *     cell; both spellings look wrong and both are legacy-intentional;
+ *   * the sheet is **15 columns**, G–O written as empty strings — `null` writes no cell and
+ *     the file would come out six wide;
+ *   * a receipt's `Mablagh` is **positive** and a payment's is **negative**, because this
+ *     layout carries direction in the sign of one column;
  *   * only **approved** receipts appear, and only those that landed in one of our bank accounts;
  *   * **the same receipt exported through both paths shows the same amount and the same payer**,
  *     which is the brief's own cross-check and the only thing that proves the two exports agree.
@@ -91,15 +98,33 @@ test("the Latin header row is reproduced exactly", async () => {
     defval: null,
   });
 
-  // Character for character, as the Asan screen writes them. Not translated, not spell-corrected.
+  // Character for character, as the REAL TEMPLATE writes them — measured from the owner's
+  // .xlsx on 2026-08-26, not translated and not spell-corrected.
   expect(aoa[0]).toEqual([
     "Date",
     "Code_M",
-    "Name_Moshtari",
-    "Shomare_Peygiri",
+    "Name_Moshtare",
+    "Shopmare_Peygeri",
     "Mablagh",
     "Bank_cod",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
   ]);
+
+  // 15 columns, and G-O are EMPTY STRINGS rather than absent cells. `aoa_to_sheet` writes no
+  // cell for `null`, so a null padding would silently produce a six-column file that looks
+  // right in a diff and is the wrong width in Asan.
+  expect(aoa[0].length, "the template is 15 columns wide").toBe(15);
+  for (let c = 6; c < 15; c += 1) {
+    expect(aoa[0][c], `header column ${c} must be an empty string, not null`).toBe("");
+  }
   expect(aoa[0].some((h) => /[؀-ۿ]/.test(String(h))), "no Persian in this header").toBe(
     false,
   );
@@ -256,4 +281,81 @@ test("the alternative deposit path is offered on the page, clearly labelled", as
   // alternative rather than the default.
   await expect(page.getByText("واریزیهای بانکی", { exact: false }).first()).toBeVisible();
   await expect(page.getByText("مسیر پیش‌فرض برای دریافت‌ها", { exact: false })).toBeVisible();
+});
+
+// ---------------------------------------------------------------------------
+// OG-65 — direction lives in the SIGN of `Mablagh`, and only in this layout.
+//
+// Two-sided on purpose: a receipt must stay positive AND a payment must go negative. A
+// change that negated everything, or nothing, passes one half and fails the other.
+//
+// These rows are constructed rather than read from the database: the only wired source
+// (`asan_list_bank_deposit_export`) reads `payment_receipts` and yields receipts only, so a
+// payment row cannot be obtained from live data today. Constructing it asserts the SHIPPED
+// mapping, which is the same reason the row builder was split out of the data access.
+// ---------------------------------------------------------------------------
+
+function bankRow(over: Partial<BankDepositRow> = {}): BankDepositRow {
+  return {
+    doc_id: "00000000-0000-0000-0000-000000000001",
+    doc_label: "probe",
+    doc_date: "2026-08-26",
+    party_name: "شخص نمونه",
+    person_code: "1234",
+    tracking_number: "998877",
+    amount: "1500",
+    bank_code: "77",
+    bank_title: "بانک نمونه",
+    blocked_reason: null,
+    ...over,
+  };
+}
+
+test("⛔ a receipt is positive, a payment is negative, and both are Toman × 10", () => {
+  const receipt = buildBankDepositRows({ row: bankRow({ direction: "receipt" }) })[0];
+  const payment = buildBankDepositRows({ row: bankRow({ direction: "payment" }) })[0];
+
+  // E is Mablagh. 1500 Toman -> 15000 Rial.
+  expect(receipt[4], "a receipt is a plain positive Rial amount").toBe(15000);
+  expect(payment[4], "a payment is the same magnitude, negated").toBe(-15000);
+
+  // A real number, not a formatted string: a string is not summable in Excel, and the minus
+  // has to be a numeric sign rather than a leading character.
+  expect(typeof payment[4]).toBe("number");
+
+  // Absent direction must behave as a receipt — the wired source supplies none.
+  expect(buildBankDepositRows({ row: bankRow() })[0][4]).toBe(15000);
+
+  // Zero stays zero. `-0` is a real IEEE-754 value and would serialise as "-0".
+  expect(
+    Object.is(buildBankDepositRows({ row: bankRow({ amount: "0", direction: "payment" }) })[0][4], -0),
+  ).toBe(false);
+});
+
+test("every built row is 15 cells wide, with G–O empty strings", () => {
+  for (const direction of ["receipt", "payment"] as const) {
+    const row = buildBankDepositRows({ row: bankRow({ direction }) })[0];
+    expect(row.length, `${direction} row width`).toBe(15);
+    for (let c = 6; c < 15; c += 1) {
+      expect(row[c], `${direction} row column ${c} must be "" and not null`).toBe("");
+    }
+  }
+});
+
+test("the Jalali date carries slashes and Latin digits", () => {
+  const row = buildBankDepositRows({ row: bankRow({ doc_date: "2026-08-26" }) })[0];
+  expect(String(row[0]), "Jalali YYYY/MM/DD in Latin digits").toMatch(/^\d{4}\/\d{2}\/\d{2}$/);
+});
+
+test("⛔ the accounting document never carries a negative amount — direction is columns there", async () => {
+  // Layout 3 expresses direction as separate بدهکار / بستانکار columns. A negative there
+  // would corrupt double-entry, so the sign convention must NOT have leaked across.
+  const { buildJournalRows } = await import("../../src/lib/asan/export-journal-rows");
+  const src = await import("node:fs/promises").then((fs) =>
+    fs.readFile("src/lib/asan/export-journal-rows.ts", "utf8"),
+  );
+  expect(src, "no sign handling may appear in the journal mapping").not.toMatch(
+    /direction|BankFlowDirection|-rial|negat/i,
+  );
+  expect(typeof buildJournalRows).toBe("function");
 });

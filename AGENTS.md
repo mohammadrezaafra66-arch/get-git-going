@@ -138,14 +138,50 @@ already cost this project real damage.
 
 1. **Persian SQL must never go through a PowerShell pipe.** On 2026-07-11 a
    piped migration replaced every non-ASCII byte with `?` and destroyed the
-   Persian text inside 44 database functions. Always:
-   ```powershell
-   docker cp "<path>\<migration>.sql" afrakala-lan-db:/tmp/mig.sql
-   docker exec -e PGPASSWORD=$pw afrakala-lan-db psql -U supabase_admin -d afrakala `
+   Persian text inside 44 database functions.
+
+   **`docker cp` is NO LONGER the delivery path — amended 2026-08-26.** It is
+   broken on this machine at the Docker Desktop mount layer and cannot be
+   relied on:
+   ```
+   docker cp <file> afrakala-lan-db:/tmp/x.sql
+   Error response from daemon: error while creating mount source path
+   '/run/desktop/mnt/host/d/.../db/init/00-afrakala-pre-supabase-admin.sh':
+   mkdir /run/desktop/mnt/host/d: file exists
+   ```
+   `docker cp` re-resolves the container's binds, and `afrakala-lan-db` carries
+   four of them recorded in already-translated VM form. It fails every time; it
+   is not transient.
+
+   **Deliver over stdin instead — it never touches the mount layer:**
+   ```bash
+   # from Git Bash (MSYS_NO_PATHCONV=1 so /tmp is not path-translated)
+   cat <migration>.sql | docker exec -i afrakala-lan-db sh -c 'cat > /tmp/mig.sql'
+   docker exec -e PGPASSWORD=$pw afrakala-lan-db psql -U supabase_admin -d afrakala \
      -v ON_ERROR_STOP=1 --single-transaction -f /tmp/mig.sql
    ```
-   Every migration file starts with `SET client_encoding='UTF8';` and is saved
-   as UTF-8 without BOM.
+   From Node, pass a **Buffer** so no shell or encoding layer sees the bytes —
+   this is what `e2e/helpers/db-write.ts` now does:
+   ```ts
+   execFileSync("docker", ["exec","-i","afrakala-lan-db","sh","-c",`cat > ${remote}`],
+                { input: readFileSync(local) });   // Buffer in, byte-exact
+   ```
+
+   **Verify with `md5sum` on both sides every time. Nothing less counts.**
+   Measured 2026-08-26 on the same Persian file: the Git Bash and Node/Buffer
+   routes both produced identical md5, while
+   `Get-Content -Raw -Encoding UTF8 | docker exec -i` produced **167 bytes
+   against 165** — PowerShell appended a trailing `\r\n`. Note precisely what
+   that was and was not: the Persian bytes were intact, the damage was a line
+   ending. It still fails, because md5-or-nothing is the rule that would have
+   caught 2026-07-11.
+
+   **base64 is the fallback** when a transport must be provably ASCII-only:
+   `base64 -w0 f.sql | docker exec -i afrakala-lan-db sh -c 'base64 -d > /tmp/f.sql'`
+   — also verified byte-identical.
+
+   Every migration file still starts with `SET client_encoding='UTF8';` and is
+   saved as UTF-8 without BOM.
 2. **`--single-transaction` + `-v ON_ERROR_STOP=1` always**, so a partial
    failure rolls back instead of leaving the schema half-applied.
 3. **No `DROP TABLE`, `TRUNCATE`, or `DELETE` on a table holding data.**
