@@ -94,6 +94,24 @@ Started 2026-08-26 per A1.4b. Read this section at the START of every mission al
 HANDOFF STATE. Numbered items are RULES promoted after a third strike; unnumbered ones are
 single observations that have not yet earned rule status.
 
+### From OG-82 - the empty log I read as an answer
+
+- **RULE 18 (owner-corrected 2026-08-27). AN EMPTY LOG DOES NOT PROVE THE TRAFFIC NEVER
+  ARRIVED. The service may simply not log that class of failure at its current level. Test from
+  INSIDE the container before concluding.** The owner's phrasing, kept: *«لاگ خالی اثبات نمی‌کند
+  ترافیک نرسیده — ممکن است سرویس در سطح فعلی لاگ آن کلاس خطا را ثبت نکند.»*
+  I diagnosed OG-82 as a Docker/WSL port-forward fault and said so with confidence, on exactly
+  one piece of evidence: `docker logs --since 3m afrakala-lan-caddy` printed nothing for a dozen
+  failed handshakes. **That was wrong.** Traffic reaches Caddy; from inside the container the
+  handshake is refused with `tlsv1 alert internal error`, and Caddy does not log handshake
+  failures at its default level. The fault is Caddy's TLS, not Docker and not WSL.
+  **The reasoning error is worth more than the fact:** I treated the ABSENCE of a log line as
+  positive evidence of absence, without first establishing that this service logs that class of
+  event at all. Same family as "Successfully copied", "a completed run", "a healthy container"
+  and RULE 5 generally — a signal from a layer that structurally could not report the thing.
+  **The check that settles it costs one command:** run the probe from inside the container, where
+  no network layer sits between you and the service.
+
 ### From the adversarial review OF THE GATES - six were vacuous
 
 An independent subagent was given migrations 399-406 and their gates, no mission context, and

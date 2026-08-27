@@ -9,6 +9,38 @@ deploy, not by what was most work.
 
 ---
 
+## أ‑0. OG-82 — HTTPS IS BROKEN ON THE TEST SERVER, AND IT BLOCKS PRODUCTION
+
+**This is not only a test-harness problem, and that is why it sits above OG-75.**
+
+HTTPS on the test server is dead. Every TLS handshake is refused — both hostnames, the bare IP,
+loopback, TLS 1.2 and 1.3, from the host and from inside the Docker network — **while Caddy
+reports itself healthy** (`server running`, `protocols=[h1 h2 h3]`) with certificates loaded for
+`test.myafrakala.ir api.test.myafrakala.ir 192.168.170.8`. From inside the container the
+handshake is refused with `tlsv1 alert internal error`.
+
+**The certificate files were replaced on 24 August at 14:23, and the previous `.bak` copies
+(11:09) are still present.** `test-cert.pem` changed size (1570 → 1602); `test-key.pem` did not
+(1708 → 1708).
+
+**Two obvious causes are ruled out, measured:** the current cert and key ARE a matching pair
+(modulus md5 `db19a959…` on both), the backup pair also matches, and the certificate is valid
+(`notBefore Aug 24 2026`, `notAfter Nov 24 2028`). So it is neither a mismatched pair nor an
+expired certificate. The owner's decision was not to chase it further from inside this chain.
+
+**Why it blocks production, and not just testing:** `getUserMedia` and `crypto.subtle` are
+**Secure-Context only**. Without working HTTPS, **OCR capture and file upload cannot work on any
+deployment** — the two features Phase 7 and M1 exist to deliver. A deployment reachable only over
+HTTP is not a deployment of this product.
+
+**A diagnostic error of mine is recorded with it,** because the reasoning matters more than the
+fact: I first concluded this was a Docker/WSL port-forward fault, on one piece of evidence —
+Caddy's log was empty for a dozen failed handshakes. That was wrong. **An empty log does not
+prove the traffic never arrived**; Caddy does not log handshake failures at its default level.
+Recorded as RULE 18.
+
+---
+
 ## أ. OG-75 — THE PRIVILEGE-ESCALATION PATH IS OPEN ON PRODUCTION UNTIL 399 IS APPLIED
 
 **This is the top item and it is not theoretical. It was demonstrated, on staging, with output.**
@@ -69,14 +101,27 @@ is the argument for the review, and it is why the unreviewed list matters.
 
 **NOT independently reviewed:**
 
-- **Migrations 396–409** — everything from this session's later missions. They carry their own
-  in-migration assertions and e2e gates, and several were caught by their own dry runs, but no
-  adversarial pass has been made over them.
-- **The e2e gates themselves.** Two were found vacuous *by disturbance* during this session — one
-  had `set_config` in a scalar subquery so the role never applied, and it stayed green through a
-  disturbance that had removed the very grant it checked. Both were fixed. **How many of the
-  other gates would survive the same treatment is unknown**, and that is the single most useful
-  thing a next reviewer could measure.
+- **Migrations 407–410** — the credit model, the reservation wiring and the ledger back-fill. No
+  adversarial pass. They carry their own assertions and gates.
+- **Migrations 411+ and anything after this sheet.**
+- **The UI.** Every gate in this chain is API- or database-level.
+
+**Reviewed independently — the GATES of migrations 399–406.** A second adversarial subagent, again
+with no mission context, was given one instruction: break what each gate guards and see whether
+the gate notices. **It found SIX vacuous gates — all written during this session, most within
+hours of RULE 15 being recorded.** Every one is now repaired and disturbance-verified:
+
+| gate | how it was defeated |
+|---|---|
+| 403 + the M1 spec | `pg_get_functiondef` text match — an INSERT demoted to a `/* */` comment satisfied it, and it was the **only** evidence for two of the three write paths |
+| OG-23, three OPEN halves | wrote each column back to **its own value**; the trigger uses `IS DISTINCT FROM`, so a same-value write is never a change |
+| OG-67 cash/cheque | counted **string occurrences** — the words left in a comment counted |
+| OG-78 gap check | asserted the ACL row **exists**, never what it **grants** |
+| 402 `ON DELETE CASCADE` | claimed in a header comment, asserted nowhere — `confdeltype` was never read |
+| 404 `$verify$` | `RAISE NOTICE` instead of an assertion; "no negative amounts" satisfied by having no payment rows |
+
+**The sharpest finding is a general one:** 403's migration assertion and its e2e assertion were
+*the same query*, so they failed open together. **Two gates that share a mechanism are one gate.**
 - **The UI.** Every gate in this chain is API- or database-level. Item 8.2's "through the UI" is
   explicitly split: the loop is verified at the RPC boundary, the UI by the pre-existing UI
   specs, and neither pretends to be the other.
@@ -133,15 +178,38 @@ succeed destructively.
 **The 0 in the last row is the good news:** no migration file has been deleted after being
 applied, so the disk is a complete record even though the ledger is not.
 
-**Recommendation:** before any production migration work, decide explicitly whether the ledger is
-being adopted (in which case it must be back-filled) or abandoned (in which case the deploy
-procedure must say so, and stop implying a ledger exists). **Do not leave it half-true.**
+**RESOLVED 2026-08-27 by migration 410 — and nothing was re-run.**
+
+Applied-ness was proven **from the database, not from the files**: each of the 45 carries its own
+verification block, and those were re-run live inside rollbacks. **26 passed outright.** The rest
+failed for a reason that had to be resolved one at a time — **supersession, not absence**. Six
+assert "the FUNCTIONS default privilege for `anon` is untouched", and **393 removed exactly that
+entry on purpose**; 391 asserts on a column **402 dropped**, while 391's own effects were checked
+directly and are live. **Treating those ten as ten missing migrations would have been wrong in
+every case.**
+
+After 410: **disk 598, ledger 598, zero discrepancy in both directions.**
+
+**The root cause is fixed, not just the symptom.** `CLAUDE.md` and `AGENTS.md` prescribed direct
+`psql` application and never said the ledger row must be written too — only the Supabase CLI does
+that. Rule 2b now makes it two steps and states explicitly: **if you find a migration applied but
+unrecorded, record the ROW, never re-run the migration.** Gated by
+`e2e/security/og81-migration-ledger-matches-disk.spec.ts`, both directions.
 
 ---
 
 ## ه. APP_GIT_SHA vs HEAD
 
-*(filled in after the final rebuild — see the closing section)*
+**`APP_GIT_SHA = 66525dbf` and `HEAD = 66525dbf` — they match.**
+
+**But the running image is a DELIBERATE, TEMPORARY DEVIATION and must not be shipped.** To get
+the harness working around OG-82 it was rebuilt with a shell override,
+`VITE_SUPABASE_URL=http://192.168.170.8:9000`, so the bundle talks to Kong over **HTTP**.
+Verified both ways: the served assets contain `192.168.170.8:9000` and **no longer contain**
+`api.test.myafrakala.ir`.
+
+**`deploy/lan/.env.lan` was NOT edited**, so the next ordinary rebuild restores the HTTPS
+configuration by itself. Nothing needs undoing; it needs *not repeating*.
 
 **A caution that belongs here permanently.** This check is CLAUDE.md's only proof that the
 deployed code is the intended code, and on 2026-08-26 it was found to be **lying**: the documented
@@ -164,6 +232,7 @@ docker exec afrakala-lan-web sh -c "grep -rl '<a symbol only the new code has>' 
 
 | gate | blocks production? |
 |---|---|
+| **OG-82** — HTTPS broken; `getUserMedia`/`crypto.subtle` are Secure-Context only | **YES — this is item أ‑0** |
 | **OG-75** — is 399 applied to production? | **YES — this is item أ** |
 | **OG-6** — production authorisation itself | **YES, by definition** |
 | OG-74 — the 26 definer writers have no INTERNAL guard, so any *authenticated* user can strip an admin | **Serious, not blocking.** 399 closed the unauthenticated path; this is the remaining half and needs 26 business decisions about which role each function should require |
@@ -186,33 +255,40 @@ caught the run it appears.**
 
 ## ز. WHAT I WOULD FIX BEFORE A REAL ACCOUNTANT MOVES REAL MONEY THROUGH THIS
 
-Asked for honestly, so answered honestly.
+Asked for honestly, so answered honestly, and reordered as the day changed what I know.
 
-**I would apply 399 to production before anything else, and I would not wait for a scheduled
-deploy to do it.** Everything else on this list is a defect; that one is an open door that needs
-no credentials. It is one migration and its effect is a revoke.
+**1. Apply 399 to production, and not on the next scheduled deploy — now.** Everything else here
+is a defect; that one is an open door needing no credentials. An unauthenticated caller can strip
+an administrator's role, demonstrated with output. It is one migration and its effect is a revoke.
 
-**Then I would close OG-74**, because 399 only shut the unauthenticated half. Today any logged-in
-user — a `sales` account, a `viewer` account — can still call `revoke_user_role_txt` and remove an
-administrator. That is a smaller blast radius than `anon` and the same ending.
+**2. Fix HTTPS (OG-82).** I would not let an accountant near this system without it, and not for
+the reason the test harness cares about. `getUserMedia` and `crypto.subtle` are Secure-Context
+only, so **the scan-a-slip feature and file upload cannot work at all** without it — the two
+things Phase 7 and M1 were built to deliver. Shipping an HTTP-only deployment ships a product
+missing its newest capability, silently.
 
-**Then I would settle the migration ledger (item د)**, because it is the item most likely to cause
-a *new* disaster rather than reflect an old one. A stale ledger plus a non-idempotent migration
-plus someone in a hurry is how a production database gets damaged by a procedure everyone
-believed was safe.
+**3. Close OG-74.** 399 shuts the unauthenticated half. Today any logged-in user — a `sales`
+account, a `viewer` — can still call `revoke_user_role_txt` and remove an administrator. Smaller
+blast radius, same ending.
 
-**And I would want one more adversarial review — of the gates, not the code.** Two gates were
-found vacuous this session, both by disturbing them rather than by reading them, and both had
-looked correct. The suite's green is currently worth exactly as much as the disturbance
-discipline behind it, and that discipline was applied thoroughly only from the middle of this
-session onward. **I do not know how many of the older gates measure what they claim**, and that
-uncertainty is larger than any single open gate on this sheet.
+**4. Get the gates independently reviewed again — the gates, not the code.** This is the one that
+moved *up* today rather than down, and it is the item I would insist on. An adversarial pass over
+migrations 399–406 found **six vacuous gates**, every one written in this session, most within
+hours of the rule that says to disturb them. They all looked correct. Two of them were the *only*
+evidence for a production write path. **The suite's green is worth exactly as much as the
+disturbance discipline behind it**, and that discipline was applied thoroughly only from the
+middle of this session onward — so the older gates are unmeasured. I do not know how many of them
+measure anything, and that uncertainty is larger than any single open gate on this sheet.
 
-**What I would NOT hold a deploy for:** the OCR persistence gap, the payment/dual OCR branches,
-the UTC date class in OG-71, or the three stuck documents. Those are real and they are recorded,
-but none of them loses money or grants access.
+**What I would NOT hold a deploy for:** the OCR persistence gap (OG-72), the payment/dual OCR
+branches (OG-73), the UTC date class (OG-71), the three stuck documents (OG-76), or the
+unscheduled credit sweep (OG-80). Those are real, recorded, and none of them loses money or
+grants access.
 
----
+**And one thing I would say plainly to whoever deploys this:** the migration ledger was wrong by
+45 rows until today, and the deploy instructions that caused it had been followed correctly. The
+procedure was the bug. That is worth remembering the next time something here looks like human
+error.
 
 ## Final verification
 
