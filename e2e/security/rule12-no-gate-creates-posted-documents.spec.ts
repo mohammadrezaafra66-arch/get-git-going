@@ -114,8 +114,15 @@ test("no spec calls a document-creating RPC outside a rolled-back transaction", 
   // throws ReferenceError. That is the third ESM surface in one session, after `__dirname` and
   // a `require` in the M1 gate — cheap each time only because a test actually ran.
   //
-  // Kept deliberately simple: any spec mentioning a create RPC must also mention ROLLBACK.
-
+  // A spec that creates a document must roll back, and there are exactly TWO sanctioned ways to
+  // say so: the literal `ROLLBACK` in its own SQL, or the shared `inRolledBackTx` helper, which
+  // wraps the whole body in a transaction that never commits.
+  //
+  // The helper case was learned the hard way: the first version of this check greped only for
+  // the literal, and flagged `phase8-integrated-verification.spec.ts` — which DOES roll back,
+  // through the helper. That was a false positive in the guard, not a violation in the spec.
+  // Recognising the helper is not a loophole: `inRolledBackTx` cannot commit, so a spec using it
+  // satisfies the rule by construction more strongly than one writing its own ROLLBACK.
   const offenders: string[] = [];
   const walk = (dir: string) => {
     for (const name of readdirSync(dir)) {
@@ -127,7 +134,8 @@ test("no spec calls a document-creating RPC outside a rolled-back transaction", 
           /rpc\/create_(receipt|payment|dual_document)|create_(receipt|payment|dual_document)\s*\(/.test(
             src,
           );
-        if (creates && !src.includes("ROLLBACK")) offenders.push(full);
+        const rollsBack = src.includes("ROLLBACK") || src.includes("inRolledBackTx");
+        if (creates && !rollsBack) offenders.push(full);
       }
     }
   };

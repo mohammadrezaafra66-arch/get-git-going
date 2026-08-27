@@ -177,6 +177,31 @@ function NewQuotePage() {
     queryKey: ["quote-credit-info", linkedCustomerId],
     staleTime: 30_000,
     queryFn: async () => {
+      // OG-80. Reclaim abandoned reservations BEFORE reading the ceiling, so the number shown
+      // here is current. This is the right place for it: it is exactly where a stale hold would
+      // mislead someone, and it is a moment the user already expects to wait. The dashboard was
+      // rejected because it would charge every user for a cost only this page needs, and the
+      // credit page because it may go days without being opened.
+      //
+      // A FAILURE HERE MUST NOT STOP A SALE. An unreleased ceiling is bad; being unable to write
+      // a quote is worse. So this is deliberately fire-and-forget: the error is logged and the
+      // credit read continues with whatever the ceiling currently says.
+      //
+      // Bounded by construction — `expire_stale_credit_holds` releases at most `p_limit` holds
+      // per call, oldest first, and a released hold stops matching, so repeated visits drain a
+      // backlog instead of re-walking it.
+      try {
+        const { error: sweepError } = await supabase.rpc("expire_stale_credit_holds", {
+          p_days: 10,
+          p_limit: 50,
+        } as never);
+        if (sweepError) {
+          console.warn("[credit] stale-hold sweep failed; continuing", sweepError.message);
+        }
+      } catch (sweepThrow) {
+        console.warn("[credit] stale-hold sweep threw; continuing", sweepThrow);
+      }
+
       const { data, error } = await supabase.rpc("get_customer_dynamic_credit", {
         p_customer_id: linkedCustomerId as string,
       } as never);

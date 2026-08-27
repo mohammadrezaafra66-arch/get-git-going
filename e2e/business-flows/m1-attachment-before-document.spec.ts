@@ -244,6 +244,167 @@ test("⛔ the engine refuses an attachment with no parent, a ghost parent, or tw
   ).toEqual([]);
 });
 
+test("⛔ create_payment and create_dual_document REALLY write their attachment", () => {
+  // BEHAVIOURAL, and it exists because the text assertion below cannot see the failure it was
+  // written to catch. An adversarial review demoted `create_dual_document`'s attachment INSERT
+  // to a `/* ... */` comment and BOTH the migration's assertion and the structural test here
+  // stayed GREEN, because each matches `pg_get_functiondef(...) ILIKE '%INSERT INTO
+  // public.document_attachments%'` — which a comment satisfies. The document was created and
+  // posted, the caller's payload vanished, and the response was 2xx.
+  //
+  // That was the ONLY evidence for two of the three write paths: `create_receipt` has the
+  // in-transaction probe above, and these two had nothing anywhere. Phase 8 calls
+  // `create_payment` with `p_attachments = NULL`, and no spec called `create_dual_document`
+  // with attachments at all.
+  //
+  // A posted document can only be corrected by a reversing entry, so the accountant would find
+  // the missing bank slip after the ledger was frozen.
+  const sql = `
+    BEGIN;
+    SELECT set_config('request.jwt.claims',
+      json_build_object('sub', (SELECT (array_agg(user_id ORDER BY user_id))[1]
+                                  FROM public.user_roles WHERE role='admin'),
+                        'role','authenticated')::text, true);
+    CREATE TEMP TABLE m1w(line text) ON COMMIT DROP;
+    DO $w$
+    DECLARE
+      v_sup uuid; v_bank uuid; v_vid uuid; v_n int;
+    BEGIN
+      SELECT s.id INTO v_sup FROM public.suppliers s
+        JOIN public.person_identifiers pi ON pi.person_id = s.person_id
+       WHERE pi.kind='asan_person_code' ORDER BY s.id LIMIT 1;
+      SELECT id INTO v_bank FROM public.bank_accounts
+       WHERE coalesce(accounting_code,'') <> '' ORDER BY id LIMIT 1;
+      IF v_sup IS NULL OR v_bank IS NULL THEN
+        INSERT INTO m1w VALUES ('PAYMENT skip'); RETURN;
+      END IF;
+
+      SELECT voucher_id INTO v_vid FROM public.create_payment(
+        'bank', 'supplier', v_sup, 1000, public.tehran_today(), v_bank,
+        'M1W-' || floor(random()*1e9)::text, NULL, NULL, NULL, NULL, NULL,
+        'M1 write probe',
+        jsonb_build_array(jsonb_build_object('storage_path','M1W/voucher.png','mime_type','image/png')));
+
+      SELECT count(*) INTO v_n FROM public.document_attachments WHERE voucher_id = v_vid;
+      INSERT INTO m1w VALUES (format('PAYMENT linked=%s', v_n));
+    EXCEPTION WHEN OTHERS THEN
+      INSERT INTO m1w VALUES ('PAYMENT error=' || left(SQLERRM, 80));
+    END $w$;
+    SELECT line FROM m1w;
+    ROLLBACK;
+  `;
+  const out = execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "afrakala-lan-db",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "afrakala",
+      "-A",
+      "-t",
+      "-f",
+      "-",
+    ],
+    { input: sql, encoding: "utf8" },
+  );
+  const line = (out.split(/[\r\n]+/).find((l) => l.trim().startsWith("PAYMENT")) ?? "").trim();
+  test.skip(line === "PAYMENT skip", "no supplier with an Asan code, or no coded bank account");
+  expect(line, `create_payment did not write its attachment: ${out.slice(-300)}`).toBe(
+    "PAYMENT linked=1",
+  );
+});
+
+test("⛔ create_dual_document REALLY writes its attachment", () => {
+  // The path with NO behavioural coverage anywhere before 2026-08-27, and the one the
+  // adversarial review actually broke: demoting its attachment INSERT to a comment left both
+  // the migration assertion and the structural test green while the payload vanished.
+  const sql = `
+BEGIN;
+SELECT set_config('request.jwt.claims',
+  json_build_object('sub', (SELECT (array_agg(user_id ORDER BY user_id))[1]
+                              FROM public.user_roles WHERE role='admin'),
+                    'role','authenticated')::text, true);
+CREATE TEMP TABLE d(line text) ON COMMIT DROP;
+DO $d$
+DECLARE v_cust uuid; v_sup uuid; v_id uuid; v_n int;
+BEGIN
+  SELECT c.id INTO v_cust FROM public.customers c
+    JOIN public.person_identifiers pi ON pi.person_id = c.person_id
+   WHERE pi.kind='asan_person_code' ORDER BY c.id LIMIT 1;
+  SELECT s.id INTO v_sup FROM public.suppliers s
+    JOIN public.person_identifiers pi ON pi.person_id = s.person_id
+   WHERE pi.kind='asan_person_code' ORDER BY s.id LIMIT 1;
+  IF v_cust IS NULL OR v_sup IS NULL THEN INSERT INTO d VALUES ('DUAL skip'); RETURN; END IF;
+
+  -- The column is document_id, not doc_id: create_dual_document RETURNS TABLE(document_id,
+  -- document_number, journal_entry_id), unlike create_receipt's receipt_id.
+  SELECT document_id INTO v_id FROM public.create_dual_document(
+    'customer', v_cust, 'supplier', v_sup, 1000, public.tehran_today(),
+    'M1D-' || floor(random()*1e9)::text, 'M1 dual write probe',
+    NULL, NULL, NULL, NULL, NULL, NULL,
+    jsonb_build_array(jsonb_build_object('storage_path','M1D/dual.png','mime_type','image/png')));
+
+  SELECT count(*) INTO v_n FROM public.document_attachments WHERE dual_id = v_id;
+  INSERT INTO d VALUES (format('DUAL linked=%s', v_n));
+EXCEPTION WHEN OTHERS THEN
+  INSERT INTO d VALUES ('DUAL error=' || left(SQLERRM, 90));
+END $d$;
+SELECT line FROM d;
+ROLLBACK;
+`;
+  const out = execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "afrakala-lan-db",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "afrakala",
+      "-A",
+      "-t",
+      "-f",
+      "-",
+    ],
+    { input: sql, encoding: "utf8" },
+  );
+  const line = (out.split(/[\r\n]+/).find((l) => l.trim().startsWith("DUAL")) ?? "").trim();
+  test.skip(line === "DUAL skip", "no coded customer and supplier pair");
+  expect(line, `create_dual_document did not write its attachment: ${out.slice(-300)}`).toBe(
+    "DUAL linked=1",
+  );
+});
+
+test("⛔ the three FKs CASCADE — deleting a parent must remove its attachments", () => {
+  // `ON DELETE CASCADE` is the mechanism 402 claims closes the gap where `dual_documents` had no
+  // attachment cleanup at all. The structural test below counts foreign keys and reads their
+  // names; it never reads `confdeltype`, so recreating all three as plain NO ACTION left it
+  // green while parent deletes started raising foreign_key_violation.
+  // `confdeltype` is of type "char", and concatenating text with it is an AMBIGUOUS operator in
+  // PostgreSQL, so the ::text cast is required or the query raises.
+  //
+  // The comment lives OUT HERE, not inside the SQL: `dbScalar`'s read-only guard requires the
+  // statement to START WITH "select", and a leading SQL comment makes that check fail — the
+  // query is then refused for a reason that has nothing to do with what it asks.
+  const deltypes = dbRows(`
+    select conname || '=' || confdeltype::text
+      from pg_constraint
+     where conrelid = 'public.document_attachments'::regclass and contype = 'f'
+     order by conname
+  `);
+  expect(deltypes.length, "expected three foreign keys").toBe(3);
+  for (const d of deltypes) {
+    // 'c' = CASCADE. 'a' = NO ACTION, which is what the disturbance produced.
+    expect(d, `${d} is not ON DELETE CASCADE`).toMatch(/=c$/);
+  }
+});
+
 test("all three branches can hold an attachment — dual is no longer refused", () => {
   // OG-73's other half. `document_type='dual'` used to raise 0A000 from the existence trigger
   // even though the CHECK constraint permitted it; with a typed column per parent there is

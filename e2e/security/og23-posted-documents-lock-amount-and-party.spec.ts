@@ -27,6 +27,7 @@
  * damage becomes an attack the moment that guard is removed to test it, which is exactly how
  * the OG-61 gate stripped the harness account's admin role.
  */
+import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import { dbRows } from "../helpers/db";
 import { ADMIN_USER_ID, mintJwt, rest } from "../helpers/pgrest";
@@ -101,58 +102,86 @@ test("⛔ the amount of a POSTED receipt cannot be changed through PostgREST", a
   expect(afterWrite, "the amount of a posted receipt actually changed").toBe(before);
 });
 
-test("status still moves on a POSTED receipt — approve/reject must keep working", async () => {
-  const id = onePosted();
-  test.skip(!id, "no posted receipt exists");
-  const status = dbRows(`select status from public.payment_receipts where id = '${id}'`)[0];
+/**
+ * THE THREE OPEN HALVES, REWRITTEN 2026-08-27 AFTER AN ADVERSARIAL REVIEW FOUND THEM VACUOUS.
+ *
+ * They used to PATCH each column back to the value it already held — `{status: <current>}`,
+ * `{amount: Number(before)}`. The trigger compares with `IS DISTINCT FROM`, so a same-value
+ * write is NEVER a change and can never be refused. The reviewer added `status` and
+ * `reversal_journal_entry_id` to the locked column list, which genuinely broke approve/reject
+ * on every posted receipt, and **all three tests stayed green.**
+ *
+ * They now write a genuinely DIFFERENT value, inside a transaction that never commits — so the
+ * write is real enough for the trigger to judge, and nothing survives it. Same reasoning as
+ * RULE 12: a transaction that never commits changes nothing.
+ */
+function openHalf(column: string, newValueSql: string, where: string): string {
+  const sql = `
+BEGIN;
+SELECT set_config('request.jwt.claims',
+  json_build_object('sub', (SELECT (array_agg(user_id ORDER BY user_id))[1]
+                              FROM public.user_roles WHERE role='admin'),
+                    'role','authenticated')::text, true);
+CREATE TEMP TABLE r(line text) ON COMMIT DROP;
+DO $o$
+DECLARE v_id uuid;
+BEGIN
+  SELECT id INTO v_id FROM public.payment_receipts WHERE ${where} ORDER BY id LIMIT 1;
+  IF v_id IS NULL THEN INSERT INTO r VALUES ('SKIP'); RETURN; END IF;
+  BEGIN
+    UPDATE public.payment_receipts SET ${column} = ${newValueSql} WHERE id = v_id;
+    INSERT INTO r VALUES ('ALLOWED');
+  EXCEPTION WHEN OTHERS THEN
+    INSERT INTO r VALUES ('REFUSED ' || SQLSTATE);
+  END;
+END $o$;
+SELECT line FROM r;
+ROLLBACK;
+`;
+  const out = execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      "afrakala-lan-db",
+      "psql",
+      "-U",
+      "postgres",
+      "-d",
+      "afrakala",
+      "-A",
+      "-t",
+      "-f",
+      "-",
+    ],
+    { input: sql, encoding: "utf8" },
+  );
+  return (out.split(/[\r\n]+/).find((l) => /^(ALLOWED|REFUSED|SKIP)/.test(l.trim())) ?? "").trim();
+}
 
-  // Written back as-is: what is under test is that the column is ACCEPTED, not that it changes.
-  const res = await rest(jwt, `/payment_receipts?id=eq.${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ status }),
-    headers: { Prefer: "return=representation" },
-  });
-  expect(
-    res.status,
-    `status is locked on a posted receipt, which breaks approve/reject: ${res.text.slice(0, 200)}`,
-  ).toBeLessThan(300);
+test("status still CHANGES on a POSTED receipt — approve/reject must keep working", () => {
+  // A genuinely different value: 'approved' <-> 'rejected', both legal per the CHECK constraint.
+  const r = openHalf(
+    "status",
+    "CASE WHEN status = 'approved' THEN 'rejected' ELSE 'approved' END",
+    "posting_status = 'posted'",
+  );
+  test.skip(r === "SKIP", "no posted receipt");
+  expect(r, "status is locked on a posted receipt, which breaks approve/reject").toBe("ALLOWED");
 });
 
-test("reversal metadata is still writable on a POSTED receipt — reverse_document keeps working", async () => {
-  const id = onePosted();
-  test.skip(!id, "no posted receipt exists");
-  const cur = dbRows(
-    `select coalesce(reversal_journal_entry_id::text,'') from public.payment_receipts where id = '${id}'`,
-  )[0];
-
-  const res = await rest(jwt, `/payment_receipts?id=eq.${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ reversal_journal_entry_id: cur === "" ? null : cur }),
-    headers: { Prefer: "return=representation" },
-  });
-  expect(
-    res.status,
-    `reversal metadata is locked, which breaks reverse_document: ${res.text.slice(0, 200)}`,
-  ).toBeLessThan(300);
+test("reversal metadata still CHANGES on a POSTED receipt — reverse_document keeps working", () => {
+  const r = openHalf("reversal_journal_entry_id", "gen_random_uuid()", "posting_status = 'posted'");
+  test.skip(r === "SKIP", "no posted receipt");
+  expect(r, "reversal metadata is locked, which breaks reverse_document").toBe("ALLOWED");
 });
 
-test("an UNPOSTED receipt still accepts an amount change — the OCR auto-apply path", async () => {
-  const id = oneUnposted();
-  test.skip(!id, "no unposted receipt exists to prove the OCR path still works");
-  const before = amountOf(id!);
-
-  // Same value: proves the write is ACCEPTED without altering the owner's data. The lock keys
-  // on the posted state, not on the value, so this exercises the same code path.
-  const res = await rest(jwt, `/payment_receipts?id=eq.${id}`, {
-    method: "PATCH",
-    body: JSON.stringify({ amount: Number(before) }),
-    headers: { Prefer: "return=representation" },
-  });
-  expect(
-    res.status,
-    `an unposted receipt refuses an amount write, which breaks OCR auto-apply: ${res.text.slice(0, 200)}`,
-  ).toBeLessThan(300);
-  expect(amountOf(id!), "the open half must not alter the value").toBe(before);
+test("an UNPOSTED receipt still accepts a DIFFERENT amount — the OCR auto-apply path", () => {
+  const r = openHalf("amount", "amount + 1", "posting_status <> 'posted'");
+  test.skip(r === "SKIP", "no unposted receipt");
+  expect(r, "an unposted receipt refuses an amount change, which breaks OCR auto-apply").toBe(
+    "ALLOWED",
+  );
 });
 
 test("all three document tables carry the lock — not just the one that was tested", () => {

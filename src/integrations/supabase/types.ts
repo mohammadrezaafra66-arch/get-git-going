@@ -10950,6 +10950,10 @@ export type Database = {
       }
       expire_pending_delivery_receipts: { Args: never; Returns: undefined }
       expire_pending_documents: { Args: never; Returns: undefined }
+      expire_stale_credit_holds: {
+        Args: { p_days?: number; p_limit?: number }
+        Returns: number
+      }
       export_dynamic_table_rows: {
         Args: {
           p_filters?: Json

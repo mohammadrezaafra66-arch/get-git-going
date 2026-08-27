@@ -106,7 +106,10 @@ function loadLocalEnv(): void {
     const idx = trimmed.indexOf("=");
     if (idx <= 0) continue;
     const key = trimmed.slice(0, idx).trim();
-    const value = trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+    const value = trimmed
+      .slice(idx + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
     if (!process.env[key]) process.env[key] = value;
   }
 }
@@ -119,7 +122,10 @@ function readDotEnvValue(file: string, key: string): string | null {
     const idx = trimmed.indexOf("=");
     if (idx <= 0) continue;
     if (trimmed.slice(0, idx).trim() !== key) continue;
-    return trimmed.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+    return trimmed
+      .slice(idx + 1)
+      .trim()
+      .replace(/^["']|["']$/g, "");
   }
   return null;
 }
@@ -161,7 +167,20 @@ group by u.id, p.status, p.is_active;
 
 async function setPasswordViaAuthAdmin(userId: string, password: string): Promise<void> {
   const envFile = path.resolve("deploy/lan/.env.lan");
+  // E2E_AUTH_BASE_URL wins when set. Added 2026-08-27 because the configured
+  // `VITE_SUPABASE_URL` is the public HTTPS host `https://api.test.myafrakala.ir`, and on this
+  // machine that host RESOLVES (to 192.168.170.8) but its TLS handshake fails immediately:
+  //   curl -> "schannel: failed to receive handshake, SSL/TLS connection failed" in 0.012s
+  //   node -> "Client network socket disconnected before secure TLS connection was established"
+  // while Kong answers 200 on plain HTTP at :9000. Caddy reports itself healthy with the right
+  // certificates loaded, so this is an environment fault (OG-82), not a credential problem.
+  //
+  // Without an override, an unrelated TLS failure makes it impossible to refresh the harness
+  // sessions — which silently turns the ENTIRE UI half of the suite red, as it did on
+  // 2026-08-27 when 51-hour-expired sessions produced 189 failures that looked like a
+  // regression. A test harness must not be un-repairable because of a proxy.
   const authBase = (
+    process.env.E2E_AUTH_BASE_URL ??
     readDotEnvValue(envFile, "VITE_SUPABASE_URL") ??
     readDotEnvValue(envFile, "API_EXTERNAL_URL") ??
     ""
@@ -243,7 +262,12 @@ async function failWithDiagnostics(
   );
 }
 
-async function waitForRoleAndEmail(page: Page, target: RoleTarget, email: string, debug: DebugInfo) {
+async function waitForRoleAndEmail(
+  page: Page,
+  target: RoleTarget,
+  email: string,
+  debug: DebugInfo,
+) {
   try {
     await expect(page.getByText(target.expectedRole, { exact: true }).first()).toBeVisible({
       timeout: ROLE_TIMEOUT_MS,
@@ -309,7 +333,9 @@ async function revalidateStorage(browser: Browser, target: RoleTarget, email: st
     await waitForRoleAndEmail(page, target, email, debug);
     await page.goto(target.probeRoute, { waitUntil: "domcontentloaded" });
     await waitForRoleAndEmail(page, target, email, debug);
-    await expect(page.getByText(target.probeText).first()).toBeVisible({ timeout: ROLE_TIMEOUT_MS });
+    await expect(page.getByText(target.probeText).first()).toBeVisible({
+      timeout: ROLE_TIMEOUT_MS,
+    });
   } finally {
     await context.close();
   }
@@ -370,9 +396,10 @@ test("generate admin, accountant and salesperson storageState files", async ({ b
       await loginThroughUi(page, target, email, passwords.get(target.key)!);
       await context.storageState({ path: path.resolve(target.storageFile) });
       expect(fs.existsSync(target.storageFile), `${target.key}: storageState missing`).toBe(true);
-      expect(fs.statSync(target.storageFile).size, `${target.key}: storageState empty`).toBeGreaterThan(
-        50,
-      );
+      expect(
+        fs.statSync(target.storageFile).size,
+        `${target.key}: storageState empty`,
+      ).toBeGreaterThan(50);
     } finally {
       await context.close();
     }
