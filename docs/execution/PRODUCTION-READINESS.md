@@ -290,6 +290,65 @@ grants access.
 procedure was the bug. That is worth remembering the next time something here looks like human
 error.
 
-## Final verification
+## Final verification — the run of 2026-08-27
 
-*(this section is completed once the final e2e run and rebuild finish)*
+**Environment, locked before the run.** CPU **mean 18.67% / median 21%** over 12 samples (RULE 4:
+distributional, never one reading); 76 GB RAM free; **zero `chrome-headless-shell` processes**, so
+no orphans to kill; `/login` 200 in 0.014s; **`APP_GIT_SHA = 66525dbf` = `HEAD`**.
+
+**Arithmetic reconciled BEFORE any comparison** (the OG-54 discipline):
+
+| | |
+|---|---|
+| tests playwright defines | **664** |
+| passed / failed / skipped | **604 / 31 / 29** |
+| independent marker count | 604 + 31 + 29 = **664** |
+| **reconciles?** | **yes — every defined test reported** |
+| duration | **20.8 minutes** |
+
+The expected total moved 657 → 664 during the day: the M1 spec gained 3 tests and OG-81 added 4.
+Stating that rather than quietly comparing against a stale number is the point of reconciling
+first.
+
+**The auth-expiry risk did not materialise.** The regenerated admin token was valid for 1.0 hours
+and the run took 20.8 minutes, so no late failure can be attributed to it.
+
+### Two-way SET comparison against the recorded 30
+
+**Recovered — 3:**
+
+| test | why |
+|---|---|
+| `asan/export-journal:162` | **OG-56, fixed this session** — the assertion now selects the corrupted entry by its property, not by position |
+| `asan/final-verification:267` | **OG-56, fixed this session** — the two stuck rows are excluded by id |
+| `persons/duplicate-mobile-blocked:59` | the known UI race the baseline itself flagged as new and non-deterministic |
+
+**Line shifts, not changes — 2:** `export-bank-deposits:108 → :133` (mission 10's edits) and
+`final-verification:325 → :333` (a comment I inserted). Normalising these before comparing is
+what stops a moved line reading as one recovery plus one regression.
+
+**New — 4, and they are two different things:**
+
+| test | cause | mine? |
+|---|---|---|
+| `export-bank-deposits:159` (and `:133`'s reason changed) | **A REAL REGRESSION FROM MY OG-67 CHANGE.** The export now returns `receipt = 3, payment = 1`; the spec was written when it was receipts-only, so it looked the amount up in `payment_receipts` by a **voucher** id, got nothing, and failed `Expected: 0, Received: -360000000` — reading as a broken amount while the export behaved exactly as designed. **Fixed:** the spec now mirrors the RPC's two branches, looks the amount up in the right table by direction, expects the negation for payments, and reads the SOURCE bank account for a payment rather than the destination. **`export-bank-deposits` is now 12/12.** | **yes** |
+| `requirements/214:9`, `214:24`, `214-1:20` | `apiRequestContext.get: socket hang up`. These target **`192.168.170.8:3002` and `:8002`** — the `claudegreenapi-*` containers, a DIFFERENT project. They are `Up` but not serving. **Nothing to do with AfraKala, this session's changes, or HTTP-vs-HTTPS**, and they are on the owner's do-not-touch list. | no |
+
+### Did running on HTTP change anything?
+
+**No difference is attributable to HTTP.** The three `requirements/214*` failures reach other
+projects' services on their own ports and would fail identically over HTTPS. Everything else in
+the failing set is either the recorded baseline, a normalised line shift, or the OG-67 regression
+above — none of which involves the scheme.
+
+What HTTP *did* change is that the suite could run at all: the previous attempt produced 189
+failures because the sessions had expired 51 hours earlier and **could not be regenerated while
+OG-82 blocked login**. That run is recorded as **OG-83 — INVALID**, in the OG-43 sense, so nobody
+later reads it as a regression.
+
+### Residual
+
+`payment_receipts` moved **10 → 11** during the session. Fully accounted for: `2e08a5ab-…`,
+`E2E_M1_ATTACH gate`, created 2026-08-26 16:56, **reversed** — OG-76, the receipt my own M1 gate
+draft created before RULE 12 existed. It is ledger-neutral and pinned by id in
+`rule12-no-gate-creates-posted-documents.spec.ts` so a fourth is caught the run it appears.

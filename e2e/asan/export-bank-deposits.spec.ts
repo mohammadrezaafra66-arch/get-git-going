@@ -80,7 +80,9 @@ test.afterAll(() => {
     "rule 2.10 — the receipt table must hold exactly what it held before this spec ran",
   ).toBe(receiptsBaseline);
   expect(
-    Number(dbScalar(`select count(*) from payment_receipts where description like '${E2E_PREFIX}%'`)),
+    Number(
+      dbScalar(`select count(*) from payment_receipts where description like '${E2E_PREFIX}%'`),
+    ),
   ).toBe(0);
 });
 
@@ -125,19 +127,39 @@ test("the Latin header row is reproduced exactly", async () => {
   for (let c = 6; c < 15; c += 1) {
     expect(aoa[0][c], `header column ${c} must be an empty string, not null`).toBe("");
   }
-  expect(aoa[0].some((h) => /[؀-ۿ]/.test(String(h))), "no Persian in this header").toBe(
-    false,
-  );
+  expect(
+    aoa[0].some((h) => /[؀-ۿ]/.test(String(h))),
+    "no Persian in this header",
+  ).toBe(false);
 });
 
-test("only approved receipts that landed in one of our banks appear", async () => {
+test("only approved BANK documents — receipts and payments — appear", async () => {
   const rows = await listOk();
   const listed = new Set(rows.map((r) => r.doc_id));
 
-  const eligible = dbRows(
-    "select id::text from payment_receipts where status = 'approved' and destination_bank_account_id is not null and payment_date between '2026-01-01' and '2026-12-31'",
-  );
-  expect(eligible.length, "the fixture must contain an approved bank receipt").toBeGreaterThan(0);
+  // UPDATED 2026-08-27 (OG-67 / migration 404). This used to read `payment_receipts` alone,
+  // because the export was receipts-only and its name said so. It now carries bank PAYMENTS too,
+  // with a `direction` column, so a receipts-only eligible set is missing every voucher row and
+  // the comparison fails on a document that is CORRECTLY present.
+  //
+  // The predicates below mirror the RPC's two branches exactly, including the differences that
+  // are not stylistic: `document_channel` and the bank account are NULLABLE on receipts and
+  // NOT NULL on vouchers, so only the receipt branch needs the `IS NULL` disjunct and the
+  // `IS NOT NULL` bank filter. Reversed documents are excluded on both sides.
+  const eligible = dbRows(`
+    select id::text from payment_receipts
+     where status = 'approved' and destination_bank_account_id is not null
+       and (document_channel is null or document_channel not in ('cash','cheque'))
+       and reversed_at is null
+       and payment_date between '2026-01-01' and '2026-12-31'
+    union all
+    select id::text from payment_vouchers
+     where status = 'approved'
+       and document_channel not in ('cash','cheque')
+       and reversed_at is null
+       and payment_date between '2026-01-01' and '2026-12-31'
+  `);
+  expect(eligible.length, "the fixture must contain an approved bank document").toBeGreaterThan(0);
   expect([...listed].sort()).toEqual([...eligible].sort());
 
   // The unapproved receipts are absent, and that is the point: a receipt awaiting review is not
@@ -162,16 +184,38 @@ test("⛔ the amount is Toman × 10 and the bank code is the owner's real one", 
   expect(docs.length).toBeGreaterThan(0);
 
   for (const d of docs) {
-    const toman = Number(dbScalar(`select amount from payment_receipts where id = '${d.sourceId}'`));
+    // UPDATED 2026-08-27 (OG-67 / migration 404). The amount used to be looked up in
+    // `payment_receipts` unconditionally. A PAYMENT row's id is a `payment_vouchers` id, so that
+    // lookup returned nothing, `Number("")` became 0, and the test failed with
+    // `Expected: 0, Received: -360000000` — reading as a broken amount when the export was
+    // behaving exactly as designed.
+    //
+    // A payment's Mablagh is NEGATIVE by design: direction lives in the sign, and only in this
+    // layout. `mablaghFor` applies it; SQL always returns a positive amount.
+    const isPayment =
+      (rows.find((r) => r.doc_id === d.sourceId) as { direction?: string } | undefined)
+        ?.direction === "payment";
+    const table = isPayment ? "payment_vouchers" : "payment_receipts";
+    const toman = Number(dbScalar(`select amount from ${table} where id = '${d.sourceId}'`));
+    expect(toman, `no amount found for ${d.sourceId} in ${table}`).toBeGreaterThan(0);
+
     const built = buildBankDepositRows(d.payload as never);
     expect(built.length, "one row per deposit — a deposit has no line items").toBe(1);
-    expect(built[0][4], "Mablagh in Rial").toBe(toman * 10);
+    expect(built[0][4], `Mablagh in Rial (${isPayment ? "payment, negated" : "receipt"})`).toBe(
+      isPayment ? -(toman * 10) : toman * 10,
+    );
     expect(typeof built[0][4], "a number, not a formatted string").toBe("number");
 
     // Bank Mellat is 8 (migration 288, the owner's number rather than the researched guess).
-    const bankCode = dbScalar(
-      `select ba.accounting_code from payment_receipts r join bank_accounts ba on ba.id = r.destination_bank_account_id where r.id = '${d.sourceId}'`,
-    );
+    // A receipt names its DESTINATION account (money arriving); a payment names its SOURCE
+    // account (money leaving). Reading the wrong one gives a valid-looking but wrong bank code.
+    const bankCode = isPayment
+      ? dbScalar(
+          `select ba.accounting_code from payment_vouchers v join bank_accounts ba on ba.id = v.source_bank_account_id where v.id = '${d.sourceId}'`,
+        )
+      : dbScalar(
+          `select ba.accounting_code from payment_receipts r join bank_accounts ba on ba.id = r.destination_bank_account_id where r.id = '${d.sourceId}'`,
+        );
     expect(built[0][5]).toBe(bankCode);
     expect(String(built[0][0])).toMatch(/^\d{4}\/\d{2}\/\d{2}$/);
   }
@@ -200,9 +244,7 @@ test("the same receipt through both paths shows the same amount and payer", asyn
 
   const journalDoc = groupJournalRows(journalRows, new Map())[0];
   const journalBuilt = buildJournalRows(journalDoc.payload as never);
-  const depositBuilt = buildBankDepositRows(
-    (groupBankDepositRows([dep])[0].payload as never),
-  );
+  const depositBuilt = buildBankDepositRows(groupBankDepositRows([dep])[0].payload as never);
 
   // Same money: the accounting document's debit total equals the deposit's Mablagh.
   const journalDebit = journalBuilt.reduce((s, r) => s + (typeof r[4] === "number" ? r[4] : 0), 0);
@@ -334,7 +376,10 @@ test("⛔ a receipt is positive, a payment is negative, and both are Toman × 10
 
   // Zero stays zero. `-0` is a real IEEE-754 value and would serialise as "-0".
   expect(
-    Object.is(buildBankDepositRows({ row: bankRow({ amount: "0", direction: "payment" }) })[0][4], -0),
+    Object.is(
+      buildBankDepositRows({ row: bankRow({ amount: "0", direction: "payment" }) })[0][4],
+      -0,
+    ),
   ).toBe(false);
 });
 
