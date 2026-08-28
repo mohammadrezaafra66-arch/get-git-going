@@ -105,4 +105,16 @@ test.describe("migration 411 — customer credit ranges and score recompute", ()
     );
     expect(pinned).toBe("1");
   });
+
+  test("the cooperation hint names the ceiling the range actually allows", () => {
+    // 411 widened the range to 360 months but the hint still read "1 to 240", and
+    // DynamicScoringSection prints input_hint verbatim when it is set -- so the screen
+    // would have kept telling the accountant 240 was the cap. 412 corrected it.
+    const hint = dbScalar(
+      `select input_hint from public.dynamic_scoring_parameters
+        where entity_type = 'customer' and code = 'customer_cooperation_months'`,
+    );
+    expect(hint).toContain("۳۶۰");
+    expect(hint).not.toContain("۲۴۰");
+  });
 });
