@@ -106,6 +106,11 @@ const COLUMNS: readonly { sign: string; title: string; items: readonly HubItem[]
         label: "خزانه و مانده صندوق",
         target: { kind: "registry", route: "/accounting/treasury" },
       },
+      {
+        to: "/accounting/purchase-payments",
+        label: "پرداخت خرید",
+        target: { kind: "registry", route: "/accounting/purchase-payments" },
+      },
     ],
   },
   {
@@ -142,6 +147,35 @@ const COLUMNS: readonly { sign: string; title: string; items: readonly HubItem[]
         to: "/sales/customers/credit-training",
         label: "آموزش اعتبار مشتریان",
         target: { kind: "registry", route: "/sales/customers/credit-training" },
+      },
+      {
+        to: "/accounting/bank-accounts",
+        label: "حساب‌های بانکی",
+        target: { kind: "registry", route: "/accounting/bank-accounts" },
+      },
+      {
+        // Registry allowlist is ["admin","accountant"] — narrower than the accounting
+        // module, so manager is excluded here without the hub restating anything.
+        to: "/accounting/mutual-settlement",
+        label: "تسویهٔ متقابل",
+        target: { kind: "registry", route: "/accounting/mutual-settlement" },
+      },
+    ],
+  },
+  {
+    // ∫ — both of these are balances accumulated over time rather than a single record.
+    sign: "∫",
+    title: "مانده‌ها و گزارش",
+    items: [
+      {
+        to: "/accounting/receivables",
+        label: "مطالبات مشتریان",
+        target: { kind: "registry", route: "/accounting/receivables" },
+      },
+      {
+        to: "/accounting/payables",
+        label: "بدهی تأمین‌کنندگان",
+        target: { kind: "registry", route: "/accounting/payables" },
       },
     ],
   },
@@ -219,7 +253,7 @@ const CSS = `
 .fh .op.b{--c:var(--out);--t:var(--out-t)}
 .fh .op.c{--c:var(--bal);--t:var(--bal-t)}
 .fh .op.d{--c:var(--goods);--t:var(--goods-t)}
-.fh .cols{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;border:1px solid var(--rule);
+.fh .cols{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--rule);
   background:var(--rule)}
 .fh .col{background:#fff;padding:18px 20px 20px}
 .fh .col .ch{display:flex;align-items:center;gap:9px;margin-bottom:13px;padding-bottom:10px;
@@ -231,12 +265,15 @@ const CSS = `
 .fh .lnk:last-child{border-bottom:none}
 .fh .lnk:hover{color:var(--brand)}
 .fh .lnk b{font-weight:600}
+/* Four reference columns need one more step down than the operation row does, or they go
+   from 300px each straight to full width. */
+@media(max-width:1100px){.fh .cols{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:900px){
   .fh .ops{grid-template-columns:repeat(2,1fr)}
-  .fh .cols{grid-template-columns:1fr}
   .fh .titleblock{grid-template-columns:1fr}
   .fh .identity{border-inline-start:none;border-top:1px solid var(--rule)}
 }
+@media(max-width:700px){.fh .cols{grid-template-columns:1fr}}
 @media(max-width:560px){.fh .ops{grid-template-columns:1fr}}
 `;
 

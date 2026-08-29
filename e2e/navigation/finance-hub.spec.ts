@@ -17,7 +17,10 @@ import { dbScalar } from "../helpers/db";
 
 const HUB_ROUTE = "/accounting/receipts/create";
 
-/** The twelve destinations the hub must reach, from the owner's brief. */
+/**
+ * The destinations the hub must reach: the owner's original twelve, plus the five added
+ * afterwards because they had left the menu without landing anywhere.
+ */
 const HUB_DESTINATIONS = [
   `${HUB_ROUTE}?branch=receipt`,
   `${HUB_ROUTE}?branch=payment`,
@@ -31,6 +34,19 @@ const HUB_DESTINATIONS = [
   "/accounting/dynamic-capital",
   "/sales/credit-rules",
   "/sales/customers/credit-training",
+  // Added later: three write surfaces and two daily accountant reports.
+  "/accounting/bank-accounts",
+  "/accounting/purchase-payments",
+  "/accounting/mutual-settlement",
+  "/accounting/receivables",
+  "/accounting/payables",
+] as const;
+
+/** Deliberately left off the hub — reachable by direct link only. */
+const DELIBERATELY_ABSENT = [
+  "/accounting/receipts",
+  "/accounting/receipts/training",
+  "/accounting/payment-vouchers",
 ] as const;
 
 const hubSource = readFileSync("src/components/finance/FinanceHub.tsx", "utf8");
@@ -51,13 +67,32 @@ test.describe("finance hub", () => {
     expect(financePaths()).toEqual([HUB_ROUTE]);
   });
 
-  test("all twelve destinations are present on the hub", () => {
+  test("every destination is present on the hub", () => {
     for (const dest of HUB_DESTINATIONS) {
       expect(hubSource, `hub is missing ${dest}`).toContain(`"${dest}"`);
     }
     // Non-vacuous: a hub file that lost its links would fail the loop, but an empty
     // destination list would pass it. Pin the count too.
-    expect(HUB_DESTINATIONS).toHaveLength(12);
+    expect(HUB_DESTINATIONS).toHaveLength(17);
+  });
+
+  test("the three pages the owner chose to drop are not on the hub", () => {
+    // Not an oversight — a decision. If one is added later this fails and the list above has
+    // to be updated deliberately rather than by accident.
+    for (const dest of DELIBERATELY_ABSENT) {
+      expect(hubSource, `${dest} was meant to stay off the hub`).not.toContain(`"${dest}"`);
+    }
+  });
+
+  test("تسویهٔ متقابل stays narrower than the accounting module — no manager", () => {
+    // The owner's constraint. It holds because the registry allowlist is narrower than
+    // accounting:view, and the hub defers to that rather than restating it.
+    const idx = registrySource.indexOf('"/accounting/mutual-settlement": [');
+    expect(idx, "mutual-settlement must have a role allowlist").toBeGreaterThan(-1);
+    const entry = registrySource.slice(idx, registrySource.indexOf("]", idx) + 1);
+    expect(entry).toContain('"admin"');
+    expect(entry).toContain('"accountant"');
+    expect(entry, "manager must not be on this route").not.toContain('"manager"');
   });
 
   test("a sales-only user cannot see the accounting destinations", () => {
