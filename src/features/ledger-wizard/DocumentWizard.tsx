@@ -71,10 +71,14 @@ const emptyLookup: LookupState = {
   message: null,
 };
 
-export function DocumentWizard() {
+/**
+ * `initialBranch` lets a caller open the wizard already on one branch -- the finance hub
+ * passes it from `?branch=`. Absent, the wizard behaves exactly as before: step 1 asks.
+ */
+export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } = {}) {
   const navigate = useNavigate();
-  const [step, setStep] = useState(1);
-  const [branch, setBranch] = useState<DocBranch | null>(null);
+  const [step, setStep] = useState(initialBranch ? 2 : 1);
+  const [branch, setBranch] = useState<DocBranch | null>(initialBranch ?? null);
   const [channel, setChannel] = useState<MoneyChannel | null>(null);
   const [chequeKind, setChequeKind] = useState<ChequeKind | null>(null);
   const [payerLookup, setPayerLookup] = useState<LookupState>(emptyLookup);

@@ -132,22 +132,20 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
     key: "finance",
     label: "مالی",
     icon: Wallet,
-    defaultTo: "/accounting/receipts",
-    paths: [
-      "/accounting/receipts",
-      "/accounting/receipts/training",
-      "/accounting/receivables",
-      "/accounting/payables",
-      "/accounting/purchase-payments",
-      "/accounting/payment-vouchers",
-      "/accounting/bank-accounts",
-      "/accounting/treasury",
-      "/accounting/external-parties",
-      "/accounting/salesperson-scoring",
-      "/accounting/mutual-settlement",
-      // Item 141 — legacy capital paths dropped; dynamic-capital is official.
-      "/accounting/dynamic-capital",
-    ],
+    defaultTo: "/accounting/receipts/create",
+    // The finance section is one entry: مرکز مالی. Everything that used to be listed here is
+    // reached from that page instead.
+    //
+    // This list is the ONLY thing that changed. Removing a path from it takes the item out of
+    // the sidebar and touches nothing else: `itemsForModule` receives an already
+    // role-filtered list and simply picks the paths named here, so no route, guard, registry
+    // entry or permission was altered. Every removed route still resolves — a direct link or
+    // an existing bookmark works exactly as before.
+    //
+    // `hiddenFromMenu` was deliberately NOT used for this. That flag lives inside
+    // `isNavigationEntryVisible`, which the hub also calls, so setting it would have hidden
+    // these destinations from the hub as well — the opposite of the intent.
+    paths: ["/accounting/receipts/create"],
   },
   {
     key: "analytics",

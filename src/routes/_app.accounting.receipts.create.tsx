@@ -6,14 +6,38 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { DocumentWizard } from "@/features/ledger-wizard/DocumentWizard";
+import { FinanceHub } from "@/components/finance/FinanceHub";
+import type { DocBranch } from "@/features/ledger-wizard/types";
 
 /** OG-13: create is admin, accountant, manager. Sales is not on that list. */
 const CREATE_ROLES = ["admin", "accountant", "manager"] as const;
+
+const BRANCHES = ["receipt", "payment", "dual"] as const;
+
+/**
+ * `?branch=` decides what this route shows.
+ *
+ * Absent — the finance hub, which is now the single entry for the finance section.
+ * Present and valid — the ledger wizard opened straight on that branch, which is how the
+ * hub's four operation cards link here. Anything else is treated as absent rather than
+ * rejected: a mistyped bookmark should land on the hub, not on an error.
+ */
+function parseBranch(value: unknown): DocBranch | undefined {
+  return typeof value === "string" && (BRANCHES as readonly string[]).includes(value)
+    ? (value as DocBranch)
+    : undefined;
+}
 
 export const Route = createFileRoute("/_app/accounting/receipts/create")({
   // M6/OG-24 — mirrors the requireAnyRole call below. The shared guard cannot decide
   // during SSR or while roles load, so RouteRoleGate in _app enforces this on the client.
   staticData: { gate: { kind: "anyRole", allowed: ["admin", "accountant", "manager"] } },
+  // The key is optional on purpose: `<Link to="/accounting/receipts/create">` must keep
+  // working without a `search` prop, which is how three existing call sites link here.
+  validateSearch: (search: Record<string, unknown>): { branch?: DocBranch } => {
+    const branch = parseBranch(search.branch);
+    return branch ? { branch } : {};
+  },
   beforeLoad: async () => {
     await requireAnyRole([...CREATE_ROLES]);
   },
@@ -22,6 +46,7 @@ export const Route = createFileRoute("/_app/accounting/receipts/create")({
 
 function CreateReceiptPage() {
   const { roles, rolesLoading, rolesError } = useAuth();
+  const { branch } = Route.useSearch();
 
   // Phase-6 Gate A, P6-B2. `beforeLoad` alone does not hold on a full page load.
   // Measured on 2026-08-22 with a session whose only role is `sales`:
@@ -78,6 +103,13 @@ function CreateReceiptPage() {
     );
   }
 
+  // No branch asked for -> this route is the finance hub. The role checks above still ran,
+  // so the hub is only ever rendered to someone allowed on this route; the hub then filters
+  // each destination again through the navigation registry.
+  if (!branch) {
+    return <FinanceHub />;
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -85,14 +117,14 @@ function CreateReceiptPage() {
         description="دریافت، پرداخت یا سند دوبل — هر شاخه فقط فیلدهای مربوط به خودش را می‌پرسد"
         actions={
           <Button variant="outline" asChild>
-            <Link to="/accounting/receipts">
+            <Link to="/accounting/receipts/create">
               <ArrowRight className="ml-2 h-4 w-4" />
-              بازگشت به لیست
+              بازگشت به مرکز مالی
             </Link>
           </Button>
         }
       />
-      <DocumentWizard />
+      <DocumentWizard initialBranch={branch} />
     </div>
   );
 }

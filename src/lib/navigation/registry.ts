@@ -471,6 +471,16 @@ const NAVIGATION_SEEDS = [
   },
   // Phase 9 — خزانه (۱۸۰/۱۸۱/۱۸۲).
   {
+    // The single finance entry. Everything the finance section used to list is reached from
+    // this page. It renders the hub with no search params and the ledger wizard with
+    // `?branch=receipt|payment|dual`, so the same route serves both and old bookmarks resolve.
+    to: "/accounting/receipts/create",
+    label: "مرکز مالی",
+    icon: Wallet,
+    module: "accounting",
+    group: "finance",
+  },
+  {
     to: "/accounting/treasury",
     label: "خزانه و ماندهٔ صندوق",
     icon: Wallet,
@@ -1213,6 +1223,8 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   // module permission, which today has zero role_permissions rows and so resolves
   // through the static fallback.
   "/accounting/payment-vouchers": ["admin", "manager", "accountant"],
+  // Mirrors _app.accounting.receipts.create.tsx:17 — requireAnyRole(["admin","accountant","manager"]).
+  "/accounting/receipts/create": ["admin", "manager", "accountant"],
   "/accounting/treasury": ["admin", "manager", "accountant"],
   // _app.accounting.salesperson-scoring.tsx — requireAnyRole(admin, accountant):
   // narrower than accounting:view, so manager must not see the link.
