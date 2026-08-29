@@ -9,7 +9,7 @@ deploy, not by what was most work.
 
 ---
 
-## أ‑0. OG-82 — HTTPS IS BROKEN ON THE TEST SERVER, AND IT BLOCKS PRODUCTION
+## أ‑0. OG-82 — HTTPS WAS BROKEN ON THE TEST SERVER (HANDSHAKE RESOLVED 2026-08-29; WHAT REMAINS IS DNS AND CERT TRUST, NOT TLS)
 
 **This is not only a test-harness problem, and that is why it sits above OG-75.**
 
@@ -38,6 +38,127 @@ fact: I first concluded this was a Docker/WSL port-forward fault, on one piece o
 Caddy's log was empty for a dozen failed handshakes. That was wrong. **An empty log does not
 prove the traffic never arrived**; Caddy does not log handshake failures at its default level.
 Recorded as RULE 18.
+
+**UPDATE 2026-08-29 — the headline of this section is no longer true, and one of its
+consequences was wrong.** Both corrections were measured, not reasoned.
+
+*The handshake works.* `curl --resolve test.myafrakala.ir:443:192.168.170.8 https://…/login`
+returns **200 in 0.02s**, and `api.test.myafrakala.ir` returns 404 from Kong — i.e. TLS
+completes on both names. Port 443 listens on `0.0.0.0`. Whatever the August failure was, the
+certificate replaced on 24 August at **19:23** (the `.bak` pair is 16:09) resolves it. A BOM was
+found at the head of `C:/caddy-config/Caddyfile` (`ef bb bf`) and suspected as the cause; that
+hypothesis was **tested and refuted** — Caddy tolerates it and serves both site blocks.
+
+*What actually stops another laptop* is not TLS but two client-side facts: `test.myafrakala.ir`
+has **no DNS anywhere** (Google DNS returns `Server failed`; it resolves only from a hosts-file
+entry on the server itself), and the certificate is an **mkcert development CA** trusted only on
+the machine that generated it.
+
+*The Secure-Context consequence recorded above was wrong, and it mattered because it declared a
+production blocker that does not exist.* A full sweep of `src/` found that **no camera is ever
+opened with `getUserMedia`** — the only `getUserMedia` calls are `{audio:true}` at two sites
+(`AudioRecorder.tsx:144`, `FeedbackAttachmentUploader.tsx:129`). Everything the UI calls a camera
+is `<input type="file" capture>` (`CameraCaptureButton.tsx:83-85`), which is **not** a
+Secure-Context API. **Receipt OCR takes its image from a plain `<input type="file">`
+(`PaymentReceiptDocuments.tsx:561`, no `capture`) and runs server-side, so it works over plain
+HTTP.** `crypto.subtle` has a pure-JS fallback written for exactly this case
+(`src/lib/utils/sha256.ts:2`), and `@supabase/auth-js` degrades its PKCE challenge from `sha256`
+to `plain` rather than failing. What genuinely breaks over HTTP is narrower: voice recording,
+PWA install (`register-sw.ts:47` guards on `isSecureContext`), and 20 clipboard copy sites — all
+of which are caught, two with real fallbacks.
+
+*Consequently, on 2026-08-29 the test server was deliberately moved to plain HTTP by IP,* with
+the owner's approval: `VITE_SUPABASE_URL` / `APP_SUPABASE_PUBLIC_URL` / `API_EXTERNAL_URL` →
+`http://192.168.170.8:9000`, `SITE_URL` → `http://192.168.170.8:3100`. The API origin had been
+baked into the client bundle as `https://api.test.myafrakala.ir`, so every laptop that could load
+the page still failed every request with the app's own "خطای شبکه" message from `login.tsx:155`.
+**Note the trade-off this locks in: `https://test.myafrakala.ir` now fails by mixed-content
+blocking, because an HTTPS page may not call an HTTP API.** Reverting is one edit plus a rebuild;
+`deploy/lan/.env.lan.before-ip-switch` holds the previous values.
+
+---
+
+## أ‑1. THREE SECURITY DEFINER FUNCTIONS WITH NO AUTHORIZATION CHECK — FOUND 2026-08-29, NOT YET FIXED
+
+Found during a path-discovery audit the owner asked for ("is there one standard route per action,
+or parallel ones?"). The owner's decision on 2026-08-29 was **document now, fix later**. Nothing
+here has been changed. No function below was executed to demonstrate the finding — reachability
+is established from `prosecdef`, function owner, `EXECUTE` grants, the function bodies, and the
+RLS policies each one bypasses.
+
+**The pattern is the inverse of the one being hunted.** The audit was looking for "a retired form
+whose function stayed alive" — and found two real instances (`daily_capital_inputs` and the legacy
+`credit_scoring_rules` chain, both orphaned with zero callers). The more damaging variant is the
+opposite: **a live form whose function never had a server-side guard, with the check living only
+in the route's `beforeLoad`.**
+
+### 1. `assign_user_role_txt` / `revoke_user_role_txt` — anyone can grant themselves `admin`
+
+```sql
+CREATE OR REPLACE FUNCTION public.assign_user_role_txt(_target_user uuid, _role text)
+ RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path TO 'public'
+AS $function$
+BEGIN
+  INSERT INTO public.user_roles (user_id, role, assigned_by)
+  VALUES (_target_user, _role::public.app_role, auth.uid())
+  ON CONFLICT (user_id, role) DO NOTHING;
+END; $function$
+```
+
+There is no guard of any kind in the body. Measured:
+
+```
+proname              | prosecdef | owner          | rolsuper | rolbypassrls
+assign_user_role_txt | t         | supabase_admin | t        | t
+
+EXECUTE grants: PUBLIC, anon, authenticated, service_role
+```
+
+`user_roles` has `relrowsecurity = t` and the policy `admins manage roles`
+(`has_role(uid(),'admin')`) — which is exactly the control a `SECURITY DEFINER` function owned by
+a `rolsuper`/`rolbypassrls` role does not evaluate. **The only enforcement is
+`src/routes/_app.roles.tsx:13-14` `beforeLoad: await requireAdmin()`**, with the calls at `:58`
+and `:64`. That is frontend-only authorization — **CLAUDE.md rule 6**.
+
+The codebase already knows the correct shape: `quick_approve_user` writes the same table and
+guards with `IF NOT public.has_role(auth.uid(),'admin') THEN RAISE EXCEPTION …`.
+
+The same table also has a second, *correctly* enforced UI path —
+`src/components/users/RoleManagerDialog.tsx` writes `user_roles` through raw PostgREST, so RLS
+applies. Two UI paths to one table with opposite security properties.
+
+### 2. `apply_stock_movement` — `anon`-granted, writes stock, no guard
+
+```
+prosecdef = t   EXECUTE grants: anon, authenticated   role guards in body: 0
+```
+
+Writes `warehouse_stock` and `stock_movements` directly, bypassing their RLS
+(`has_any_role(uid(),ARRAY['admin','manager'])` on both). Its sibling `adjust_warehouse_stock`
+*does* guard and then calls it — so the guard sits on the wrapper while the wrapped function is
+independently granted to `anon`. Attribution is also forgeable: the movement row records
+`COALESCE(_created_by, auth.uid())` where `_created_by` is a caller-supplied parameter.
+
+### 3. `calculate_credit_score` — `authenticated`-granted, writes credit state, no guard
+
+`SECURITY DEFINER`, **zero** `has_role` checks, granted to `authenticated`. It is the legacy
+scorer (its rules table `credit_scoring_rules` is orphaned) but it is not read-only — it writes
+`customer_credit_profile` (body line 296), `credit_score_snapshots` (307) and `audit_logs` (310).
+`customer_credit_profile` feeds the **live** credit page: `list_trusted_credit_customers` reads
+`ccp.credit_score`, `ccp.credit_limit`, `ccp.total_purchases`, `ccp.outstanding_balance` at body
+lines 38–47. The table currently holds **0 rows**, so nothing is exploited today, but any
+authenticated user — including `viewer` — could populate it and change the numbers that page
+shows.
+
+### What a fix looks like
+
+The same shape used for OG-61: add an internal `IF NOT public.has_any_role(auth.uid(), …) THEN
+RAISE EXCEPTION … USING ERRCODE='42501'` to each function, and `REVOKE EXECUTE … FROM anon,
+PUBLIC`. Note that revoking alone is not sufficient for #1 and #2 while `authenticated` retains
+the grant, and adding the guard alone is not sufficient while `anon` does. Both halves are needed.
+
+**Not a regression from any recent change** — these predate this chain of work. They are recorded
+here so the next person does not have to rediscover them.
 
 ---
 
