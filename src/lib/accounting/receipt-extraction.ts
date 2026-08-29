@@ -133,12 +133,34 @@ function findFirst(re: RegExp, text: string): string | null {
   return (m[1] ?? m[0]).trim();
 }
 
+/**
+ * A card / account / IBAN / tracking number must never be read as an amount. Length alone is
+ * the wrong test for that, and it used to be the only one: separators were stripped first and
+ * then any 10-or-more-digit result was discarded, so every receipt of 1,000,000,000 rial —
+ * 100,000,000 toman — came back empty with no error and no warning. The ceiling on a real
+ * amount was effectively 999,999,999 rial.
+ *
+ * What actually separates the two is how the number is written, not how long it is:
+ *   - an amount is printed with thousands separators, in three-digit groups;
+ *   - an identifier is printed as a bare run of digits, or grouped in fours.
+ * An Iranian card number is exactly 16 digits, which is a shape rather than a length.
+ */
+function looksLikeIdentifier(raw: string, cleaned: string): boolean {
+  // Exactly 16 digits is a card number whether or not it carries separators.
+  if (/^\d{16}$/.test(cleaned)) return true;
+  // Grouped in fours (6037-9911-1234-5678 / 6037 9911 1234 5678) is card formatting.
+  if (/^\d{4}([-\s]\d{4}){2,}$/.test(normalizeDigits(raw).trim())) return true;
+  // A bare run of 10+ digits with no thousands separator at all: tracking/account/IBAN tail.
+  const hasThousandsGrouping = /\d{1,3}([,،]\d{3})+/.test(normalizeDigits(raw));
+  if (!hasThousandsGrouping && cleaned.length >= 10) return true;
+  return false;
+}
+
 function parseAmountToNumber(s: string): number | null {
   const cleaned = normalizeDigits(s).replace(/[,،\s]/g, "");
   const n = Number(cleaned);
   if (!Number.isFinite(n) || n <= 0) return null;
-  // اعداد با ۱۰ رقم یا بیشتر بدون جداکننده (شماره کارت/حساب/شبا/پیگیری) رد می‌شوند
-  if (/^\d{10,}$/.test(cleaned)) return null;
+  if (looksLikeIdentifier(s, cleaned)) return null;
   // سقف منطقی: ۱۰۰۰ میلیارد تومان (۱e12). بیشتر از این قطعاً مبلغ نیست.
   if (n > 1e12) return null;
   return n;

@@ -370,7 +370,16 @@ export function parseReceiptVisionJson(raw: string): ReceiptOcrResult {
 
 /**
  * Convert printed amount + currency into toman at the form-mapping boundary.
- * Does not invent units: UNKNOWN → no value + warning.
+ *
+ * UNKNOWN is treated as IRR. Every Iranian bank receipt prints rial — there is no counter
+ * example in this business — so refusing to convert when the model failed to read the unit
+ * left the accountant with a raw rial figure in a toman field, which is worse than assuming
+ * the only unit that occurs. The assumption is stated in the warning so it is never silent.
+ *
+ * This lives in the function rather than at either call site on purpose: both OCR consumers
+ * (the ledger wizard via receipt-ocr-bytes.functions.ts:186 and the receipt page via
+ * receipt-ocr.functions.ts:231) reach the form through this one call, so changing it here
+ * covers both and leaves no way for the two to drift apart.
  */
 export function amountToToman(
   amount: number | null,
@@ -386,15 +395,8 @@ export function amountToToman(
       ? (currency as ReceiptOcrCurrency)
       : normalizeCurrency(String(currency));
 
-  if (c === "UNKNOWN") {
-    return {
-      value: null,
-      warning: "واحد مبلغ نامشخص است (UNKNOWN)؛ مبلغ به‌صورت خودکار وارد نشد.",
-      original_amount,
-      original_currency,
-    };
-  }
-  if (c === "IRR") {
+  if (c === "IRR" || c === "UNKNOWN") {
+    const assumed = c === "UNKNOWN";
     if (amount % 10 !== 0) {
       return {
         value: null,
@@ -409,7 +411,9 @@ export function amountToToman(
     }
     return {
       value,
-      warning: "مبلغ به ریال بود؛ برای فرم به تومان تبدیل شد.",
+      warning: assumed
+        ? "واحد روی فیش خوانده نشد؛ طبق قاعده ریال فرض و به تومان تبدیل شد. لطفاً مبلغ را کنترل کنید."
+        : "مبلغ به ریال بود؛ برای فرم به تومان تبدیل شد.",
       original_amount,
       original_currency,
     };
