@@ -291,6 +291,33 @@ already cost this project real damage.
    To see the current state at any time: `SELECT * FROM public.person_fk_registry_report();`
    If you are ever tempted to disable the trigger, read `docs/verification/328-down.sql`
    first — the usual correct fix is to update the extractor, not remove the gate.
+10. **Changing a scoring range is never "just changing a range."** Migration 411
+   widened the seven customer credit parameters on 2026-08-28, and two things
+   about that are not obvious from the diff.
+
+   First, `dynamic_entity_scores.raw_score` is normalised and **frozen at write
+   time**, so the new range on its own changed nothing: every existing row kept
+   the old normalisation while the admin screen read correctly — the failure mode
+   that looks like success. The fix is a value-preserving self-update
+   (`SET actual_value = actual_value`), which re-fires `trg_a_compute_raw_score`
+   because it is `BEFORE INSERT **OR UPDATE**`. Prove it in a rolled-back
+   transaction before trusting it; the measured sequence was
+   `0.300 -> (range change only) 0.300 -> (self-update) 0.060`.
+
+   Second, **that recompute cascades out of the table you edited.**
+   `dynamic_entity_scores` also carries `trg_refresh_dyn_capital_after_score_change`
+   (AFTER INSERT/DELETE/UPDATE), so 52 score rows fired it 52 times and **rewrote
+   the real credit ceilings of 9 customers** in
+   `customer_capital_allocations_dynamic`, one `audit_logs` row each. Widening a
+   range *lowers* every normalised score — average `customer_purchase_1y` went
+   0.326 -> 0.065 — so the ceilings went **down**. Get the owner's approval for
+   the ceiling movement, not merely for the numbers, and `SELECT` the affected
+   ceilings before and after.
+
+   Finally, check `input_hint`. The UI prints it verbatim and only falls back to
+   the computed min/max when it is NULL, so a widened range leaves a hint still
+   naming the old ceiling — 411 shipped with "1 to 240 months" against a 360
+   ceiling and 412 had to correct it.
 
 ## Coordination — Codex ↔ Claude Code
 
