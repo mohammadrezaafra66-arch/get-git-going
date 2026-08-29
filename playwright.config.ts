@@ -19,6 +19,8 @@ export default defineConfig({
     // honest test is the one that tries to dodge them.
     /security\/.*\.spec\.ts/,
     /scoring\/.*\.spec\.ts/,
+    // Finance hub — source-level assertions about sidebar shape and role filtering.
+    /navigation\/.*\.spec\.ts/,
     /capital\/.*\.spec\.ts/,
     /warehouse\/.*\.spec\.ts/,
     /marketing\/.*\.spec\.ts/,

@@ -27,14 +27,29 @@ export function getNavigationEntriesByModule(module: NavigationPrimaryModule): N
   return NAVIGATION_REGISTRY.filter((entry) => entry.primaryModule === module);
 }
 
+/**
+ * The role half of visibility, with no opinion about menus.
+ *
+ * `isNavigationEntryVisible` is this plus `hiddenFromMenu`. The finance hub needs exactly this
+ * variant: a destination may be absent from the sidebar and still belong on the hub, and the hub
+ * must not re-derive who may see it -- a hand-written role list would miss `adminOnly`,
+ * `allowedRoles`, and the `role_permissions` rows that `hasPermissionEx` reads at runtime.
+ */
+export function isNavigationEntryPermitted(
+  entry: NavigationEntry,
+  roles: AppRole[] | string[],
+): boolean {
+  if (entry.adminOnly && !roles.includes("admin") && !roles.includes("manager")) return false;
+  if (entry.allowedRoles && !entry.allowedRoles.some((role) => roles.includes(role))) return false;
+  return hasPermissionEx(roles, entry.permission.module, entry.permission.action);
+}
+
 export function isNavigationEntryVisible(
   entry: NavigationEntry,
   roles: AppRole[] | string[],
 ): boolean {
   if (entry.hiddenFromMenu) return false;
-  if (entry.adminOnly && !roles.includes("admin") && !roles.includes("manager")) return false;
-  if (entry.allowedRoles && !entry.allowedRoles.some((role) => roles.includes(role))) return false;
-  return hasPermissionEx(roles, entry.permission.module, entry.permission.action);
+  return isNavigationEntryPermitted(entry, roles);
 }
 
 export function getVisibleNavigationEntries(roles: AppRole[] | string[]): NavigationEntry[] {
