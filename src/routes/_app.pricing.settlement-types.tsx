@@ -35,6 +35,7 @@ type SettlementType = {
   description: string | null;
   is_active: boolean;
   sort_order: number;
+  days: number;
 };
 
 function SettlementTypesPage() {
@@ -51,7 +52,7 @@ function SettlementTypesPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("settlement_types")
-        .select("id, code, title, description, is_active, sort_order")
+        .select("id, code, title, description, is_active, sort_order, days")
         .order("sort_order", { ascending: true })
         .order("title", { ascending: true });
       if (error) throw error;
@@ -85,6 +86,7 @@ function SettlementTypesPage() {
         code: values.code,
         title: values.title,
         description: values.description || null,
+        days: values.days,
         sort_order: values.sort_order,
         is_active: values.is_active,
       };
@@ -166,7 +168,8 @@ function SettlementTypesPage() {
                       <p className="text-xs text-muted-foreground">{r.description}</p>
                     )}
                     <div className="text-[11px] text-muted-foreground">
-                      ترتیب: {formatNumber(r.sort_order)}
+                      مهلت تسویه: {r.days > 0 ? `${formatNumber(r.days)} روز` : "نقدی"} · ترتیب:{" "}
+                      {formatNumber(r.sort_order)}
                     </div>
                     {canWrite && (
                       <div className="flex gap-1 pt-1">
@@ -205,6 +208,7 @@ function SettlementTypesPage() {
                       <th className="p-3 font-medium">عنوان</th>
                       <th className="p-3 font-medium">کد</th>
                       <th className="p-3 font-medium">توضیحات</th>
+                      <th className="p-3 font-medium">مهلت تسویه</th>
                       <th className="p-3 font-medium">ترتیب</th>
                       <th className="p-3 font-medium">وضعیت</th>
                       <th className="p-3 font-medium">عملیات</th>
@@ -219,6 +223,9 @@ function SettlementTypesPage() {
                         </td>
                         <td className="p-3 text-xs text-muted-foreground">
                           {r.description ?? "—"}
+                        </td>
+                        <td className="p-3 text-xs">
+                          {r.days > 0 ? `${formatNumber(r.days)} روز` : "نقدی"}
                         </td>
                         <td className="p-3 text-xs">{formatNumber(r.sort_order)}</td>
                         <td className="p-3">

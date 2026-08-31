@@ -15,6 +15,14 @@ export const settlementTypeSchema = z.object({
     .regex(/^[a-z0-9_]+$/i, "فقط حروف انگلیسی، عدد و _"),
   title: z.string().min(2, "عنوان الزامی است").max(80),
   description: z.string().max(300).optional().nullable(),
+  // Settlement deadline in days, counted from the moment the quote is accepted.
+  // 0 is meaningful and common -- it is what "cash" means -- so the floor is 0, not 1.
+  // The ceiling is a typo guard, not a business limit; the column itself only requires >= 0.
+  days: z
+    .number({ message: "مهلت تسویه باید عدد باشد" })
+    .int("مهلت تسویه باید عدد صحیح باشد")
+    .min(0, "مهلت تسویه نمی‌تواند منفی باشد")
+    .max(365, "مهلت تسویه حداکثر ۳۶۵ روز"),
   sort_order: z.number().int().min(0).max(99999),
   is_active: z.boolean(),
 });
@@ -44,6 +52,7 @@ export function SettlementTypeForm({ initial, onSubmit, onCancel, loading, isEdi
     code: initial?.code ?? "",
     title: initial?.title ?? "",
     description: initial?.description ?? "",
+    days: initial?.days ?? 0,
     sort_order: initial?.sort_order ?? 100,
     is_active: initial?.is_active ?? true,
   });
@@ -54,6 +63,7 @@ export function SettlementTypeForm({ initial, onSubmit, onCancel, loading, isEdi
       code: initial?.code ?? "",
       title: initial?.title ?? "",
       description: initial?.description ?? "",
+      days: initial?.days ?? 0,
       sort_order: initial?.sort_order ?? 100,
       is_active: initial?.is_active ?? true,
     });
@@ -104,6 +114,20 @@ export function SettlementTypeForm({ initial, onSubmit, onCancel, loading, isEdi
           value={values.description ?? ""}
           onChange={(e) => setValues((s) => ({ ...s, description: e.target.value }))}
         />
+      </div>
+      <div>
+        <Label>مهلت تسویه (روز)</Label>
+        <Input
+          type="number"
+          dir="ltr"
+          min={0}
+          value={values.days}
+          onChange={(e) => setValues((s) => ({ ...s, days: Number(e.target.value) || 0 }))}
+        />
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          چند روز پس از پذیرش پیش‌فاکتور، مبلغ باید تسویه شود. برای تسویهٔ نقدی صفر بگذارید.
+        </p>
+        {errors.days && <p className="mt-1 text-xs text-destructive">{errors.days}</p>}
       </div>
       <div>
         <Label>ترتیب نمایش</Label>

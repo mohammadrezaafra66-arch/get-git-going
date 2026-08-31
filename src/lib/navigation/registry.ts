@@ -980,7 +980,12 @@ const NAVIGATION_SEEDS = [
     module: "pricing",
     group: "admin",
     subgroup: "adm-settings",
-    adminOnly: true,
+    // Not adminOnly: that means admin OR manager, and it was the third of three layers that
+    // disagreed about who owns this page. The route guard admits admin and accountant, and
+    // migration 416 makes RLS say the same -- so the accountant who is meant to use the page
+    // must be able to find it, and the manager who can no longer write must stop being sent
+    // to a page requireAnyRole refuses them.
+    allowedRoles: ["admin", "accountant"],
   },
   {
     to: "/pricing/shipping-rules",
