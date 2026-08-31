@@ -113,6 +113,12 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
   const [ocrByFile, setOcrByFile] = useState<Map<File, unknown>>(new Map());
   const [ocrBusy, setOcrBusy] = useState(false);
   const [ocrNote, setOcrNote] = useState<string | null>(null);
+  // OG-85 — the amount the model read is a SUGGESTION, never a value. It miscounts the
+  // run of zeros by a different number of digits each time, so writing it straight into
+  // the field produced a silently wrong document. It is held here until the accountant
+  // compares it with the paper and accepts it, or types their own number.
+  const [amountSuggestion, setAmountSuggestion] = useState<number | null>(null);
+  const [amountSuggestionWarning, setAmountSuggestionWarning] = useState<string | null>(null);
 
   const { data: accounts = [] } = useQuery({
     queryKey: ["ledger-wizard-accounts"],
@@ -316,8 +322,11 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
 
       const filled: string[] = [];
       if (parsed.amount != null && amountText.trim() === "") {
-        setAmountText(String(parsed.amount));
-        filled.push("مبلغ");
+        // Suggested, not filled. See the note on amountSuggestion.
+        setAmountSuggestion(parsed.amount);
+        setAmountSuggestionWarning(
+          (parsed.warnings ?? []).find((w) => w.includes("تعداد ارقام")) ?? null,
+        );
       }
       if (parsed.receipt_date && !date) {
         setDate(parsed.receipt_date);
@@ -530,6 +539,15 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
       {step === 2 && branch === "dual" ? (
         <div className="grid gap-4 sm:grid-cols-2">
           <AmountField value={amountText} onChange={setAmountText} fraction={amountFraction} />
+          <AmountSuggestion
+            amount={amountSuggestion}
+            warning={amountSuggestionWarning}
+            onAccept={() => {
+              setAmountText(String(amountSuggestion ?? ""));
+              setAmountSuggestion(null);
+            }}
+            onDismiss={() => setAmountSuggestion(null)}
+          />
           <Field label="تاریخ" required>
             <PersianDatePicker value={date} onChange={(v) => setDate(v ?? tehranDate())} />
           </Field>
@@ -645,7 +663,18 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
           ) : null}
 
           {!(channel === "cheque" && chequeKind === "endorsed") ? (
-            <AmountField value={amountText} onChange={setAmountText} fraction={amountFraction} />
+            <>
+              <AmountField value={amountText} onChange={setAmountText} fraction={amountFraction} />
+              <AmountSuggestion
+                amount={amountSuggestion}
+                warning={amountSuggestionWarning}
+                onAccept={() => {
+                  setAmountText(String(amountSuggestion ?? ""));
+                  setAmountSuggestion(null);
+                }}
+                onDismiss={() => setAmountSuggestion(null)}
+              />
+            </>
           ) : null}
 
           <Field label="تاریخ" required>
@@ -863,7 +892,7 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
           <Button
             type="button"
             onClick={() => void submit()}
-            disabled={submitting}
+            disabled={submitting || amountSuggestion != null}
             data-testid="wizard-submit"
           >
             {submitting ? "در حال ثبت…" : "ثبت سند"}
@@ -890,6 +919,64 @@ function Field({
         {required ? " *" : ""}
       </Label>
       {children}
+    </div>
+  );
+}
+
+/**
+ * The amount the OCR read, offered rather than applied.
+ *
+ * OG-85: the model reads the significant digits correctly and then miscounts the run of zeros,
+ * by a different number each time, so an auto-filled amount could be 10x, 100x or 1000x short
+ * with nothing on screen to show for it. Holding it here costs one click and converts a silent
+ * error into one the accountant cannot miss. While a suggestion is unresolved the submit button
+ * stays disabled, so a document cannot be recorded without the amount having been looked at.
+ */
+function AmountSuggestion({
+  amount,
+  warning,
+  onAccept,
+  onDismiss,
+}: {
+  amount: number | null;
+  warning: string | null;
+  onAccept: () => void;
+  onDismiss: () => void;
+}) {
+  if (amount == null) return null;
+  return (
+    <div
+      className="sm:col-span-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/40"
+      data-testid="amount-suggestion"
+    >
+      <div className="flex flex-wrap items-center gap-2">
+        <span>
+          مبلغ پیشنهادی از روی فیش:{" "}
+          <b className="font-mono" data-testid="amount-suggestion-value">
+            {amount.toLocaleString("en-US")}
+          </b>{" "}
+          تومان — با فیش مقایسه و تأیید کنید.
+        </span>
+      </div>
+      {warning ? (
+        <p className="mt-2 text-amber-800 dark:text-amber-300" data-testid="amount-suggestion-warning">
+          {warning}
+        </p>
+      ) : null}
+      <div className="mt-2 flex gap-2">
+        <Button type="button" size="sm" onClick={onAccept} data-testid="amount-suggestion-accept">
+          مبلغ درست است، وارد کن
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={onDismiss}
+          data-testid="amount-suggestion-dismiss"
+        >
+          خودم وارد می‌کنم
+        </Button>
+      </div>
     </div>
   );
 }

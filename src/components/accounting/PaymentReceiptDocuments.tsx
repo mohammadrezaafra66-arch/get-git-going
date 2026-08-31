@@ -848,16 +848,22 @@ export function ReceiptDocumentsList({
           } | null;
           if (row && (row.posting_status ?? "unposted") !== "posted") {
             const update: Record<string, unknown> = {};
+            // OG-85 — the amount is NO LONGER auto-applied. The model miscounts the run of
+            // zeros in a printed amount, by a different number of digits each time, so an
+            // amount written straight onto the receipt can be 10x, 100x or 1000x short with
+            // nothing on screen to say so. It is now a suggestion the accountant applies
+            // deliberately through the existing per-field checkboxes, which already default
+            // to off. A mismatch with a value already entered is still reported, because that
+            // is a warning rather than a write.
+            //
+            // Only the amount is held back. The other extracted fields do not have this
+            // failure mode: a date or a tracking number is either read or it is not.
             const exAmount = effectiveExtractedValue("amount", parsed);
             const exTracking = effectiveExtractedValue("tracking_number", parsed);
             if (exAmount !== undefined && typeof exAmount === "number") {
               const cur = row.amount ?? null;
               if (cur != null && Number(cur) > 0 && Number(cur) !== exAmount) {
                 autoMismatches.push({ field: "amount", before: cur, after: exAmount });
-              }
-              if (cur == null || Number(cur) !== exAmount) {
-                update["amount"] = exAmount;
-                autoApplied.push("amount");
               }
             }
             if (exTracking !== undefined && typeof exTracking === "string") {

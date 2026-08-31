@@ -25,6 +25,33 @@
  *
  * It deliberately does NOT assert that the model is correct. The model is known to be wrong;
  * that is a separate, open problem.
+ *
+ * ─── WHAT WAS TRIED AFTERWARDS, AND WHAT IT COST TO LEARN ───────────────────────────────
+ *
+ * 1. A SYNTHETIC FIXTURE DOES NOT REPRODUCE THE FAILURE. Four prompts (the current one, plus
+ *    verbatim-with-separators, digit-count, and an explicit input/output example) were each run
+ *    three times against a generated Persian slip printed 462,000,000 rial, and then three more
+ *    times each against a blurred, downscaled, low-contrast copy meant to imitate thermal
+ *    print. Twenty-four runs, twenty-four correct — INCLUDING the current prompt. The fixture
+ *    renders in Vazirmatn, where a zero is a clean ring; on real thermal paper it is a bare dot
+ *    that a thousands comma is barely distinguishable from. So the experiment could not tell
+ *    the prompts apart, and choosing between them stays [UNKNOWN].
+ *
+ *    The general lesson, which outlives this bug: A TEST THAT DOES NOT REPRODUCE THE FAILING
+ *    CONDITION PROVES NOTHING BY BEING GREEN. Twenty-four green runs said only that the
+ *    fixture was easy.
+ *
+ * 2. LOCAL OCR IS NOT VIABLE ON THIS HARDWARE. There is no discrete GPU — only an integrated
+ *    Intel UHD 730 — and Ollama reports `in_VRAM=0.0GB` for every loaded model, i.e. pure CPU
+ *    inference. Measured for one trivial token: 7B → 9.6s, 14B → 67.6s, and the 24B vision
+ *    model (qwen3.6, the only vision model installed) timed out after 180s. RAM is not the
+ *    constraint: 127.7GB total, 76.7GB free. Phase 7's goal of local OCR is not reachable on
+ *    this server as configured.
+ *
+ * 3. LIGHTER VISION MODELS NOT TESTED: moondream, llava:7b, qwen2-vl:7b, minicpm-v. By the
+ *    timings above a ~7B model would land near 10-20s, which is borderline usable — but their
+ *    accuracy on Persian numerals is [UNKNOWN] and nothing here should be read as endorsing
+ *    one. None was installed; Ollama's configuration was not touched.
  */
 import { expect, test } from "@playwright/test";
 import { dbRows, dbScalar } from "../helpers/db";
