@@ -123,13 +123,15 @@ export function validateQuote(
         message: `آیتم ${idx + 1}: محصول انتخاب نشده است.`,
       });
     }
-    if (
-      (it.source === "manual" || it.source === "quick_price") &&
-      !(it.free_item_name && it.free_item_name.trim().length > 0)
-    ) {
+    // A line must name a product that exists. 'manual' and 'quick_price' were the two labels
+    // for a typed-in name with no product_id; both are refused by
+    // create_sales_quote_with_items now, and this mirrors that so the salesperson is told
+    // before the round trip rather than by a server error. The check is here for the message,
+    // not for the enforcement -- the RPC is what actually closes the door.
+    if (it.source === "manual" || it.source === "quick_price") {
       errs.push({
-        field: `items.${idx}.free_item_name`,
-        message: `آیتم ${idx + 1}: نام کالا الزامی است.`,
+        field: `items.${idx}.product_id`,
+        message: `آیتم ${idx + 1}: این کالا در سیستم تعریف نشده است. برای ثبت پیش‌فاکتور، ابتدا محصول باید توسط حسابداری ساخته شود.`,
       });
     }
     if (!(it.quantity > 0)) {

@@ -9,8 +9,6 @@ import {
   Search,
   Save,
   Package,
-  FileText,
-  Sparkles,
   UserCheck,
   UserPlus,
   XCircle,
@@ -32,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
@@ -991,38 +988,27 @@ function AddItemPanel(props: {
               بستن
             </Button>
           </div>
-          <Tabs defaultValue="product">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="product">
-                <Package className="ml-1 h-4 w-4" /> از محصول ثبت‌شده
-              </TabsTrigger>
-              <TabsTrigger value="manual">
-                <FileText className="ml-1 h-4 w-4" /> آیتم آزاد
-              </TabsTrigger>
-              <TabsTrigger value="quick">
-                <Sparkles className="ml-1 h-4 w-4" /> از محاسبه سریع
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="product" className="pt-3">
-              <ProductTab
-                priceTypes={props.priceTypes}
-                settlementTypeId={props.settlementTypeId}
-                settlementTitle={props.settlementTitle}
-                onAdd={props.onAdd}
-              />
-            </TabsContent>
-            <TabsContent value="manual" className="pt-3">
-              <FreeItemTab source="manual" onAdd={props.onAdd} />
-            </TabsContent>
-            <TabsContent value="quick" className="pt-3">
-              <FreeItemTab
-                source="quick_price"
-                onAdd={props.onAdd}
-                hint="نتیجه ابزار «محاسبه سریع قیمت» را به‌عنوان آیتم آزاد وارد کنید."
-              />
-            </TabsContent>
-          </Tabs>
+          {/*
+            The "آیتم آزاد" and "از محاسبه سریع" tabs are gone. Both let a line be typed in
+            with no product_id, which made it invisible to stock, pricing and the catalogue --
+            the same hole under two labels, since they shared this one component and differed
+            only by a hint string. Only accounting creates products now. The rule is enforced
+            in create_sales_quote_with_items, not here: removing the tabs alone would have been
+            frontend-only authorisation.
+          */}
+          <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
+            <Package className="h-4 w-4 shrink-0" />
+            <span>
+              فقط کالاهای ثبت‌شده در سیستم قابل انتخاب‌اند. اگر کالایی را پیدا نکردید، برای
+              تعریفش با حسابداری تماس بگیرید.
+            </span>
+          </div>
+          <ProductTab
+            priceTypes={props.priceTypes}
+            settlementTypeId={props.settlementTypeId}
+            settlementTitle={props.settlementTitle}
+            onAdd={props.onAdd}
+          />
         </CardContent>
       </Card>
     </div>
@@ -1435,78 +1421,3 @@ function ProductTab(props: {
 }
 
 /* ---- Free / Quick item tab ---- */
-function FreeItemTab(props: {
-  source: "manual" | "quick_price";
-  onAdd: (it: DraftQuoteItem) => void;
-  hint?: string;
-}) {
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState<number>(1);
-  const [unitPrice, setUnitPrice] = useState<number>(0);
-  const [discount, setDiscount] = useState<number>(0);
-  const canSubmit = name.trim().length > 0 && quantity > 0 && unitPrice > 0;
-
-  return (
-    <div className="space-y-3">
-      {props.hint && (
-        <div className="rounded-md border border-border bg-muted/30 p-2 text-xs text-muted-foreground">
-          {props.hint}
-        </div>
-      )}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label>نام کالا *</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={200} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>تعداد</Label>
-          <Input
-            type="number"
-            min={0}
-            value={quantity}
-            onChange={(e) => setQuantity(Number(e.target.value) || 0)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>قیمت واحد (تومان)</Label>
-          <Input
-            type="number"
-            min={0}
-            value={unitPrice}
-            onChange={(e) => setUnitPrice(Number(e.target.value) || 0)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label>تخفیف خط (تومان)</Label>
-          <Input
-            type="number"
-            min={0}
-            value={discount}
-            onChange={(e) => setDiscount(Number(e.target.value) || 0)}
-          />
-        </div>
-      </div>
-      <div className="flex justify-end">
-        <Button
-          disabled={!canSubmit}
-          onClick={() => {
-            props.onAdd({
-              key: safeRandomUUID(),
-              source: props.source,
-              product_id: null,
-              free_item_name: name.trim(),
-              sku_snapshot: null,
-              title_snapshot: name.trim(),
-              sale_price_type_id: null,
-              quantity,
-              unit_price: unitPrice,
-              discount_amount: discount,
-            });
-          }}
-        >
-          افزودن به پیش‌فاکتور
-        </Button>
-      </div>
-    </div>
-  );
-}
