@@ -95,3 +95,43 @@ exactly that predicate — I read it while working on M1, before seeing the disc
 
 **Not yet verified by me for the other seven.** M2 begins by re-testing this independently; if it
 holds, M2 is a no-op and the brief's premise is false, which is a HALT-and-report condition.
+
+## Blocker (open) — M1 commit cannot be pushed
+
+`git push` rejected: **"push declined due to email privacy restrictions"**.
+
+The repo-local `user.email` is the owner's real address
+(`mohammadrezaafra66@gmail.com`), and GitHub's email-privacy setting refuses commits
+carrying it. Earlier commits in this run pushed because the effective address was then
+`you@example.com`; the repo-local value changed between them. The repo's own merge
+commits use `234219238+mohammadrezaafra66-arch@users.noreply.github.com`.
+
+The fix is to re-author one local, never-published commit — `git commit --amend`, which
+the harness blocks as history rewriting. Needs the owner. Nothing is lost: commit
+`23cc2f27` holds all of M1 and migration 419 is applied to the test database.
+
+---
+
+## M2 — G-1 · NO-OP. Brief premise invalidated.
+
+All eight views already end `WHERE uid() IS NOT NULL AND NOT is_viewer_only(uid())`; `anon` holds
+zero privileges on all eight; every anon read returns `permission denied for view`; admin and
+accountant read all eight correctly (six directly, two through their SECURITY DEFINER RPCs).
+Closed by **370** (grants) + **386** (predicate) + **387** (386's gate) + **395**.
+Report: `docs/verification/g1-status-on-test.md`.
+
+New finding nobody had enumerated: of 21 views in `public`, **12** carry `security_invoker`
+(not 10 — the 10 counts only those that do not ALSO use `is_viewer_only`), and **3** are in the
+third category with neither guard. Two of those three are closed by grant. The third,
+`v_customer_credit_exposure`, is readable by any `authenticated` session **including one with no
+JWT** and returns 0 rows only because it is structurally dead — it filters on a
+`quote_exception_type` value the CHECK constraint forbids. **It is a leak armed to appear the
+moment that filter is corrected.**
+
+## M3 — OG-23 UPDATE lock · NO-OP. Brief premise invalidated.
+
+Migration **400** (`20260827020000`, applied and in the ledger) closed the UPDATE half on
+2026-08-27. Each of the three tables carries both a BEFORE DELETE guard and a BEFORE UPDATE lock;
+the lock is per column, driven by `tg_lock_columns_when_posted` with a per-table `TG_ARGV` list,
+and `status` is deliberately left mutable. Live: 7/7 assertions pass, forced disturbance red and
+specific. Report: `docs/verification/og23-update-lock-status.md`.
