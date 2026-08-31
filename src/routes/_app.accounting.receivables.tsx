@@ -90,6 +90,11 @@ type ListRow = {
   is_overdue: boolean | null;
   created_at: string;
   aging_bucket: string | null;
+  settlement_title: string | null;
+  settlement_days: number | null;
+  due_date_unknown: boolean | null;
+  due_date_unknown_reason: string | null;
+  settlement_inactive_flag: boolean | null;
 };
 
 type DetailRow = {
@@ -107,6 +112,11 @@ type DetailRow = {
   confirmed_paid_amount: number | null;
   outstanding_amount: number | null;
   is_overdue: boolean | null;
+  settlement_title: string | null;
+  settlement_days: number | null;
+  due_date_unknown: boolean | null;
+  due_date_unknown_reason: string | null;
+  settlement_inactive_flag: boolean | null;
   receipt_id: string | null;
   receipt_amount: number | null;
   receipt_status: string | null;
@@ -116,6 +126,56 @@ type DetailRow = {
 };
 
 const NA = "نامشخص";
+
+/**
+ * The settlement due date, and the two cases where it must not look like an ordinary one.
+ *
+ * Until migration 419 this column was driven by the quote's `expires_at` — its VALIDITY deadline —
+ * which is NULL on every accepted quote, so the whole report showed no due dates at all and nothing
+ * was ever overdue. It is now `accepted_at + settlement_types.days`, and two situations still have
+ * no honest answer:
+ *
+ *   - the settlement type is inactive AND its days is 0. A 0 on a type nobody maintains means
+ *     nobody ever set it, not "same day", so the acceptance date would be a wrong number wearing a
+ *     reassuring label — and the accountant reads the number, not the label. The date is withheld
+ *     and the row is excluded from the overdue calculation.
+ *   - the quote has no acceptance moment or no settlement type at all. Structurally this should no
+ *     longer happen (417 stamps on insert and update, 418 backfilled the nine older rows), so this
+ *     is a guarantee rather than a live case.
+ *
+ * An inactive type WITH a real day count is different: the number is trustworthy, the type is
+ * merely no longer on offer, so the date is shown and the row is flagged.
+ */
+function DueDate({
+  row,
+}: {
+  row: {
+    due_date: string | null;
+    due_date_unknown?: boolean | null;
+    settlement_inactive_flag?: boolean | null;
+    settlement_title?: string | null;
+  };
+}) {
+  if (row.due_date_unknown || !row.due_date) {
+    return (
+      <span className="inline-flex items-center gap-1">
+        <Badge variant="outline" className="font-normal">
+          سررسید نامشخص
+        </Badge>
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1">
+      {fmtDate(row.due_date)}
+      {row.settlement_inactive_flag ? (
+        <Badge variant="secondary" className="font-normal">
+          نوع تسویه غیرفعال
+        </Badge>
+      ) : null}
+    </span>
+  );
+}
 
 function fmtMoney(n: number | null | undefined) {
   if (n == null) return NA;
@@ -470,7 +530,9 @@ function ReceivablesPage() {
                         <TableCell>
                           {r.invoice_number ? toFaDigits(r.invoice_number) : NA}
                         </TableCell>
-                        <TableCell>{fmtDate(r.due_date)}</TableCell>
+                        <TableCell>
+                          <DueDate row={r} />
+                        </TableCell>
                         <TableCell>{fmtMoney(r.total_amount)}</TableCell>
                         <TableCell>{fmtMoney(r.deposit_amount)}</TableCell>
                         <TableCell>{fmtMoney(r.confirmed_paid_amount)}</TableCell>
@@ -537,7 +599,7 @@ function ReceivablesPage() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <div>
                         <span className="text-muted-foreground">سررسید: </span>
-                        {fmtDate(r.due_date)}
+                        <DueDate row={r} />
                       </div>
                       <div>
                         <span className="text-muted-foreground">مانده: </span>
@@ -647,7 +709,7 @@ function ReceivablesPage() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">سررسید: </span>
-                          {fmtDate(head.due_date)}
+                          <DueDate row={head} />
                         </div>
                       </CardContent>
                     </Card>
