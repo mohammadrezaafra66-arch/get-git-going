@@ -118,6 +118,18 @@ function parseAmountValue(v: unknown): number | null {
   return n;
 }
 
+/**
+ * `amount_digit_count` as the model reported it, or null when it is absent or not a plausible
+ * digit count. Advisory: it never rejects an amount, it only lets us disagree out loud.
+ */
+function parseDigitCount(v: unknown): number | null {
+  if (v == null || v === "") return null;
+  const n = typeof v === "number" ? v : Number(normalizeDigits(String(v)).replace(/[^0-9]/g, ""));
+  if (!Number.isFinite(n) || !Number.isInteger(n)) return null;
+  if (n < 1 || n > 18) return null;
+  return n;
+}
+
 function normalizeCurrency(raw: string): ReceiptOcrCurrency {
   const t = normalizeOcrText(raw).toLowerCase().trim();
   if (!t) return "UNKNOWN";
@@ -226,6 +238,7 @@ const ReceiptOcrZod = z
     status: z.unknown().optional(),
     transfer_method: z.unknown().optional(),
     amount: z.unknown().optional().nullable(),
+    amount_digit_count: z.unknown().optional().nullable(),
     currency: z.unknown().optional(),
     receipt_date: z.unknown().optional(),
     receipt_time: z.unknown().optional(),
@@ -306,6 +319,16 @@ export function parseReceiptOcrResponse(raw: string): ReceiptOcrResult {
   );
   // HTML/form use HH:mm — keep seconds only in internal if present; form maps via toHtmlTimeValue
   const amount = parseAmountValue(parsed.amount);
+  // OG-85 — the model reads the significant digits correctly and then miscounts the run of
+  // zeros, by a different number each time, so the amount can be 10x, 100x or 1000x short with
+  // nothing to show for it. Asking for the digit count separately turns that silent error into
+  // a visible disagreement: if the count does not match the number we were given, we say so.
+  // It is advisory only. A missing or unusable count changes nothing.
+  const amountDigitCount = parseDigitCount(parsed.amount_digit_count);
+  const amountDigitMismatch =
+    amount != null && amountDigitCount != null
+      ? String(Math.trunc(amount)).length !== amountDigitCount
+      : false;
   const currency = normalizeCurrency(asRawString(parsed.currency ?? ""));
   const status = normalizeStatus(asRawString(parsed.status ?? ""));
   const transfer_method = normalizeTransferMethod(asRawString(parsed.transfer_method ?? ""));
@@ -322,10 +345,19 @@ export function parseReceiptOcrResponse(raw: string): ReceiptOcrResult {
   if (!asRawString(parsed.receiver_name)) importantMissing.push("receiver_name");
   if (transfer_method === "UNKNOWN") importantMissing.push("transfer_method");
 
+  if (amountDigitMismatch) {
+    // Say it in the accountant's terms: the two numbers the model gave us do not agree, so
+    // the amount is the one field that must be checked against the paper.
+    warnings.unshift(
+      `تعداد ارقام مبلغ با عددی که خوانده شده نمی‌خواند (${amountDigitCount} رقم در برابر ${String(Math.trunc(amount ?? 0)).length} رقم)؛ مبلغ را حتماً با فیش مقایسه کنید.`,
+    );
+  }
+
   const needs_manual_review = asBool(
     parsed.needs_manual_review,
     confidence < 70 ||
       importantMissing.length > 0 ||
+      amountDigitMismatch ||
       currency === "UNKNOWN" ||
       status === "PENDING" ||
       status === "UNKNOWN",
