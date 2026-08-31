@@ -122,7 +122,11 @@ function NewQuotePage() {
       if (error) throw error;
       return data ?? [];
     },
-    staleTime: 10 * 60_000,
+    // 30s, down from 10 minutes. The owner activates and deactivates settlement types as the
+    // business changes; at 10 minutes a salesperson with the page already open kept offering a
+    // type that had just been switched off -- the RPC then refused the quote, so the first sign
+    // of the change was a failed save. 30s matches the product picker and costs one small query.
+    staleTime: 30_000,
   });
 
   // Item 203 — active visitors for the picker. Optional: quotes issued before
