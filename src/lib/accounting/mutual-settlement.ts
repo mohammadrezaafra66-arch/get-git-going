@@ -14,7 +14,12 @@ type RpcFn = (
   args: Record<string, unknown>,
 ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
-const rpc = supabase.rpc as unknown as RpcFn;
+// Bound to the client on purpose. A bare `supabase.rpc` is called with `this` undefined,
+// and PostgREST's rpc dereferences `this.rest` immediately -- so the page threw
+// "Cannot read properties of undefined (reading 'rest')" before issuing any request at
+// all. Every other module calls it inline, `(supabase.rpc as ...)(...)`, which keeps the
+// receiver; binding makes this captured reference behave the same way.
+const rpc = supabase.rpc.bind(supabase) as unknown as RpcFn;
 
 /** جهت تسویه، از دید شرکت. */
 export type SettlementDirection = "customer_pays" | "we_pay" | "balanced";
