@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
@@ -16,7 +17,11 @@ import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 export type QuoteExceptionType =
   | "overdue_salesperson_commitment"
   | "credit_shortfall_salesperson_commitment"
-  | "accounting_approval";
+  | "accounting_approval"
+  // A quote with no customer file. Until migration 420 this case had to borrow
+  // "accounting_approval", so documents nobody in accounting saw were stored as
+  // accounting approvals — 16 of the 18 such rows are in fact linked customers.
+  | "guest_no_link";
 
 export type QuoteBlockReason =
   | {
@@ -39,6 +44,19 @@ export type QuoteBlockReason =
       kind: "no_credit";
       finalAmount: number;
       detail: string;
+    }
+  // Split out of "no_credit" deliberately and narrowly. That kind was three unrelated
+  // situations wearing one label — credit still loading, a linked customer with no
+  // allocation, and no customer link at all — and only the last one maps to
+  // guest_no_link. Widening the other two would let a linked customer with no credit
+  // take the guest door, which is a credit bypass rather than a fix.
+  | {
+      kind: "guest_no_link";
+      finalAmount: number;
+      /** Verbatim ACCOUNTING_APPROVAL_TEXT for sales; a neutral system line for manager/admin. */
+      commitmentText: string;
+      /** Sales must tick a box; manager and admin do not see the commitment at all. */
+      requiresCommitment: boolean;
     };
 
 interface QuoteCreationBlockDialogProps {
@@ -62,8 +80,20 @@ const creditShortfallText = (shortage: number) =>
     shortage,
   )} تومان را تا پایان روز کاری توسط مشتری دریافت و برای ثبت مالی تحویل واحد حسابداری کنم. در صورت انجام نشدن این واریز، تمام مسئولیت ثبت پیش‌فاکتور بیش از اعتبار مشتری بر عهده اینجانب خواهد بود.`;
 
-const ACCOUNTING_APPROVAL_TEXT =
+/**
+ * The commitment a salesperson signs when a quote is issued outside the normal credit path.
+ * Exported because the quote form now shows the same words for a guest quote, and the two must
+ * never drift: a commitment that is paraphrased in one place is not the same commitment.
+ */
+export const ACCOUNTING_APPROVAL_TEXT =
   "اینجانب متعهد می‌شوم که تأییدیه ثبت این پیش‌فاکتور را از خانم ماهرو دریافت کرده‌ام و در صورتی که در آینده مشخص شود این تأییدیه اخذ نشده یا خلاف واقع اعلام شده است، تمام مسئولیت ثبت این پیش‌فاکتور بر عهده اینجانب خواهد بود.";
+
+/**
+ * Recorded for manager and admin, who are not shown the commitment and have not accepted it.
+ * Writing the salesperson's commitment text for them would be a false claim in the audit record.
+ */
+export const GUEST_NO_LINK_PRIVILEGED_TEXT =
+  "ثبت بدون اتصال به پرونده توسط نقش مدیر — بدون نیاز به پذیرش تعهد.";
 
 export function QuoteCreationBlockDialog({
   reason,
@@ -71,6 +101,8 @@ export function QuoteCreationBlockDialog({
   onConfirmException,
 }: QuoteCreationBlockDialogProps) {
   const [minutes, setMinutes] = useState(30);
+  // Acceptance is a separate, deliberate act — not a side effect of pressing the button.
+  const [guestCommitmentAccepted, setGuestCommitmentAccepted] = useState(false);
 
   if (!reason) return null;
 
@@ -81,7 +113,9 @@ export function QuoteCreationBlockDialog({
         ? "مشتری مانده معوق دارد"
         : reason.kind === "credit_shortfall"
           ? "مبلغ پیش‌فاکتور بیشتر از اعتبار مشتری است"
-          : "مشتری اعتبار قابل استفاده ندارد";
+          : reason.kind === "guest_no_link"
+            ? "این پیش‌فاکتور به پرونده مشتری وصل نیست"
+            : "مشتری اعتبار قابل استفاده ندارد";
 
   return (
     <Dialog open={!!reason} onOpenChange={(open) => !open && onClose()}>
@@ -170,6 +204,38 @@ export function QuoteCreationBlockDialog({
           </div>
         )}
 
+        {reason.kind === "guest_no_link" && (
+          <div className="space-y-3">
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm leading-7">
+              این سند به هیچ پروندهٔ ثبت‌شده‌ای وصل نیست، پس اعتبار مالی بررسی نمی‌شود و در گزارش‌ها
+              «مهمان» شناخته می‌شود. نام و شماره فقط روی همین سند ثبت می‌شوند.
+            </div>
+            <div
+              className="rounded-md border bg-muted/20 p-3 text-xs leading-6"
+              data-testid="quote-guest-commitment-text"
+            >
+              {reason.commitmentText}
+            </div>
+            {reason.requiresCommitment && (
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="guest-commitment"
+                  data-testid="quote-guest-commitment-check"
+                  checked={guestCommitmentAccepted}
+                  onCheckedChange={(v) => setGuestCommitmentAccepted(v === true)}
+                  className="mt-0.5"
+                />
+                <Label
+                  htmlFor="guest-commitment"
+                  className="text-xs leading-relaxed cursor-pointer"
+                >
+                  متن بالا را خوانده‌ام و می‌پذیرم.
+                </Label>
+              </div>
+            )}
+          </div>
+        )}
+
         {reason.kind === "no_credit" && (
           <div className="space-y-3">
             <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-sm leading-7">
@@ -228,6 +294,21 @@ export function QuoteCreationBlockDialog({
             >
               <ShieldCheck className="ml-2 h-4 w-4" />
               ثبت با تأیید حسابداری
+            </Button>
+          )}
+          {reason.kind === "guest_no_link" && (
+            <Button
+              data-testid="quote-confirm-guest-no-link"
+              disabled={reason.requiresCommitment && !guestCommitmentAccepted}
+              onClick={() =>
+                onConfirmException({
+                  type: "guest_no_link",
+                  text: reason.commitmentText,
+                })
+              }
+            >
+              <ShieldCheck className="ml-2 h-4 w-4" />
+              ثبت به‌عنوان مشتری مهمان
             </Button>
           )}
           {reason.kind === "stock" && (

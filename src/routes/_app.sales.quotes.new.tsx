@@ -54,10 +54,25 @@ import {
 } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  ACCOUNTING_APPROVAL_TEXT,
+  GUEST_NO_LINK_PRIVILEGED_TEXT,
   QuoteCreationBlockDialog,
   type QuoteBlockReason,
   type QuoteExceptionType,
 } from "@/components/sales/quotes/QuoteCreationBlockDialog";
+
+/**
+ * A short, stable fingerprint of the commitment wording, so an audit row says WHICH text was
+ * accepted rather than merely that something was. If the wording is ever edited the fingerprint
+ * changes, and old rows keep pointing at the words their signer actually read.
+ *
+ * Not a security primitive — it identifies a template, it does not authenticate one.
+ */
+function commitmentFingerprint(text: string): string {
+  let h = 5381;
+  for (let i = 0; i < text.length; i += 1) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+  return (h >>> 0).toString(16).padStart(8, "0");
+}
 
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
@@ -74,6 +89,12 @@ function NewQuotePage() {
   const navigate = useNavigate();
   const { user, roles } = useAuth();
   const canEditPriceFreely = roles.includes("admin") || roles.includes("manager");
+  // Manager and admin are NOT shown the commitment, so they cannot accept it. Recording their
+  // guest quotes under the salesperson's words would be a false claim in the audit record.
+  const guestCommitmentRequired = !roles.includes("admin") && !roles.includes("manager");
+  const guestCommitmentText = guestCommitmentRequired
+    ? ACCOUNTING_APPROVAL_TEXT
+    : GUEST_NO_LINK_PRIVILEGED_TEXT;
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -90,6 +111,9 @@ function NewQuotePage() {
   // «قطع اتصال» button sets this, and only after its confirmation dialog.
   const queryClient = useQueryClient();
   const [guestOverride, setGuestOverride] = useState(false);
+  // Ticking this is the acceptance. Deliberately not derived from anything — no default, no
+  // inference from the role — and cleared the moment the quote stops being a guest one.
+  const [guestCommitmentAccepted, setGuestCommitmentAccepted] = useState(false);
   const [confirmDetachOpen, setConfirmDetachOpen] = useState(false);
   // Step 2 — the "add a phone to the customer file" dialog. Its draft never touches the quote.
   const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
@@ -336,6 +360,8 @@ function NewQuotePage() {
     setCustomerSearch("");
     // Picking a customer is itself a reconnect; a detach from a previous pick must not linger.
     setGuestOverride(false);
+    setGuestCommitmentAccepted(false);
+    setQuoteException(null);
   };
 
   // sale price types (cached)
@@ -439,6 +465,50 @@ function NewQuotePage() {
       return result;
     },
     onSuccess: (quote) => {
+      // 1-ب — an independent audit row for the guest path. The RPC already writes its own
+      // 'sales_quote_items_added' row, but that one records what the SERVER decided; this one
+      // records what the SALESPERSON accepted, which is a different claim and the only evidence
+      // that a commitment was made at all.
+      //
+      // NO IDENTIFYING DATA. No name, phone, address or national id — the fields below are the
+      // actor, the document, the reason, the template fingerprint and the time. (The quote's own
+      // INSERT trigger does write customer_name and customer_phone; that is pre-existing
+      // behaviour recorded in docs/design/audit-logs-pii-known-debt.md, not something this row
+      // adds to.)
+      //
+      // Fire-and-forget ON PURPOSE: a failed audit write must not fail a quote that the database
+      // has already committed. The trade-off is stated in the release note — when this insert
+      // fails, the evidence of acceptance falls back to the stored exception text plus the
+      // disabled-button invariant, and the failure is surfaced at error severity rather than
+      // swallowed.
+      if (guestCommitmentAccepted && user?.id) {
+        void supabase
+          .from("audit_logs")
+          .insert({
+            actor_id: user.id,
+            entity_type: "sales_quotes",
+            entity_id: quote.id,
+            action: "sales_quote_guest_no_link",
+            diff: {
+              commitment_accepted: true,
+              commitment_template: "ACCOUNTING_APPROVAL_TEXT",
+              commitment_template_fingerprint: commitmentFingerprint(guestCommitmentText),
+              exception_type: "guest_no_link",
+              reason: "guest_no_link",
+              actor_roles: roles,
+              accepted_at: new Date().toISOString(),
+            },
+          })
+          .then(({ error }) => {
+            if (error) {
+              console.error(
+                "[audit] guest_no_link commitment row failed for quote %s: %s",
+                quote.id,
+                error.message,
+              );
+            }
+          });
+      }
       toast.success(`پیش‌فاکتور ${quote.quote_number} با موفقیت ثبت شد.`, {
         description: "برای ارسال پیش‌فاکتور می‌توانید از دکمه «ارسال پیش‌فاکتور» استفاده کنید.",
       });
@@ -472,10 +542,14 @@ function NewQuotePage() {
       };
     }
     if (!linkedCustomerId) {
+      // Split out of "no_credit" so it can carry its own reason. The branch above and the one
+      // below still return "no_credit" with the same wording and the same exception type — only
+      // this one changes, because only this one is a quote with no customer file.
       return {
-        kind: "no_credit",
+        kind: "guest_no_link",
         finalAmount: totals.final_amount,
-        detail: "این پیش‌فاکتور به پرونده مشتری ثبت‌شده وصل نیست و اعتبار مالی قابل بررسی ندارد.",
+        commitmentText: guestCommitmentText,
+        requiresCommitment: guestCommitmentRequired,
       };
     }
     if (!creditInfo?.hasAllocation || creditInfo.availableCredit <= 0) {
@@ -505,6 +579,7 @@ function NewQuotePage() {
     if (blocker.kind === "credit_shortfall") {
       return quoteException?.type === "credit_shortfall_salesperson_commitment";
     }
+    if (blocker.kind === "guest_no_link") return quoteException?.type === "guest_no_link";
     if (blocker.kind === "no_credit") return quoteException?.type === "accounting_approval";
     return false;
   };
@@ -659,8 +734,8 @@ function NewQuotePage() {
                 {/* Every role that can create a quote can also detach. Walk-in sales depends on it,
                     and the server already gates what happens next: a detached quote is accepted
                     only through the commitment path in QuoteCreationBlockDialog. The explicit
-                    checkbox and the guest_no_link reason arrive with step 3 (item 1-ب); until then
-                    this is exactly the behaviour that existed before the picker shipped. */}
+                    checkbox and the guest_no_link reason shipped in step 3; the acceptance sits below
+                    this row, where it can gate the save button. */}
                 {FEATURE_QUOTE_CUSTOMER_PICKER && selectedCustomer && !guestOverride && (
                   <Button
                     type="button"
@@ -682,6 +757,8 @@ function NewQuotePage() {
                     className="h-6 px-2 text-[11px]"
                     onClick={() => {
                       setGuestOverride(false);
+                      setGuestCommitmentAccepted(false);
+                      setQuoteException(null);
                       setCustomerName(selectedCustomer.name);
                       setCustomerPhone(selectedCustomer.phone);
                     }}
@@ -690,6 +767,44 @@ function NewQuotePage() {
                   </Button>
                 )}
               </div>
+              {/* 1-ب — the acceptance. It gates the save button rather than living inside a
+                    dialog, because a checkbox that only appears after you press save cannot be a
+                    precondition for pressing it. Shown for every guest quote a salesperson makes,
+                    however the quote got there: detached from a picked customer, or never linked
+                    at all. Manager and admin do not see it and are not asked to accept. */}
+              {FEATURE_QUOTE_CUSTOMER_PICKER &&
+                !linkedCustomerId &&
+                guestCommitmentRequired &&
+                items.length > 0 && (
+                  <div className="mt-2 space-y-2 rounded-md border border-amber-500/40 bg-amber-500/5 p-3">
+                    <div className="text-xs leading-6" data-testid="quote-guest-commitment-text">
+                      {guestCommitmentText}
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        id="guest-commitment"
+                        data-testid="quote-guest-commitment-check"
+                        checked={guestCommitmentAccepted}
+                        onCheckedChange={(v) => {
+                          const accepted = v === true;
+                          setGuestCommitmentAccepted(accepted);
+                          // The tick IS the exception. Nothing else sets it for this path, and
+                          // unticking withdraws it rather than leaving a stale acceptance behind.
+                          setQuoteException(
+                            accepted ? { type: "guest_no_link", text: guestCommitmentText } : null,
+                          );
+                        }}
+                        className="mt-0.5"
+                      />
+                      <Label
+                        htmlFor="guest-commitment"
+                        className="cursor-pointer text-xs leading-relaxed"
+                      >
+                        متن بالا را خوانده‌ام و می‌پذیرم.
+                      </Label>
+                    </div>
+                  </div>
+                )}
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="expires_at">تاریخ اعتبار</Label>
@@ -961,7 +1076,18 @@ function NewQuotePage() {
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={saveMutation.isPending || items.length === 0}
+                disabled={
+                  saveMutation.isPending ||
+                  items.length === 0 ||
+                  // 1-ب — a salesperson cannot save a quote with no customer file until the commitment
+                  // above is ticked. Deliberately NOT gated on the amount: the credit blocker returns
+                  // null for a zero total, so an amount gate would leave a worthless guest quote able
+                  // to skip the commitment entirely.
+                  (FEATURE_QUOTE_CUSTOMER_PICKER &&
+                    !linkedCustomerId &&
+                    guestCommitmentRequired &&
+                    !guestCommitmentAccepted)
+                }
                 data-testid="quote-save"
               >
                 {saveMutation.isPending ? (
@@ -1007,6 +1133,17 @@ function NewQuotePage() {
               نام و شماره پس از قطع اتصال قابل ویرایش می‌شوند و فقط روی همین سند ثبت می‌شوند. هر
               زمان می‌توانید دوباره به پرونده وصل کنید.
             </p>
+            {guestCommitmentRequired && (
+              <div
+                className="rounded-md border bg-muted/20 p-2 text-[11px] leading-6"
+                data-testid="quote-detach-commitment-preview"
+              >
+                {guestCommitmentText}
+                <div className="mt-1 font-medium">
+                  برای ثبت، باید همین متن را زیر فرم تأیید کنید.
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setConfirmDetachOpen(false)}>
