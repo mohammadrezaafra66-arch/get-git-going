@@ -15,7 +15,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
-import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
+import { type AppRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
 import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent } from "@/components/ui/card";

@@ -11,6 +11,10 @@ services:
         VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
         VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
         VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
+        # Feature flags. Vite inlines these at BUILD time; unset means empty, which the
+        # flag reader treats as OFF. Present here so the four-hop gate covers this file.
+        VITE_FEATURE_QUOTE_CUSTOMER_PICKER: ${VITE_FEATURE_QUOTE_CUSTOMER_PICKER:-}
+        VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD: ${VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD:-}
     image: afrakala-app:latest
     container_name: afrakala-web
     env_file:

@@ -125,16 +125,27 @@ test.describe("OG-93 — the customer link is the id", () => {
     expect(flags.length, "feature-flags.ts should declare at least one flag").toBeGreaterThan(0);
 
     const dockerfile = readFileSync("Dockerfile", "utf8");
-    const compose = readFileSync("deploy/lan/docker-compose.yml", "utf8");
+    // EVERY compose that builds the web image, not just the LAN one. All three share the same
+    // Dockerfile, so the ARG/ENV hops are common — but a missing args: entry is per-file, and a
+    // gate that reads one file would call the other two covered when they are not.
+    const COMPOSES = [
+      "deploy/lan/docker-compose.yml",
+      "deploy/app/docker-compose.yml",
+      "deploy/local/docker-compose.yml",
+    ];
 
-    const composeArgs = compose.split(/\r?\n/).map((l) => l.trim());
     const dockerLines = dockerfile.split(/\r?\n/).map((l) => l.trim());
 
     for (const flag of flags) {
-      expect(
-        composeArgs.some((l) => l.startsWith(flag + ":")),
-        flag + " must be passed as a build arg in docker-compose.yml",
-      ).toBe(true);
+      for (const file of COMPOSES) {
+        const argLines = readFileSync(file, "utf8")
+          .split(/\r?\n/)
+          .map((l) => l.trim());
+        expect(
+          argLines.some((l) => l.startsWith(flag + ":")),
+          flag + " must be passed as a build arg in " + file,
+        ).toBe(true);
+      }
       expect(
         dockerLines.some((l) => l === "ARG " + flag),
         flag + " needs an ARG in the Dockerfile, or compose drops the build arg silently",
