@@ -14,14 +14,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 
-export type QuoteExceptionType =
-  | "overdue_salesperson_commitment"
-  | "credit_shortfall_salesperson_commitment"
-  | "accounting_approval"
-  // A quote with no customer file. Until migration 420 this case had to borrow
-  // "accounting_approval", so documents nobody in accounting saw were stored as
-  // accounting approvals — 16 of the 18 such rows are in fact linked customers.
-  | "guest_no_link";
+// The union and its Persian labels live in the sales module, next to the status labels, so the
+// detail page and the list can read them without importing a dialog.
+export type { QuoteExceptionType } from "@/lib/sales/quotes";
+import type { QuoteExceptionType } from "@/lib/sales/quotes";
 
 export type QuoteBlockReason =
   | {

@@ -11,6 +11,27 @@ export const SALES_QUOTE_STATUS_LABELS: Record<SalesQuoteStatus, string> = {
   canceled: "لغوشده",
 };
 
+/**
+ * Why a quote was allowed through a gate that would normally stop it.
+ *
+ * The column is plain text with a CHECK, not a pg enum, so there is no generated union to key off.
+ * The hand-written one lives with the dialog that writes these values; typing the map as
+ * Record<QuoteExceptionType, string> is what makes a missing label a compile error rather than an
+ * "undefined" on the screen — which is exactly how these four values stayed invisible until now.
+ */
+export type QuoteExceptionType =
+  | "overdue_salesperson_commitment"
+  | "credit_shortfall_salesperson_commitment"
+  | "accounting_approval"
+  | "guest_no_link";
+
+export const QUOTE_EXCEPTION_TYPE_LABELS: Record<QuoteExceptionType, string> = {
+  overdue_salesperson_commitment: "تعهد کارشناس فروش برای تسویهٔ معوقه",
+  credit_shortfall_salesperson_commitment: "تعهد کارشناس فروش برای کسری اعتبار",
+  accounting_approval: "تأیید حسابداری",
+  guest_no_link: "مشتری مهمان — بدون اتصال به پرونده",
+};
+
 export const SALES_QUOTE_SOURCE_LABELS: Record<SalesQuoteItemSource, string> = {
   product_price: "از قیمت محصول",
   quick_price: "از محاسبه سریع",

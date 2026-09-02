@@ -74,6 +74,71 @@ function commitmentFingerprint(text: string): string {
   return (h >>> 0).toString(16).padStart(8, "0");
 }
 
+/**
+ * Every way this form can refuse a quote. The value is stored as `stage` on the refusal row, so
+ * "how often does the credit wall stop a sale" becomes a query instead of a guess.
+ */
+type RefusalStage =
+  | "client_validation" // validateQuote rejected the header or an item
+  | "credit_gate" // findCreditBlocker opened the block dialog
+  | "server_rpc"; // create_sales_quote_with_items raised
+
+/**
+ * Record a refused attempt. FIRE-AND-FORGET BY CONSTRUCTION — it returns void, is never awaited,
+ * and a failure here is logged at error severity rather than shown to the salesperson. A quote is
+ * refused often and for ordinary reasons; making the person wait on bookkeeping would be worse
+ * than the missing row.
+ *
+ * NO IDENTIFYING DATA. Not the customer's name, phone, address or national id. The fields below
+ * are an attempt id, which stage refused, a machine-readable code, the actor's roles, whether the
+ * quote was linked to a customer file, whether that file has a phone, and the time. The previous
+ * version of this write put customer_name straight into the audit diff; it also sent
+ * entity_id: null into a NOT NULL column, so it had never once succeeded — 0 rows in the table.
+ *
+ * FIVE BLIND SPOTS remain, documented in docs/design/quote-refusal-logging.md: a disabled save
+ * button, a disabled add-item button, a cancelled confirmation dialog, a price lookup that dead-
+ * ends, and the route guard refusing the page. None of them is an event this function can see.
+ */
+function logQuoteRefusal(input: {
+  attemptId: string;
+  stage: RefusalStage;
+  code: string;
+  actorId: string | null;
+  roles: string[];
+  linked: boolean;
+  customerHasPhone: boolean;
+}): void {
+  if (!input.actorId) return;
+  void supabase
+    .from("audit_logs")
+    .insert({
+      actor_id: input.actorId,
+      entity_type: "sales_quotes",
+      // No quote exists — nothing was written. The attempt id is what ties the stages of one
+      // attempt together, and entity_id is NOT NULL so it cannot simply be omitted.
+      entity_id: input.attemptId,
+      action: "sales_quote_refused",
+      diff: {
+        stage: input.stage,
+        code: input.code,
+        actor_roles: input.roles,
+        linked_to_customer_file: input.linked,
+        customer_file_has_phone: input.customerHasPhone,
+        refused_at: new Date().toISOString(),
+      },
+    })
+    .then(({ error }) => {
+      if (error) {
+        console.error(
+          "[audit] quote refusal row failed (stage=%s code=%s): %s",
+          input.stage,
+          input.code,
+          error.message,
+        );
+      }
+    });
+}
+
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
 export const Route = createFileRoute("/_app/sales/quotes/new")({
@@ -110,6 +175,8 @@ function NewQuotePage() {
   // Step 1 — detaching is an ACT, not a side effect of typing. Only the explicit
   // «قطع اتصال» button sets this, and only after its confirmation dialog.
   const queryClient = useQueryClient();
+  // One id per form session, so the stages of a single attempt can be tied together in the log.
+  const [refusalAttemptId] = useState(() => safeRandomUUID());
   const [guestOverride, setGuestOverride] = useState(false);
   // Ticking this is the acceptance. Deliberately not derived from anything — no default, no
   // inference from the role — and cleared the moment the quote stops being a guest one.
@@ -408,9 +475,13 @@ function NewQuotePage() {
         items,
       );
       if (errs.length > 0) {
+        // Every failing field, not just the first. The user is shown errs[0]; the log keeps the
+        // whole set, because "which field blocks people most" is unanswerable from one of them.
+        recordRefusal("client_validation", errs.map((e) => e.field).join(","));
         throw new Error(errs[0].message);
       }
       if (!settlementTypeId) {
+        recordRefusal("client_validation", "settlement_type_missing");
         throw new Error("نوع تسویه را انتخاب کنید.");
       }
 
@@ -520,9 +591,23 @@ function NewQuotePage() {
     onError: (e: unknown) => {
       const reason = e instanceof Error ? e.message : "خطا در ثبت پیش‌فاکتور.";
       toast.error(reason);
+      // The server's Persian sentence is all supabase-js hands back — the SQLSTATE is dropped
+      // by the client library — so this code is a coarse bucket, not the server's own code.
+      recordRefusal("server_rpc", reason.slice(0, 60));
       setRejection({ reason, note: "" });
     },
   });
+
+  const recordRefusal = (stage: RefusalStage, code: string) =>
+    logQuoteRefusal({
+      attemptId: refusalAttemptId,
+      stage,
+      code,
+      actorId: user?.id ?? null,
+      roles,
+      linked: !!linkedCustomerId,
+      customerHasPhone: !!selectedCustomer?.phone,
+    });
 
   const findCreditBlocker = (): QuoteBlockReason | null => {
     if (totals.final_amount <= 0) return null;
@@ -587,6 +672,10 @@ function NewQuotePage() {
   const handleSubmit = async () => {
     const creditBlocker = findCreditBlocker();
     if (!exceptionMatchesBlocker(creditBlocker)) {
+      // Logged BEFORE the dialog opens, on purpose. Most credit-wall refusals end with the
+      // salesperson closing that dialog and walking away, so a log written on confirmation would
+      // miss the majority of them — which is the whole reason pre-submit stages are recorded.
+      recordRefusal("credit_gate", creditBlocker?.kind ?? "unknown");
       setBlockReason(creditBlocker);
       return;
     }
@@ -1284,12 +1373,16 @@ function NewQuotePage() {
                   const { error } = await supabase.from("audit_logs").insert({
                     actor_id: user.id,
                     entity_type: "sales_quote",
-                    entity_id: null,
+                    // audit_logs.entity_id is text NOT NULL. This sent null, so every «ثبت دلیل» since the
+                    // feature shipped failed with 23502 and the table holds 0 such rows. The refused quote
+                    // has no id, so the attempt id stands in — the same one the automatic rows carry, which
+                    // is what links a note to the attempt it is about.
+                    entity_id: refusalAttemptId,
                     action: "sales_quote_rejected",
                     diff: {
                       reason: rejection.reason,
                       note: rejection.note.trim() || null,
-                      customer_name: customerName.trim() || null,
+                      attempt_id: refusalAttemptId,
                       final_amount: totals.final_amount,
                     },
                   } as never);

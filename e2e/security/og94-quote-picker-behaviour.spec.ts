@@ -13,6 +13,8 @@
  * QT_NO_PHONE and are only ever typed into a search box, never asserted on, never logged. Nothing
  * here submits a quote, so the suite writes nothing: it stops before every save button.
  */
+import { readFileSync } from "node:fs";
+
 import { expect, test, type Page } from "@playwright/test";
 
 const WITH_PHONE = process.env.QT_WITH_PHONE ?? "";
@@ -228,5 +230,117 @@ test.describe("OG-94 — behaviour only possible with the picker flag on", () =>
       await expect(page.getByTestId("quote-detach-commitment-preview")).toHaveCount(0);
       await expect(page.getByTestId("quote-save")).toBeEnabled();
     });
+  });
+
+  // ============================================================================
+  // Step 4 — the data written in step 3 must be readable, and refusals must leave a trace.
+  // ============================================================================
+
+  test("every exception value has a Persian label, and the map is exhaustive", () => {
+    // The union is what makes a missing label a compile error. If someone adds a fifth value to
+    // the CHECK and the union without a label, this catches the half that TypeScript cannot: a
+    // label that is present but empty, or one that is still the raw English key.
+    const src = readFileSync("src/lib/sales/quotes.ts", "utf8");
+    const values = [
+      "overdue_salesperson_commitment",
+      "credit_shortfall_salesperson_commitment",
+      "accounting_approval",
+      "guest_no_link",
+    ];
+    for (const v of values) {
+      const row = new RegExp(`${v}:\\s*"([^"]+)"`).exec(src);
+      expect(row, `${v} needs an entry in QUOTE_EXCEPTION_TYPE_LABELS`).not.toBeNull();
+      const label = row![1];
+      expect(label.length, `${v}'s label must not be empty`).toBeGreaterThan(2);
+      expect(label, `${v}'s label must be Persian, not the raw key`).not.toContain(v);
+      expect(/[؀-ۿ]/.test(label), `${v}'s label must contain Persian`).toBe(true);
+    }
+  });
+
+  test("the detail page actually selects the exception columns", () => {
+    // Rendering without selecting is the failure that reads as success: the block is in the JSX,
+    // the value is undefined, and nothing shows. Both halves have to be present.
+    const page = readFileSync("src/routes/_app.sales.quotes.$quoteId.tsx", "utf8");
+    expect(page, "the select string must fetch the exception type").toContain(
+      "quote_exception_type",
+    );
+    expect(page, "the select string must fetch the commitment text").toContain(
+      "quote_exception_text",
+    );
+    expect(page, "the detail page must render the exception").toContain("quote-detail-exception");
+    expect(page, "it must use the shared label map, not its own strings").toContain(
+      "QUOTE_EXCEPTION_TYPE_LABELS",
+    );
+  });
+
+  test("the list can filter guests, and the filter is a real query not a client slice", () => {
+    const list = readFileSync("src/routes/_app.sales.quotes.index.tsx", "utf8");
+    expect(list, "the badge needs customer_id in the select").toMatch(
+      /select\([\s\S]{0,400}customer_id/,
+    );
+    expect(list, "the guest filter must reach the query").toContain('q.is("customer_id", null)');
+    expect(list, "the linked filter must reach the query").toContain(
+      'q.not("customer_id", "is", null)',
+    );
+    expect(list, "the filter must be in the query key or the cache lies").toContain("linkFilter");
+    expect(list, "guest rows need a badge").toContain("quote-list-guest-badge");
+  });
+
+  test("refusals are recorded, with no identifying data and never blocking the user", () => {
+    const form = readFileSync("src/routes/_app.sales.quotes.new.tsx", "utf8");
+    const fn = form.slice(form.indexOf("function logQuoteRefusal"));
+    // The whole function, from its declaration to the first line that is flush against the
+    // left margin after it — robust to reformatting, unlike matching a brace.
+    // The whole function: from its declaration to the next top-level declaration. Robust to
+    // reformatting, unlike matching a brace.
+    const end = fn.search(/\n(?=(function|const|type|export)\s)/);
+    const body = end > 0 ? fn.slice(0, end) : fn;
+
+    // NO PII. This is the assertion that matters most: the previous version of this write put
+    // customer_name into the audit diff.
+    for (const leak of ["customerName", "customerPhone", "customer_name", "customer_phone"]) {
+      expect(body, `the refusal row must not carry ${leak}`).not.toContain(leak);
+    }
+    // Fire-and-forget by construction, not by convention.
+    expect(body, "the refusal write must not be awaited").toContain("void supabase");
+    expect(body, "a failed refusal write must be logged, not shown").toContain("console.error");
+    // entity_id was null into a NOT NULL column — 0 rows had ever been written.
+    // Code only — the prose above logQuoteRefusal explains the old bug and names the literal,
+    // so a whole-file match would fail on the comment that documents the fix.
+    const codeLines = form
+      .split(/\r?\n/)
+      .filter((l) => !l.trim().startsWith("//") && !l.trim().startsWith("*"));
+    expect(
+      codeLines.some((l) => l.includes("entity_id: null")),
+      "entity_id must never be null again — audit_logs.entity_id is NOT NULL",
+    ).toBe(false);
+    // Pre-submit stages must be covered, or most refusals are invisible.
+    expect(form, "client validation refusals must be logged").toContain('"client_validation"');
+    expect(form, "credit-gate refusals must be logged").toContain('"credit_gate"');
+    expect(form, "server refusals must be logged").toContain('"server_rpc"');
+  });
+
+  test("the credit gate is logged BEFORE the dialog opens, not after confirmation", () => {
+    // Non-vacuous ordering check. Most credit refusals end with the salesperson closing the
+    // dialog, so a log written on confirmation would miss the majority — the exact under-count
+    // the feature exists to avoid.
+    const form = readFileSync("src/routes/_app.sales.quotes.new.tsx", "utf8");
+    const logAt = form.indexOf('recordRefusal("credit_gate"');
+    const dialogAt = form.indexOf("setBlockReason(creditBlocker)");
+    expect(logAt, "the credit-gate log must exist").toBeGreaterThan(-1);
+    expect(dialogAt, "the block dialog must still open").toBeGreaterThan(-1);
+    expect(logAt, "the log must come before the dialog").toBeLessThan(dialogAt);
+  });
+
+  test("the guest refusal message no longer claims accounting approval is the only way", () => {
+    // Migration 421. The message is the server's, so this reads the migration rather than the DB.
+    const mig = readFileSync(
+      "supabase/migrations/20260903140000_421_guest_refusal_message_tells_the_truth.sql",
+      "utf8",
+    );
+    expect(mig, "the corrected message must name the guest route").toContain("مسیر مهمان");
+    expect(mig, "the stale message must be gone").not.toContain(
+      "وصل نیست و بدون تأیید حسابداری قابل ثبت نیست",
+    );
   });
 });

@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { QUOTE_EXCEPTION_TYPE_LABELS, type QuoteExceptionType } from "@/lib/sales/quotes";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -93,6 +94,9 @@ interface QuoteDetail {
   list_price_snapshot: number | null;
   deposit_amount: number | null;
   commitment_confirmed: boolean | null;
+  quote_exception_type: string | null;
+  quote_exception_text: string | null;
+  quote_exception_confirmed_at: string | null;
   created_at: string;
 }
 
@@ -127,7 +131,7 @@ function QuoteDetailPage() {
       const { data, error } = await supabase
         .from("sales_quotes")
         .select(
-          "id, quote_number, customer_name, customer_phone, customer_note, customer_person_id, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, visitor_id, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at",
+          "id, quote_number, customer_name, customer_phone, customer_note, customer_person_id, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, visitor_id, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at, quote_exception_type, quote_exception_text, quote_exception_confirmed_at",
         )
         .eq("id", quoteId)
         .maybeSingle();
@@ -317,6 +321,29 @@ function QuoteDetailPage() {
               </div>
             )}
             {/* Items 197/198 — the deposit that made issuing possible. */}
+            {/* Step 4 — why this quote was allowed through a gate that normally stops it. Until now the
+                reason was written to the database and shown nowhere: a manager had to open psql to find
+                out why a credit wall was bypassed. */}
+            {quote.quote_exception_type && (
+              <div
+                className="rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs"
+                data-testid="quote-detail-exception"
+              >
+                <div className="mb-1 font-medium">
+                  مسیر استثنا:{" "}
+                  {QUOTE_EXCEPTION_TYPE_LABELS[quote.quote_exception_type as QuoteExceptionType] ??
+                    quote.quote_exception_type}
+                </div>
+                {quote.quote_exception_text && (
+                  <div className="whitespace-pre-wrap leading-6">{quote.quote_exception_text}</div>
+                )}
+                {quote.quote_exception_confirmed_at && (
+                  <div className="mt-1 text-muted-foreground">
+                    تأیید در {formatDateTimeFa(quote.quote_exception_confirmed_at)}
+                  </div>
+                )}
+              </div>
+            )}
             {quote.deposit_amount != null && quote.deposit_amount > 0 && (
               <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs">
                 <div className="mb-1 font-medium">بیعانه دریافتی</div>

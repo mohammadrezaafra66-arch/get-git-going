@@ -1,0 +1,11 @@
+--- after 420
++++ after 421
+@@ -183,7 +183,7 @@
+   IF p_customer_id IS NULL THEN
+     IF p_quote_exception_type IS DISTINCT FROM 'accounting_approval'
+        AND p_quote_exception_type IS DISTINCT FROM 'guest_no_link' THEN
+-      RAISE EXCEPTION 'این پیش‌فاکتور به پرونده مشتری ثبت‌شده وصل نیست و بدون تأیید حسابداری قابل ثبت نیست.'
++      RAISE EXCEPTION 'این پیش‌فاکتور به پرونده مشتری ثبت‌شده وصل نیست. برای ثبت، یا مشتری را به پرونده وصل کنید، یا مسیر مهمان را با پذیرش تعهد انتخاب کنید، یا تأیید حسابداری بگیرید.'
+         USING ERRCODE = '22023';
+     END IF;
+     _credit_snapshot := jsonb_build_object('mode', 'guest_accounting_approval', 'checked', false);

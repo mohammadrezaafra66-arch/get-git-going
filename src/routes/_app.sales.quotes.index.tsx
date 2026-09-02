@@ -24,6 +24,7 @@ import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -76,6 +77,7 @@ interface QuoteRow {
   id: string;
   quote_number: string;
   customer_name: string;
+  customer_id: string | null;
   customer_phone: string;
   salesperson_id: string | null;
   status: SalesQuoteStatus;
@@ -105,6 +107,10 @@ function QuotesListPage() {
   const dSearch = useDebounce(search, 350);
   const [status, setStatus] = useState<string>("__all");
   const [salespersonId, setSalespersonId] = useState<string>("__all");
+  // Step 4 — a guest quote is one with no customer file: customer_id IS NULL. Kept as a separate
+  // filter rather than folded into the status list, because it is orthogonal to status: a guest
+  // quote can be a draft, sent, accepted or rejected like any other.
+  const [linkFilter, setLinkFilter] = useState<string>("__all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
   const [page, setPage] = useState(1);
@@ -131,7 +137,17 @@ function QuotesListPage() {
   const listQuery = useQuery({
     queryKey: [
       "sales-quotes",
-      { dSearch, status, salespersonId, dateFrom, dateTo, page, userId: user?.id, isSalesOnly },
+      {
+        dSearch,
+        status,
+        salespersonId,
+        linkFilter,
+        dateFrom,
+        dateTo,
+        page,
+        userId: user?.id,
+        isSalesOnly,
+      },
     ],
     enabled: !!user,
     queryFn: async () => {
@@ -140,13 +156,15 @@ function QuotesListPage() {
       let q = supabase
         .from("sales_quotes")
         .select(
-          "id, quote_number, customer_name, customer_phone, salesperson_id, status, final_amount, expires_at, created_at, accounting_registered_at, accounting_registered_by, accounting_sent_at, accounting_sent_by, reject_reason",
+          "id, quote_number, customer_name, customer_phone, customer_id, salesperson_id, status, final_amount, expires_at, created_at, accounting_registered_at, accounting_registered_by, accounting_sent_at, accounting_sent_by, reject_reason",
           { count: "exact" },
         )
         .order("created_at", { ascending: false })
         .range(from, to);
       if (isSalesOnly && user) q = q.eq("salesperson_id", user.id);
       if (status !== "__all") q = q.eq("status", status as SalesQuoteStatus);
+      if (linkFilter === "guest") q = q.is("customer_id", null);
+      if (linkFilter === "linked") q = q.not("customer_id", "is", null);
       if (isPrivileged && salespersonId !== "__all") q = q.eq("salesperson_id", salespersonId);
       if (dateFrom) q = q.gte("created_at", new Date(dateFrom).toISOString());
       if (dateTo) {
@@ -242,6 +260,16 @@ function QuotesListPage() {
                 <SelectItem value="accepted">پذیرفته‌شده</SelectItem>
                 <SelectItem value="rejected">ردشده</SelectItem>
                 <SelectItem value="canceled">لغوشده</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={linkFilter} onValueChange={setLinkFilter}>
+              <SelectTrigger data-testid="quote-list-link-filter">
+                <SelectValue placeholder="اتصال به پرونده" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">همه (متصل و مهمان)</SelectItem>
+                <SelectItem value="guest">فقط مهمان</SelectItem>
+                <SelectItem value="linked">فقط متصل به پرونده</SelectItem>
               </SelectContent>
             </Select>
             {isPrivileged && (
@@ -555,7 +583,18 @@ function QuoteRowDesktop({ row, isManagerial, isAccountant, isOwner }: RowProps)
         </Link>
       </td>
       <td className="p-3 align-top">
-        <div className="font-medium">{row.customer_name}</div>
+        <div className="flex items-center gap-1.5">
+          <div className="font-medium">{row.customer_name}</div>
+          {!row.customer_id && (
+            <Badge
+              variant="outline"
+              data-testid="quote-list-guest-badge"
+              className="shrink-0 px-1 py-0 text-[10px] font-normal text-muted-foreground"
+            >
+              مهمان
+            </Badge>
+          )}
+        </div>
         <div className="text-xs text-muted-foreground" dir="ltr">
           {row.customer_phone}
         </div>
@@ -601,7 +640,18 @@ function QuoteCardMobile({ row, isManagerial, isAccountant, isOwner }: RowProps)
             >
               {row.quote_number}
             </Link>
-            <div className="font-medium truncate">{row.customer_name}</div>
+            <div className="flex items-center gap-1.5">
+              <div className="font-medium truncate">{row.customer_name}</div>
+              {!row.customer_id && (
+                <Badge
+                  variant="outline"
+                  data-testid="quote-list-guest-badge"
+                  className="shrink-0 px-1 py-0 text-[10px] font-normal text-muted-foreground"
+                >
+                  مهمان
+                </Badge>
+              )}
+            </div>
             <div className="text-[11px] text-muted-foreground" dir="ltr">
               {row.customer_phone}
             </div>
