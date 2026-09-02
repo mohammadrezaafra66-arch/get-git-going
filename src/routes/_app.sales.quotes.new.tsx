@@ -74,13 +74,6 @@ function NewQuotePage() {
   const navigate = useNavigate();
   const { user, roles } = useAuth();
   const canEditPriceFreely = roles.includes("admin") || roles.includes("manager");
-  // Step 4, brought forward. Detaching produces a quote the server accepts ONLY through the
-  // accounting-approval door, so a plain sales user who detaches walks to the end of the form and
-  // is bounced by a server error. Showing the button to someone who cannot use it is a dead end,
-  // so the control is gated here and the reason is stated where the button would have been.
-  // create_sales_quote_with_items admits admin|manager|sales; accountant cannot create a quote at
-  // all, which leaves admin and manager as the roles that can actually carry a guest quote through.
-  const canRecordGuestQuote = hasAnyRole(roles, ["admin", "manager"] as AppRole[]);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -663,29 +656,23 @@ function NewQuotePage() {
                     <UserPlus className="h-3 w-3" /> مشتری مهمان (بدون اتصال به پرونده)
                   </Badge>
                 )}
-                {FEATURE_QUOTE_CUSTOMER_PICKER &&
-                  selectedCustomer &&
-                  !guestOverride &&
-                  (canRecordGuestQuote ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      data-testid="quote-detach-open"
-                      className="h-6 px-2 text-[11px] text-muted-foreground"
-                      onClick={() => setConfirmDetachOpen(true)}
-                    >
-                      قطع اتصال / ثبت به‌عنوان مهمان
-                    </Button>
-                  ) : (
-                    <span
-                      data-testid="quote-detach-not-permitted"
-                      className="text-[11px] text-muted-foreground"
-                    >
-                      ثبت به‌عنوان مهمان نیاز به تأیید حسابداری دارد و از این حساب کاربری ممکن نیست.
-                      برای ثبت بدون اتصال، با مدیر یا حسابداری هماهنگ کنید.
-                    </span>
-                  ))}
+                {/* Every role that can create a quote can also detach. Walk-in sales depends on it,
+                    and the server already gates what happens next: a detached quote is accepted
+                    only through the commitment path in QuoteCreationBlockDialog. The explicit
+                    checkbox and the guest_no_link reason arrive with step 3 (item 1-ب); until then
+                    this is exactly the behaviour that existed before the picker shipped. */}
+                {FEATURE_QUOTE_CUSTOMER_PICKER && selectedCustomer && !guestOverride && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    data-testid="quote-detach-open"
+                    className="h-6 px-2 text-[11px] text-muted-foreground"
+                    onClick={() => setConfirmDetachOpen(true)}
+                  >
+                    قطع اتصال / ثبت به‌عنوان مهمان
+                  </Button>
+                )}
                 {FEATURE_QUOTE_CUSTOMER_PICKER && selectedCustomer && guestOverride && (
                   <Button
                     type="button"

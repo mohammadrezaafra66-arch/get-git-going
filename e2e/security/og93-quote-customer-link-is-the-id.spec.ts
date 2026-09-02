@@ -78,14 +78,29 @@ test.describe("OG-93 — the customer link is the id", () => {
     expect(form).not.toContain("FEATURE_QUOTE_IDENTITY_FROM_RECORD");
   });
 
-  test("a role that cannot record a guest quote is not offered the detach button", () => {
-    // Without this the salesperson detaches, fills the whole form, and is bounced by a server
-    // error at the end — a dead end. The server admits admin|manager|sales to create a quote and
-    // accepts a detached one only through accounting_approval, so admin and manager are the roles
-    // that can actually carry it through.
-    expect(form).toContain("const canRecordGuestQuote = hasAnyRole(roles,");
-    expect(form).toContain('data-testid="quote-detach-not-permitted"');
-    expect(form).toContain("نیاز به تأیید حسابداری دارد");
+  test("every role that can create a quote can also detach", () => {
+    // 1-الف. A previous commit hid this control from sales, which closed the walk-in flow. That
+    // was a workflow change dressed as a dead-end fix, and it is reverted here. The explicit
+    // commitment checkbox and the guest_no_link reason arrive with step 3, not before.
+    expect(form).not.toContain("canRecordGuestQuote");
+    expect(form).not.toContain("quote-detach-not-permitted");
+    expect(form).not.toContain("از این حساب کاربری ممکن نیست");
+  });
+
+  test("no env value may contain another variable's name", () => {
+    // The class of bug that made a flag report as ON while being OFF: an env file line with no
+    // trailing newline swallowed the next variable, so VITE_APP_ENV's value became
+    // "testVITE_FEATURE_QUOTE_CUSTOMER_PICKER=true" and the flag key never existed. A grep for the
+    // flag name found it inside that value and was mistaken for proof.
+    const flagNames = [...flags.matchAll(/envFlag\("([A-Z_]+)"\)/g)].map((m) => m[1]);
+    expect(flagNames.length).toBeGreaterThan(0);
+    for (const n of flagNames) {
+      expect(n, `${n} must be a bare variable name`).toMatch(/^VITE_[A-Z_]+$/);
+      expect(n.slice(5), `${n} must not contain a second VITE_ prefix`).not.toContain("VITE_");
+    }
+    // and the reader must compare against an exact value, never a substring
+    expect(flags).toContain('return raw === "true"');
+    expect(flags).not.toMatch(/\.includes\(|\.startsWith\(|\.indexOf\(/);
   });
 
   test("no persons search was added, and context links are untouched", () => {

@@ -57,6 +57,12 @@ try {
     git log -1 --pretty=format:"%h  %an  %s" | Write-Host
     Write-Host ""
 
+    # Guard added 2026-09-02. A malformed env file shipped a corrupted VITE_APP_ENV and a feature
+    # flag that never existed; the deploy reported success. Fail here instead of building it.
+    Write-Host "[2.5/5] checking the env file ..." -ForegroundColor Cyan
+    & "$PSScriptRoot\check-env-file.ps1" -EnvFile $envFile
+    if ($LASTEXITCODE -ne 0) { throw "env file check failed - deploy aborted before build" }
+
     Write-Host "[3/5] docker compose build ..." -ForegroundColor Cyan
     docker compose -f $composeFile --env-file $envFile build
 
