@@ -78,6 +78,16 @@ test.describe("OG-93 — the customer link is the id", () => {
     expect(form).not.toContain("FEATURE_QUOTE_IDENTITY_FROM_RECORD");
   });
 
+  test("a role that cannot record a guest quote is not offered the detach button", () => {
+    // Without this the salesperson detaches, fills the whole form, and is bounced by a server
+    // error at the end — a dead end. The server admits admin|manager|sales to create a quote and
+    // accepts a detached one only through accounting_approval, so admin and manager are the roles
+    // that can actually carry it through.
+    expect(form).toContain("const canRecordGuestQuote = hasAnyRole(roles,");
+    expect(form).toContain('data-testid="quote-detach-not-permitted"');
+    expect(form).toContain("نیاز به تأیید حسابداری دارد");
+  });
+
   test("no persons search was added, and context links are untouched", () => {
     // Conflict 3 was cancelled. Searching persons would show a sales user FEWER records (18 vs 73),
     // and 'repairing' the 56 missing person_context_links would quadruple what sales can see.
