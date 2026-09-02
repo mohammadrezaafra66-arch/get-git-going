@@ -1,0 +1,22 @@
+--- before (live)
++++ after (420)
+@@ -48,7 +48,8 @@
+      AND p_quote_exception_type NOT IN (
+        'overdue_salesperson_commitment',
+        'credit_shortfall_salesperson_commitment',
+-       'accounting_approval'
++       'accounting_approval',
++       'guest_no_link'
+      ) THEN
+     RAISE EXCEPTION 'نوع تعهد یا تأیید انتخاب‌شده معتبر نیست.' USING ERRCODE = '22023';
+   END IF;
+@@ -180,7 +181,8 @@
+ 
+   -- 212 — strict credit/overdue/accounting paths.
+   IF p_customer_id IS NULL THEN
+-    IF p_quote_exception_type IS DISTINCT FROM 'accounting_approval' THEN
++    IF p_quote_exception_type IS DISTINCT FROM 'accounting_approval'
++       AND p_quote_exception_type IS DISTINCT FROM 'guest_no_link' THEN
+       RAISE EXCEPTION 'این پیش‌فاکتور به پرونده مشتری ثبت‌شده وصل نیست و بدون تأیید حسابداری قابل ثبت نیست.'
+         USING ERRCODE = '22023';
+     END IF;
