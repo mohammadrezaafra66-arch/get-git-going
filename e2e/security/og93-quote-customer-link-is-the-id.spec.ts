@@ -109,4 +109,40 @@ test.describe("OG-93 — the customer link is the id", () => {
     expect(form).not.toContain('.from("persons")');
     expect(form).not.toContain("person_context_links");
   });
+
+  test("every flag reaches the bundle: .env -> compose args -> Dockerfile ARG -> Dockerfile ENV", () => {
+    // THE GATE THAT WOULD HAVE CAUGHT 2026-09-02. Vite inlines VITE_* at BUILD time, so a flag has
+    // to survive four hops to exist in the bundle. Two of them were missing and nothing complained:
+    // the compose build arg was passed to a Dockerfile with no matching ARG, so it was dropped
+    // silently, and with no ENV line the build process never saw it either. The result is the
+    // failure mode that reads as success — the code is correct, the flag is false, the old
+    // behaviour ships, and a deploy log full of green says nothing is wrong.
+    //
+    // Checked from feature-flags.ts outward, so a flag added later is covered without editing this.
+    const flags = [
+      ...readFileSync("src/lib/feature-flags.ts", "utf8").matchAll(/envFlag\(\s*"(VITE_[A-Z_]+)"/g),
+    ].map((m) => m[1]);
+    expect(flags.length, "feature-flags.ts should declare at least one flag").toBeGreaterThan(0);
+
+    const dockerfile = readFileSync("Dockerfile", "utf8");
+    const compose = readFileSync("deploy/lan/docker-compose.yml", "utf8");
+
+    const composeArgs = compose.split(/\r?\n/).map((l) => l.trim());
+    const dockerLines = dockerfile.split(/\r?\n/).map((l) => l.trim());
+
+    for (const flag of flags) {
+      expect(
+        composeArgs.some((l) => l.startsWith(flag + ":")),
+        flag + " must be passed as a build arg in docker-compose.yml",
+      ).toBe(true);
+      expect(
+        dockerLines.some((l) => l === "ARG " + flag),
+        flag + " needs an ARG in the Dockerfile, or compose drops the build arg silently",
+      ).toBe(true);
+      expect(
+        dockerLines.some((l) => l.startsWith(flag + "=$" + flag)),
+        flag + " needs an ENV line, or the build process never sees it",
+      ).toBe(true);
+    }
+  });
 });

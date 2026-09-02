@@ -35,6 +35,11 @@ ARG VITE_SUPABASE_PROJECT_ID
 # the hostnames that deployment is legitimately served from.
 ARG VITE_APP_ENV
 ARG VITE_TRUSTED_HOSTS
+# Feature flags. Vite inlines VITE_* at BUILD time, so a flag must arrive as an ARG here and be
+# exported as ENV below, or the compose build arg is silently dropped and the key never reaches
+# the bundle — which is exactly what happened on 2026-09-02.
+ARG VITE_FEATURE_QUOTE_CUSTOMER_PICKER
+ARG VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD
 # Build identity. Also declared in the runtime stage below (a Dockerfile ARG is
 # scoped to one stage), but needed HERE too: vite.config.ts reads GIT_SHA and
 # BUILD_TIME at build time to derive the service worker's version, which is what
@@ -47,6 +52,8 @@ ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
     VITE_APP_ENV=$VITE_APP_ENV \
     VITE_TRUSTED_HOSTS=$VITE_TRUSTED_HOSTS \
+    VITE_FEATURE_QUOTE_CUSTOMER_PICKER=$VITE_FEATURE_QUOTE_CUSTOMER_PICKER \
+    VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD=$VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD \
     GIT_SHA=$GIT_SHA \
     BUILD_TIME=$BUILD_TIME \
     NODE_ENV=production \
