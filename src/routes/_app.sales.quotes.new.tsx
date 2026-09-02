@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
   Loader2,
@@ -33,6 +33,7 @@ import {
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
+import { FEATURE_QUOTE_CUSTOMER_PICKER } from "@/lib/feature-flags";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
@@ -85,6 +86,14 @@ function NewQuotePage() {
     name: string;
     phone: string;
   } | null>(null);
+  // Step 1 — detaching is an ACT, not a side effect of typing. Only the explicit
+  // «قطع اتصال» button sets this, and only after its confirmation dialog.
+  const queryClient = useQueryClient();
+  const [guestOverride, setGuestOverride] = useState(false);
+  const [confirmDetachOpen, setConfirmDetachOpen] = useState(false);
+  // Step 2 — the "add a phone to the customer file" dialog. Its draft never touches the quote.
+  const [phoneDialogOpen, setPhoneDialogOpen] = useState(false);
+  const [phoneDraft, setPhoneDraft] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
   const [items, setItems] = useState<DraftQuoteItem[]>([]);
   const [settlementTypeId, setSettlementTypeId] = useState<string>("");
@@ -165,11 +174,71 @@ function NewQuotePage() {
   // a payment to the wrong customer. Re-matching the fields restores the link.
   const linkedCustomerId = useMemo(() => {
     if (!selectedCustomer) return null;
+    if (FEATURE_QUOTE_CUSTOMER_PICKER) {
+      // THE LINK IS THE ID. It survives every later edit to the customer file, because the name
+      // and phone stored on a quote are a SNAPSHOT of the moment it was written — not a live
+      // mirror of the record. The server agrees: create_sales_quote_with_items decides ownership
+      // from p_customer_id alone and never compares the passed name or phone to customers.name or
+      // customers.phone. Only the explicit detach below can break the link.
+      return guestOverride ? null : selectedCustomer.id;
+    }
     const nameMatches = selectedCustomer.name.trim() === customerName.trim();
     const phoneMatches =
       selectedCustomer.phone.replace(/\D/g, "") === customerPhone.replace(/\D/g, "");
     return nameMatches && phoneMatches ? selectedCustomer.id : null;
-  }, [selectedCustomer, customerName, customerPhone]);
+  }, [selectedCustomer, customerName, customerPhone, guestOverride]);
+
+  // Step 2 — a picked customer with no phone on file cannot be quoted: the RPC requires a
+  // non-empty phone. 51 of 86 active customers are in that state, so this is the common case,
+  // not an edge one. The remedy belongs in the customer FILE, never in the quote's snapshot.
+  const pickedCustomerHasNoPhone = Boolean(
+    FEATURE_QUOTE_CUSTOMER_PICKER &&
+    selectedCustomer &&
+    !guestOverride &&
+    !selectedCustomer.phone.trim(),
+  );
+
+  // While a customer is linked, the identity fields mirror the file and must not be typed over.
+  // Detaching unlocks them, which is exactly what «ثبت به‌عنوان مهمان» means.
+  const identityLocked = Boolean(
+    FEATURE_QUOTE_CUSTOMER_PICKER && selectedCustomer && !guestOverride,
+  );
+
+  // Writes the phone to the CUSTOMER RECORD, refusing a number another customer already holds.
+  // The quote's own snapshot is refreshed from the record afterwards, never edited directly.
+  const addPhoneToCustomer = useMutation({
+    mutationFn: async (phone: string) => {
+      const trimmed = phone.trim();
+      if (!/^[0-9+\-\s]{4,}$/.test(trimmed)) throw new Error("شماره تماس معتبر نیست.");
+      if (!selectedCustomer) throw new Error("مشتری انتخاب نشده است.");
+      const digits = trimmed.replace(/\D/g, "");
+      const { data: clash, error: clashError } = await supabase
+        .from("customers")
+        .select("id, name")
+        .neq("id", selectedCustomer.id)
+        .ilike("phone", `%${digits.slice(-9)}%`)
+        .limit(1);
+      if (clashError) throw clashError;
+      if ((clash ?? []).length > 0) {
+        throw new Error("این شماره قبلاً برای مشتری دیگری ثبت شده است.");
+      }
+      const { error } = await supabase
+        .from("customers")
+        .update({ phone: trimmed })
+        .eq("id", selectedCustomer.id);
+      if (error) throw error;
+      return trimmed;
+    },
+    onSuccess: (phone) => {
+      setSelectedCustomer((prev) => (prev ? { ...prev, phone } : prev));
+      setCustomerPhone(phone);
+      setPhoneDialogOpen(false);
+      void queryClient.invalidateQueries({ queryKey: ["sales-quote-customer-search"] });
+      void queryClient.invalidateQueries({ queryKey: ["quote-credit-info"] });
+      toast.success("شماره به پرونده مشتری اضافه شد.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   // Items 197/198 — the customer's live credit. Guests have no credit file, so
   // there is nothing to fetch and nothing to enforce.
@@ -265,6 +334,8 @@ function NewQuotePage() {
     setCustomerPhone(customer.phone ?? "");
     setSelectedCustomer({ id: customer.id, name: customer.name, phone: customer.phone ?? "" });
     setCustomerSearch("");
+    // Picking a customer is itself a reconnect; a detach from a previous pick must not linger.
+    setGuestOverride(false);
   };
 
   // sale price types (cached)
@@ -515,34 +586,105 @@ function NewQuotePage() {
               <Label htmlFor="customer_name">نام مشتری *</Label>
               <Input
                 id="customer_name"
+                data-testid="quote-customer-name"
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
                 maxLength={200}
+                readOnly={identityLocked}
+                className={identityLocked ? "bg-muted/50" : undefined}
               />
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="customer_phone">شماره تماس *</Label>
               <Input
                 id="customer_phone"
+                data-testid="quote-customer-phone"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
                 dir="ltr"
                 placeholder="09xxxxxxxxx"
+                readOnly={identityLocked}
+                className={identityLocked ? "bg-muted/50" : undefined}
               />
             </div>
-            <div className="md:col-span-2">
-              {linkedCustomerId ? (
-                <Badge variant="secondary" className="gap-1 text-[11px] font-normal">
-                  <UserCheck className="h-3 w-3" /> متصل به مشتری ثبت‌شده
-                </Badge>
-              ) : (
-                <Badge
+            {identityLocked && (
+              <p className="text-[11px] text-muted-foreground md:col-span-2">
+                نام و شماره از پرونده مشتری خوانده شده‌اند و روی سند قابل تایپ نیستند. برای اصلاح،
+                پرونده مشتری را ویرایش کنید؛ سندهای قبلی تغییر نمی‌کنند.
+              </p>
+            )}
+            {pickedCustomerHasNoPhone && (
+              <div
+                data-testid="quote-customer-no-phone"
+                className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3 md:col-span-2"
+              >
+                <p className="text-xs text-amber-700 dark:text-amber-400">
+                  این مشتری در پرونده‌اش شماره تماس ندارد و بدون شماره، ثبت پیش‌فاکتور ممکن نیست.
+                  شماره را به پرونده مشتری اضافه کنید — نه فقط روی این سند.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
                   variant="outline"
-                  className="gap-1 text-[11px] font-normal text-muted-foreground"
+                  className="mt-2"
+                  data-testid="quote-add-phone-open"
+                  onClick={() => {
+                    setPhoneDraft("");
+                    setPhoneDialogOpen(true);
+                  }}
                 >
-                  <UserPlus className="h-3 w-3" /> مشتری مهمان (بدون اتصال به پرونده)
-                </Badge>
-              )}
+                  افزودن شماره به پرونده مشتری
+                </Button>
+              </div>
+            )}
+            <div className="md:col-span-2">
+              <div className="flex flex-wrap items-center gap-2">
+                {linkedCustomerId ? (
+                  <Badge
+                    variant="secondary"
+                    data-testid="quote-link-badge-linked"
+                    className="gap-1 text-[11px] font-normal"
+                  >
+                    <UserCheck className="h-3 w-3" /> متصل به مشتری ثبت‌شده
+                  </Badge>
+                ) : (
+                  <Badge
+                    variant="outline"
+                    data-testid="quote-link-badge-guest"
+                    className="gap-1 text-[11px] font-normal text-muted-foreground"
+                  >
+                    <UserPlus className="h-3 w-3" /> مشتری مهمان (بدون اتصال به پرونده)
+                  </Badge>
+                )}
+                {FEATURE_QUOTE_CUSTOMER_PICKER && selectedCustomer && !guestOverride && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    data-testid="quote-detach-open"
+                    className="h-6 px-2 text-[11px] text-muted-foreground"
+                    onClick={() => setConfirmDetachOpen(true)}
+                  >
+                    قطع اتصال / ثبت به‌عنوان مهمان
+                  </Button>
+                )}
+                {FEATURE_QUOTE_CUSTOMER_PICKER && selectedCustomer && guestOverride && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    data-testid="quote-reattach"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={() => {
+                      setGuestOverride(false);
+                      setCustomerName(selectedCustomer.name);
+                      setCustomerPhone(selectedCustomer.phone);
+                    }}
+                  >
+                    اتصال دوباره به پرونده
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="space-y-1.5 md:col-span-1">
               <Label htmlFor="expires_at">تاریخ اعتبار</Label>
@@ -845,6 +987,78 @@ function NewQuotePage() {
 
       {/* Items 194/196 — the warning that must be read before the override is
           armed. Wording is fixed by the requirement. */}
+      {/* Step 1 — detaching is deliberate, confirmed, and reversible. */}
+      <Dialog open={confirmDetachOpen} onOpenChange={setConfirmDetachOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>ثبت به‌عنوان مشتری مهمان؟</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 text-sm">
+            <p>
+              با این کار، این پیش‌فاکتور به پرونده مشتری وصل نمی‌شود. اعتبار مالی مشتری بررسی
+              نمی‌شود و سند در گزارش‌ها به‌عنوان «مهمان» شناخته می‌شود.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              نام و شماره پس از قطع اتصال قابل ویرایش می‌شوند و فقط روی همین سند ثبت می‌شوند. هر
+              زمان می‌توانید دوباره به پرونده وصل کنید.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setConfirmDetachOpen(false)}>
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              data-testid="quote-detach-confirm"
+              onClick={() => {
+                setGuestOverride(true);
+                setConfirmDetachOpen(false);
+              }}
+            >
+              بله، مهمان ثبت شود
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Step 2 — the phone goes into the customer FILE, never only onto this quote. */}
+      <Dialog open={phoneDialogOpen} onOpenChange={setPhoneDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>افزودن شماره به پرونده مشتری</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="new_customer_phone">شماره تماس</Label>
+            <Input
+              id="new_customer_phone"
+              data-testid="quote-add-phone-input"
+              dir="ltr"
+              placeholder="09xxxxxxxxx"
+              value={phoneDraft}
+              onChange={(e) => setPhoneDraft(e.target.value)}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              این شماره در پرونده مشتری ذخیره می‌شود، نه فقط روی این سند. اگر شماره برای مشتری دیگری
+              ثبت شده باشد، ذخیره نمی‌شود.
+            </p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setPhoneDialogOpen(false)}>
+              انصراف
+            </Button>
+            <Button
+              type="button"
+              data-testid="quote-add-phone-save"
+              disabled={addPhoneToCustomer.isPending || !phoneDraft.trim()}
+              onClick={() => addPhoneToCustomer.mutate(phoneDraft)}
+            >
+              ذخیره در پرونده مشتری
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={belowListDialogOpen} onOpenChange={setBelowListDialogOpen}>
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader>
@@ -1003,8 +1217,8 @@ function AddItemPanel(props: {
           <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
             <Package className="h-4 w-4 shrink-0" />
             <span>
-              فقط کالاهای ثبت‌شده در سیستم قابل انتخاب‌اند. اگر کالایی را پیدا نکردید، برای
-              تعریفش با حسابداری تماس بگیرید.
+              فقط کالاهای ثبت‌شده در سیستم قابل انتخاب‌اند. اگر کالایی را پیدا نکردید، برای تعریفش
+              با حسابداری تماس بگیرید.
             </span>
           </div>
           <ProductTab
