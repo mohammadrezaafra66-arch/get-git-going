@@ -37,6 +37,11 @@ services:
         # VITE_TRUSTED_HOSTS آدرس واقعی همان سرور است تا بنر هشدار قرمز نمایش داده نشود.
         VITE_APP_ENV: ${VITE_APP_ENV:-production}
         VITE_TRUSTED_HOSTS: ${VITE_TRUSTED_HOSTS:-}
+        # Phase 2 steps 1+2 — the quote form's customer picker. Vite bakes VITE_ vars at BUILD
+        # time, so the flag must arrive as a build arg or the shipped bundle never sees it.
+        # Unset (or anything but "true") leaves the previous behaviour in place: that is the rollback.
+        VITE_FEATURE_QUOTE_CUSTOMER_PICKER: ${VITE_FEATURE_QUOTE_CUSTOMER_PICKER:-}
+        VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD: ${VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD:-}
         GIT_SHA: ${GIT_SHA:-local-unknown}
         BUILD_TIME: ${BUILD_TIME:-local-unknown}
         APP_ENV: lan
