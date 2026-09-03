@@ -166,8 +166,17 @@ function NewQuotePage() {
   const linkedCustomerId = useMemo(() => {
     if (!selectedCustomer) return null;
     const nameMatches = selectedCustomer.name.trim() === customerName.trim();
+    // An empty stored phone must not block the link. 1663 of 1700 customers have no phone on
+    // file, so for almost every customer this comparison was "" against the number the
+    // salesperson had just typed — false, silently, and the quote was written with no customer
+    // id. 154 quotes have already been orphaned that way.
+    //
+    // A STORED number that disagrees still clears the link: that half is the money-safety rule
+    // and it is untouched. Only the absence of a stored number stops being evidence of a
+    // mismatch, because it is not evidence of anything.
+    const storedPhone = (selectedCustomer.phone ?? "").replace(/\D/g, "");
     const phoneMatches =
-      selectedCustomer.phone.replace(/\D/g, "") === customerPhone.replace(/\D/g, "");
+      storedPhone === "" ? true : storedPhone === customerPhone.replace(/\D/g, "");
     return nameMatches && phoneMatches ? selectedCustomer.id : null;
   }, [selectedCustomer, customerName, customerPhone]);
 
@@ -1003,8 +1012,8 @@ function AddItemPanel(props: {
           <div className="flex items-center gap-2 rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
             <Package className="h-4 w-4 shrink-0" />
             <span>
-              فقط کالاهای ثبت‌شده در سیستم قابل انتخاب‌اند. اگر کالایی را پیدا نکردید، برای
-              تعریفش با حسابداری تماس بگیرید.
+              فقط کالاهای ثبت‌شده در سیستم قابل انتخاب‌اند. اگر کالایی را پیدا نکردید، برای تعریفش
+              با حسابداری تماس بگیرید.
             </span>
           </div>
           <ProductTab
