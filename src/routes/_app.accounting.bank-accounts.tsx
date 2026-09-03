@@ -177,9 +177,12 @@ function BankAccountsPage() {
                       <td className="p-3" dir="ltr">
                         {r.iban ?? "—"}
                       </td>
-                      <td className="p-3" dir="ltr">
-                        {r.accounting_code ?? "—"}
-                      </td>
+                      <AsanCodeCell
+                        row={r}
+                        canWrite={canWrite}
+                        actorId={user?.id ?? null}
+                        onSaved={refresh}
+                      />
                       <td className="p-3">{r.currency}</td>
                       <td className="p-3">
                         <Badge variant={r.account_type === "cash" ? "default" : "outline"}>
@@ -241,6 +244,130 @@ function BankAccountsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+/**
+ * The Asan code cell, editable in place.
+ *
+ * WHY IN PLACE AND NOT THROUGH THE DIALOG. The dialog already edits this field and keeps working
+ * — it is the right tool for one account. But the owner has twenty accounts to code, and the
+ * dialog costs an open, a scroll past six unrelated fields, a save and a close for each one.
+ * Editing in the cell is click, type, Enter, next row.
+ *
+ * WHY ONLY THIS COLUMN. Every other field on this table is either identifying (title, bank_name)
+ * or money-shaped (opening_balance, currency), and a stray keystroke on those is expensive. The
+ * Asan code is the only one being entered twenty times in a sitting, so it is the only one that
+ * earns the risk.
+ *
+ * The empty string is written as NULL, matching the dialog exactly: `post_receipt_accounting`
+ * treats a blank code as "not set", and storing "" would pass a not-blank check while meaning
+ * nothing. `bank_accounts.accounting_code` also carries a unique-when-not-null index, so the
+ * duplicate case is a real one an owner will hit while typing twenty codes — it is named in
+ * Persian rather than surfaced as a raw Postgres error.
+ */
+function AsanCodeCell({
+  row,
+  canWrite,
+  actorId,
+  onSaved,
+}: {
+  row: BankAccount;
+  canWrite: boolean;
+  actorId: string | null;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(row.accounting_code ?? "");
+
+  const save = useMutation({
+    mutationFn: async (next: string) => {
+      const code = next.trim() || null;
+      const { error } = await supabase
+        .from("bank_accounts")
+        // `as never` for the same stale-types reason as the dialog: types.ts predates this column.
+        .update({ accounting_code: code } as never)
+        .eq("id", row.id);
+      if (error) throw error;
+      await supabase.from("audit_logs").insert({
+        actor_id: actorId,
+        entity_type: "bank_account",
+        entity_id: row.id,
+        action: "bank_account_asan_code_updated",
+        diff: { from: row.accounting_code, to: code },
+      } as never);
+    },
+    onSuccess: () => {
+      setEditing(false);
+      toast.success("کد ذخیره شد");
+      onSaved();
+    },
+    onError: (e: any) => {
+      // 23505 is the unique-when-not-null index. Two accounts cannot share one Asan code.
+      const duplicate = e?.code === "23505" || String(e?.message ?? "").includes("23505");
+      toast.error(duplicate ? "این کد قبلاً برای حساب دیگری ثبت شده است." : (e?.message ?? "خطا"));
+    },
+  });
+
+  const commit = () => {
+    if (value.trim() === (row.accounting_code ?? "")) {
+      setEditing(false);
+      return;
+    }
+    save.mutate(value);
+  };
+
+  const cancel = () => {
+    setValue(row.accounting_code ?? "");
+    setEditing(false);
+  };
+
+  if (!canWrite) {
+    return (
+      <td className="p-3" dir="ltr">
+        {row.accounting_code ?? "—"}
+      </td>
+    );
+  }
+
+  return (
+    <td className="p-3" dir="ltr">
+      {editing ? (
+        <Input
+          autoFocus
+          dir="ltr"
+          className="h-8 w-28"
+          maxLength={50}
+          value={value}
+          disabled={save.isPending}
+          aria-label={`کد آسان حساب ${row.title}`}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+            }
+            if (e.key === "Escape") {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+        />
+      ) : (
+        <button
+          type="button"
+          className="min-w-16 rounded px-1 text-right hover:bg-muted"
+          aria-label={`ویرایش کد آسان حساب ${row.title}`}
+          onClick={() => {
+            setValue(row.accounting_code ?? "");
+            setEditing(true);
+          }}
+        >
+          {row.accounting_code ?? "—"}
+        </button>
+      )}
+    </td>
   );
 }
 
