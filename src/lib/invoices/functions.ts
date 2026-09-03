@@ -24,14 +24,16 @@ export const CreateInvoiceInput = z.object({
   issue_date: z.string().datetime().or(z.string().date()),
   due_date: z.string().datetime().or(z.string().date()).optional(),
   notes: z.string().optional(),
-  items: z.array(
-    z.object({
-      description: z.string().min(1),
-      quantity: z.number().positive(),
-      unit_price: z.number().nonnegative(),
-      tax_rate: z.number().nonnegative().max(1).optional(),
-    })
-  ).min(1, "At least one item is required"),
+  items: z
+    .array(
+      z.object({
+        description: z.string().min(1),
+        quantity: z.number().positive(),
+        unit_price: z.number().nonnegative(),
+        tax_rate: z.number().nonnegative().max(1).optional(),
+      }),
+    )
+    .min(1, "At least one item is required"),
 });
 
 export type CreateInvoiceInput = z.infer<typeof CreateInvoiceInput>;
@@ -41,15 +43,17 @@ export const UpdateInvoiceInput = z.object({
   status: z.enum(["draft", "issued", "paid", "cancelled"]).optional(),
   due_date: z.string().datetime().or(z.string().date()).optional(),
   notes: z.string().optional(),
-  items: z.array(
-    z.object({
-      id: z.string().uuid().optional(),
-      description: z.string().min(1),
-      quantity: z.number().positive(),
-      unit_price: z.number().nonnegative(),
-      tax_rate: z.number().nonnegative().max(1).optional(),
-    })
-  ).optional(),
+  items: z
+    .array(
+      z.object({
+        id: z.string().uuid().optional(),
+        description: z.string().min(1),
+        quantity: z.number().positive(),
+        unit_price: z.number().nonnegative(),
+        tax_rate: z.number().nonnegative().max(1).optional(),
+      }),
+    )
+    .optional(),
 });
 
 export type UpdateInvoiceInput = z.infer<typeof UpdateInvoiceInput>;
@@ -150,18 +154,30 @@ export const createInvoiceFn = createServerFn({ method: "POST" })
     }
 
     // Log audit event
-    await logAuditEvent({
-      actor_id: user.id,
-      action: "CREATE",
-      table_name: "invoices",
-      record_id: result.data.id,
-      change_details: {
-        invoice_number: data.invoice_number,
-        customer_id: data.customer_id,
-        total,
-        item_count: data.items.length,
-      },
-    });
+    // The business write has already committed. A failed audit row must not undo it,
+    // so this is reported at error severity and swallowed — the same decision the
+    // quote form makes for its own refusal rows.
+    try {
+      await logAuditEvent({
+        actor_id: user.id,
+        action: "CREATE",
+        entity_type: "invoices",
+        entity_id: result.data.id,
+        diff: {
+          invoice_number: data.invoice_number,
+          customer_id: data.customer_id,
+          total,
+          item_count: data.items.length,
+        },
+      });
+    } catch (auditError) {
+      console.error(
+        "[audit] %s row failed for %s: %s",
+        "CREATE",
+        "invoices",
+        auditError instanceof Error ? auditError.message : String(auditError),
+      );
+    }
 
     return result.data;
   });
@@ -230,13 +246,25 @@ export const updateInvoiceFn = createServerFn({ method: "POST" })
     }
 
     // Log audit event
-    await logAuditEvent({
-      actor_id: user.id,
-      action: "UPDATE",
-      table_name: "invoices",
-      record_id: data.id,
-      change_details: updateData,
-    });
+    // The business write has already committed. A failed audit row must not undo it,
+    // so this is reported at error severity and swallowed — the same decision the
+    // quote form makes for its own refusal rows.
+    try {
+      await logAuditEvent({
+        actor_id: user.id,
+        action: "UPDATE",
+        entity_type: "invoices",
+        entity_id: data.id,
+        diff: updateData,
+      });
+    } catch (auditError) {
+      console.error(
+        "[audit] %s row failed for %s: %s",
+        "UPDATE",
+        "invoices",
+        auditError instanceof Error ? auditError.message : String(auditError),
+      );
+    }
 
     return result.data;
   });
@@ -294,13 +322,25 @@ export const deleteInvoiceFn = createServerFn({ method: "POST" })
     }
 
     // Log audit event
-    await logAuditEvent({
-      actor_id: user.id,
-      action: "DELETE",
-      table_name: "invoices",
-      record_id: invoiceId,
-      change_details: { deleted_at: new Date().toISOString() },
-    });
+    // The business write has already committed. A failed audit row must not undo it,
+    // so this is reported at error severity and swallowed — the same decision the
+    // quote form makes for its own refusal rows.
+    try {
+      await logAuditEvent({
+        actor_id: user.id,
+        action: "DELETE",
+        entity_type: "invoices",
+        entity_id: invoiceId,
+        diff: { deleted_at: new Date().toISOString() },
+      });
+    } catch (auditError) {
+      console.error(
+        "[audit] %s row failed for %s: %s",
+        "DELETE",
+        "invoices",
+        auditError instanceof Error ? auditError.message : String(auditError),
+      );
+    }
 
     return { success: true };
   });

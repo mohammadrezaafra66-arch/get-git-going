@@ -1,50 +1,56 @@
 /**
  * Centralized Audit Logging Module
- * 
+ *
  * Single source of truth for all audit operations across the application.
  * Consolidates audit logic from multiple scattered files into one coherent system.
- * 
+ *
  * Previously scattered across:
  * - src/lib/products/audit.ts
  * - src/routes/_app.audit-logs.tsx
  * - 30+ migration files with audit triggers
  * - customer/invoice/accounting serverFn functions
- * 
+ *
  * Now centralized here with clear, documented APIs.
  */
 
-import { getServiceClient } from '@/integrations/supabase/server';
-import { z } from 'zod';
+import { getServiceClient } from "@/integrations/supabase/server";
+import { z } from "zod";
 
 // ===== Schema Definitions =====
 
+/**
+ * The shape audit_logs ACTUALLY has, measured from information_schema:
+ *   id bigint NOT NULL · actor_id uuid NULL · entity_type text NOT NULL
+ *   entity_id text NOT NULL · action text NOT NULL · diff jsonb NULL
+ *   created_at timestamptz NOT NULL
+ *
+ * The previous version described a table with table_name, record_id, change_details and
+ * updated_at. No such columns have ever existed — the first audit_logs migration on 2026-04-24
+ * already used entity_type/entity_id/diff, and this module arrived two months later. Every insert
+ * it attempted failed with 42703 "column audit_logs.table_name does not exist", and because
+ * nothing calls these paths yet, nothing ever surfaced it.
+ */
 export const AuditLogSchema = z.object({
-  id: z.string().uuid(),
-  actor_id: z.string().uuid(),
+  id: z.union([z.number(), z.string()]),
+  actor_id: z.string().uuid().nullable(),
+  entity_type: z.string(),
+  entity_id: z.string(),
   action: z.string(),
-  table_name: z.string(),
-  record_id: z.string(),
-  change_details: z.record(z.any()),
-  created_at: z.string().datetime(),
-  updated_at: z.string().datetime(),
+  diff: z.record(z.any()).nullable(),
+  created_at: z.string(),
 });
 
 export type AuditLog = z.infer<typeof AuditLogSchema>;
 
 export const CreateAuditLogInput = z.object({
   actor_id: z.string().uuid(),
-  action: z.enum([
-    'CREATE',
-    'UPDATE',
-    'DELETE',
-    'EXPORT',
-    'IMPORT',
-    'LINK',
-    'UNLINK',
-  ]),
-  table_name: z.string(),
-  record_id: z.string().optional(),
-  change_details: z.record(z.any()).optional(),
+  action: z.enum(["CREATE", "UPDATE", "DELETE", "EXPORT", "IMPORT", "LINK", "UNLINK"]),
+  /** The table the event is about, e.g. "payments". Stored in entity_type. */
+  entity_type: z.string(),
+  /** REQUIRED. entity_id is NOT NULL, so a null here is a guaranteed 23502 at insert time. */
+  entity_id: z.string().min(1),
+  /** Stored in diff. Must never carry a person's name, phone, address or national id. */
+  diff: z.record(z.any()).optional(),
 });
 
 export type CreateAuditLogInput = z.infer<typeof CreateAuditLogInput>;
@@ -56,15 +62,15 @@ export type CreateAuditLogInput = z.infer<typeof CreateAuditLogInput>;
  * When modified, update this list and corresponding trigger definitions
  */
 export const AUDITED_TABLES = [
-  'customers',
-  'invoices',
-  'payments',
-  'products',
-  'user_roles',
-  'persons',
-  'person_identifiers',
-  'person_context_links',
-  'automation_driver_outputs',
+  "customers",
+  "invoices",
+  "payments",
+  "products",
+  "user_roles",
+  "persons",
+  "person_identifiers",
+  "person_context_links",
+  "automation_driver_outputs",
 ] as const;
 
 export type AuditedTable = (typeof AUDITED_TABLES)[number];
@@ -74,24 +80,24 @@ export type AuditedTable = (typeof AUDITED_TABLES)[number];
  * Maps table -> [fields to monitor]
  */
 export const CRITICAL_FIELDS: Record<AuditedTable, string[]> = {
-  customers: ['name', 'person_id', 'is_active', 'dedup_key'],
-  invoices: ['total_amount', 'status', 'customer_id'],
-  payments: ['amount', 'status', 'invoice_id'],
-  products: ['name', 'sku', 'price', 'category_id'],
-  user_roles: ['user_id', 'role'],
-  persons: ['name', 'type', 'status'],
-  person_identifiers: ['identifier_type', 'identifier_value', 'person_id'],
-  person_context_links: ['person_id', 'context_type', 'context_id'],
-  automation_driver_outputs: ['phase_label', 'status', 'job_id'],
+  customers: ["name", "person_id", "is_active", "dedup_key"],
+  invoices: ["total_amount", "status", "customer_id"],
+  payments: ["amount", "status", "invoice_id"],
+  products: ["name", "sku", "price", "category_id"],
+  user_roles: ["user_id", "role"],
+  persons: ["name", "type", "status"],
+  person_identifiers: ["identifier_type", "identifier_value", "person_id"],
+  person_context_links: ["person_id", "context_type", "context_id"],
+  automation_driver_outputs: ["phase_label", "status", "job_id"],
 };
 
 // ===== Public API =====
 
 /**
  * Log an audit event
- * 
+ *
  * Use this from serverFn functions to record significant operations.
- * 
+ *
  * Example:
  * ```
  * await logAuditEvent({
@@ -107,13 +113,13 @@ export async function logAuditEvent(input: CreateAuditLogInput): Promise<AuditLo
   const validated = CreateAuditLogInput.parse(input);
 
   const result = await getServiceClient()
-    .from('audit_logs')
+    .from("audit_logs")
     .insert({
       actor_id: validated.actor_id,
       action: validated.action,
-      table_name: validated.table_name,
-      record_id: validated.record_id || null,
-      change_details: validated.change_details || {},
+      entity_type: validated.entity_type,
+      entity_id: validated.entity_id,
+      diff: validated.diff ?? {},
     })
     .select()
     .single();
@@ -128,18 +134,18 @@ export async function logAuditEvent(input: CreateAuditLogInput): Promise<AuditLo
 export async function getAuditHistory(
   tableName: AuditedTable,
   recordId: string,
-  limit: number = 50
+  limit: number = 50,
 ): Promise<AuditLog[]> {
   const result = await getServiceClient()
-    .from('audit_logs')
-    .select('*')
-    .eq('table_name', tableName)
-    .eq('record_id', recordId)
-    .order('created_at', { ascending: false })
+    .from("audit_logs")
+    .select("*")
+    .eq("table_name", tableName)
+    .eq("record_id", recordId)
+    .order("created_at", { ascending: false })
     .limit(limit);
 
   if (result.error) throw result.error;
-  return result.data.map(log => AuditLogSchema.parse(log));
+  return result.data.map((log) => AuditLogSchema.parse(log));
 }
 
 /**
@@ -147,18 +153,18 @@ export async function getAuditHistory(
  */
 export async function getRecentAuditLogs(
   limit: number = 100,
-  offset: number = 0
-): Promise<{ data: AuditLog[], count: number }> {
+  offset: number = 0,
+): Promise<{ data: AuditLog[]; count: number }> {
   const result = await getServiceClient()
-    .from('audit_logs')
-    .select('*', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .from("audit_logs")
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (result.error) throw result.error;
 
   return {
-    data: (result.data || []).map(log => AuditLogSchema.parse(log)),
+    data: (result.data || []).map((log) => AuditLogSchema.parse(log)),
     count: result.count || 0,
   };
 }
@@ -175,26 +181,26 @@ export async function searchAuditLogs(
     since?: Date;
     until?: Date;
   },
-  limit: number = 100
+  limit: number = 100,
 ): Promise<AuditLog[]> {
   let query = getServiceClient()
-    .from('audit_logs')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .from("audit_logs")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-  if (filters.action) query = query.eq('action', filters.action);
-  if (filters.table_name) query = query.eq('table_name', filters.table_name);
-  if (filters.actor_id) query = query.eq('actor_id', filters.actor_id);
-  if (filters.record_id) query = query.eq('record_id', filters.record_id);
-  if (filters.since) query = query.gte('created_at', filters.since.toISOString());
-  if (filters.until) query = query.lte('created_at', filters.until.toISOString());
+  if (filters.action) query = query.eq("action", filters.action);
+  if (filters.table_name) query = query.eq("table_name", filters.table_name);
+  if (filters.actor_id) query = query.eq("actor_id", filters.actor_id);
+  if (filters.record_id) query = query.eq("record_id", filters.record_id);
+  if (filters.since) query = query.gte("created_at", filters.since.toISOString());
+  if (filters.until) query = query.lte("created_at", filters.until.toISOString());
 
   query = query.limit(limit);
 
   const result = await query;
   if (result.error) throw result.error;
 
-  return (result.data || []).map(log => AuditLogSchema.parse(log));
+  return (result.data || []).map((log) => AuditLogSchema.parse(log));
 }
 
 // ===== Migration Helpers =====
@@ -297,7 +303,7 @@ export const AUDIT_RLS_POLICY_SQL = `
  * Call periodically to keep audit_logs table size manageable
  */
 export async function archiveOldAuditLogs(
-  olderThanDays: number = 90
+  olderThanDays: number = 90,
 ): Promise<{ archived: number }> {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
@@ -305,9 +311,9 @@ export async function archiveOldAuditLogs(
   // In a real system, you'd archive to a separate table or storage
   // For now, just count
   const result = await getServiceClient()
-    .from('audit_logs')
-    .select('id', { count: 'exact' })
-    .lt('created_at', cutoffDate.toISOString());
+    .from("audit_logs")
+    .select("id", { count: "exact" })
+    .lt("created_at", cutoffDate.toISOString());
 
   if (result.error) throw result.error;
 

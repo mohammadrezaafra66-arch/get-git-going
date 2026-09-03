@@ -96,7 +96,7 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
     // Validate payment amount doesn't exceed invoice total
     if (data.amount > invoice.total) {
       throw new Error(
-        `مبلغ پرداخت (${data.amount}) نمی‌تواند بیشتر از مبلغ فاکتور (${invoice.total}) باشد`
+        `مبلغ پرداخت (${data.amount}) نمی‌تواند بیشتر از مبلغ فاکتور (${invoice.total}) باشد`,
       );
     }
 
@@ -136,19 +136,31 @@ export const recordPaymentFn = createServerFn({ method: "POST" })
     }
 
     // Log audit event
-    await logAuditEvent({
-      actor_id: user.id,
-      action: "CREATE",
-      table_name: "payments",
-      record_id: result.data.id,
-      change_details: {
-        invoice_id: data.invoice_id,
-        amount: data.amount,
-        payment_method: data.payment_method,
-        invoice_total: invoice.total,
-        payment_percentage: ((data.amount / invoice.total) * 100).toFixed(2),
-      },
-    });
+    // The business write has already committed. A failed audit row must not undo it,
+    // so this is reported at error severity and swallowed — the same decision the
+    // quote form makes for its own refusal rows.
+    try {
+      await logAuditEvent({
+        actor_id: user.id,
+        action: "CREATE",
+        entity_type: "payments",
+        entity_id: result.data.id,
+        diff: {
+          invoice_id: data.invoice_id,
+          amount: data.amount,
+          payment_method: data.payment_method,
+          invoice_total: invoice.total,
+          payment_percentage: ((data.amount / invoice.total) * 100).toFixed(2),
+        },
+      });
+    } catch (auditError) {
+      console.error(
+        "[audit] %s row failed for %s: %s",
+        "CREATE",
+        "payments",
+        auditError instanceof Error ? auditError.message : String(auditError),
+      );
+    }
 
     return result.data;
   });
@@ -204,13 +216,25 @@ export const updatePaymentFn = createServerFn({ method: "POST" })
     }
 
     // Log audit event
-    await logAuditEvent({
-      actor_id: user.id,
-      action: "UPDATE",
-      table_name: "payments",
-      record_id: data.id,
-      change_details: updateData,
-    });
+    // The business write has already committed. A failed audit row must not undo it,
+    // so this is reported at error severity and swallowed — the same decision the
+    // quote form makes for its own refusal rows.
+    try {
+      await logAuditEvent({
+        actor_id: user.id,
+        action: "UPDATE",
+        entity_type: "payments",
+        entity_id: data.id,
+        diff: updateData,
+      });
+    } catch (auditError) {
+      console.error(
+        "[audit] %s row failed for %s: %s",
+        "UPDATE",
+        "payments",
+        auditError instanceof Error ? auditError.message : String(auditError),
+      );
+    }
 
     return result.data;
   });
@@ -280,17 +304,29 @@ export const reversePaymentFn = createServerFn({ method: "POST" })
       .eq("id", payment.invoice_id);
 
     // Log audit event
-    await logAuditEvent({
-      actor_id: user.id,
-      action: "UPDATE",
-      table_name: "payments",
-      record_id: paymentId,
-      change_details: {
-        status: "reversed",
-        reason: "manual_reversal",
-        reversed_amount: payment.amount,
-      },
-    });
+    // The business write has already committed. A failed audit row must not undo it,
+    // so this is reported at error severity and swallowed — the same decision the
+    // quote form makes for its own refusal rows.
+    try {
+      await logAuditEvent({
+        actor_id: user.id,
+        action: "UPDATE",
+        entity_type: "payments",
+        entity_id: paymentId,
+        diff: {
+          status: "reversed",
+          reason: "manual_reversal",
+          reversed_amount: payment.amount,
+        },
+      });
+    } catch (auditError) {
+      console.error(
+        "[audit] %s row failed for %s: %s",
+        "UPDATE",
+        "payments",
+        auditError instanceof Error ? auditError.message : String(auditError),
+      );
+    }
 
     return { success: true };
   });
