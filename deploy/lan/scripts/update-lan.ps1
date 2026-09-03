@@ -63,11 +63,25 @@ try {
     & "$PSScriptRoot\check-env-file.ps1" -EnvFile $envFile
     if ($LASTEXITCODE -ne 0) { throw "env file check failed - deploy aborted before build" }
 
+    # Stamp the build with the commit it is actually made from. Added 2026-09-03.
+    #
+    # WITHOUT THIS THE LABEL LIES. docker-compose.yml reads GIT_SHA and BUILD_TIME as build args
+    # with ${GIT_SHA:-local-unknown} defaults, and --env-file supplies the values pinned in
+    # .env.lan -- GIT_SHA=1ca72316, BUILD_TIME=2026-07-29T14:06:56Z, both from July. So this
+    # script produced containers built CORRECTLY from new code and labelled with a stale commit,
+    # which silently disabled the only post-deploy check we have: APP_GIT_SHA must equal
+    # git rev-parse --short HEAD. Today's deploy escaped it only because the operator bypassed
+    # this script and typed the exports by hand.
+    $env:GIT_SHA = (git rev-parse --short HEAD).Trim()
+    $env:BUILD_TIME = (Get-Date -Format o)
+    Write-Host ("      stamping GIT_SHA={0} BUILD_TIME={1}" -f $env:GIT_SHA, $env:BUILD_TIME) -ForegroundColor DarkGray
+    if (-not $env:GIT_SHA) { throw 'could not read HEAD - refusing to build an unlabelled image' }
+
     Write-Host "[3/5] docker compose build ..." -ForegroundColor Cyan
     docker compose -f $composeFile --env-file $envFile build
 
     Write-Host ""
-    Write-Host "[4/5] docker compose up -d ..." -ForegroundColor Cyan
+    Write-Host "[4/5] docker compose up -d --no-deps --build web ..." -ForegroundColor Cyan
     docker compose -f $composeFile --env-file $envFile up -d
 
     Write-Host ""

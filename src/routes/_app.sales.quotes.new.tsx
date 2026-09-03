@@ -33,7 +33,7 @@ import {
 import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { FEATURE_QUOTE_CUSTOMER_PICKER } from "@/lib/feature-flags";
+import { FEATURE_QUOTE_CUSTOMER_PICKER, FEATURE_QUOTE_GUEST_COMMITMENT } from "@/lib/feature-flags";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
@@ -165,9 +165,20 @@ function NewQuotePage() {
   const navigate = useNavigate();
   const { user, roles } = useAuth();
   const canEditPriceFreely = roles.includes("admin") || roles.includes("manager");
-  // Manager and admin are NOT shown the commitment, so they cannot accept it. Recording their
-  // guest quotes under the salesperson's words would be a false claim in the audit record.
-  const guestCommitmentRequired = !roles.includes("admin") && !roles.includes("manager");
+  // ONE SWITCH, EVERY COPY OF THE COMMITMENT. This single boolean feeds all four sites — the
+  // block on the form, the save-button gate, the preview in the detach dialog, and (through
+  // requiresCommitment on the blocker) the variant inside QuoteCreationBlockDialog. Gating only
+  // the form copy would MOVE the checkbox into the dialog rather than remove it, which is the
+  // weaker design this file's own comment argues against.
+  //
+  // Off by default because of a measured number: 150 of 196 production quotes — 76% — have no
+  // customer file, so the tick lands on three quarters of daily work, not on an edge case.
+  //
+  // Manager and admin are NOT shown the commitment even when the flag is on, so they cannot
+  // accept it. Recording their guest quotes under the salesperson's words would be a false
+  // claim in the audit record.
+  const guestCommitmentRequired =
+    FEATURE_QUOTE_GUEST_COMMITMENT && !roles.includes("admin") && !roles.includes("manager");
   const guestCommitmentText = guestCommitmentRequired
     ? ACCOUNTING_APPROVAL_TEXT
     : GUEST_NO_LINK_PRIVILEGED_TEXT;

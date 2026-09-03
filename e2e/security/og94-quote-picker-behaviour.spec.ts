@@ -343,4 +343,77 @@ test.describe("OG-94 — behaviour only possible with the picker flag on", () =>
       "وصل نیست و بدون تأیید حسابداری قابل ثبت نیست",
     );
   });
+
+  test("the commitment flag controls BOTH copies of the checkbox, or neither", () => {
+    // THE WHOLE POINT OF THE THIRD FLAG. The commitment exists twice — the block on the form and
+    // the variant inside QuoteCreationBlockDialog. Gating only the form copy would MOVE the
+    // checkbox into the dialog rather than remove it, which is the weaker design the form's own
+    // comment argues against. One boolean feeds both, so this asserts the wiring, not the render.
+    const form = readFileSync("src/routes/_app.sales.quotes.new.tsx", "utf8");
+
+    // guestCommitmentRequired is the single source of truth and it must carry the flag.
+    const decl = new RegExp(
+      "const guestCommitmentRequired =\\s*\\n?\\s*FEATURE_QUOTE_GUEST_COMMITMENT",
+    ).exec(form);
+    expect(
+      decl,
+      "guestCommitmentRequired must be gated by FEATURE_QUOTE_GUEST_COMMITMENT",
+    ).not.toBeNull();
+
+    // …and it must reach all four sites: form block, save gate, detach preview, and the blocker
+    // payload that carries it into the dialog.
+    const uses = [...form.matchAll(/guestCommitmentRequired/g)].length;
+    expect(
+      uses,
+      "the flag must reach every commitment site through one boolean",
+    ).toBeGreaterThanOrEqual(5);
+    expect(form, "the blocker must carry it into the dialog").toContain(
+      "requiresCommitment: guestCommitmentRequired",
+    );
+
+    // The dialog must NOT read the flag itself — it takes requiresCommitment from the blocker.
+    const dialog = readFileSync("src/components/sales/quotes/QuoteCreationBlockDialog.tsx", "utf8");
+    expect(dialog, "the dialog must not import flags; it obeys requiresCommitment").not.toContain(
+      "feature-flags",
+    );
+    expect(dialog, "and it must actually honour it").toContain("reason.requiresCommitment");
+  });
+
+  test("with the commitment flag off, a guest quote is no harder than it is today", () => {
+    // The release must be behaviourally inert for the 76% of production quotes that have no
+    // customer file. With the flag off, guestCommitmentRequired is false everywhere, so: no
+    // checkbox on the form, no checkbox in the dialog, and no extra condition on the save button.
+    const form = readFileSync("src/routes/_app.sales.quotes.new.tsx", "utf8");
+
+    // The save gate's commitment clause must be the one that goes false, not a separate literal.
+    const saveGate = form.slice(
+      form.indexOf("disabled={"),
+      form.indexOf('data-testid="quote-save"'),
+    );
+    expect(saveGate, "the save gate must depend on the same boolean").toContain(
+      "!guestCommitmentAccepted",
+    );
+    expect(saveGate, "…which is itself flag-gated").toContain("guestCommitmentRequired");
+
+    // guest_no_link must NOT be gated — ending the false "accounting approval" label is worth
+    // having whether or not a commitment is demanded on top.
+    const blocker = form.slice(
+      form.indexOf("const findCreditBlocker"),
+      form.indexOf("exceptionMatchesBlocker"),
+    );
+    expect(blocker, "the guest reason must still be produced").toContain('kind: "guest_no_link"');
+    expect(blocker, "and it must not be behind the commitment flag").not.toContain(
+      "FEATURE_QUOTE_GUEST_COMMITMENT",
+    );
+  });
+
+  test("the deploy chain covers all three flags, not just the first two", () => {
+    const flags = [
+      ...readFileSync("src/lib/feature-flags.ts", "utf8").matchAll(/envFlag\(\s*"(VITE_[A-Z_]+)"/g),
+    ].map((m) => m[1]);
+    expect(flags, "the commitment flag must be declared").toContain(
+      "VITE_FEATURE_QUOTE_GUEST_COMMITMENT",
+    );
+    expect(flags.length, "three flags are expected").toBe(3);
+  });
 });

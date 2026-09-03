@@ -45,6 +45,27 @@ export const FEATURE_QUOTE_CUSTOMER_PICKER = envFlag("VITE_FEATURE_QUOTE_CUSTOME
  * exception list. Filling those numbers is operational work for the team — there is no data in the
  * system to script it from.
  */
+/**
+ * Sales quote form: a salesperson must tick a named commitment before a quote with no customer
+ * file can be saved.
+ *
+ * SEPARATE FROM THE PICKER FLAG, AND OFF BY DEFAULT, BECAUSE OF A NUMBER. On production 150 of 196
+ * quotes — 76% — have no customer file. So the commitment tick does not land on an edge case, it
+ * lands on three quarters of daily work. That was invisible from the test database, where only 3
+ * of 63 quotes are guests, and it is the reason this is its own switch: the picker, the read-only
+ * fields and the add-phone button can ship without changing how most of the day already works.
+ *
+ * IT CONTROLS BOTH COPIES OR IT CONTROLS NEITHER. The commitment exists in two places — the block
+ * on the form, and the variant inside QuoteCreationBlockDialog. Gating only the first would move
+ * the checkbox rather than remove it, which is the weaker design the form's own comment argues
+ * against. One flag, both sites.
+ *
+ * WHAT IT DOES NOT GATE: guest_no_link itself. Recording a quote with no customer file under its
+ * own reason, instead of borrowing "accounting approval" from a department that never approved it,
+ * is worth having whether or not a commitment is demanded on top.
+ */
+export const FEATURE_QUOTE_GUEST_COMMITMENT = envFlag("VITE_FEATURE_QUOTE_GUEST_COMMITMENT");
+
 export const FEATURE_QUOTE_IDENTITY_FROM_RECORD = envFlag(
   "VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD",
 );

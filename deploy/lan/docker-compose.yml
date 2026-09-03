@@ -42,6 +42,7 @@ services:
         # Unset (or anything but "true") leaves the previous behaviour in place: that is the rollback.
         VITE_FEATURE_QUOTE_CUSTOMER_PICKER: ${VITE_FEATURE_QUOTE_CUSTOMER_PICKER:-}
         VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD: ${VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD:-}
+        VITE_FEATURE_QUOTE_GUEST_COMMITMENT: ${VITE_FEATURE_QUOTE_GUEST_COMMITMENT:-}
         GIT_SHA: ${GIT_SHA:-local-unknown}
         BUILD_TIME: ${BUILD_TIME:-local-unknown}
         APP_ENV: lan

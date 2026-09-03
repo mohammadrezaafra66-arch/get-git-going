@@ -60,6 +60,19 @@ if ((Test-Path $flagsFile) -and (Test-Path $dockerFile) -and (Test-Path $compose
     $problems += "could not locate feature-flags.ts / Dockerfile / docker-compose.yml from $PSScriptRoot"
 }
 
+# Pinned build identity. Added 2026-09-03.
+# .env.lan carried GIT_SHA=1ca72316 and BUILD_TIME=2026-07-29T14:06:56Z, and because compose reads
+# them as build args through --env-file, every image built by update-lan.ps1 was stamped with a
+# July commit. The label was wrong while the code was right, which turns the one post-deploy check
+# we have -- APP_GIT_SHA equals git rev-parse --short HEAD -- into a coin toss. These belong on the
+# command line, per build, never in the env file.
+foreach ($pinned in @("GIT_SHA", "BUILD_TIME")) {
+    $hit = Get-Content $EnvFile | Where-Object { $_ -match "^\s*$pinned\s*=" }
+    if ($hit) {
+        $problems += "$pinned is pinned in the env file - it must be exported per build, or every image is mislabelled"
+    }
+}
+
 if ($problems.Count -gt 0) {
     Write-Host "ENV FILE CHECK FAILED" -ForegroundColor Red
     $problems | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }

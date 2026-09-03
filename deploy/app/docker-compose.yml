@@ -15,6 +15,7 @@ services:
         # flag reader treats as OFF. Present here so the four-hop gate covers this file.
         VITE_FEATURE_QUOTE_CUSTOMER_PICKER: ${VITE_FEATURE_QUOTE_CUSTOMER_PICKER:-}
         VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD: ${VITE_FEATURE_QUOTE_IDENTITY_FROM_RECORD:-}
+        VITE_FEATURE_QUOTE_GUEST_COMMITMENT: ${VITE_FEATURE_QUOTE_GUEST_COMMITMENT:-}
     image: afrakala-app:latest
     container_name: afrakala-web
     env_file:
