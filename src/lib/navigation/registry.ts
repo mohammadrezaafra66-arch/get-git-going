@@ -428,6 +428,13 @@ const NAVIGATION_SEEDS = [
   // ۵) مالی و حسابداری
   // UI-NAV.4 — همگی به ماژول جدید «accounting» منتقل شدند تا برای فروشنده/بیننده پنهان شوند.
   {
+    to: "/accounting/documents",
+    label: "دفتر اسناد",
+    icon: FileText,
+    module: "accounting",
+    group: "finance",
+  },
+  {
     to: "/accounting/receipts",
     label: "فیش‌های واریزی",
     icon: Receipt,

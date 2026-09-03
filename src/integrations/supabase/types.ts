@@ -10096,6 +10096,27 @@ export type Database = {
         }
         Relationships: []
       }
+      v_documents_unified: {
+        Row: {
+          amount: number | null
+          asan_code: string | null
+          bank_account: string | null
+          channel: string | null
+          created_at: string | null
+          description: string | null
+          doc_date: string | null
+          doc_id: string | null
+          doc_type: string | null
+          document_number: string | null
+          party_beneficiary_name: string | null
+          party_name: string | null
+          party_payer_name: string | null
+          reversed: boolean | null
+          status: string | null
+          tracking_number: string | null
+        }
+        Relationships: []
+      }
       vw_customer_receivables: {
         Row: {
           commitment_confirmed: boolean | null
