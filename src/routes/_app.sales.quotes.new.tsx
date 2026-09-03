@@ -99,6 +99,17 @@ type RefusalStage =
  * button, a disabled add-item button, a cancelled confirmation dialog, a price lookup that dead-
  * ends, and the route guard refusing the page. None of them is an event this function can see.
  */
+/**
+ * A refusal the client already recorded. onError sees every mutation failure, including the ones
+ * raised by validateQuote inside the mutationFn, so without this marker a blank phone number would
+ * write TWO rows — one honest client_validation and one labelled server_rpc that the server never
+ * saw. Mislabelled evidence is worse than none: it would inflate the server-refusal count with
+ * failures the server was never asked about.
+ */
+class AlreadyLoggedError extends Error {
+  readonly alreadyLogged = true;
+}
+
 function logQuoteRefusal(input: {
   attemptId: string;
   stage: RefusalStage;
@@ -478,11 +489,11 @@ function NewQuotePage() {
         // Every failing field, not just the first. The user is shown errs[0]; the log keeps the
         // whole set, because "which field blocks people most" is unanswerable from one of them.
         recordRefusal("client_validation", errs.map((e) => e.field).join(","));
-        throw new Error(errs[0].message);
+        throw new AlreadyLoggedError(errs[0].message);
       }
       if (!settlementTypeId) {
         recordRefusal("client_validation", "settlement_type_missing");
-        throw new Error("نوع تسویه را انتخاب کنید.");
+        throw new AlreadyLoggedError("نوع تسویه را انتخاب کنید.");
       }
 
       const itemsPayload = items.map((it) => ({
@@ -593,7 +604,9 @@ function NewQuotePage() {
       toast.error(reason);
       // The server's Persian sentence is all supabase-js hands back — the SQLSTATE is dropped
       // by the client library — so this code is a coarse bucket, not the server's own code.
-      recordRefusal("server_rpc", reason.slice(0, 60));
+      if (!(e instanceof AlreadyLoggedError)) {
+        recordRefusal("server_rpc", reason.slice(0, 60));
+      }
       setRejection({ reason, note: "" });
     },
   });
@@ -1332,7 +1345,7 @@ function NewQuotePage() {
           if (!o) setRejection(null);
         }}
       >
-        <DialogContent dir="rtl" className="max-w-md">
+        <DialogContent data-testid="quote-rejection-dialog" dir="rtl" className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-destructive" />
@@ -1352,6 +1365,7 @@ function NewQuotePage() {
               <Label htmlFor="rejection_note">توضیح شما (اختیاری)</Label>
               <Textarea
                 id="rejection_note"
+                data-testid="quote-rejection-note"
                 rows={2}
                 value={rejection?.note ?? ""}
                 onChange={(e) => setRejection((r) => (r ? { ...r, note: e.target.value } : r))}
@@ -1365,6 +1379,7 @@ function NewQuotePage() {
               بستن بدون ثبت
             </Button>
             <Button
+              data-testid="quote-rejection-submit"
               disabled={loggingRejection}
               onClick={async () => {
                 if (!rejection || !user?.id) return;
