@@ -99,6 +99,11 @@ const COLUMNS: readonly { sign: string; title: string; items: readonly HubItem[]
     sign: "≡",
     title: "پرونده‌ها",
     items: [
+      {
+        to: "/accounting/documents",
+        label: "دفتر اسناد",
+        target: { kind: "registry", route: "/accounting/documents" },
+      },
       { to: "/persons", label: "اشخاص", target: { kind: "registry", route: "/persons" } },
       { to: "/warehouses", label: "انبار", target: { kind: "registry", route: "/warehouses" } },
       {
