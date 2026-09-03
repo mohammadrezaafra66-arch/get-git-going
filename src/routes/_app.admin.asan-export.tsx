@@ -250,8 +250,11 @@ function AsanExportPage() {
       }
 
       const stamp = `${fromIso}_to_${toIso}-selected-${split.exportable.length}`;
+      // No `sheetName` override: both real Asan templates name the sheet `Sheet1`
+      // (bank-deposit-template.xlsx and dual-document-template.xls), and write-xlsx already
+      // defaults to it. The old `"Asan"` here was the only reason the produced file disagreed.
       const count = await downloadAsanWorkbook(
-        { headers, rows, sheetName: "Asan" },
+        { headers, rows },
         `asan-${definition.key}-${stamp}.xlsx`,
       );
 

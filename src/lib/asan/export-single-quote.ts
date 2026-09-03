@@ -84,8 +84,11 @@ export async function downloadSingleQuoteExport(
     );
   }
   const { rows } = await buildSingleQuoteRows(doc);
+  // No `sheetName` override — see the note at the batch export's call site. This is the SECOND
+  // production writer; leaving `"Asan"` here would have fixed the batch file and left the
+  // single-pre-invoice file still disagreeing with the template.
   return downloadAsanWorkbook(
-    { headers: SALES_HEADERS, rows, sheetName: "Asan" },
+    { headers: SALES_HEADERS, rows },
     `asan-sales-${quoteNumber}.xlsx`,
   );
 }
