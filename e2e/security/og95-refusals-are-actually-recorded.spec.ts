@@ -79,6 +79,22 @@ async function addItem(page: Page, unitPrice = "999999999") {
 }
 
 test.describe("OG-95 — a refused quote leaves a row", () => {
+  // EVERY test here drives the real form to the point of submission, and confirming the block
+  // dialog SUBMITS — onConfirmException calls saveMutation.mutate immediately. On 2026-09-03 one
+  // run got past every refusal and created a real quote (SQ-2026-000239) on the staging database.
+  // The count assertion existed in only one test, so nothing caught it.
+  //
+  // This hook puts the assertion on all of them. A test that creates a quote is a test that has
+  // stopped testing refusals, and on a shared database it is also litter.
+  let quotesBefore = 0;
+  test.beforeEach(() => {
+    quotesBefore = Number(dbScalar("SELECT count(*) FROM sales_quotes"));
+  });
+  test.afterEach(() => {
+    const after = Number(dbScalar("SELECT count(*) FROM sales_quotes"));
+    expect(after, "a refusal test must never create a quote").toBe(quotesBefore);
+  });
+
   test.skip(!WITH_PHONE || !PRODUCT, "QT_WITH_PHONE and QT_PRODUCT must be set");
 
   test("the credit gate is recorded, and BEFORE the dialog the salesperson may just close", async ({
@@ -134,7 +150,21 @@ test.describe("OG-95 — a refused quote leaves a row", () => {
     ).toHaveLength(1);
   });
 
+  // SKIPPED BY DEFAULT, AND THE REASON MATTERS. This scenario relies on the settlement price
+  // floor, which is the only refusal the client does not pre-empt — but whether a floor exists
+  // depends on which product and price type the picker happens to land on. When it does not, the
+  // submission SUCCEEDS and creates a real quote: that is how SQ-2026-000239 and a second row
+  // appeared on staging on 2026-09-03.
+  //
+  // The proof it was written for is already banked, with row ids: server_rpc rows 60333 and 60335,
+  // code "قیمت وارد شده برای …", recorded in the release notes. Re-running it is not worth a
+  // non-deterministic write to a shared database, so it runs only when someone deliberately sets
+  // QT_ALLOW_SERVER_REFUSAL=1 and accepts that it may create a quote.
   test("a server refusal is recorded, and no quote is written", async ({ page }) => {
+    test.skip(
+      process.env.QT_ALLOW_SERVER_REFUSAL !== "1",
+      "may create a real quote — set QT_ALLOW_SERVER_REFUSAL=1 to run",
+    );
     const quotesBefore = Number(dbScalar("SELECT count(*) FROM sales_quotes"));
     const since = maxAuditId();
     await guestQuote(page);

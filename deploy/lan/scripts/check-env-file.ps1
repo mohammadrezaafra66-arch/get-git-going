@@ -32,6 +32,34 @@ if ($raw.Length -gt 0 -and -not $raw.EndsWith("`n")) {
     $problems += "the file does not end with a newline — the next appended variable will fuse onto the last line"
 }
 
+# The Dockerfile hops. A VITE_ variable has to survive four steps to reach the bundle —
+# .env -> compose args: -> Dockerfile ARG -> Dockerfile ENV -> build — and Docker drops a build
+# arg with no matching ARG in SILENCE. On 2026-09-02 that was the second, independent reason the
+# flag never existed. og93 asserts this too, but og93 does not run on the deploy path; this does.
+$repoRoot   = Resolve-Path "$PSScriptRoot\..\..\.."
+$flagsFile  = Join-Path $repoRoot "src\lib\feature-flags.ts"
+$dockerFile = Join-Path $repoRoot "Dockerfile"
+$composeFile= Join-Path $repoRoot "deploy\lan\docker-compose.yml"
+if ((Test-Path $flagsFile) -and (Test-Path $dockerFile) -and (Test-Path $composeFile)) {
+    $flags   = [regex]::Matches((Get-Content $flagsFile -Raw), 'envFlag\(\s*"(VITE_[A-Z_]+)"') |
+               ForEach-Object { $_.Groups[1].Value }
+    $docker  = Get-Content $dockerFile  | ForEach-Object { $_.Trim() }
+    $compose = Get-Content $composeFile | ForEach-Object { $_.Trim() }
+    foreach ($f in $flags) {
+        if (-not ($compose -contains "$f`: `${$f`:-}" -or ($compose | Where-Object { $_.StartsWith("$f`:") }))) {
+            $problems += "$f is not passed as a build arg in deploy/lan/docker-compose.yml"
+        }
+        if (-not ($docker -contains "ARG $f")) {
+            $problems += "$f has no ARG in the Dockerfile — Docker will drop the build arg silently"
+        }
+        if (-not ($docker | Where-Object { $_.StartsWith("$f=`$$f") })) {
+            $problems += "$f has no ENV line in the Dockerfile — the build process never sees it"
+        }
+    }
+} else {
+    $problems += "could not locate feature-flags.ts / Dockerfile / docker-compose.yml from $PSScriptRoot"
+}
+
 if ($problems.Count -gt 0) {
     Write-Host "ENV FILE CHECK FAILED" -ForegroundColor Red
     $problems | ForEach-Object { Write-Host "  $_" -ForegroundColor Red }
