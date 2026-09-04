@@ -1,14 +1,22 @@
 /**
  * ASAN M4.5 / M4.6 — the accounting-document exports: receipts, payments and دوبل.
  *
- * `makeJournalExport` is the whole of exports 3, 4 and 5. Each is the **same** source function
- * and the **same** row builder with a different `doc_kind` filter and a different label; the
- * only thing that varies is which documents the accountant sees. If someone later forks one of
- * them, `export-journal.spec.ts` fails.
+ * `makeJournalExport` is the whole of exports 3, 4, 5 and 6. Each is the **same** source
+ * function and the **same** row builder with a different `doc_kind` filter and a different
+ * label; the only thing that varies is which documents the accountant sees. If someone later
+ * forks one of them, `export-journal.spec.ts` fails.
  *
- * All three carry `oneDocumentPerFile: true`. Asan takes `شماره سند` on the screen rather than
- * in a column, so two documents in one file would be silently merged under a single voucher
- * number. The shell enforces it; this file only declares it.
+ * **One file may hold many documents (2026-09-04).** These exports used to declare a
+ * one-document-per-file flag here, and the shell refused a selection of more than one. The premise
+ * was that Asan takes `شماره سند` on its screen, so a second document would be merged under the
+ * first one's voucher number. The owner has since established that **Asan assigns the document
+ * number itself at posting time**, so the number this platform holds never reaches the file at
+ * all — corroborated on the code side by `buildRows` below, which discards the `asanNumber`
+ * argument the shell passes. The flag, the shell guard and the orphan constant beside the
+ * layout were all removed together; nothing in the database
+ * ever imposed a cap. The `asan_export_numbers` register still records a number per document,
+ * because it is how a re-export is recognised as the same document — it is simply not written
+ * into layout 3.
  */
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -63,8 +71,6 @@ function makeJournalExport(
     targetScreen: "ورود اطلاعات تولید یا سند از فایل Excel",
     layout: "journal",
     docType: "accounting_document",
-    // Asan takes `شماره سند` on the screen, so one file holds exactly one document.
-    oneDocumentPerFile: true,
     available: true,
     unverifiedNote,
     list: (range) => listJournalDocuments(range, filter),

@@ -75,8 +75,11 @@ const amountCell = (v: string | number | null | undefined): number | null => {
  * | E   | بدهکار    | debit, Toman × 10                                              |
  * | F   | بستانکار  | credit, Toman × 10                                             |
  *
- * `شماره سند` is **not** a column — Asan takes it on the screen, which is why a file may hold
- * exactly one document. The shell enforces that through `oneDocumentPerFile`.
+ * `شماره سند` is **not** a column — Asan assigns it itself when the file is posted. That is why
+ * a file may hold **as many documents as the accountant selected**: the platform's own Asan
+ * number is never written into layout 3, so there is nothing for a second document to collide
+ * with. `doc_id` is carried alongside the cells by `buildJournalRowGroups` in
+ * `export-selection.ts`, so splitting one sheet per document later costs one `map`.
  */
 export function buildJournalRows(payload: JournalExportPayload): AsanCell[][] {
   return payload.lines

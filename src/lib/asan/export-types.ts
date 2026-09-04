@@ -76,11 +76,6 @@ export interface AsanExportDefinition {
   layout: AsanLayoutKey;
   /** Numbering register, or null for a layout that carries no document number. */
   docType: AsanDocType | null;
-  /**
-   * Layout 3 carries `شماره سند` on the screen rather than in a column, so a file may hold
-   * exactly one document. The shell enforces this rather than each export remembering to.
-   */
-  oneDocumentPerFile: boolean;
   /** False while the export is specified but not yet built. */
   available: boolean;
   /** Anything the owner still has to confirm, shown as a warning before download. */
@@ -111,7 +106,6 @@ export function notBuiltYet(
   targetScreen: string,
   layout: AsanLayoutKey,
   docType: AsanDocType | null,
-  oneDocumentPerFile = false,
 ): AsanExportDefinition {
   return {
     key,
@@ -119,7 +113,6 @@ export function notBuiltYet(
     targetScreen,
     layout,
     docType,
-    oneDocumentPerFile,
     available: false,
     async list() {
       return [];
