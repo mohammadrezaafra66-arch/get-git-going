@@ -52,11 +52,7 @@ test.describe("D-3 — a person with several files is never resolved silently", 
     const outcome = pickPartyFile("any", CUST, SUPP, EXT);
     expect(outcome.outcome).toBe("choose");
     if (outcome.outcome !== "choose") return;
-    expect(outcome.options.map((o) => o.kind)).toEqual([
-      "customer",
-      "supplier",
-      "external_party",
-    ]);
+    expect(outcome.options.map((o) => o.kind)).toEqual(["customer", "supplier", "external_party"]);
     expect(outcome.options.map((o) => o.roleId)).toEqual([CUST, SUPP, EXT]);
   });
 
