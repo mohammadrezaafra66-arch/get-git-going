@@ -380,15 +380,10 @@ const NAVIGATION_SEEDS = [
     group: "sales-customers",
     subgroup: "sc-customers",
   },
-  // Item 170 — Excel import for persons (admin/manager only, matches persons RLS).
-  {
-    to: "/persons/import",
-    label: "ایمپورت اشخاص",
-    icon: Upload,
-    module: "persons",
-    group: "sales-customers",
-    subgroup: "sc-customers",
-  },
+  // A-6 (2026-09-04) — the standalone person importer was retired. Four person-import
+  // surfaces existed and only /admin/asan-import was ever used (33 audit rows against 0
+  // for the other three), so the enforcement added in migration 430 is written once
+  // rather than four times. See docs/research/dual-identity-and-import-20260904.md D2.
   // Phase 8.1 — duplicate-person review queue (admin/manager only, matches person_merge).
   {
     to: "/persons/merge",
@@ -1281,7 +1276,6 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/gamification/admin/missions": ["admin", "manager"],
   "/gamification/admin/purchase-settings": ["admin", "manager", "accountant"],
   "/gamification/admin/rewards": ["admin", "manager"],
-  "/persons/import": ["admin", "manager"],
   "/persons/merge": ["admin", "manager"],
   "/pricing/market-intelligence": ["admin", "manager", "accountant"],
   "/pricing/product-recommendations": ["admin", "manager"],

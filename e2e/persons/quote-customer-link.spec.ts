@@ -60,8 +60,9 @@ test("a quote with no customer shows a plain name, not a broken link", async ({ 
   await page.goto(`/sales/quotes/${quoteId}`);
   await page.waitForLoadState("networkidle");
   // Scoped to <main>. The claim is "this quote shows no person link", not "the whole
-  // document contains none" — the sidebar carries /persons/import and /persons/merge on
-  // every page since they were wired into the nav on 2026-08-08. Deliberately NOT written
+  // document contains none" — the sidebar carries /persons/merge on every page since it
+  // was wired into the nav on 2026-08-08 (/persons/import was there too until A-6 retired
+  // it on 2026-09-04, which is why this must stay scoped). Deliberately NOT written
   // as a live-derived count: that would bake today's sidebar size into the assertion and
   // break the next time anyone adds a nav item. Zero is the right number, in main.
   await expect(page.getByRole("main").locator('a[href*="/persons/"]')).toHaveCount(0);

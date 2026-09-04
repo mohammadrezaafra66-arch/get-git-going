@@ -9,7 +9,6 @@ import {
   Check,
   ChevronsUpDown,
   X,
-  Upload,
   Download,
   GraduationCap,
 } from "lucide-react";
@@ -69,7 +68,6 @@ interface CustomerRow {
 function CustomersListPage() {
   const { roles } = useAuth();
   const canFilterByResponsible = roles.includes("admin") || roles.includes("manager");
-  const canImport = roles.includes("admin") || roles.includes("accountant");
   const canExport = roles.includes("admin") || roles.includes("manager");
   const [exporting, setExporting] = useState(false);
 
@@ -208,14 +206,8 @@ function CustomersListPage() {
                 خروجی CSV
               </Button>
             )}
-            {canImport && (
-              <Button asChild variant="outline">
-                <Link to="/sales/customers/import">
-                  <Upload className="ml-2 h-4 w-4" />
-                  ورود از اکسل
-                </Link>
-              </Button>
-            )}
+            {/* A-6 — /sales/customers/import was retired with CustomerImportForm; the one
+                import surface is /admin/asan-import. */}
             <Button asChild variant="outline">
               <Link to="/sales/customers/credit-training">
                 <GraduationCap className="ml-2 h-4 w-4" />
