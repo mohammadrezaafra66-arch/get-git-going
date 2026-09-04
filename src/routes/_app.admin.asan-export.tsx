@@ -52,10 +52,12 @@ import {
 import {
   ASAN_EXPORT_BATCH_LIMIT,
   EMPTY_SELECTION,
+  buildExportRowGroups,
   countEligibleSelected,
   countTicked,
   isTicked,
   paginate,
+  flattenExportRows,
   splitForExport,
   tickAllEligible,
   tickPage,
@@ -88,6 +90,15 @@ import { getPageTitle } from "@/config/branding";
  * Numbers are assigned on **download** (after confirm), not on preview: only exported documents
  * consume Asan numbers. A document that already carries one shows it, so the accountant can
  * cross-check.
+ *
+ * **A file may hold more than one document (2026-09-04).** Until now the accounting-document
+ * exports declared a one-document-per-file flag and this page refused a selection larger than one,
+ * on the belief that Asan would merge the rows under a single voucher number. The owner has
+ * established that **Asan assigns the document number itself at posting time**; the platform's
+ * number is never written into layout 3 (`buildJournalRows` discards it), and the database never
+ * imposed a cap. The refusal, the flag and the orphan constant beside the layout were removed
+ * together. `ASAN_EXPORT_BATCH_LIMIT` is still the ceiling, and the rows are grouped per source
+ * document on the way out so a per-document split stays cheap.
  */
 
 export const Route = createFileRoute("/_app/admin/asan-export")({
@@ -218,14 +229,6 @@ function AsanExportPage() {
       );
       return;
     }
-    if (definition.oneDocumentPerFile && split.exportable.length > 1) {
-      toast.error(
-        "این قالب «شماره سند» را روی صفحهٔ آسان می‌گیرد، پس هر فایل فقط یک سند دارد. " +
-          "لطفاً یک سند را انتخاب کنید.",
-      );
-      return;
-    }
-
     setDownloading(true);
     try {
       // Numbers are consumed here, not at preview: only an exported document takes a number.
@@ -244,10 +247,14 @@ function AsanExportPage() {
         );
       }
 
-      const rows: AsanCell[][] = [];
-      for (const doc of split.exportable) {
-        rows.push(...definition.buildRows(doc, numbers.get(doc.sourceId) ?? null));
-      }
+      // One group per source document, then one sheet. The file holds as many documents as the
+      // accountant selected — Asan assigns `شماره سند` itself at posting, so there is no number
+      // in the file for a second document to collide with. The grouping is kept rather than
+      // concatenated straight away so that "one sheet per document" is a `map` away.
+      const groups = buildExportRowGroups(split.exportable, numbers, (doc, asanNumber) =>
+        definition.buildRows(doc, asanNumber),
+      );
+      const rows: AsanCell[][] = flattenExportRows(groups);
 
       const stamp = `${fromIso}_to_${toIso}-selected-${split.exportable.length}`;
       // No `sheetName` override: both real Asan templates name the sheet `Sheet1`

@@ -50,7 +50,6 @@ export const PURCHASE_EXPORT: AsanExportDefinition = {
   targetScreen: "ارسال یا دریافت اطلاعات توسط Excel ← تب «خرید»",
   layout: "purchase",
   docType: "purchase_invoice",
-  oneDocumentPerFile: false,
   available: true,
   unverifiedNote:
     "ستون‌های «پرداخت نقد»، «پرداخت از بانک» و «پرداخت چک» خالی می‌مانند: در افراکالا هیچ‌جا ثبت " +

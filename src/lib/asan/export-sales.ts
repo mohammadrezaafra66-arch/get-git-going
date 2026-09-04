@@ -45,7 +45,6 @@ export const SALES_EXPORT: AsanExportDefinition = {
   targetScreen: "ارسال یا دریافت اطلاعات توسط Excel ← تب «فروش»",
   layout: "sales",
   docType: "sales_invoice",
-  oneDocumentPerFile: false,
   available: true,
   unverifiedNote:
     "ستون‌های «عوارض»، «گروه حساب/کد۲» و «سریال کد کالا» عمداً خالی می‌مانند: افراکالا معادلی " +

@@ -15,6 +15,8 @@
  * are different operations and the brief is explicit that they must not be merged.
  */
 
+import type { AsanCell } from "@/lib/asan/export-types";
+
 export interface ExportSelection {
   /** Ids the user has explicitly unticked. Everything not here is ticked. */
   excluded: ReadonlySet<string>;
@@ -117,6 +119,45 @@ export interface ExportableSplit<T> {
   blocked: T[];
   /** Deliberately unticked by the accountant. */
   skipped: T[];
+}
+
+/**
+ * The cells of one source document, still attached to the document they came from.
+ *
+ * A workbook is a flat list of rows, so the moment `buildRows` output is concatenated the
+ * boundary between two documents is gone. **That boundary is the thing this mission had to stop
+ * throwing away.** Layout 3 has no `شماره سند` column — Asan assigns the number itself at
+ * posting — so a multi-document file is legitimate, but a future "one sheet per document" or
+ * "one file per document" has to know where each document starts. Keeping `sourceId` (the
+ * journal RPC's `doc_id`) beside the cells makes that a `map` over these groups instead of a
+ * re-query.
+ */
+export interface AsanDocumentRows {
+  /** `AsanExportDocument.sourceId` — `doc_id` for a journal export, the invoice id otherwise. */
+  sourceId: string;
+  /** The Asan number consumed for this document, or null for a layout that carries none. */
+  asanNumber: number | null;
+  /** The sheet rows this one document produced, in order. */
+  rows: AsanCell[][];
+}
+
+/** Build the rows of every exportable document, one group per document, order preserved. */
+export function buildExportRowGroups<T extends { sourceId: string }>(
+  docs: readonly T[],
+  numbers: ReadonlyMap<string, number>,
+  build: (doc: T, asanNumber: number | null) => AsanCell[][],
+): AsanDocumentRows[] {
+  return docs.map((doc) => {
+    const asanNumber = numbers.get(doc.sourceId) ?? null;
+    return { sourceId: doc.sourceId, asanNumber, rows: build(doc, asanNumber) };
+  });
+}
+
+/** One sheet out of many documents. The only place the document boundary is dropped. */
+export function flattenExportRows(groups: readonly AsanDocumentRows[]): AsanCell[][] {
+  const rows: AsanCell[][] = [];
+  for (const g of groups) rows.push(...g.rows);
+  return rows;
 }
 
 /** The single place that decides what a download actually contains. */

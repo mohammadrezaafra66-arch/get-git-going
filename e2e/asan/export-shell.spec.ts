@@ -9,7 +9,9 @@ import { ADMIN_USER_ID, mintJwt, rest, userWithRole } from "../helpers/pgrest";
 import {
   ASAN_EXPORT_BATCH_LIMIT,
   EMPTY_SELECTION,
+  buildExportRowGroups,
   countEligibleSelected,
+  flattenExportRows,
   countTicked,
   isTicked,
   paginate,
@@ -30,6 +32,13 @@ import {
   SALES_HEADERS,
 } from "../../src/lib/asan/layouts";
 import { buildAsanWorkbook } from "../../src/lib/asan/write-xlsx";
+import {
+  cellText,
+  firstSheetName,
+  rawCell,
+  sharedStrings,
+  sheetDataXml,
+} from "../helpers/xlsx-raw";
 import {
   AsanExportNotAvailableError,
   notBuiltYet,
@@ -439,15 +448,97 @@ test.describe("the export catalogue", () => {
     }
   });
 
-  test("the accounting-document layout is one document per file, and the invoice layouts are not", () => {
-    // Layout 3 carries `شماره سند` on the Asan screen rather than in a column, so two documents
-    // in one file would be silently merged under a single voucher number.
+  test("no export limits a file to one document any more", () => {
+    // Layout 3 has no `شماره سند` column, and until 2026-09-04 that was read as "so a file may
+    // hold only one document" — the accounting-document exports carried `oneDocumentPerFile:
+    // true` and the page refused a larger selection. The owner established that **Asan assigns
+    // the document number itself at posting**, so the platform's number never reaches the file
+    // and there is nothing for a second document to collide with. The flag is gone; this asserts
+    // it has not come back, under that name or as the orphan constant beside it.
     for (const key of ["receipts", "payments", "third_party", "purchase_settlement"] as const) {
       expect(ASAN_EXPORTS[key].layout).toBe("journal");
-      expect(ASAN_EXPORTS[key].oneDocumentPerFile, `${key}`).toBe(true);
     }
-    expect(ASAN_EXPORTS.sales.oneDocumentPerFile).toBe(false);
-    expect(ASAN_EXPORTS.purchase.oneDocumentPerFile).toBe(false);
+    for (const key of ASAN_EXPORT_ORDER) {
+      expect(
+        Object.keys(ASAN_EXPORTS[key]),
+        `${key} still declares a one-document limit`,
+      ).not.toContain("oneDocumentPerFile");
+    }
+    const layouts = fs.readFileSync(path.resolve("src/lib/asan/layouts.ts"), "utf8");
+    expect(layouts, "the orphan JOURNAL_ONE_DOCUMENT_PER_FILE constant is deleted").not.toContain(
+      "JOURNAL_ONE_DOCUMENT_PER_FILE",
+    );
+    const types = fs.readFileSync(path.resolve("src/lib/asan/export-types.ts"), "utf8");
+    expect(types).not.toContain("oneDocumentPerFile");
+  });
+
+  test("many documents go into one sheet, and each row still knows which document it came from", async () => {
+    // The behavioural half. Two documents, one workbook — and the grouping that makes a later
+    // per-document split cheap is asserted rather than assumed, because a flat concatenation
+    // loses the boundary silently.
+    const def = {
+      ...notBuiltYet("sales", "قالب آزمایشی", "—", "sales", "sales_invoice"),
+      available: true,
+      buildRows: (d: AsanExportDocument, n: number | null): AsanCell[][] => [
+        [
+          n,
+          "1405/05/12",
+          d.sourceId,
+          null,
+          `کالای ${d.sourceId}`,
+          1,
+          1000,
+          1000,
+          ...Array(10).fill(null),
+        ],
+        [
+          n,
+          "1405/05/12",
+          d.sourceId,
+          null,
+          `ردیف دوم ${d.sourceId}`,
+          2,
+          500,
+          1000,
+          ...Array(10).fill(null),
+        ],
+      ],
+    };
+    const docs = [doc("multi-a"), doc("multi-b")];
+    const split = splitForExport(docs, EMPTY_SELECTION);
+    expect(split.exportable.length, "both documents are selected").toBe(2);
+
+    const numbers = new Map([
+      ["multi-a", 11],
+      ["multi-b", 12],
+    ]);
+    const groups = buildExportRowGroups(split.exportable, numbers, (d, n) => def.buildRows(d, n));
+    expect(groups.map((g) => g.sourceId)).toEqual(["multi-a", "multi-b"]);
+    expect(groups.map((g) => g.asanNumber)).toEqual([11, 12]);
+    expect(groups.map((g) => g.rows.length)).toEqual([2, 2]);
+
+    const rows = flattenExportRows(groups);
+    expect(rows.length, "one sheet, four rows, two documents").toBe(4);
+
+    const bytes = Buffer.from(await buildAsanWorkbook({ headers: SALES_HEADERS, rows }));
+    expect(firstSheetName(bytes)).toBe("Sheet1");
+    const sst = sharedStrings(bytes);
+    expect(sst, "Asan drops every text cell without a real shared-string table").not.toBeNull();
+    const data = sheetDataXml(bytes);
+    // Both documents are in the file, and their text arrived as shared strings (`t="s"`), never
+    // as the `t="str"` cached-formula type Asan silently discards.
+    for (const ref of ["C2", "C3", "C4", "C5"]) {
+      expect(rawCell(data, ref)?.t, `${ref} must be a shared string`).toBe("s");
+    }
+    expect([cellText(bytes, data, "C2"), cellText(bytes, data, "C3")]).toEqual([
+      "multi-a",
+      "multi-a",
+    ]);
+    expect([cellText(bytes, data, "C4"), cellText(bytes, data, "C5")]).toEqual([
+      "multi-b",
+      "multi-b",
+    ]);
+    expect(sst).toContain("کالای multi-b");
   });
 
   test("a blocked document is absent from the file while the rest still export", async () => {
@@ -616,7 +707,11 @@ test.describe("who may export", () => {
     expect(route).toContain("disabled={!!d.blockedReason}");
     // The unit is stated on screen — the owner asked for it explicitly, "do not make it silent".
     expect(route).toContain("AMOUNT_UNIT_LABEL_FA");
-    expect(route).toContain("oneDocumentPerFile");
+    // The one-document refusal is gone, and the rows are grouped per document on the way out.
+    expect(route).not.toContain("oneDocumentPerFile");
+    expect(route).not.toContain("هر فایل فقط یک سند دارد");
+    expect(route).toContain("buildExportRowGroups");
+    expect(route).toContain("flattenExportRows");
     // Numbers are consumed at download, never at preview.
     expect(route.indexOf("asan_assign_document_numbers")).toBeGreaterThan(
       route.indexOf("const download"),

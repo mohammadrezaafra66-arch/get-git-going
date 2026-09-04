@@ -54,7 +54,6 @@ export const BANK_DEPOSIT_EXPORT: AsanExportDefinition = {
   targetScreen: "ورود اطلاعات از Excel ← گزینهٔ «واریزیهای بانکی»",
   layout: "bank_deposit",
   docType: null,
-  oneDocumentPerFile: false,
   available: true,
   // OG-67: this file now carries BOTH directions, so the receipts-only wording was wrong the
   // moment migration 404 landed. Payments appear with a NEGATIVE Mablagh, which is what the
