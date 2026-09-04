@@ -569,6 +569,7 @@ export type Database = {
       asan_import_person_rows: {
         Row: {
           address: string | null
+          applied_action: string | null
           apply_note: string | null
           applied_at: string | null
           asan_code: string | null
@@ -587,6 +588,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          applied_action?: string | null
           apply_note?: string | null
           applied_at?: string | null
           asan_code?: string | null
@@ -605,6 +607,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          applied_action?: string | null
           apply_note?: string | null
           applied_at?: string | null
           asan_code?: string | null
@@ -5940,6 +5943,7 @@ export type Database = {
           is_primary: boolean
           kind: string
           person_id: string
+          source_batch_id: string | null
           status: string
           updated_at: string
           value_normalized: string
@@ -5954,6 +5958,7 @@ export type Database = {
           is_primary?: boolean
           kind: string
           person_id: string
+          source_batch_id?: string | null
           status?: string
           updated_at?: string
           /**
@@ -5974,6 +5979,7 @@ export type Database = {
           is_primary?: boolean
           kind?: string
           person_id?: string
+          source_batch_id?: string | null
           status?: string
           updated_at?: string
           value_normalized?: string
@@ -5987,6 +5993,13 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_identifiers_source_batch_id_fkey"
+            columns: ["source_batch_id"]
+            isOneToOne: false
+            referencedRelation: "asan_import_batches"
             referencedColumns: ["id"]
           },
         ]
@@ -10372,6 +10385,19 @@ export type Database = {
           cheque_amount: number | null
         }[]
       }
+      asan_person_import_rejection: {
+        Args: {
+          p_asan_code: string
+          p_mobile_raw: string
+          p_person_id: string
+          p_row_number: number
+        }
+        Returns: string
+      }
+      asan_revert_person_batch: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
       product_video_advance: {
         Args: { _chain_id: string; _to_stage: string; _note: string | null }
         Returns: Json
@@ -12118,10 +12144,6 @@ export type Database = {
           p_over_allocation_note?: string | null
           p_idempotency_key?: string | null
         }
-        Returns: Json
-      }
-      person_import_batch: {
-        Args: { p_rows: Json }
         Returns: Json
       }
       /**
