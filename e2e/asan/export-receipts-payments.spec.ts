@@ -10,8 +10,19 @@ import { ADMIN_USER_ID, mintJwt, rest } from "../helpers/pgrest";
 import {
   buildJournalRows,
   groupJournalRows,
+  type JournalExportPayload,
   type JournalExportRow,
 } from "../../src/lib/asan/export-journal-rows";
+import { buildExportRowGroups, flattenExportRows } from "../../src/lib/asan/export-selection";
+import { JOURNAL_HEADERS } from "../../src/lib/asan/layouts";
+import { buildAsanWorkbook } from "../../src/lib/asan/write-xlsx";
+import {
+  cellText,
+  firstSheetName,
+  rawCell,
+  sharedStrings,
+  sheetDataXml,
+} from "../helpers/xlsx-raw";
 
 /**
  * ASAN M4.6 — exports 3, 4 and 5.
@@ -167,15 +178,16 @@ test.describe("the three exports share one builder", () => {
     expect(registry).not.toMatch(/third_party:\s*notBuiltYet/);
   });
 
-  test("all three carry the same layout and the one-document-per-file rule", () => {
+  test("all three carry the same layout, and none of them limits a file to one document", () => {
     const src = fs.readFileSync(path.resolve("src/lib/asan/export-journal.ts"), "utf8");
-    // Asan takes `شماره سند` on the screen, so two documents in one file would be silently
-    // merged under a single voucher number. Declared once in the factory, so it cannot differ.
-    // Match the assignment on its own line, not the prose that also mentions it, so the count
-    // means "declared in exactly one place" rather than "the string appears once".
-    expect(src.match(/^\s*oneDocumentPerFile: true,$/gm)?.length, "declared once, in the factory").toBe(
-      1,
-    );
+    // The factory used to declare `oneDocumentPerFile: true` here. Asan assigns `شماره سند`
+    // itself at posting, so the platform's number never reaches layout 3 and a file may hold
+    // every document the accountant selected. Assert the declaration is gone rather than merely
+    // absent from one export, because it was declared once for all four.
+    expect(
+      src.match(/^\s*oneDocumentPerFile:.*$/gm),
+      "the flag is gone from the factory",
+    ).toBeNull();
     expect(src).toContain('layout: "journal"');
     expect(src).toContain('docType: "accounting_document"');
   });
@@ -342,18 +354,96 @@ test.describe.fixme("the three filters", () => {
   });
 });
 
-// -------------------------------------------------------- one document per file ----
+// ------------------------------------------------------- many documents per file ----
 
-test("a file may hold exactly one accounting document", async () => {
-  // Asan takes `شماره سند` on its screen, not in a column, so two documents in one file would be
-  // silently merged under a single voucher number. The shell refuses; this asserts the flag the
-  // shell reads is actually set on all three.
+test("a file may hold more than one accounting document", async () => {
+  // The refusal this replaces: the shell used to abort a download of more than one journal
+  // document, on the belief that Asan would merge them under a single voucher number. The owner
+  // established that **Asan assigns `شماره سند` itself at posting**, and the code agrees — the
+  // journal factory discards the `asanNumber` the shell hands `buildRows`, so no number is
+  // written into layout 3 for a second document to collide with. The database never capped
+  // anything: `asan_list_journal_export` has no LIMIT and `asan_assign_document_numbers` takes
+  // an array.
   const src = fs.readFileSync(path.resolve("src/lib/asan/export-journal.ts"), "utf8");
-  expect(src).toContain("oneDocumentPerFile: true");
+  expect(src).not.toContain("oneDocumentPerFile");
 
   const route = fs.readFileSync(path.resolve("src/routes/_app.admin.asan-export.tsx"), "utf8");
-  expect(route).toContain("definition.oneDocumentPerFile && split.exportable.length > 1");
-  expect(route).toContain("هر فایل فقط یک سند دارد");
+  expect(route).not.toContain("definition.oneDocumentPerFile && split.exportable.length > 1");
+  expect(route).not.toContain("هر فایل فقط یک سند دارد");
+  // The batch ceiling is the only remaining count guard on a download.
+  expect(route).toContain("ASAN_EXPORT_BATCH_LIMIT");
+
+  // Behavioural: two accounting documents through the shipped builder and the shipped writer,
+  // into ONE sheet. Read back as raw XML out of the zip, never through `XLSX.read` — that
+  // normalises the malformed `t="str"` cells Asan drops on import and would hide the defect.
+  const line = (
+    docId: string,
+    lineNo: number,
+    code: string,
+    desc: string,
+    debit: string,
+    credit: string,
+  ) =>
+    ({
+      doc_id: docId,
+      doc_label: docId,
+      doc_date: "2026-08-04",
+      doc_kind: "receipt",
+      party_name: "طرف حساب",
+      blocked_reason: null,
+      line_no: lineNo,
+      account_code: code,
+      product_code: null,
+      line_description: desc,
+      description_quality: "rich",
+      quantity: null,
+      debit,
+      credit,
+      doc_debit: "1000",
+      doc_credit: "1000",
+    }) satisfies JournalExportRow;
+
+  const rpcRows: JournalExportRow[] = [
+    line("doc-alpha", 1, "1001", "بابت سند الف — بانک", "1000", "0"),
+    line("doc-alpha", 2, "2001", "بابت سند الف — مشتری", "0", "1000"),
+    line("doc-beta", 1, "1001", "بابت سند ب — بانک", "2500", "0"),
+    line("doc-beta", 2, "2001", "بابت سند ب — مشتری", "0", "2500"),
+  ];
+
+  const docs = groupJournalRows(rpcRows, new Map());
+  expect(docs.map((d) => d.sourceId)).toEqual(["doc-alpha", "doc-beta"]);
+
+  const groups = buildExportRowGroups(docs, new Map(), (d) =>
+    buildJournalRows(d.payload as JournalExportPayload),
+  );
+  // `doc_id` survives the row pipeline — a per-document split later is one `map`, not a re-query.
+  expect(groups.map((g) => g.sourceId)).toEqual(["doc-alpha", "doc-beta"]);
+
+  const rows = flattenExportRows(groups);
+  expect(rows.length, "two documents, two lines each, one sheet").toBe(4);
+
+  const bytes = Buffer.from(await buildAsanWorkbook({ headers: JOURNAL_HEADERS, rows }));
+  expect(firstSheetName(bytes)).toBe("Sheet1");
+  const sst = sharedStrings(bytes);
+  expect(
+    sst,
+    "no shared-string table means Asan imports the numbers and drops every word",
+  ).not.toBeNull();
+  const data = sheetDataXml(bytes);
+  for (const ref of ["C2", "C3", "C4", "C5"]) {
+    expect(rawCell(data, ref)?.t, `${ref} must be t="s", never t="str"`).toBe("s");
+  }
+  // Both documents' own descriptions are present, in order — the file really holds two.
+  expect(["C2", "C3", "C4", "C5"].map((r) => cellText(bytes, data, r))).toEqual([
+    "بابت سند الف — بانک",
+    "بابت سند الف — مشتری",
+    "بابت سند ب — بانک",
+    "بابت سند ب — مشتری",
+  ]);
+  // Toman x 10, and the zero side written as an empty cell so Asan's «بدون مبلغ حذف شود» agrees.
+  expect(rawCell(data, "E2")?.v).toBe("10000");
+  expect(rawCell(data, "F2")).toBeNull();
+  expect(rawCell(data, "E4")?.v).toBe("25000");
 });
 
 // ------------------------------------------------------------------- the page ----

@@ -15,7 +15,7 @@ import { ChoiceButton } from "./ChoiceButton";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { MissingAsanMessage } from "./MissingAsanMessage";
 import { ProformaList } from "./ProformaList";
-import { lookupParty } from "./lookup";
+import { lookupParty, selectPartyFile } from "./lookup";
 import { listBankAccounts, listHeldCheques, listOpenProformas } from "./queries";
 import { callLedgerRpc } from "./rpc";
 import {
@@ -67,6 +67,7 @@ const emptyLookup: LookupState = {
   status: "idle",
   query: "",
   party: null,
+  options: [],
   missingName: null,
   message: null,
 };
@@ -263,6 +264,7 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
         status: "not_found",
         query: value,
         party: null,
+        options: [],
         missingName: null,
         message: err instanceof Error ? err.message : "جستجو ناموفق بود.",
       });
@@ -606,6 +608,7 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
           label="کد آسان یا شمارهٔ موبایل"
           state={payerLookup}
           onSearch={(q) => runLookup(q, branch === "receipt" ? "customer" : "any", setPayerLookup)}
+          onPickFile={(roleId) => setPayerLookup(selectPartyFile(payerLookup, roleId))}
         />
       ) : null}
       {step === 3 && branch === "payment" ? (
@@ -613,6 +616,7 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
           label="کد آسان یا شمارهٔ موبایل"
           state={payeeLookup}
           onSearch={(q) => runLookup(q, "any", setPayeeLookup)}
+          onPickFile={(roleId) => setPayeeLookup(selectPartyFile(payeeLookup, roleId))}
         />
       ) : null}
 
@@ -621,6 +625,7 @@ export function DocumentWizard({ initialBranch }: { initialBranch?: DocBranch } 
           label="کد آسان یا شمارهٔ موبایل ذینفع"
           state={beneficiaryLookup}
           onSearch={(q) => runLookup(q, "any", setBeneficiaryLookup)}
+          onPickFile={(roleId) => setBeneficiaryLookup(selectPartyFile(beneficiaryLookup, roleId))}
         />
       ) : null}
 
@@ -1011,12 +1016,16 @@ function PartyStep({
   label,
   state,
   onSearch,
+  onPickFile,
 }: {
   label: string;
   state: LookupState;
   onSearch: (q: string) => void;
+  /** D-3. Only reachable from `status === "choose_role"`; the operator decides. */
+  onPickFile: (roleId: string) => void;
 }) {
   const [q, setQ] = useState(state.query);
+  const choosing = state.status === "choose_role";
   return (
     <div className="space-y-3">
       <Field label={label} required>
@@ -1034,9 +1043,22 @@ function PartyStep({
         <MissingAsanMessage name={state.missingName} />
       ) : null}
       {state.message && state.status !== "missing_asan" ? (
-        <Alert variant="destructive">
+        <Alert variant={choosing ? "default" : "destructive"}>
           <AlertDescription>{state.message}</AlertDescription>
         </Alert>
+      ) : null}
+      {choosing ? (
+        <div className="space-y-2" data-testid="wizard-party-role-choice">
+          {state.options.map((o) => (
+            <ChoiceButton
+              key={o.roleId}
+              title={KIND_LABEL[o.kind] ?? o.kind}
+              subtitle={o.displayName}
+              testId={`wizard-party-role-${o.kind}`}
+              onClick={() => onPickFile(o.roleId)}
+            />
+          ))}
+        </div>
       ) : null}
       {state.status === "ok" && state.party ? (
         <PartySummary label="یافته" party={state.party} />

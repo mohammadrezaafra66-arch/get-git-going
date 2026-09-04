@@ -42,12 +42,32 @@ export interface BankAccountOption {
   account_type: string;
 }
 
-export type LookupStatus = "idle" | "loading" | "ok" | "not_found" | "missing_asan" | "wrong_role";
+export type LookupStatus =
+  | "idle"
+  | "loading"
+  | "ok"
+  | "not_found"
+  | "missing_asan"
+  | "wrong_role"
+  /**
+   * OG-16 / D-3. The person was found and holds MORE THAN ONE file (e.g. both a
+   * customer and a supplier file). The wizard must not decide which one the
+   * document is booked against — `options` carries every candidate and the
+   * operator picks. This status is deliberately NOT advanceable: `canNext`
+   * requires `"ok"`, which only `selectPartyFile` can produce.
+   */
+  | "choose_role";
 
 export interface LookupState {
   status: LookupStatus;
   query: string;
   party: PartyHit | null;
+  /**
+   * Every file the found person holds, in the order they are offered. Empty for
+   * every status except `"choose_role"`, where it has two or three entries that
+   * differ only in `kind` / `roleId`.
+   */
+  options: PartyHit[];
   missingName: string | null;
   message: string | null;
 }

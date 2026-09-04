@@ -109,8 +109,19 @@ can never both be filled.
 `Clear`, `انتقال اطلاعات`, `ذخیره فایل Excel`.
 
 **`شماره سند` is one number for the whole document**, entered on the screen rather than in a
-column. **One Excel file must therefore contain exactly one accounting document.** Emitting two
-would silently merge them under one voucher number.
+column.
+
+> **Superseded 2026-09-04.** This section used to conclude *"one Excel file must therefore
+> contain exactly one accounting document — emitting two would silently merge them under one
+> voucher number."* That conclusion was this project's own inference, never a measurement. The
+> owner has established that **Asan assigns the document number itself at posting time**, so the
+> number this platform holds is never written into a layout-3 file and there is nothing for a
+> second document to collide with — corroborated on the code side by `buildJournalRows`, which
+> discards the number the export shell hands it. The `oneDocumentPerFile` flag, the export
+> page's refusal and the orphan `JOURNAL_ONE_DOCUMENT_PER_FILE` constant were removed together;
+> `asan_list_journal_export` never had a `LIMIT` and `asan_assign_document_numbers` always took
+> an array. A file may now hold every document the accountant selected, up to
+> `ASAN_EXPORT_BATCH_LIMIT`.
 
 ### `account_kind` → `کد حساب` mapping
 

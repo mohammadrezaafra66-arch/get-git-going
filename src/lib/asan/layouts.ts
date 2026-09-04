@@ -121,10 +121,3 @@ export const LAYOUT_LABELS_FA: Record<AsanLayoutKey, string> = {
   journal: "سند حسابداری",
   bank_deposit: "واریزیهای بانکی",
 };
-
-/**
- * Layout 3 carries its document number on the SCREEN (`شماره سند`), not in a column, so one
- * file must contain exactly one accounting document. Emitting two would silently merge them
- * under a single voucher number. The exports that use this layout enforce it.
- */
-export const JOURNAL_ONE_DOCUMENT_PER_FILE = true;

@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Search, Loader2, Pencil, Eye, Upload, Filter, X } from "lucide-react";
+import { Plus, Search, Loader2, Pencil, Eye, Filter, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
@@ -251,11 +251,8 @@ function PersonsListPage() {
         actions={
           canManage ? (
             <div className="flex flex-wrap gap-2">
-              <Button asChild variant="outline">
-                <Link to="/persons/import">
-                  <Upload className="ml-2 h-4 w-4" /> ایمپورت اکسل
-                </Link>
-              </Button>
+              {/* A-6 — the Excel importer here was retired; /admin/asan-import is the one
+                  import surface, and it is the only one the rules in migration 430 guard. */}
               <Button asChild>
                 <Link to="/persons/create">
                   <Plus className="ml-2 h-4 w-4" /> شخص جدید
