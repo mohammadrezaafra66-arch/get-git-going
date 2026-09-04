@@ -7,16 +7,15 @@
  * forks one of them, `export-journal.spec.ts` fails.
  *
  * **One file may hold many documents (2026-09-04).** These exports used to declare a
- * one-document-per-file flag here, and the shell refused a selection of more than one. The premise
- * was that Asan takes `شماره سند` on its screen, so a second document would be merged under the
+ * one-document-per-file flag here, and the shell refused a selection of more than one. The
+ * premise was that Asan takes `شماره سند` on its screen, so a second document would be merged under the
  * first one's voucher number. The owner has since established that **Asan assigns the document
  * number itself at posting time**, so the number this platform holds never reaches the file at
  * all — corroborated on the code side by `buildRows` below, which discards the `asanNumber`
  * argument the shell passes. The flag, the shell guard and the orphan constant beside the
- * layout were all removed together; nothing in the database
- * ever imposed a cap. The `asan_export_numbers` register still records a number per document,
- * because it is how a re-export is recognised as the same document — it is simply not written
- * into layout 3.
+ * layout were all removed together; nothing in the database ever imposed a cap. The
+ * `asan_export_numbers` register still records a number per document, because it is how a
+ * re-export is recognised as the same document — it is simply not written into layout 3.
  */
 import { supabase } from "@/integrations/supabase/client";
 import {
