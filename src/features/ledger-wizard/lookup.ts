@@ -51,19 +51,103 @@ async function externalPartyId(personId: string): Promise<string | null> {
   return (data as { id: string } | null)?.id ?? null;
 }
 
-function pickKind(
+export const PARTY_KIND_LABEL_FA: Record<PartyKind, string> = {
+  customer: "مشتری",
+  supplier: "تأمین‌کننده",
+  external_party: "طرف حساب",
+};
+
+export interface PartyFile {
+  kind: PartyKind;
+  roleId: string;
+}
+
+/**
+ * Every file the person actually holds, in a fixed, documented order:
+ * customer, supplier, external party. The order is presentation only — nothing
+ * downstream may treat position 0 as "the answer" (see `pickPartyFile`).
+ */
+export function partyFiles(
+  customerId: string | null,
+  supplierId: string | null,
+  externalPartyIdValue: string | null,
+): PartyFile[] {
+  const files: PartyFile[] = [];
+  if (customerId) files.push({ kind: "customer", roleId: customerId });
+  if (supplierId) files.push({ kind: "supplier", roleId: supplierId });
+  if (externalPartyIdValue) {
+    files.push({ kind: "external_party", roleId: externalPartyIdValue });
+  }
+  return files;
+}
+
+export type PickOutcome =
+  /** Exactly one file is usable for this branch — no judgement was made. */
+  | { outcome: "picked"; file: PartyFile }
+  /** D-3: several usable files. The OPERATOR chooses; this code refuses to. */
+  | { outcome: "choose"; options: PartyFile[] }
+  /** No usable file. `available` is what the person DOES hold, so the message can name it. */
+  | { outcome: "none"; available: PartyFile[] };
+
+/**
+ * D-1 / D-3 — which file a document is booked against.
+ *
+ * Before: `required === "customer"` returned the customer file or `null`, and
+ * `required === "any"` walked `supplier -> external_party -> customer` and took
+ * the first hit. That second rule silently booked every dual-role person
+ * against their SUPPLIER file (15 people hold both today), which is exactly the
+ * "wizard picks a role on the owner's behalf" that OG-16 forbids.
+ *
+ * Now:
+ *   - `"customer"` (the receipt branch) still needs the customer file, because
+ *     `create_receipt(p_customer_id uuid)` is keyed to `customers.id` and the
+ *     owner has NOT approved re-keying it or auto-creating a mirror (D-2 is an
+ *     investigation, not a change). What changed is the refusal: it now reports
+ *     the true condition — no customer file — together with the files the
+ *     person does hold, instead of asserting the policy «دریافت فقط از مشتری
+ *     ثبت می‌شود», which contradicts OG-16.
+ *   - `"any"` (payment / dual) never guesses. One file is used; two or three
+ *     are handed back for the operator to choose between.
+ */
+export function pickPartyFile(
   required: PartyKind | "any",
   customerId: string | null,
   supplierId: string | null,
   externalPartyIdValue: string | null,
-): { kind: PartyKind; roleId: string } | null {
-  if (required === "customer") {
-    return customerId ? { kind: "customer", roleId: customerId } : null;
+): PickOutcome {
+  const available = partyFiles(customerId, supplierId, externalPartyIdValue);
+
+  if (required !== "any") {
+    const match = available.find((f) => f.kind === required);
+    return match ? { outcome: "picked", file: match } : { outcome: "none", available };
   }
-  if (supplierId) return { kind: "supplier", roleId: supplierId };
-  if (externalPartyIdValue) return { kind: "external_party", roleId: externalPartyIdValue };
-  if (customerId) return { kind: "customer", roleId: customerId };
-  return null;
+
+  if (available.length === 0) return { outcome: "none", available };
+  if (available.length === 1) return { outcome: "picked", file: available[0] };
+  return { outcome: "choose", options: available };
+}
+
+/**
+ * The refusal copy for `outcome: "none"`. It states the condition that actually
+ * fired and the remedy, and it never claims a policy the owner has not set.
+ */
+export function noFileMessage(
+  name: string,
+  required: PartyKind | "any",
+  available: PartyFile[],
+): string {
+  const held =
+    available.length > 0
+      ? `پروندهٔ فعلی این شخص: ${available.map((f) => PARTY_KIND_LABEL_FA[f.kind]).join("، ")}.`
+      : "برای این شخص هیچ پرونده‌ای (مشتری، تأمین‌کننده یا طرف حساب) ثبت نشده است.";
+
+  if (required === "customer") {
+    return `${name}: پروندهٔ مشتری ندارد. ${held} ثبت دریافت فعلاً به پروندهٔ مشتری نیاز دارد؛ برای همین شخص یک پروندهٔ مشتری بسازید و دوباره جستجو کنید.`;
+  }
+  if (required !== "any") {
+    return `${name}: پروندهٔ ${PARTY_KIND_LABEL_FA[required]} ندارد. ${held}`;
+  }
+  return `${name}: ${held}`;
 }
 
 /**
@@ -74,7 +158,7 @@ function pickKind(
 export async function lookupParty(raw: string, required: PartyKind | "any"): Promise<LookupState> {
   const query = raw.trim();
   if (!query) {
-    return { status: "idle", query, party: null, missingName: null, message: null };
+    return { status: "idle", query, party: null, options: [], missingName: null, message: null };
   }
 
   let personId =
@@ -90,7 +174,7 @@ export async function lookupParty(raw: string, required: PartyKind | "any"): Pro
   // duplicate person.
   //
   // It runs only as a FALLBACK, after every exact path has missed, and it is accepted only on
-  // a UNIQUE hit. `pickKind` below resolves one party; handing it an ambiguous name match
+  // a UNIQUE hit. `pickPartyFile` below resolves one party; handing it an ambiguous name match
   // would make the wizard silently choose between two people, which is worse than finding
   // nobody.
   //
@@ -116,6 +200,7 @@ export async function lookupParty(raw: string, required: PartyKind | "any"): Pro
         status: "not_found",
         query,
         party: null,
+        options: [],
         missingName: null,
         message: "بیش از یک شخص با این نام پیدا شد. کد آسان یا شمارهٔ موبایل را وارد کنید.",
       };
@@ -127,6 +212,7 @@ export async function lookupParty(raw: string, required: PartyKind | "any"): Pro
       status: "not_found",
       query,
       party: null,
+      options: [],
       missingName: null,
       message: "شخصی با این کد، شماره یا نام پیدا نشد.",
     };
@@ -144,6 +230,7 @@ export async function lookupParty(raw: string, required: PartyKind | "any"): Pro
       status: "not_found",
       query,
       party: null,
+      options: [],
       missingName: null,
       message: "شخصی با این کد یا شماره پیدا نشد.",
     };
@@ -155,6 +242,7 @@ export async function lookupParty(raw: string, required: PartyKind | "any"): Pro
       status: "missing_asan",
       query,
       party: null,
+      options: [],
       missingName: person.display_name,
       message: MISSING_ASAN(person.display_name),
     };
@@ -162,33 +250,63 @@ export async function lookupParty(raw: string, required: PartyKind | "any"): Pro
 
   const mirrors = await readPersonMirrors(person.id);
   const extId = await externalPartyId(person.id);
-  const picked = pickKind(required, mirrors.customer_id, mirrors.supplier_id, extId);
-  if (!picked) {
-    const roleMsg =
-      required === "customer"
-        ? "این شخص مشتری نیست. دریافت فقط از مشتری ثبت می‌شود."
-        : "این شخص نقش قابل ثبت (مشتری، تأمین‌کننده یا طرف حساب) ندارد.";
+  const picked = pickPartyFile(required, mirrors.customer_id, mirrors.supplier_id, extId);
+
+  const hitFor = (file: PartyFile): PartyHit => ({
+    personId: person.id,
+    displayName: person.display_name,
+    asanCode,
+    kind: file.kind,
+    roleId: file.roleId,
+    customerId: mirrors.customer_id,
+    supplierId: mirrors.supplier_id,
+    externalPartyId: extId,
+  });
+
+  if (picked.outcome === "none") {
     return {
       status: "wrong_role",
       query,
       party: null,
+      options: [],
       missingName: person.display_name,
-      message: roleMsg,
+      message: noFileMessage(person.display_name, required, picked.available),
     };
   }
 
-  const party: PartyHit = {
-    personId: person.id,
-    displayName: person.display_name,
-    asanCode,
-    kind: picked.kind,
-    roleId: picked.roleId,
-    customerId: mirrors.customer_id,
-    supplierId: mirrors.supplier_id,
-    externalPartyId: extId,
-  };
+  // D-3. Two or three files, and nothing here is entitled to choose between
+  // them: booking a payment against the supplier file rather than the customer
+  // file is a different document. The operator picks, on the same step.
+  if (picked.outcome === "choose") {
+    return {
+      status: "choose_role",
+      query,
+      party: null,
+      options: picked.options.map(hitFor),
+      missingName: person.display_name,
+      message: `${person.display_name} بیش از یک پرونده دارد. سند روی کدام پرونده ثبت شود؟`,
+    };
+  }
 
-  return { status: "ok", query, party, missingName: null, message: null };
+  return {
+    status: "ok",
+    query,
+    party: hitFor(picked.file),
+    options: [],
+    missingName: null,
+    message: null,
+  };
+}
+
+/**
+ * Resolves a `"choose_role"` state once the operator has picked. Anything else
+ * is returned untouched, so a stray click can never fabricate a party.
+ */
+export function selectPartyFile(state: LookupState, roleId: string): LookupState {
+  if (state.status !== "choose_role") return state;
+  const chosen = state.options.find((o) => o.roleId === roleId);
+  if (!chosen) return state;
+  return { ...state, status: "ok", party: chosen, missingName: null, message: null };
 }
 
 export function missingAsanMessage(name: string): string {
