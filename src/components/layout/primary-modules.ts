@@ -195,6 +195,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/admin/delivery-receipts",
       "/admin/automation",
       "/admin/phone-collisions",
+      "/admin/persons-cleanup",
       "/gamification/settings",
       "/gamification/admin/kpi-rules",
       "/gamification/admin/achievements",

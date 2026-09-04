@@ -58,6 +58,7 @@
   ArrowLeftRight,
   ScrollText as ScrollTextIcon,
   PhoneOff,
+  UserRoundCog,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 import type { AppRole } from "@/lib/rbac/roles";
@@ -787,6 +788,21 @@ const NAVIGATION_SEEDS = [
     adminOnly: true,
   },
   {
+    // A-5a — completing (or removing) the people the Asan import left half-finished.
+    // A worklist like the collision queue above, so adm-tools rather than adm-settings.
+    //
+    // NOT `adminOnly`: that flag reads "admin or manager", and this page deletes people.
+    // The allowlist below says admin and only admin, mirroring the route's beforeLoad and
+    // the DELETE policy the RPC runs under -- a wider link would send a manager to
+    // /unauthorized, which is worse than not showing it.
+    to: "/admin/persons-cleanup",
+    label: "تکمیل و پاک‌سازی اشخاص",
+    icon: UserRoundCog,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+  },
+  {
     // ASAN M3.3 — the Asan person/product import workbench. Admin tools, not
     // settings: it is a job you run, not a configuration you set.
     //
@@ -1256,6 +1272,7 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/admin/delivery-receipts": ["admin", "manager"],
   "/admin/documents": ["admin", "manager"],
   "/admin/penalties": ["admin", "manager"],
+  "/admin/persons-cleanup": ["admin"],
   "/admin/profile-fields": ["admin"],
   "/admin/purchase": ["admin", "manager"],
   "/admin/recent-purchase-settings": ["admin"],
