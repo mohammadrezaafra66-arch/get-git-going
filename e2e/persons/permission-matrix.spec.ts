@@ -229,7 +229,7 @@ test.describe("API — search / filters / aliases / collisions / merge", () => {
 });
 
 test.describe("UI — route access matrix (admin default storage)", () => {
-  test("admin can open persons list/profile/edit/merge/import/phone-collisions/asan-import", async ({
+  test("admin can open persons list/profile/edit/merge/phone-collisions/asan-import", async ({
     page,
   }) => {
     for (const route of [
@@ -238,7 +238,7 @@ test.describe("UI — route access matrix (admin default storage)", () => {
       `/persons/${P_OWNED}/edit`,
       "/persons/create",
       "/persons/merge",
-      "/persons/import",
+      // A-6 — /persons/import was retired; /admin/asan-import is the one import surface.
       "/admin/phone-collisions",
       "/admin/asan-import",
     ]) {
@@ -298,10 +298,6 @@ test.describe("UI — sales", () => {
     expect(body.includes(`${TAG}Hidden`)).toBeFalsy();
 
     await page.goto("/persons/merge");
-    await page.waitForLoadState("networkidle");
-    await expectAccessDenied(page);
-
-    await page.goto("/persons/import");
     await page.waitForLoadState("networkidle");
     await expectAccessDenied(page);
 

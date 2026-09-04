@@ -115,7 +115,6 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/sales",
       "/sales/customers",
       "/persons",
-      "/persons/import",
       "/persons/merge",
       "/sales/quotes",
       "/my-rejected-quotes",

@@ -58,7 +58,6 @@ import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-table
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
 import { Route as ApiPublicProductsRouteImport } from './routes/api/public/products'
-import { Route as ApiPersonsImportRouteImport } from './routes/api.persons.import'
 import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
 import { Route as AppWarehousesTransfersRouteImport } from './routes/_app.warehouses_.transfers'
 import { Route as AppWarehousesKardexRouteImport } from './routes/_app.warehouses_.kardex'
@@ -106,7 +105,6 @@ import { Route as AppPricingCalculatorRouteImport } from './routes/_app.pricing.
 import { Route as AppPricingAttentionRouteImport } from './routes/_app.pricing.attention'
 import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pricing.amin-hozoor-board'
 import { Route as AppPersonsMergeRouteImport } from './routes/_app.persons_.merge'
-import { Route as AppPersonsImportRouteImport } from './routes/_app.persons_.import'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppPersonsPersonIdRouteImport } from './routes/_app.persons_.$personId'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
@@ -189,7 +187,6 @@ import { Route as AppSalesCustomersCreditAllocationGuideRouteImport } from './ro
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
-import { Route as AppSalesCustomersImportRouteImport } from './routes/_app.sales.customers_.import'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
 import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.persons_.$personId_.edit'
@@ -467,11 +464,6 @@ const ApiPublicProductsRoute = ApiPublicProductsRouteImport.update({
   path: '/api/public/products',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPersonsImportRoute = ApiPersonsImportRouteImport.update({
-  id: '/api/persons/import',
-  path: '/api/persons/import',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiMessengerAiChatRoute = ApiMessengerAiChatRouteImport.update({
   id: '/api/messenger/ai-chat',
   path: '/api/messenger/ai-chat',
@@ -717,11 +709,6 @@ const AppPricingAminHozoorBoardRoute =
 const AppPersonsMergeRoute = AppPersonsMergeRouteImport.update({
   id: '/persons_/merge',
   path: '/persons/merge',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPersonsImportRoute = AppPersonsImportRouteImport.update({
-  id: '/persons_/import',
-  path: '/persons/import',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPersonsCreateRoute = AppPersonsCreateRouteImport.update({
@@ -1163,11 +1150,6 @@ const AppSalesQuotesQuoteIdRoute = AppSalesQuotesQuoteIdRouteImport.update({
   path: '/$quoteId',
   getParentRoute: () => AppSalesQuotesRoute,
 } as any)
-const AppSalesCustomersImportRoute = AppSalesCustomersImportRouteImport.update({
-  id: '/customers_/import',
-  path: '/customers/import',
-  getParentRoute: () => AppSalesRoute,
-} as any)
 const AppPricingSaleListsNewRoute = AppPricingSaleListsNewRouteImport.update({
   id: '/pricing/sale-lists_/new',
   path: '/pricing/sale-lists/new',
@@ -1460,7 +1442,6 @@ export interface FileRoutesByFullPath {
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
-  '/persons/import': typeof AppPersonsImportRoute
   '/persons/merge': typeof AppPersonsMergeRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/attention': typeof AppPricingAttentionRoute
@@ -1508,7 +1489,6 @@ export interface FileRoutesByFullPath {
   '/warehouses/kardex': typeof AppWarehousesKardexRoute
   '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
-  '/api/persons/import': typeof ApiPersonsImportRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
@@ -1533,7 +1513,6 @@ export interface FileRoutesByFullPath {
   '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
-  '/sales/customers/import': typeof AppSalesCustomersImportRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
@@ -1670,7 +1649,6 @@ export interface FileRoutesByTo {
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
-  '/persons/import': typeof AppPersonsImportRoute
   '/persons/merge': typeof AppPersonsMergeRoute
   '/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/pricing/attention': typeof AppPricingAttentionRoute
@@ -1717,7 +1695,6 @@ export interface FileRoutesByTo {
   '/warehouses/kardex': typeof AppWarehousesKardexRoute
   '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
-  '/api/persons/import': typeof ApiPersonsImportRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
@@ -1742,7 +1719,6 @@ export interface FileRoutesByTo {
   '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
-  '/sales/customers/import': typeof AppSalesCustomersImportRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
@@ -1883,7 +1859,6 @@ export interface FileRoutesById {
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/$personId': typeof AppPersonsPersonIdRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
-  '/_app/persons_/import': typeof AppPersonsImportRoute
   '/_app/persons_/merge': typeof AppPersonsMergeRoute
   '/_app/pricing/amin-hozoor-board': typeof AppPricingAminHozoorBoardRoute
   '/_app/pricing/attention': typeof AppPricingAttentionRoute
@@ -1931,7 +1906,6 @@ export interface FileRoutesById {
   '/_app/warehouses_/kardex': typeof AppWarehousesKardexRoute
   '/_app/warehouses_/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
-  '/api/persons/import': typeof ApiPersonsImportRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
@@ -1956,7 +1930,6 @@ export interface FileRoutesById {
   '/_app/persons_/$personId_/edit': typeof AppPersonsPersonIdEditRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
-  '/_app/sales/customers_/import': typeof AppSalesCustomersImportRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
@@ -2097,7 +2070,6 @@ export interface FileRouteTypes {
     | '/operations/tasks'
     | '/persons/$personId'
     | '/persons/create'
-    | '/persons/import'
     | '/persons/merge'
     | '/pricing/amin-hozoor-board'
     | '/pricing/attention'
@@ -2145,7 +2117,6 @@ export interface FileRouteTypes {
     | '/warehouses/kardex'
     | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
-    | '/api/persons/import'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
@@ -2170,7 +2141,6 @@ export interface FileRouteTypes {
     | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
-    | '/sales/customers/import'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
@@ -2307,7 +2277,6 @@ export interface FileRouteTypes {
     | '/operations/tasks'
     | '/persons/$personId'
     | '/persons/create'
-    | '/persons/import'
     | '/persons/merge'
     | '/pricing/amin-hozoor-board'
     | '/pricing/attention'
@@ -2354,7 +2323,6 @@ export interface FileRouteTypes {
     | '/warehouses/kardex'
     | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
-    | '/api/persons/import'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
@@ -2379,7 +2347,6 @@ export interface FileRouteTypes {
     | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
-    | '/sales/customers/import'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/customers/create'
@@ -2519,7 +2486,6 @@ export interface FileRouteTypes {
     | '/_app/operations/tasks'
     | '/_app/persons_/$personId'
     | '/_app/persons_/create'
-    | '/_app/persons_/import'
     | '/_app/persons_/merge'
     | '/_app/pricing/amin-hozoor-board'
     | '/_app/pricing/attention'
@@ -2567,7 +2533,6 @@ export interface FileRouteTypes {
     | '/_app/warehouses_/kardex'
     | '/_app/warehouses_/transfers'
     | '/api/messenger/ai-chat'
-    | '/api/persons/import'
     | '/api/public/products'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
@@ -2592,7 +2557,6 @@ export interface FileRouteTypes {
     | '/_app/persons_/$personId_/edit'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
-    | '/_app/sales/customers_/import'
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
     | '/_app/sales_/customers_/create'
@@ -2636,7 +2600,6 @@ export interface RootRouteChildren {
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
-  ApiPersonsImportRoute: typeof ApiPersonsImportRoute
   ApiPublicProductsRoute: typeof ApiPublicProductsRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
@@ -2995,13 +2958,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/persons/import': {
-      id: '/api/persons/import'
-      path: '/api/persons/import'
-      fullPath: '/api/persons/import'
-      preLoaderRoute: typeof ApiPersonsImportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/messenger/ai-chat': {
       id: '/api/messenger/ai-chat'
       path: '/api/messenger/ai-chat'
@@ -3329,13 +3285,6 @@ declare module '@tanstack/react-router' {
       path: '/persons/merge'
       fullPath: '/persons/merge'
       preLoaderRoute: typeof AppPersonsMergeRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/persons_/import': {
-      id: '/_app/persons_/import'
-      path: '/persons/import'
-      fullPath: '/persons/import'
-      preLoaderRoute: typeof AppPersonsImportRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/persons_/create': {
@@ -3912,13 +3861,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesQuotesQuoteIdRouteImport
       parentRoute: typeof AppSalesQuotesRoute
     }
-    '/_app/sales/customers_/import': {
-      id: '/_app/sales/customers_/import'
-      path: '/customers/import'
-      fullPath: '/sales/customers/import'
-      preLoaderRoute: typeof AppSalesCustomersImportRouteImport
-      parentRoute: typeof AppSalesRoute
-    }
     '/_app/pricing/sale-lists_/new': {
       id: '/_app/pricing/sale-lists_/new'
       path: '/pricing/sale-lists/new'
@@ -4227,7 +4169,6 @@ interface AppSalesRouteChildren {
   AppSalesSendQueueRoute: typeof AppSalesSendQueueRoute
   AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
-  AppSalesCustomersImportRoute: typeof AppSalesCustomersImportRoute
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
@@ -4241,7 +4182,6 @@ const AppSalesRouteChildren: AppSalesRouteChildren = {
   AppSalesSendQueueRoute: AppSalesSendQueueRoute,
   AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
-  AppSalesCustomersImportRoute: AppSalesCustomersImportRoute,
 }
 
 const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
@@ -4408,7 +4348,6 @@ interface AppRouteChildren {
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsPersonIdRoute: typeof AppPersonsPersonIdRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
-  AppPersonsImportRoute: typeof AppPersonsImportRoute
   AppPersonsMergeRoute: typeof AppPersonsMergeRoute
   AppPricingAminHozoorBoardRoute: typeof AppPricingAminHozoorBoardRoute
   AppPricingAttentionRoute: typeof AppPricingAttentionRoute
@@ -4554,7 +4493,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsPersonIdRoute: AppPersonsPersonIdRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
-  AppPersonsImportRoute: AppPersonsImportRoute,
   AppPersonsMergeRoute: AppPersonsMergeRoute,
   AppPricingAminHozoorBoardRoute: AppPricingAminHozoorBoardRoute,
   AppPricingAttentionRoute: AppPricingAttentionRoute,
@@ -4659,7 +4597,6 @@ const rootRouteChildren: RootRouteChildren = {
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
-  ApiPersonsImportRoute: ApiPersonsImportRoute,
   ApiPublicProductsRoute: ApiPublicProductsRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,

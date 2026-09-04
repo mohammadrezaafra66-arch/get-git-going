@@ -98,12 +98,8 @@ for (const vp of VIEWPORTS) {
       expect(hasScrollContainer).toBeGreaterThanOrEqual(0);
     });
 
-    test(`/persons/import`, async ({ page }) => {
-      await page.goto("/persons/import");
-      await page.waitForLoadState("networkidle");
-      await expect(page).not.toHaveURL(/\/unauthorized/);
-      await assertNoDocOverflow(page);
-    });
+    // A-6 (2026-09-04) — /persons/import was retired. /admin/asan-import below is the
+    // one surviving import surface and is already covered by the next case.
 
     test(`/admin/asan-import`, async ({ page }) => {
       await page.goto("/admin/asan-import");
