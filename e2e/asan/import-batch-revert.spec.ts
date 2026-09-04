@@ -106,7 +106,12 @@ test.describe("A-7 — reverting a committed Asan person import", () => {
   test("discarding a STAGED batch is unchanged: nothing is written, nothing is reverted", async () => {
     const before = Number(dbScalar("select count(*) from public.persons"));
     const id = await stage(`QA-A7-${RUN}-staged`, [
-      { row_number: 2, display_name: NAME("staged"), asan_code: `${CODE}9`, mobile_raw: `${MOBILE}9` },
+      {
+        row_number: 2,
+        display_name: NAME("staged"),
+        asan_code: `${CODE}9`,
+        mobile_raw: `${MOBILE}9`,
+      },
     ]);
     await rpc("asan_classify_person_batch", { p_batch_id: id });
 
@@ -140,8 +145,9 @@ test.describe("A-7 — reverting a committed Asan person import", () => {
     ]);
     await rpc("asan_classify_person_batch", { p_batch_id: first });
     await acceptAll(first);
-    expect((await rpc<{ created: number }>("asan_commit_person_batch", { p_batch_id: first })).created)
-      .toBe(1);
+    expect(
+      (await rpc<{ created: number }>("asan_commit_person_batch", { p_batch_id: first })).created,
+    ).toBe(1);
 
     const personId = dbScalar(
       `select id from public.persons where display_name = '${NAME("person")}'`,

@@ -464,9 +464,7 @@ function AsanPersonImportPanel() {
       revoked_identifiers?: number;
       persons_created_remaining?: number;
     };
-    toast.success(
-      `بازگردانی انجام شد — ${toFaDigits(r.revoked_identifiers ?? 0)} شناسه باطل شد.`,
-    );
+    toast.success(`بازگردانی انجام شد — ${toFaDigits(r.revoked_identifiers ?? 0)} شناسه باطل شد.`);
     if ((r.persons_created_remaining ?? 0) > 0) {
       toast.warning(
         `${toFaDigits(r.persons_created_remaining ?? 0)} شخصی که این دسته ساخته بود حذف نشد؛ حذف شخص از این صفحه انجام نمی‌شود.`,

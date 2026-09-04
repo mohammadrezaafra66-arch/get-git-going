@@ -269,10 +269,7 @@ test.describe("A-3 — a second import never creates a second copy", () => {
     const result = await rpc<CommitResult>("asan_commit_person_batch", { p_batch_id: id });
 
     expect(result.created, "one Asan code produced two persons").toBe(1);
-    expect(
-      personsNamed(`E2E-AB-IMP-${RUN}-same-%`),
-      "one Asan code produced two persons",
-    ).toBe(1);
+    expect(personsNamed(`E2E-AB-IMP-${RUN}-same-%`), "one Asan code produced two persons").toBe(1);
     // The second row must not leave behind a person with no Asan code — that is exactly
     // the invariant A-1 exists to protect, defeated from inside a single file.
     expect(
