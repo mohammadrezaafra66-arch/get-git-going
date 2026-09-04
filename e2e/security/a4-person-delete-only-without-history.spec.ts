@@ -49,7 +49,9 @@ function probe(body: string): string[] {
   return out
     .split(/\r?\n/)
     .map((l) => l.trim())
-    .filter((l) => l.length > 0 && !["BEGIN", "ROLLBACK", "SET", "RESET", "INSERT 0 1"].includes(l));
+    .filter(
+      (l) => l.length > 0 && !["BEGIN", "ROLLBACK", "SET", "RESET", "INSERT 0 1"].includes(l),
+    );
 }
 
 /**
@@ -192,14 +194,7 @@ SELECT 'audited='      || (SELECT count(*) FROM public.audit_logs
     // probe folds stderr into stdout inside the container rather than losing the message.
     const merged = execFileSync(
       "docker",
-      [
-        "exec",
-        "-i",
-        CONTAINER,
-        "sh",
-        "-c",
-        `psql -U ${DB_USER} -d ${DB_NAME} -A -t -f - 2>&1`,
-      ],
+      ["exec", "-i", CONTAINER, "sh", "-c", `psql -U ${DB_USER} -d ${DB_NAME} -A -t -f - 2>&1`],
       {
         input: `BEGIN;\n${FIXTURE_BUSY}\n${becomes("admin")}
 DO $probe$

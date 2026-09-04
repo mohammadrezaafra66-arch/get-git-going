@@ -147,6 +147,7 @@ import { Route as AppAdminPurchaseRouteImport } from './routes/_app.admin.purcha
 import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.profile-fields'
 import { Route as AppAdminPlatformReleasesRouteImport } from './routes/_app.admin.platform-releases'
 import { Route as AppAdminPhoneCollisionsRouteImport } from './routes/_app.admin.phone-collisions'
+import { Route as AppAdminPersonsCleanupRouteImport } from './routes/_app.admin.persons-cleanup'
 import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
 import { Route as AppAdminMarketingTaskTemplatesRouteImport } from './routes/_app.admin.marketing-task-templates'
@@ -932,6 +933,11 @@ const AppAdminPhoneCollisionsRoute = AppAdminPhoneCollisionsRouteImport.update({
   path: '/admin/phone-collisions',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminPersonsCleanupRoute = AppAdminPersonsCleanupRouteImport.update({
+  id: '/admin/persons-cleanup',
+  path: '/admin/persons-cleanup',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminPenaltiesRoute = AppAdminPenaltiesRouteImport.update({
   id: '/admin/penalties',
   path: '/admin/penalties',
@@ -1420,6 +1426,7 @@ export interface FileRoutesByFullPath {
   '/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/admin/persons-cleanup': typeof AppAdminPersonsCleanupRoute
   '/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
@@ -1630,6 +1637,7 @@ export interface FileRoutesByTo {
   '/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/admin/persons-cleanup': typeof AppAdminPersonsCleanupRoute
   '/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
   '/admin/profile-fields': typeof AppAdminProfileFieldsRoute
@@ -1843,6 +1851,7 @@ export interface FileRoutesById {
   '/_app/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/_app/admin/persons-cleanup': typeof AppAdminPersonsCleanupRoute
   '/_app/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/_app/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
   '/_app/admin/profile-fields': typeof AppAdminProfileFieldsRoute
@@ -2057,6 +2066,7 @@ export interface FileRouteTypes {
     | '/admin/marketing-task-templates'
     | '/admin/payment-terms'
     | '/admin/penalties'
+    | '/admin/persons-cleanup'
     | '/admin/phone-collisions'
     | '/admin/platform-releases'
     | '/admin/profile-fields'
@@ -2267,6 +2277,7 @@ export interface FileRouteTypes {
     | '/admin/marketing-task-templates'
     | '/admin/payment-terms'
     | '/admin/penalties'
+    | '/admin/persons-cleanup'
     | '/admin/phone-collisions'
     | '/admin/platform-releases'
     | '/admin/profile-fields'
@@ -2479,6 +2490,7 @@ export interface FileRouteTypes {
     | '/_app/admin/marketing-task-templates'
     | '/_app/admin/payment-terms'
     | '/_app/admin/penalties'
+    | '/_app/admin/persons-cleanup'
     | '/_app/admin/phone-collisions'
     | '/_app/admin/platform-releases'
     | '/_app/admin/profile-fields'
@@ -3618,6 +3630,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminPhoneCollisionsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/persons-cleanup': {
+      id: '/_app/admin/persons-cleanup'
+      path: '/admin/persons-cleanup'
+      fullPath: '/admin/persons-cleanup'
+      preLoaderRoute: typeof AppAdminPersonsCleanupRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/penalties': {
       id: '/_app/admin/penalties'
       path: '/admin/penalties'
@@ -4376,6 +4395,7 @@ interface AppRouteChildren {
   AppAdminMarketingTaskTemplatesRoute: typeof AppAdminMarketingTaskTemplatesRoute
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
   AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
+  AppAdminPersonsCleanupRoute: typeof AppAdminPersonsCleanupRoute
   AppAdminPhoneCollisionsRoute: typeof AppAdminPhoneCollisionsRoute
   AppAdminPlatformReleasesRoute: typeof AppAdminPlatformReleasesRoute
   AppAdminProfileFieldsRoute: typeof AppAdminProfileFieldsRoute
@@ -4522,6 +4542,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminMarketingTaskTemplatesRoute: AppAdminMarketingTaskTemplatesRoute,
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
   AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
+  AppAdminPersonsCleanupRoute: AppAdminPersonsCleanupRoute,
   AppAdminPhoneCollisionsRoute: AppAdminPhoneCollisionsRoute,
   AppAdminPlatformReleasesRoute: AppAdminPlatformReleasesRoute,
   AppAdminProfileFieldsRoute: AppAdminProfileFieldsRoute,
