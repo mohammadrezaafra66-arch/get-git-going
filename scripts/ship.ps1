@@ -1,0 +1,320 @@
+# ship.ps1 v3 — autonomous commit/push/PR for the test machine
+#
+# Runs unattended every 15 minutes. Fires only when:
+#   1. something actually changed, AND
+#   2. nothing has been touched for IdleMinutes, AND
+#   3. no risky file is present, AND
+#   4. typecheck has no error in a file you touched, and the total has not grown, AND
+#   5. the same broken state has not already been reported
+#
+# Never pushes to a protected branch. Always goes through a feature branch + PR.
+#
+#   .\ship.ps1 -DryRun -Force   # show what it would do, change nothing
+#   .\ship.ps1 -Force           # ship now, skip the idle wait
+#   .\ship.ps1 -ResetBaseline   # re-record the typecheck baseline
+
+param(
+  [switch]$DryRun,
+  [switch]$Force,
+  [switch]$ResetBaseline
+)
+
+# ── CONFIG ───────────────────────────────────────────────────
+$RepoPath      = "D:\AfraKalaTest\app"
+$BaseBranch    = "staging"
+$Protected     = @("main","staging","master","production")
+$IdleMinutes   = 60
+$TypecheckCmd  = "npm run typecheck"
+
+# LLM — DeepSeek by default; for OpenAI swap the two lines below
+$ApiUrl        = "https://api.deepseek.com/chat/completions"
+$ApiModel      = "deepseek-chat"
+# $ApiUrl      = "https://api.openai.com/v1/chat/completions"
+# $ApiModel    = "gpt-4o-mini"
+$ApiKeyEnvVar  = "SHIP_API_KEY"
+
+$MaxDiffChars  = 14000
+
+# Files that must never be auto-committed. Anything matching -> abort and report.
+$RiskyPatterns = @(
+  '^\.env', '\.env\.', '\.key$', '\.pem$', '\.pfx$',
+  '^scratch/', '^scripts/scratch/', '\.bak$', '\.xlsx$', '\.dump$',
+  '^test-.*\.sql$', '^r9-.*\.txt$', '^test-objects\.txt$', 'backup.*\.sql$'
+)
+
+$StateFile = Join-Path $RepoPath ".ship-state.json"
+$LogFile   = Join-Path $RepoPath ".ship.log"
+# ─────────────────────────────────────────────────────────────
+
+$ErrorActionPreference = "Stop"
+Set-Location $RepoPath
+
+# UTF-8 everywhere: console output, and TLS 1.2 for the API call
+try {
+  [Console]::OutputEncoding = [Text.Encoding]::UTF8
+  $OutputEncoding = [Text.Encoding]::UTF8
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+} catch { }
+
+$Utf8NoBom = New-Object Text.UTF8Encoding $false
+function Write-Utf8($path, $text) { [IO.File]::WriteAllText($path, $text, $Utf8NoBom) }
+
+function Log($msg, $level = "INFO") {
+  $line = "{0} [{1}] {2}" -f (Get-Date -Format "yyyy-MM-dd HH:mm:ss"), $level, $msg
+  Add-Content -Path $LogFile -Value $line -Encoding utf8
+  if ($level -eq "ERROR") { Write-Host $line -ForegroundColor Red }
+  elseif ($level -eq "SHIP") { Write-Host $line -ForegroundColor Green }
+  elseif ($level -eq "WARN") { Write-Host $line -ForegroundColor Yellow }
+  else { Write-Host $line }
+}
+
+function Load-State {
+  if (Test-Path $StateFile) {
+    $s = Get-Content $StateFile -Raw | ConvertFrom-Json
+  } else {
+    $s = [pscustomobject]@{}
+  }
+  foreach ($p in @('lastFailHash','lastFailAt')) {
+    if ($s.PSObject.Properties.Name -notcontains $p) {
+      $s | Add-Member -NotePropertyName $p -NotePropertyValue "" -Force
+    }
+  }
+  if ($s.PSObject.Properties.Name -notcontains 'typecheckBaseline') {
+    $s | Add-Member -NotePropertyName typecheckBaseline -NotePropertyValue -1 -Force
+  }
+  return $s
+}
+function Save-State($s) { $s | ConvertTo-Json | Set-Content $StateFile -Encoding utf8 }
+
+$state = Load-State
+if ($ResetBaseline) {
+  $state.typecheckBaseline = -1
+  $state.lastFailHash = ""
+  Save-State $state
+  Log "Baseline reset" "WARN"
+}
+
+# ── 1. is there anything to ship? ────────────────────────────
+$branch = git rev-parse --abbrev-ref HEAD
+if ($Protected -notcontains $branch -and -not $Force) {
+  Log "on working branch '$branch' — a previous ship may be unmerged. Skipping." "WARN"
+  exit 0
+}
+
+$status = git status --porcelain
+if (-not $status) { exit 0 }   # nothing changed, stay quiet
+
+$changed = $status | ForEach-Object { ($_ -replace '^..\s+','').Trim('"') }
+
+# ── 2. risky files? never auto-commit these ──────────────────
+$risky = $changed | Where-Object { $p = $_; $RiskyPatterns | Where-Object { $p -match $_ } }
+if ($risky) {
+  Log "BLOCKED — risky files present, nothing shipped:" "ERROR"
+  $risky | ForEach-Object { Log "    $_" "ERROR" }
+  Log "Move them out of the repo or add them to .gitignore, then this resumes." "ERROR"
+  exit 1
+}
+
+# ── 3. idle check ────────────────────────────────────────────
+$lastTouch = $changed |
+  Where-Object { Test-Path $_ } |
+  ForEach-Object { (Get-Item $_).LastWriteTime } |
+  Sort-Object -Descending | Select-Object -First 1
+
+if (-not $Force) {
+  if (-not $lastTouch) { exit 0 }
+  $idle = [int]((Get-Date) - $lastTouch).TotalMinutes
+  if ($idle -lt $IdleMinutes) { exit 0 }   # still working, stay quiet
+  Log "Idle for $idle min with $($changed.Count) changed files — starting ship"
+} else {
+  Log "Forced ship with $($changed.Count) changed files"
+}
+
+# ── 4. don't re-report the same broken state ─────────────────
+$hash = (Get-FileHash -InputStream ([IO.MemoryStream]::new(
+          [Text.Encoding]::UTF8.GetBytes(($status -join "`n")))) -Algorithm SHA256).Hash
+if ($state.lastFailHash -eq $hash -and -not $Force) { exit 0 }
+
+# ── 5. typecheck gate: touched-file rule + ratchet ───────────
+Log "Running typecheck"
+$tcOutput = & cmd /c "$TypecheckCmd 2>&1"
+$errLines = @($tcOutput | Where-Object { $_ -match 'error TS\d+' })
+$errCount = $errLines.Count
+
+$errFiles = @($errLines | ForEach-Object {
+  if ($_ -match '^(.+?)\(\d+,\d+\)') { $matches[1] -replace '\\','/' }
+} | Sort-Object -Unique)
+
+$touchedWithErrors = @($errFiles | Where-Object { $changed -contains $_ })
+
+if ($touchedWithErrors) {
+  Log "TYPECHECK FAILED in files you changed — nothing shipped" "ERROR"
+  foreach ($f in $touchedWithErrors) {
+    ($errLines | Where-Object { $_ -like "$f*" -or $_ -like "*$f(*" } |
+      Select-Object -First 6) | ForEach-Object { Log "    $_" "ERROR" }
+  }
+  $state.lastFailHash = $hash
+  $state.lastFailAt   = (Get-Date).ToString("s")
+  Save-State $state
+  exit 10
+}
+
+$baseline = [int]$state.typecheckBaseline
+if ($baseline -lt 0) {
+  Log "First run — recording typecheck baseline at $errCount pre-existing errors" "WARN"
+  $state.typecheckBaseline = $errCount
+} elseif ($errCount -gt $baseline) {
+  Log "TYPECHECK REGRESSED: $errCount errors vs baseline $baseline — nothing shipped" "ERROR"
+  ($errLines | Select-Object -Last 12) | ForEach-Object { Log "    $_" "ERROR" }
+  $state.lastFailHash = $hash
+  $state.lastFailAt   = (Get-Date).ToString("s")
+  Save-State $state
+  exit 10
+} elseif ($errCount -lt $baseline) {
+  Log "Typecheck improved: $errCount errors (was $baseline) — lowering baseline" "SHIP"
+  $state.typecheckBaseline = $errCount
+}
+Save-State $state
+Log "Typecheck OK — $errCount pre-existing errors, none in your files"
+
+# ── 6. build the change summary for the model ────────────────
+$stat      = (git diff --stat HEAD) -join "`n"
+$names     = (git diff --name-status HEAD) -join "`n"
+$untracked = ($status | Where-Object { $_ -match '^\?\?' }) -join "`n"
+
+$diff = (git diff HEAD -- . ':(exclude)*.lock' ':(exclude)*lock.json' ':(exclude)*.svg') -join "`n"
+$diff = ($diff -split "`n" | Where-Object {
+  $_ -notmatch '(?i)(api[_-]?key|secret|password|token|authorization|bearer)\s*[:=]'
+}) -join "`n"
+if ($diff.Length -gt $MaxDiffChars) {
+  $diff = $diff.Substring(0, $MaxDiffChars) + "`n[... diff truncated ...]"
+}
+
+$intent = ""
+$intentFile = Join-Path $RepoPath ".shipmsg"
+if (Test-Path $intentFile) {
+  $intent = (Get-Content $intentFile -Raw -Encoding UTF8).Trim()
+  Log "Found .shipmsg — using it as stated intent"
+}
+
+# ── 7. ask the model for a commit message ────────────────────
+$apiKey = [Environment]::GetEnvironmentVariable($ApiKeyEnvVar, "User")
+if (-not $apiKey) { $apiKey = $env:SHIP_API_KEY }
+$msg = $null
+
+if ($apiKey) {
+  $sys = @"
+You write git commit messages and pull request descriptions from a diff.
+Reply with ONLY a JSON object, no markdown fences, with these keys:
+  subject   Conventional Commits, imperative, under 72 chars, English,
+            e.g. "feat(treasury): add asan code to bank accounts"
+  body      2-4 sentences in Persian describing WHAT changed and its effect.
+  pr_title  same as subject
+  pr_body   markdown in Persian: a short summary, a bullet list of changes grouped
+            by layer, and a "Migrations" section naming any new file under
+            supabase/migrations. Omit a layer entirely if it has no changes —
+            do not write bullets saying nothing changed. Omit the Migrations
+            section if there are none.
+Describe only what the diff shows. Never invent a reason, a ticket number, or an effect
+you cannot see. If the stated intent is empty, do not speculate about motivation.
+"@
+  $usr = @"
+STATED INTENT (may be empty): $intent
+
+FILES CHANGED:
+$names
+
+STATS:
+$stat
+
+UNTRACKED:
+$untracked
+
+DIFF:
+$diff
+"@
+
+  try {
+    Log "Asking $ApiModel for a commit message"
+    $payload = @{
+      model    = $ApiModel
+      messages = @(
+        @{ role = "system"; content = $sys },
+        @{ role = "user";   content = $usr }
+      )
+      temperature = 0.2
+    } | ConvertTo-Json -Depth 6
+
+    # Invoke-WebRequest + manual UTF-8 decode.
+    # Invoke-RestMethod on PS 5.1 decodes the body as ISO-8859-1 and mangles Persian.
+    $r = Invoke-WebRequest -Uri $ApiUrl -Method Post -TimeoutSec 90 -UseBasicParsing `
+           -Headers @{ Authorization = "Bearer $apiKey" } `
+           -ContentType "application/json; charset=utf-8" `
+           -Body ([Text.Encoding]::UTF8.GetBytes($payload))
+
+    $json = [Text.Encoding]::UTF8.GetString($r.RawContentStream.ToArray())
+    $resp = $json | ConvertFrom-Json
+
+    $raw = $resp.choices[0].message.content -replace '```json','' -replace '```',''
+    $msg = $raw.Trim() | ConvertFrom-Json
+  } catch {
+    Log "Model call failed: $($_.Exception.Message) — falling back" "WARN"
+  }
+} else {
+  Log "$ApiKeyEnvVar not set — falling back to a generated message" "WARN"
+}
+
+if (-not $msg) {
+  $areas = ($changed | ForEach-Object { ($_ -split '[\\/]')[0] } | Sort-Object -Unique) -join ", "
+  $ts = Get-Date -Format "yyyy-MM-dd HH:mm"
+  $msg = [pscustomobject]@{
+    subject  = "chore: auto-ship $ts"
+    body     = "تغییرات خودکار در: $areas — $($changed.Count) فایل"
+    pr_title = "chore: auto-ship $ts"
+    pr_body  = "Auto-generated.`n`nFiles changed:`n" + (($changed | ForEach-Object { "- $_" }) -join "`n")
+  }
+}
+
+# ── 8. commit, push, PR ──────────────────────────────────────
+$newBranch = "feature/auto-{0}" -f (Get-Date -Format "yyyyMMdd-HHmm")
+$footer  = "`n`nAuto-shipped $(Get-Date -Format 'yyyy-MM-dd HH:mm') from $env:COMPUTERNAME"
+$fullMsg = "$($msg.subject)`n`n$($msg.body)$footer"
+
+if ($DryRun) {
+  Log "DRY RUN — would create branch $newBranch" "SHIP"
+  Write-Host "`n--- commit message ---`n$fullMsg`n"
+  Write-Host "--- PR body ---`n$($msg.pr_body)`n"
+  exit 0
+}
+
+# Commit via a UTF-8 file, not -m: PowerShell mangles non-ASCII arguments to git.exe
+$msgFile = Join-Path $env:TEMP "ship-commit-msg.txt"
+Write-Utf8 $msgFile $fullMsg
+
+git checkout -b $newBranch | Out-Null
+git add -A
+git -c i18n.commitEncoding=utf-8 commit -F $msgFile | Out-Null
+git push -u origin $newBranch 2>&1 | Out-Null
+Remove-Item $msgFile -Force -ErrorAction SilentlyContinue
+
+$prUrl = ""
+if (Get-Command gh -ErrorAction SilentlyContinue) {
+  $bodyFile = Join-Path $env:TEMP "ship-pr-body.md"
+  Write-Utf8 $bodyFile $msg.pr_body
+  $prUrl = gh pr create --base $BaseBranch --head $newBranch `
+             --title $msg.pr_title --body-file $bodyFile 2>&1 | Select-Object -Last 1
+  Remove-Item $bodyFile -Force -ErrorAction SilentlyContinue
+} else {
+  $repo = (git config --get remote.origin.url) -replace '\.git$',''
+  $prUrl = "$repo/pull/new/$newBranch"
+}
+
+git checkout $BaseBranch | Out-Null
+if (Test-Path $intentFile) { Remove-Item $intentFile }
+
+$state.lastFailHash = ""
+Save-State $state
+
+Log "SHIPPED  $($msg.subject)" "SHIP"
+Log "         branch: $newBranch  |  files: $($changed.Count)" "SHIP"
+Log "         PR: $prUrl" "SHIP"

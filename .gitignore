@@ -135,3 +135,11 @@ public/release-notes.json
 # it is a restore artefact, not documentation. Kept on disk, never committed.
 # P0.5 exists precisely because a data export reached git history once already.
 docs/verification/P0.*-*-backup.sql
+
+.ship-state.json
+.ship.log
+.shipmsg
+
+.ship-state.json
+.ship.log
+.shipmsg
