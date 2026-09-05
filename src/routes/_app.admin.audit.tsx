@@ -23,6 +23,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 
 export const Route = createFileRoute("/_app/admin/audit")({
+  // Wave 4 / S-5 — mirrors the requireAnyRole call below. The shared guard cannot decide during
+  // SSR, and on a direct navigation SSR is the only pass that runs, so RouteRoleGate in _app
+  // enforces this on the client. This route reads the audit trail, which is the record every
+  // other control in this wave is written into.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager"] } },
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager"]);
   },
