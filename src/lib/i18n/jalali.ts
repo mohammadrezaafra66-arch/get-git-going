@@ -104,6 +104,40 @@ export function gregorianToJalali(
   return { jy, jm, jd };
 }
 
+const JALALI_MONTH_NAMES_FA = [
+  "فروردین",
+  "اردیبهشت",
+  "خرداد",
+  "تیر",
+  "مرداد",
+  "شهریور",
+  "مهر",
+  "آبان",
+  "آذر",
+  "دی",
+  "بهمن",
+  "اسفند",
+];
+
+/**
+ * Format an ISO Gregorian date as a Jalali *month*, e.g. "مرداد ۱۴۰۵".
+ *
+ * D-9 (migration 455) needs this: when a score is read from an older month than the
+ * current one, the page has to name that month rather than silently showing a stale
+ * number. A bare `YYYY/MM/DD` would be read as "this is today's figure", so the month
+ * is spelled out.
+ */
+export function isoToJalaliMonthDisplay(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  if (!m) return "";
+  const { jy, jm } = gregorianToJalali(+m[1], +m[2], +m[3]);
+  const name = JALALI_MONTH_NAMES_FA[jm - 1];
+  if (!name) return "";
+  const faYear = String(jy).replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
+  return `${name} ${faYear}`;
+}
+
 /** Format an ISO Gregorian YYYY-MM-DD as Jalali YYYY/MM/DD (Persian digits). */
 export function isoToJalaliDisplay(iso: string | null | undefined): string {
   if (!iso) return "";
