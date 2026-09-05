@@ -10,7 +10,7 @@ import { defineConfig } from "@playwright/test";
  */
 export default defineConfig({
   testDir: ".",
-  testMatch: /(receipt-ocr-structured|ledger-wizard-party-pick)\.spec\.ts/,
+  testMatch: /(receipt-ocr-structured|ledger-wizard-party-pick|ai-usage-route)\.spec\.ts/,
   timeout: 30_000,
   fullyParallel: true,
   retries: 0,
