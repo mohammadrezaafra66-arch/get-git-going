@@ -237,4 +237,3 @@ test.describe("Z-2 — the finance hub reaches persons-cleanup", () => {
  * and the finding is reported to the owner instead. Fixing it is outside Z-2: it is shared RBAC
  * code, the fix belongs with whoever owns route guards, and Z-2 changed no guard.
  */
-
