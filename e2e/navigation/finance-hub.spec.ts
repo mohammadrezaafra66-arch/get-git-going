@@ -19,13 +19,16 @@ const HUB_ROUTE = "/accounting/receipts/create";
 
 /**
  * The destinations the hub must reach: the owner's original twelve, plus the five added
- * afterwards because they had left the menu without landing anywhere.
+ * afterwards because they had left the menu without landing anywhere, plus the customer list.
  */
 const HUB_DESTINATIONS = [
   `${HUB_ROUTE}?branch=receipt`,
   `${HUB_ROUTE}?branch=payment`,
   `${HUB_ROUTE}?branch=dual`,
   "/purchases/create",
+  // W-3 — the hub reaches a party's file, and the customer list was the one it could not
+  // reach. Recorded here rather than merely added to the hub, so it is asserted like the rest.
+  "/sales/customers",
   "/persons",
   "/warehouses",
   "/accounting/treasury",
@@ -73,7 +76,7 @@ test.describe("finance hub", () => {
     }
     // Non-vacuous: a hub file that lost its links would fail the loop, but an empty
     // destination list would pass it. Pin the count too.
-    expect(HUB_DESTINATIONS).toHaveLength(17);
+    expect(HUB_DESTINATIONS).toHaveLength(18);
   });
 
   test("the three pages the owner chose to drop are not on the hub", () => {
