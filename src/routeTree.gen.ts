@@ -107,7 +107,6 @@ import { Route as AppPersonsMergeRouteImport } from './routes/_app.persons_.merg
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppPersonsPersonIdRouteImport } from './routes/_app.persons_.$personId'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
-import { Route as AppOperationsReceiptsRouteImport } from './routes/_app.operations.receipts'
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
@@ -718,11 +717,6 @@ const AppPersonsPersonIdRoute = AppPersonsPersonIdRouteImport.update({
 const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   id: '/operations/tasks',
   path: '/operations/tasks',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppOperationsReceiptsRoute = AppOperationsReceiptsRouteImport.update({
-  id: '/operations/receipts',
-  path: '/operations/receipts',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOperationsPurchaseAdvisorRoute =
@@ -1430,7 +1424,6 @@ export interface FileRoutesByFullPath {
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
-  '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
@@ -1636,7 +1629,6 @@ export interface FileRoutesByTo {
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
-  '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
@@ -1845,7 +1837,6 @@ export interface FileRoutesById {
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
-  '/_app/operations/receipts': typeof AppOperationsReceiptsRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/$personId': typeof AppPersonsPersonIdRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
@@ -2055,7 +2046,6 @@ export interface FileRouteTypes {
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
-    | '/operations/receipts'
     | '/operations/tasks'
     | '/persons/$personId'
     | '/persons/create'
@@ -2261,7 +2251,6 @@ export interface FileRouteTypes {
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
-    | '/operations/receipts'
     | '/operations/tasks'
     | '/persons/$personId'
     | '/persons/create'
@@ -2469,7 +2458,6 @@ export interface FileRouteTypes {
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
     | '/_app/operations/purchase-advisor'
-    | '/_app/operations/receipts'
     | '/_app/operations/tasks'
     | '/_app/persons_/$personId'
     | '/_app/persons_/create'
@@ -3286,13 +3274,6 @@ declare module '@tanstack/react-router' {
       path: '/operations/tasks'
       fullPath: '/operations/tasks'
       preLoaderRoute: typeof AppOperationsTasksRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/operations/receipts': {
-      id: '/_app/operations/receipts'
-      path: '/operations/receipts'
-      fullPath: '/operations/receipts'
-      preLoaderRoute: typeof AppOperationsReceiptsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/operations/purchase-advisor': {
@@ -4323,7 +4304,6 @@ interface AppRouteChildren {
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsDidarRoute: typeof AppOperationsDidarRoute
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
-  AppOperationsReceiptsRoute: typeof AppOperationsReceiptsRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsPersonIdRoute: typeof AppPersonsPersonIdRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
@@ -4467,7 +4447,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsDidarRoute: AppOperationsDidarRoute,
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
-  AppOperationsReceiptsRoute: AppOperationsReceiptsRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsPersonIdRoute: AppPersonsPersonIdRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
