@@ -29,7 +29,6 @@ import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
 import { Route as AppPurchaseRouteImport } from './routes/_app.purchase'
-import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
 import { Route as AppPresenceRouteImport } from './routes/_app.presence'
 import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
@@ -110,10 +109,8 @@ import { Route as AppPersonsPersonIdRouteImport } from './routes/_app.persons_.$
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppOperationsReceiptsRouteImport } from './routes/_app.operations.receipts'
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
-import { Route as AppOperationsGamificationRouteImport } from './routes/_app.operations.gamification'
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
-import { Route as AppOperationsApiKeysRouteImport } from './routes/_app.operations.api-keys'
 import { Route as AppMessagesInquiriesRouteImport } from './routes/_app.messages.inquiries'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
@@ -136,6 +133,7 @@ import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.
 import { Route as AppAdminWorkflowSettingsRouteImport } from './routes/_app.admin.workflow-settings'
 import { Route as AppAdminVisitorsRouteImport } from './routes/_app.admin.visitors'
 import { Route as AppAdminValidationRulesRouteImport } from './routes/_app.admin.validation-rules'
+import { Route as AppAdminSystemHealthRouteImport } from './routes/_app.admin.system-health'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminSalesRemindersRouteImport } from './routes/_app.admin.sales-reminders'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
@@ -316,11 +314,6 @@ const AppPurchasesRoute = AppPurchasesRouteImport.update({
 const AppPurchaseRoute = AppPurchaseRouteImport.update({
   id: '/purchase',
   path: '/purchase',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPriceListsRoute = AppPriceListsRouteImport.update({
-  id: '/price-lists',
-  path: '/price-lists',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPresenceRoute = AppPresenceRouteImport.update({
@@ -738,12 +731,6 @@ const AppOperationsPurchaseAdvisorRoute =
     path: '/operations/purchase-advisor',
     getParentRoute: () => AppRoute,
   } as any)
-const AppOperationsGamificationRoute =
-  AppOperationsGamificationRouteImport.update({
-    id: '/operations/gamification',
-    path: '/operations/gamification',
-    getParentRoute: () => AppRoute,
-  } as any)
 const AppOperationsDidarRoute = AppOperationsDidarRouteImport.update({
   id: '/operations/didar',
   path: '/operations/didar',
@@ -752,11 +739,6 @@ const AppOperationsDidarRoute = AppOperationsDidarRouteImport.update({
 const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
   id: '/operations/daily-mood',
   path: '/operations/daily-mood',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppOperationsApiKeysRoute = AppOperationsApiKeysRouteImport.update({
-  id: '/operations/api-keys',
-  path: '/operations/api-keys',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesInquiriesRoute = AppMessagesInquiriesRouteImport.update({
@@ -871,6 +853,11 @@ const AppAdminVisitorsRoute = AppAdminVisitorsRouteImport.update({
 const AppAdminValidationRulesRoute = AppAdminValidationRulesRouteImport.update({
   id: '/admin/validation-rules',
   path: '/admin/validation-rules',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminSystemHealthRoute = AppAdminSystemHealthRouteImport.update({
+  id: '/admin/system-health',
+  path: '/admin/system-health',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
@@ -1365,7 +1352,6 @@ export interface FileRoutesByFullPath {
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
   '/presence': typeof AppPresenceRoute
-  '/price-lists': typeof AppPriceListsRoute
   '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
@@ -1418,6 +1404,7 @@ export interface FileRoutesByFullPath {
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/admin/system-health': typeof AppAdminSystemHealthRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/visitors': typeof AppAdminVisitorsRoute
   '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -1440,10 +1427,8 @@ export interface FileRoutesByFullPath {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/messages/inquiries': typeof AppMessagesInquiriesRoute
-  '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
-  '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
@@ -1574,7 +1559,6 @@ export interface FileRoutesByTo {
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
   '/presence': typeof AppPresenceRoute
-  '/price-lists': typeof AppPriceListsRoute
   '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
@@ -1626,6 +1610,7 @@ export interface FileRoutesByTo {
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/admin/system-health': typeof AppAdminSystemHealthRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/visitors': typeof AppAdminVisitorsRoute
   '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -1648,10 +1633,8 @@ export interface FileRoutesByTo {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/messages/inquiries': typeof AppMessagesInquiriesRoute
-  '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
-  '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
@@ -1784,7 +1767,6 @@ export interface FileRoutesById {
   '/_app/persons': typeof AppPersonsRoute
   '/_app/popup-center': typeof AppPopupCenterRoute
   '/_app/presence': typeof AppPresenceRoute
-  '/_app/price-lists': typeof AppPriceListsRoute
   '/_app/purchase': typeof AppPurchaseRoute
   '/_app/purchases': typeof AppPurchasesRoute
   '/_app/reports': typeof AppReportsRoute
@@ -1837,6 +1819,7 @@ export interface FileRoutesById {
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
+  '/_app/admin/system-health': typeof AppAdminSystemHealthRoute
   '/_app/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/_app/admin/visitors': typeof AppAdminVisitorsRoute
   '/_app/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -1859,10 +1842,8 @@ export interface FileRoutesById {
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/_app/messages/inquiries': typeof AppMessagesInquiriesRoute
-  '/_app/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
-  '/_app/operations/gamification': typeof AppOperationsGamificationRoute
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/_app/operations/receipts': typeof AppOperationsReceiptsRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
@@ -1996,7 +1977,6 @@ export interface FileRouteTypes {
     | '/persons'
     | '/popup-center'
     | '/presence'
-    | '/price-lists'
     | '/purchase'
     | '/purchases'
     | '/reports'
@@ -2049,6 +2029,7 @@ export interface FileRouteTypes {
     | '/admin/roles'
     | '/admin/sales-reminders'
     | '/admin/settings'
+    | '/admin/system-health'
     | '/admin/validation-rules'
     | '/admin/visitors'
     | '/admin/workflow-settings'
@@ -2071,10 +2052,8 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/messages/inquiries'
-    | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/didar'
-    | '/operations/gamification'
     | '/operations/purchase-advisor'
     | '/operations/receipts'
     | '/operations/tasks'
@@ -2205,7 +2184,6 @@ export interface FileRouteTypes {
     | '/persons'
     | '/popup-center'
     | '/presence'
-    | '/price-lists'
     | '/purchase'
     | '/purchases'
     | '/reports'
@@ -2257,6 +2235,7 @@ export interface FileRouteTypes {
     | '/admin/roles'
     | '/admin/sales-reminders'
     | '/admin/settings'
+    | '/admin/system-health'
     | '/admin/validation-rules'
     | '/admin/visitors'
     | '/admin/workflow-settings'
@@ -2279,10 +2258,8 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/messages/inquiries'
-    | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/didar'
-    | '/operations/gamification'
     | '/operations/purchase-advisor'
     | '/operations/receipts'
     | '/operations/tasks'
@@ -2414,7 +2391,6 @@ export interface FileRouteTypes {
     | '/_app/persons'
     | '/_app/popup-center'
     | '/_app/presence'
-    | '/_app/price-lists'
     | '/_app/purchase'
     | '/_app/purchases'
     | '/_app/reports'
@@ -2467,6 +2443,7 @@ export interface FileRouteTypes {
     | '/_app/admin/roles'
     | '/_app/admin/sales-reminders'
     | '/_app/admin/settings'
+    | '/_app/admin/system-health'
     | '/_app/admin/validation-rules'
     | '/_app/admin/visitors'
     | '/_app/admin/workflow-settings'
@@ -2489,10 +2466,8 @@ export interface FileRouteTypes {
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
     | '/_app/messages/inquiries'
-    | '/_app/operations/api-keys'
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
-    | '/_app/operations/gamification'
     | '/_app/operations/purchase-advisor'
     | '/_app/operations/receipts'
     | '/_app/operations/tasks'
@@ -2765,13 +2740,6 @@ declare module '@tanstack/react-router' {
       path: '/purchase'
       fullPath: '/purchase'
       preLoaderRoute: typeof AppPurchaseRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/price-lists': {
-      id: '/_app/price-lists'
-      path: '/price-lists'
-      fullPath: '/price-lists'
-      preLoaderRoute: typeof AppPriceListsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/presence': {
@@ -3334,13 +3302,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsPurchaseAdvisorRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/operations/gamification': {
-      id: '/_app/operations/gamification'
-      path: '/operations/gamification'
-      fullPath: '/operations/gamification'
-      preLoaderRoute: typeof AppOperationsGamificationRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/operations/didar': {
       id: '/_app/operations/didar'
       path: '/operations/didar'
@@ -3353,13 +3314,6 @@ declare module '@tanstack/react-router' {
       path: '/operations/daily-mood'
       fullPath: '/operations/daily-mood'
       preLoaderRoute: typeof AppOperationsDailyMoodRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/operations/api-keys': {
-      id: '/_app/operations/api-keys'
-      path: '/operations/api-keys'
-      fullPath: '/operations/api-keys'
-      preLoaderRoute: typeof AppOperationsApiKeysRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages/inquiries': {
@@ -3514,6 +3468,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/validation-rules'
       fullPath: '/admin/validation-rules'
       preLoaderRoute: typeof AppAdminValidationRulesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/system-health': {
+      id: '/_app/admin/system-health'
+      path: '/admin/system-health'
+      fullPath: '/admin/system-health'
+      preLoaderRoute: typeof AppAdminSystemHealthRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/settings': {
@@ -4296,7 +4257,6 @@ interface AppRouteChildren {
   AppPersonsRoute: typeof AppPersonsRoute
   AppPopupCenterRoute: typeof AppPopupCenterRoute
   AppPresenceRoute: typeof AppPresenceRoute
-  AppPriceListsRoute: typeof AppPriceListsRoute
   AppPurchaseRoute: typeof AppPurchaseRoute
   AppPurchasesRoute: typeof AppPurchasesRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -4345,6 +4305,7 @@ interface AppRouteChildren {
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppAdminSalesRemindersRoute: typeof AppAdminSalesRemindersRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
+  AppAdminSystemHealthRoute: typeof AppAdminSystemHealthRoute
   AppAdminValidationRulesRoute: typeof AppAdminValidationRulesRoute
   AppAdminVisitorsRoute: typeof AppAdminVisitorsRoute
   AppAdminWorkflowSettingsRoute: typeof AppAdminWorkflowSettingsRoute
@@ -4359,10 +4320,8 @@ interface AppRouteChildren {
   AppMarketingMyTasksRoute: typeof AppMarketingMyTasksRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
-  AppOperationsApiKeysRoute: typeof AppOperationsApiKeysRoute
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsDidarRoute: typeof AppOperationsDidarRoute
-  AppOperationsGamificationRoute: typeof AppOperationsGamificationRoute
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
   AppOperationsReceiptsRoute: typeof AppOperationsReceiptsRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
@@ -4440,7 +4399,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonsRoute: AppPersonsRoute,
   AppPopupCenterRoute: AppPopupCenterRoute,
   AppPresenceRoute: AppPresenceRoute,
-  AppPriceListsRoute: AppPriceListsRoute,
   AppPurchaseRoute: AppPurchaseRoute,
   AppPurchasesRoute: AppPurchasesRoute,
   AppReportsRoute: AppReportsRoute,
@@ -4491,6 +4449,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppAdminSalesRemindersRoute: AppAdminSalesRemindersRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
+  AppAdminSystemHealthRoute: AppAdminSystemHealthRoute,
   AppAdminValidationRulesRoute: AppAdminValidationRulesRoute,
   AppAdminVisitorsRoute: AppAdminVisitorsRoute,
   AppAdminWorkflowSettingsRoute: AppAdminWorkflowSettingsRoute,
@@ -4505,10 +4464,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingMyTasksRoute: AppMarketingMyTasksRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
-  AppOperationsApiKeysRoute: AppOperationsApiKeysRoute,
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsDidarRoute: AppOperationsDidarRoute,
-  AppOperationsGamificationRoute: AppOperationsGamificationRoute,
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
   AppOperationsReceiptsRoute: AppOperationsReceiptsRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,

@@ -81,20 +81,42 @@ function ReportsPage() {
 function SalesReportTab({ range }: { range: number }) {
   const since = new Date(Date.now() - range * 24 * 60 * 60 * 1000).toISOString();
 
-  // Total invoices and revenue
+  // فروش = پیش‌فاکتورهای پذیرفته‌شده در بازه، بر پایهٔ `accepted_at`.
+  //
+  // منبع پیشین جدول `invoices` بود؛ آن جدول در migration 332 حذف شده و این
+  // پرس‌وجو با `throw error` کل تب «فروش» را برای هر کاربر می‌شکست.
+  //
+  // نام مشتری از ستون `sales_quotes.customer_name` خوانده می‌شود و نه از join با
+  // `customers`. دو دلیل، هر دو اندازه‌گیری‌شده روی داده‌های زنده (۱۴۰۵/۰۶/۱۴):
+  //   ۱) `customers` ستونی به نام `full_name` ندارد؛ ستون نامش `name` است.
+  //   ۲) `customer_id` روی ۶ ردیف از ۶۶ خالی است — از جمله ۲ ردیف از ۹ ردیف
+  //      پذیرفته‌شده. یک join از نوع `!inner` آن دو را (شامل بزرگ‌ترین فروش
+  //      پذیرفته‌شده) بی‌صدا حذف می‌کرد. `customer_name` روی هر ۶۶ ردیف پر است.
   const invoicesQ = useQuery({
-    queryKey: ["report-sales-invoices", range],
+    queryKey: ["report-sales-accepted-quotes", range],
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("invoices")
-        .select("id, total_amount, status, created_at, customers!inner(full_name)")
-        .gte("created_at", since)
-        .order("created_at", { ascending: false })
+        .from("sales_quotes")
+        .select("id, final_amount, status, accepted_at, customer_name, accounting_registered_at")
+        .gte("accepted_at", since)
+        .order("accepted_at", { ascending: false })
         .limit(200);
       if (error) throw error;
-      const rows = data ?? [];
-      const total = rows.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
+      // `src/integrations/supabase/types.ts` هنوز `accepted_at` را نمی‌شناسد (و
+      // هنوز جدول حذف‌شدهٔ `invoices` را اعلام می‌کند). ستون در دیتابیس زنده هست
+      // — همین کور بودنِ typeها بود که گذاشت باگ `invoices` هفته‌ها بماند.
+      // بازتولید آن فایل خارج از دامنهٔ این تغییر است، پس مثل بقیهٔ جاهای این
+      // codebase اینجا cast می‌کنیم و شکل واقعی را صریح می‌نویسیم.
+      const rows = (data ?? []) as unknown as Array<{
+        id: string;
+        final_amount: number | null;
+        status: string;
+        accepted_at: string | null;
+        customer_name: string | null;
+        accounting_registered_at: string | null;
+      }>;
+      const total = rows.reduce((s, r) => s + Number(r.final_amount ?? 0), 0);
       const byStatus: Record<string, number> = {};
       for (const r of rows) {
         byStatus[r.status] = (byStatus[r.status] ?? 0) + 1;
@@ -102,10 +124,10 @@ function SalesReportTab({ range }: { range: number }) {
       // Top 5 customers by total
       const byCustomer: Record<string, { name: string; total: number }> = {};
       for (const r of rows) {
-        const name = (r.customers as unknown as { full_name: string })?.full_name ?? "—";
+        const name = r.customer_name ?? "—";
         byCustomer[name] = {
           name,
-          total: (byCustomer[name]?.total ?? 0) + Number(r.total_amount ?? 0),
+          total: (byCustomer[name]?.total ?? 0) + Number(r.final_amount ?? 0),
         };
       }
       const topCustomers = Object.values(byCustomer)
@@ -114,23 +136,26 @@ function SalesReportTab({ range }: { range: number }) {
       // Daily revenue for simple chart
       const daily: Record<string, number> = {};
       for (const r of rows) {
-        const day = r.created_at.slice(0, 10);
-        daily[day] = (daily[day] ?? 0) + Number(r.total_amount ?? 0);
+        const day = (r.accepted_at ?? "").slice(0, 10);
+        if (!day) continue;
+        daily[day] = (daily[day] ?? 0) + Number(r.final_amount ?? 0);
       }
       const chartData = Object.entries(daily)
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([date, amount]) => ({ date: date.slice(5), amount }));
-      return { count: rows.length, total, byStatus, topCustomers, chartData };
+      const registered = rows.filter((r) => r.accounting_registered_at != null).length;
+      return { count: rows.length, total, byStatus, topCustomers, chartData, registered };
     },
   });
 
+  // وضعیت‌های `sales_quotes`. `paid`/`overdue` از دنیای `invoices` بودند و روی
+  // این منبع هرگز رخ نمی‌دهند؛ نگه داشتنشان یعنی برچسبی که هیچ‌وقت دیده نمی‌شود.
   const STATUS_FA: Record<string, string> = {
     draft: "پیش‌نویس",
-    pending_approval: "در انتظار تأیید",
-    approved: "تأییدشده",
-    paid: "پرداخت‌شده",
-    cancelled: "لغوشده",
-    overdue: "معوق",
+    sent: "ارسال‌شده",
+    accepted: "پذیرفته‌شده",
+    rejected: "ردشده",
+    canceled: "لغوشده",
   };
 
   return (
@@ -159,11 +184,13 @@ function SalesReportTab({ range }: { range: number }) {
         <Card>
           <CardContent className="p-4 text-center">
             <div className="text-3xl font-bold text-blue-600">
-              {invoicesQ.isLoading
-                ? "…"
-                : (invoicesQ.data?.byStatus?.["paid"] ?? 0).toLocaleString("fa-IR")}
+              {invoicesQ.isLoading ? "…" : (invoicesQ.data?.registered ?? 0).toLocaleString("fa-IR")}
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">پرداخت‌شده</div>
+            {/* منبع پیشین `byStatus["paid"]` بود؛ `sales_quotes` هیچ وضعیت `paid`
+                ندارد، پس این کارت برای همیشه صفر می‌ماند — دقیقاً همان صفرِ
+                نادرستی که این مأموریت برای حذفش است. `accounting_registered_at`
+                نزدیک‌ترین معنای واقعیِ موجود است (۷ از ۹ پیش‌فاکتور پذیرفته‌شده). */}
+            <div className="mt-1 text-xs text-muted-foreground">ثبت‌شده در حسابداری</div>
           </CardContent>
         </Card>
       </div>

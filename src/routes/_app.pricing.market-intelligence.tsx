@@ -23,6 +23,7 @@ import { DemandGrowthCard } from "@/components/management/market-intelligence/De
 import { EmergingProductsCard } from "@/components/management/market-intelligence/EmergingProductsCard";
 import { HotBrandsCategoriesCard } from "@/components/management/market-intelligence/HotBrandsCategoriesCard";
 import { SellerFavoritesCard } from "@/components/management/market-intelligence/SellerFavoritesCard";
+import { SellerAllInteractionsCard } from "@/components/management/market-intelligence/SellerAllInteractionsCard";
 import { WhatsappTopProductsCard } from "@/components/management/market-intelligence/WhatsappTopProductsCard";
 import type { RangeDays } from "@/lib/management/market-intelligence";
 import { BRANDING, getPageTitle } from "@/config/branding";
@@ -149,6 +150,12 @@ function MarketIntelligencePage() {
         <SellerFavoritesCard days={days} />
       </div>
 
+      {/* C-11 (unwired wave 1) — sits next to SellerFavoritesCard on purpose: the two read
+          different functions over the same events, and the card body says how they differ. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <SellerAllInteractionsCard days={days} />
+      </div>
+
       {/* External WhatsApp-platform customer-demand data (read-only), alongside
           the internal usage-based cards above — clearly labeled as a distinct source. */}
       <div className="grid grid-cols-1 gap-4">
@@ -252,14 +259,19 @@ function HighMarginOpportunitiesCard() {
       // Join product_computed_prices_public with products to find items with latest sale price significantly above purchase price
       const { data, error } = await supabase
         .from("product_computed_prices_public")
-        .select("product_id, sale_price, products!inner(id, name, sku)")
-        .order("sale_price", { ascending: false })
+        // ستون `sale_price` وجود ندارد. ستون‌های واقعی این view:
+        //   final_sale_price  — قیمت محاسبه‌شده، گرد نشده
+        //   rounded_sale_price — همان قیمت پس از گرد کردن
+        // `rounded_sale_price` انتخاب شد چون کارت با «قیمت فروش» به کاربر نشان
+        // داده می‌شود و عددی که مشتری واقعاً می‌بیند همان گردشده است.
+        .select("product_id, rounded_sale_price, products!inner(id, name, sku)")
+        .order("rounded_sale_price", { ascending: false })
         .limit(200);
       if (error) throw error;
-      // Return top 5 by sale_price as proxy (real margin calc needs purchase price)
+      // Return top 5 by sale price as proxy (real margin calc needs purchase price)
       return (data ?? []).slice(0, 5) as unknown as Array<{
         product_id: string;
-        sale_price: number;
+        rounded_sale_price: number;
         products: { id: string; name: string; sku: string | null };
       }>;
     },
@@ -289,7 +301,7 @@ function HighMarginOpportunitiesCard() {
               <li key={row.product_id} className="flex items-center justify-between gap-2 text-sm">
                 <span className="truncate font-medium">{row.products.name}</span>
                 <span className="shrink-0 font-bold text-emerald-700">
-                  {Number(row.sale_price).toLocaleString("fa-IR")}
+                  {Number(row.rounded_sale_price).toLocaleString("fa-IR")}
                 </span>
               </li>
             ))}
@@ -309,14 +321,15 @@ function HighRiskProductsCard() {
       const threshold = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const { data, error } = await supabase
         .from("purchase_prices")
-        .select("product_id, effective_from, products!inner(id, name, sku)")
-        .lt("effective_from", threshold)
-        .order("effective_from", { ascending: true })
+        // ستون `effective_from` وجود ندارد؛ نامش `effective_at` است.
+        .select("product_id, effective_at, products!inner(id, name, sku)")
+        .lt("effective_at", threshold)
+        .order("effective_at", { ascending: true })
         .limit(5);
       if (error) throw error;
       return (data ?? []) as unknown as Array<{
         product_id: string;
-        effective_from: string;
+        effective_at: string;
         products: { id: string; name: string; sku: string | null };
       }>;
     },
@@ -349,7 +362,7 @@ function HighRiskProductsCard() {
               <li key={row.product_id} className="flex items-center justify-between gap-2 text-sm">
                 <span className="truncate font-medium">{row.products.name}</span>
                 <span className="shrink-0 rounded-full bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700 dark:bg-rose-900/30">
-                  {daysSince(row.effective_from)} روز پیش
+                  {daysSince(row.effective_at)} روز پیش
                 </span>
               </li>
             ))}

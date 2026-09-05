@@ -93,7 +93,6 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/pricing/attention",
       "/pricing/sale-lists",
       "/pricing/live-price-list",
-      "/price-lists",
       "/pricing/amin-hozoor-board",
       "/pricing/rules",
       "/pricing/sale-price-types",
@@ -101,6 +100,8 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/suppliers",
       "/purchase",
       "/purchases",
+      // C-3 (unwired wave 1) — AI purchase advisor, next to the purchase space it advises on.
+      "/operations/purchase-advisor",
       "/warehouses",
       "/warehouses/transfers",
       "/warehouses/kardex",
@@ -157,6 +158,9 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/gamification",
       "/gamification/leaderboard",
       "/gamification/league",
+      // C-4 (unwired wave 1) — sits next to /gamification/league because it is the
+      // same audience: the employee's own progress, not an admin screen.
+      "/gamification/achievements",
       "/gamification/admin/analytics",
       "/audit-logs",
       "/data-tables",
@@ -214,6 +218,11 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/pricing/change-reasons",
       "/pricing",
       "/bot-api-keys",
+      // C-1, C-2, C-7 (unwired wave 1) — three admin pages that existed but were in
+      // no module list, so itemsForModule() (exact match, not prefix) never rendered them.
+      "/api-keys",
+      "/presence",
+      "/admin/system-health",
       "/operations/didar",
       "/market-matches",
       "/operations/daily-mood/admin",

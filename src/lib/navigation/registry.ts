@@ -59,6 +59,7 @@
   ScrollText as ScrollTextIcon,
   PhoneOff,
   UserRoundCog,
+  Activity,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 import type { AppRole } from "@/lib/rbac/roles";
@@ -232,18 +233,10 @@ const NAVIGATION_SEEDS = [
     group: "products-pricing",
     subgroup: "pp-publish",
   },
-  // Phase 9.3 — same situation as /messages: the route exists with
-  // requirePermission("price-lists", "view") and is already declared in
-  // PRIMARY_MODULES.paths for the catalog module, but had no seed. Guard
-  // unchanged.
-  {
-    to: "/price-lists",
-    label: "لیست‌های قیمت",
-    icon: ListOrdered,
-    module: "price-lists",
-    group: "products-pricing",
-    subgroup: "pp-publish",
-  },
+  // Wave 1 (B-10): the /price-lists seed was removed together with its route.
+  // The page was a self-declared shell ("ماژول لیست‌های قیمت — به‌زودی") and the
+  // owner asked for it to be taken out of the menu. Its tables were renamed to
+  // zz_retired_price_lists / zz_retired_price_list_items in migration 450.
   {
     to: "/pricing/recompute-prices",
     label: "انتشار دسته‌ای قیمت",
@@ -301,6 +294,17 @@ const NAVIGATION_SEEDS = [
     label: "گزارش کاردکس",
     icon: ScrollTextIcon,
     module: "warehouse",
+    group: "purchasing",
+  },
+  // C-3 (unwired wave 1) — the AI purchase advisor. The page and its guard already
+  // existed (_app.operations.purchase-advisor.tsx:29-31 requireAnyRole(["admin","manager"]));
+  // only the menu wiring was missing. `purchases` view is granted to five roles, so the
+  // allowlist below is what narrows the link to match the guard.
+  {
+    to: "/operations/purchase-advisor",
+    label: "دستیار هوشمند خرید",
+    icon: Sparkles,
+    module: "purchases",
     group: "purchasing",
   },
 
@@ -587,6 +591,18 @@ const NAVIGATION_SEEDS = [
     // new-clusters-frontend — employee league view (get_current_league / leaderboard)
     to: "/gamification/league",
     label: "لیگ",
+    icon: Trophy,
+    module: "dashboard",
+    group: "operations",
+  },
+  // C-4 (unwired wave 1) — the employee's own badge wall. Every role may see it, which
+  // is why `module` is "dashboard" and not "roles" like the /gamification/admin/* pages:
+  // role_permissions grants `roles:view` only to admin and accountant, so a "roles"
+  // module key would have hidden this page from manager, sales and viewer — the exact
+  // audience it is for. beforeLoad (requireAuth) was added in the same commit.
+  {
+    to: "/gamification/achievements",
+    label: "نشان‌ها",
     icon: Trophy,
     module: "dashboard",
     group: "operations",
@@ -1049,6 +1065,38 @@ const NAVIGATION_SEEDS = [
     group: "admin",
     subgroup: "adm-tools",
   },
+  // C-1 (unwired wave 1) — _app.api-keys.tsx has existed and worked since it was
+  // written, but appeared in no menu and in no PRIMARY_MODULES.paths list, so the
+  // only way in was to type the URL. The guard is requireAdmin() (_app.api-keys.tsx:47-48);
+  // ROLE_ALLOWLIST_BY_ROUTE pins the menu entry to exactly that.
+  {
+    to: "/api-keys",
+    label: "حاکمیت کلیدهای API",
+    icon: KeyRound,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+  },
+  // C-2 (unwired wave 1) — attendance report. Had no beforeLoad at all until this
+  // change; requireAdmin() was added to _app.presence.tsx in the same commit, and the
+  // allowlist below mirrors it.
+  {
+    to: "/presence",
+    label: "گزارش حضور و غیاب",
+    icon: Monitor,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+  },
+  // C-7 (unwired wave 1) — read-only database diagnostics screen. requireAdmin().
+  {
+    to: "/admin/system-health",
+    label: "سلامت داده‌ها",
+    icon: Activity,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-tools",
+  },
   {
     to: "/admin/ai-providers",
     label: "ارائه‌دهندگان هوش مصنوعی",
@@ -1308,6 +1356,25 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
     "purchase_specialist",
   ],
   "/gamification/league": ["admin", "manager", "sales", "accountant", "viewer"],
+  // C-1..C-4, C-7 (unwired wave 1). Each mirrors the route's real beforeLoad:
+  //   /api-keys                    _app.api-keys.tsx:47-49                requireAdmin()
+  //   /presence                    _app.presence.tsx (added this commit)  requireAdmin()
+  //   /admin/system-health         _app.admin.system-health.tsx           requireAdmin()
+  //   /operations/purchase-advisor _app.operations.purchase-advisor.tsx:29-31
+  //                                                                      requireAnyRole(admin,manager)
+  //   /gamification/achievements   _app.gamification.achievements.tsx     requireAuth() — every role
+  "/api-keys": ["admin"],
+  "/presence": ["admin"],
+  "/admin/system-health": ["admin"],
+  "/operations/purchase-advisor": ["admin", "manager"],
+  "/gamification/achievements": [
+    "admin",
+    "manager",
+    "sales",
+    "accountant",
+    "viewer",
+    "purchase_specialist",
+  ],
   "/users": ["admin"],
 };
 

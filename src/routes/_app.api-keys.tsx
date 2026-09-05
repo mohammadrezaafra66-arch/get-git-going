@@ -44,6 +44,12 @@ import { formatDateFa, formatDateTimeFa } from "@/lib/i18n/formatters";
 import { sha256Hex } from "@/lib/utils/sha256";
 
 export const Route = createFileRoute("/_app/api-keys")({
+  // M6/OG-24 — mirrors the guard below. `requireAdmin`/`requireAnyRole` return WITHOUT
+  // throwing during SSR and while roles are still loading, so on a COLD page load the
+  // page renders for anyone. Measured on this branch before this line was added:
+  // test.viewer opened /api-keys directly and saw the full page. RouteRoleGate in _app
+  // reads this staticData and enforces the same rule on the client.
+  staticData: { gate: { kind: "admin" } },
   beforeLoad: async () => {
     await requireAdmin();
   },

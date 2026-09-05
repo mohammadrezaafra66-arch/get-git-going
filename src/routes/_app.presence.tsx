@@ -16,8 +16,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Clock } from "lucide-react";
+import { requireAdmin } from "@/lib/rbac/route-guards";
 
+// C-2 (unwired wave 1). This route had NO beforeLoad at all: the only thing
+// standing between any authenticated user and every employee's clock-in/out
+// history was that the page appeared in no menu. Wiring it into the menu
+// without a guard would have handed the report to sales, accountant and viewer,
+// so the guard lands in the same change as the menu entry.
+// ROLE_ALLOWLIST_BY_ROUTE["/presence"] mirrors it exactly.
 export const Route = createFileRoute("/_app/presence")({
+  // M6/OG-24 — see the note on /api-keys: beforeLoad cannot decide on a cold load.
+  staticData: { gate: { kind: "admin" } },
+  beforeLoad: async () => {
+    await requireAdmin();
+  },
   component: PresencePage,
 });
 

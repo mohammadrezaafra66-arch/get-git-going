@@ -38,6 +38,7 @@ import {
 import { MarketRateMappingsPanel } from "@/components/pricing/MarketRateMappingsPanel";
 import { MarketRateIngestionHistory } from "@/components/pricing/MarketRateIngestionHistory";
 import { MarketRateSuspectAlerts } from "@/components/pricing/MarketRateSuspectAlerts";
+import { MarketRateTickStatusControl } from "@/components/pricing/MarketRateTickStatusControl";
 
 export const Route = createFileRoute("/_app/pricing/market-rates-workshop")({
   beforeLoad: async () => {
@@ -468,6 +469,8 @@ function MarketRatesWorkshopPage() {
                     <th className="px-2 py-2">منبع</th>
                     <th className="px-2 py-2">زمان</th>
                     <th className="px-2 py-2">وضعیت</th>
+                    {/* C-8 (unwired wave 1) — set_market_rate_tick_status had no caller. */}
+                    {isPrivileged && <th className="px-2 py-2">تغییر وضعیت</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -509,6 +512,11 @@ function MarketRatesWorkshopPage() {
                           {STATUS_LABEL[t.status] ?? t.status}
                         </Badge>
                       </td>
+                      {isPrivileged && (
+                        <td className="px-2 py-2">
+                          <MarketRateTickStatusControl tickId={t.id} status={t.status} />
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>

@@ -96,9 +96,18 @@ export function PurchaseRequestForm({
     queryKey: ["purchase-request-inquiry", inquiryId],
     queryFn: async () => {
       if (!inquiryId) return null;
+      // `inquiries` هیچ ستون نامی ندارد. ستون‌های واقعی:
+      //   id, product_id, group_id, requested_by, assigned_to, status,
+      //   message_id, created_at, answered_at, closed_at
+      // نام محصول از رابطهٔ `inquiries.product_id -> products(id)` می‌آید؛ آن ستون
+      // NOT NULL است، پس `!inner` هیچ ردیفی را حذف نمی‌کند.
+      //
+      // نام مشتری حذف شد چون هیچ منبعی ندارد: تنها کلیدهای خارجیِ `inquiries` به
+      // `products`، `messenger_groups` و `users` می‌روند — هیچ‌کدام مشتری نیستند.
+      // نمایش «—» به‌جای آن، جای خالی را با چیزی که وجود ندارد پر می‌کرد.
       const { data, error } = await supabase
         .from("inquiries")
-        .select("id, product_name, customer_name, created_at")
+        .select("id, created_at, products!inner(name)")
         .eq("id", inquiryId)
         .maybeSingle();
       if (error) throw error;
@@ -145,8 +154,7 @@ export function PurchaseRequestForm({
           <CardContent className="p-3 text-xs space-y-1">
             <div className="font-medium">استعلام مرتبط</div>
             <div className="text-muted-foreground">
-              {(inquiry as { product_name?: string }).product_name ?? "—"} •{" "}
-              {(inquiry as { customer_name?: string }).customer_name ?? "—"}
+              {(inquiry as { products?: { name?: string } | null }).products?.name ?? "—"}
             </div>
           </CardContent>
         </Card>

@@ -26,6 +26,8 @@ import {
 import { generatePurchaseAdvice } from "@/lib/ai-tools/purchase-advisor.functions";
 
 export const Route = createFileRoute("/_app/operations/purchase-advisor")({
+  // M6/OG-24 — see the note on /api-keys: beforeLoad cannot decide on a cold load.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager"] } },
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager"]);
   },
