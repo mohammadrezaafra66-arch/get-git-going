@@ -1165,7 +1165,44 @@ function ProductTab(props: {
     );
   }, [selected, salePriceTypeId, settlementPrice]);
 
-  const canSubmit = !!selected && !!salePriceTypeId && quantity > 0 && unitPrice > 0;
+  /**
+   * C-10 (unwired wave 1) — `public.validate_price_settlement_compatibility` had no caller.
+   *
+   * Live signature (pg_proc): (p_sale_price_type_id uuid, p_settlement_type_id uuid) -> jsonb,
+   * returning {valid:false, reason:'settlement_too_long', message:<Persian>} when the chosen
+   * settlement term is longer than the price type's `max_settlement_days`. The message is
+   * already written for the user, so it is surfaced verbatim rather than re-worded here.
+   *
+   * The function is STABLE and not SECURITY DEFINER — it reads two configuration tables and
+   * writes nothing, so calling it on every selection change is cheap and safe.
+   */
+  const compatQuery = useQuery({
+    enabled: !!salePriceTypeId && !!props.settlementTypeId,
+    queryKey: ["price-settlement-compat", salePriceTypeId, props.settlementTypeId],
+    queryFn: async () => {
+      const { data, error } = await (
+        supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string } | null }>
+      )("validate_price_settlement_compatibility", {
+        p_sale_price_type_id: salePriceTypeId,
+        p_settlement_type_id: props.settlementTypeId,
+      });
+      if (error) throw new Error(error.message);
+      return (data ?? null) as {
+        valid: boolean;
+        reason?: string;
+        message?: string;
+      } | null;
+    },
+  });
+  // Only a measured `valid: false` blocks. A failed or in-flight check must not, or a
+  // transient error would silently stop every salesperson from adding a line.
+  const settlementIncompatible = compatQuery.data?.valid === false;
+
+  const canSubmit =
+    !!selected && !!salePriceTypeId && quantity > 0 && unitPrice > 0 && !settlementIncompatible;
   const selectedPriceTypeTitle =
     props.priceTypes.find((t) => t.id === salePriceTypeId)?.title ?? "—";
 
@@ -1402,6 +1439,20 @@ function ProductTab(props: {
             <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs leading-6">
               برای تسویهٔ «{props.settlementTitle}» قیمت اختصاصی ثبت نشده است؛ قیمت پایه نمایش داده
               شد.
+            </div>
+          )}
+          {settlementIncompatible && (
+            <div
+              data-testid="quote-settlement-incompatible"
+              className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs leading-6 text-destructive"
+            >
+              {compatQuery.data?.message ??
+                "نوع قیمت انتخاب‌شده با نوع تسویهٔ این پیش‌فاکتور سازگار نیست."}
+            </div>
+          )}
+          {compatQuery.isError && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/5 p-2 text-xs leading-6">
+              بررسی سازگاری نوع قیمت و نوع تسویه انجام نشد؛ افزودن آیتم مسدود نشده است.
             </div>
           )}
           <div className="flex justify-end">

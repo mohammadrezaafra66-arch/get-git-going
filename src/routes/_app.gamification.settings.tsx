@@ -158,6 +158,20 @@ function KpiWeightsCard() {
                   <TableRow key={k.id}>
                     <TableCell className="font-medium">
                       <div>{k.label_fa}</div>
+                      {/*
+                        C-5 (unwired wave 1). /operations/gamification was a second, smaller
+                        editor over the same `gamification_kpis` rows through the same
+                        listKpis/updateKpi pair. This card already carried everything it had —
+                        the same six columns, plus the active-weight total and the new-KPI
+                        dialog — except the KPI's own description, which is the one thing that
+                        tells an admin what a weight actually governs. It moves here, and the
+                        duplicate route is retired.
+                      */}
+                      {k.description ? (
+                        <div className="mt-1 max-w-md text-xs font-normal leading-5 text-muted-foreground">
+                          {k.description}
+                        </div>
+                      ) : null}
                       <code className="text-xs text-muted-foreground">{k.key}</code>
                     </TableCell>
                     <TableCell className="text-xs">{k.source}</TableCell>

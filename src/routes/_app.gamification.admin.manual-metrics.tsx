@@ -444,6 +444,9 @@ function ManualMetricsPage() {
         </CardContent>
       </Card>
 
+      {/* C-9 (unwired wave 1) — manual_daily_metrics_totals had no caller anywhere. */}
+      <ManualMetricsTotalsCard staffId={staffId} staffName={staffName} />
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">رکوردهای اخیر</CardTitle>
@@ -492,5 +495,129 @@ function ManualMetricsPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+/**
+ * C-9 (unwired wave 1) — the only caller of `public.manual_daily_metrics_totals`.
+ *
+ * Live signature (pg_proc, not the stale generated types):
+ *   manual_daily_metrics_totals(p_employee_id uuid, p_from timestamptz,
+ *     OUT sales_amount numeric, OUT profit_amount numeric,
+ *     OUT inbound_calls integer, OUT outbound_calls integer, OUT talk_minutes numeric)
+ *   RETURNS record, STABLE SECURITY DEFINER
+ *
+ * PostgREST returns a single-OUT-record function as an object, so `data` here is one row,
+ * not an array. Read-only: it only SUMs staff_daily_performance_metrics.
+ *
+ * The function threw `column reference "sales_amount" is ambiguous` on EVERY call until
+ * migration 443 — its OUT parameters collided with the table's own columns — so it had
+ * never returned a number to anything.
+ */
+const TOTALS_RANGES: Array<{ days: number; label: string }> = [
+  { days: 7, label: "۷ روز" },
+  { days: 30, label: "۳۰ روز" },
+  { days: 90, label: "۹۰ روز" },
+  { days: 365, label: "یک سال" },
+];
+
+function ManualMetricsTotalsCard({
+  staffId,
+  staffName,
+}: {
+  staffId: string;
+  staffName: string;
+}) {
+  const [rangeDays, setRangeDays] = useState<number>(30);
+
+  const q = useQuery({
+    queryKey: ["manual-metrics-totals", staffId, rangeDays],
+    enabled: Boolean(staffId),
+    queryFn: async () => {
+      const from = new Date(Date.now() - rangeDays * 86_400_000).toISOString();
+      const { data, error } = await (
+        supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string } | null }>
+      )("manual_daily_metrics_totals", { p_employee_id: staffId, p_from: from });
+      if (error) throw new Error(error.message);
+      const row = (Array.isArray(data) ? data[0] : data) as {
+        sales_amount: number | string | null;
+        profit_amount: number | string | null;
+        inbound_calls: number | null;
+        outbound_calls: number | null;
+        talk_minutes: number | string | null;
+      } | null;
+      return row;
+    },
+  });
+
+  const cells: Array<{ label: string; value: string }> = q.data
+    ? [
+        { label: "مجموع فروش", value: formatNumber(Number(q.data.sales_amount ?? 0)) },
+        { label: "مجموع سود", value: formatNumber(Number(q.data.profit_amount ?? 0)) },
+        { label: "تماس ورودی", value: toFaDigits(Number(q.data.inbound_calls ?? 0)) },
+        { label: "تماس خروجی", value: toFaDigits(Number(q.data.outbound_calls ?? 0)) },
+        { label: "دقیقه مکالمه", value: toFaDigits(Number(q.data.talk_minutes ?? 0)) },
+      ]
+    : [];
+
+  const allZero =
+    q.data != null && cells.every((c) => c.value === toFaDigits(0) || c.value === formatNumber(0));
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+        <CardTitle className="text-base">
+          جمع عملکرد ثبت‌شده {staffId ? `— ${staffName}` : ""}
+        </CardTitle>
+        <div className="flex gap-1">
+          {TOTALS_RANGES.map((r) => (
+            <Button
+              key={r.days}
+              type="button"
+              size="sm"
+              variant={rangeDays === r.days ? "default" : "outline"}
+              onClick={() => setRangeDays(r.days)}
+            >
+              {r.label}
+            </Button>
+          ))}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {!staffId ? (
+          <p className="text-sm text-muted-foreground">ابتدا یک کارشناس انتخاب کنید.</p>
+        ) : q.isLoading ? (
+          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> در حال محاسبه...
+          </p>
+        ) : q.isError ? (
+          <p className="text-sm text-destructive">
+            محاسبهٔ جمع عملکرد ناموفق بود: {(q.error as Error).message}
+          </p>
+        ) : !q.data ? (
+          <p className="text-sm text-muted-foreground">داده‌ای برگردانده نشد.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+              {cells.map((c) => (
+                <div key={c.label} className="rounded-md border p-3">
+                  <div className="text-xs text-muted-foreground">{c.label}</div>
+                  <div className="mt-1 font-semibold tabular-nums">{c.value}</div>
+                </div>
+              ))}
+            </div>
+            {allZero && (
+              <p className="mt-3 text-xs text-muted-foreground">
+                در این بازه هیچ رکورد دستی برای این کارشناس ثبت نشده است؛ صفرها یعنی «رکوردی نیست»،
+                نه «خطا».
+              </p>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

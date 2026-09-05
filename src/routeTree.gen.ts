@@ -110,7 +110,6 @@ import { Route as AppPersonsPersonIdRouteImport } from './routes/_app.persons_.$
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppOperationsReceiptsRouteImport } from './routes/_app.operations.receipts'
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
-import { Route as AppOperationsGamificationRouteImport } from './routes/_app.operations.gamification'
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
 import { Route as AppOperationsApiKeysRouteImport } from './routes/_app.operations.api-keys'
@@ -737,12 +736,6 @@ const AppOperationsPurchaseAdvisorRoute =
   AppOperationsPurchaseAdvisorRouteImport.update({
     id: '/operations/purchase-advisor',
     path: '/operations/purchase-advisor',
-    getParentRoute: () => AppRoute,
-  } as any)
-const AppOperationsGamificationRoute =
-  AppOperationsGamificationRouteImport.update({
-    id: '/operations/gamification',
-    path: '/operations/gamification',
     getParentRoute: () => AppRoute,
   } as any)
 const AppOperationsDidarRoute = AppOperationsDidarRouteImport.update({
@@ -1450,7 +1443,6 @@ export interface FileRoutesByFullPath {
   '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
-  '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
@@ -1659,7 +1651,6 @@ export interface FileRoutesByTo {
   '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
-  '/operations/gamification': typeof AppOperationsGamificationRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/receipts': typeof AppOperationsReceiptsRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
@@ -1871,7 +1862,6 @@ export interface FileRoutesById {
   '/_app/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
-  '/_app/operations/gamification': typeof AppOperationsGamificationRoute
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/_app/operations/receipts': typeof AppOperationsReceiptsRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
@@ -2084,7 +2074,6 @@ export interface FileRouteTypes {
     | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/didar'
-    | '/operations/gamification'
     | '/operations/purchase-advisor'
     | '/operations/receipts'
     | '/operations/tasks'
@@ -2293,7 +2282,6 @@ export interface FileRouteTypes {
     | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/didar'
-    | '/operations/gamification'
     | '/operations/purchase-advisor'
     | '/operations/receipts'
     | '/operations/tasks'
@@ -2504,7 +2492,6 @@ export interface FileRouteTypes {
     | '/_app/operations/api-keys'
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
-    | '/_app/operations/gamification'
     | '/_app/operations/purchase-advisor'
     | '/_app/operations/receipts'
     | '/_app/operations/tasks'
@@ -3344,13 +3331,6 @@ declare module '@tanstack/react-router' {
       path: '/operations/purchase-advisor'
       fullPath: '/operations/purchase-advisor'
       preLoaderRoute: typeof AppOperationsPurchaseAdvisorRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/operations/gamification': {
-      id: '/_app/operations/gamification'
-      path: '/operations/gamification'
-      fullPath: '/operations/gamification'
-      preLoaderRoute: typeof AppOperationsGamificationRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/operations/didar': {
@@ -4382,7 +4362,6 @@ interface AppRouteChildren {
   AppOperationsApiKeysRoute: typeof AppOperationsApiKeysRoute
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsDidarRoute: typeof AppOperationsDidarRoute
-  AppOperationsGamificationRoute: typeof AppOperationsGamificationRoute
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
   AppOperationsReceiptsRoute: typeof AppOperationsReceiptsRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
@@ -4529,7 +4508,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsApiKeysRoute: AppOperationsApiKeysRoute,
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsDidarRoute: AppOperationsDidarRoute,
-  AppOperationsGamificationRoute: AppOperationsGamificationRoute,
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
   AppOperationsReceiptsRoute: AppOperationsReceiptsRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,

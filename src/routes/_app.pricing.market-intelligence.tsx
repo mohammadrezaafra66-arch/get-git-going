@@ -23,6 +23,7 @@ import { DemandGrowthCard } from "@/components/management/market-intelligence/De
 import { EmergingProductsCard } from "@/components/management/market-intelligence/EmergingProductsCard";
 import { HotBrandsCategoriesCard } from "@/components/management/market-intelligence/HotBrandsCategoriesCard";
 import { SellerFavoritesCard } from "@/components/management/market-intelligence/SellerFavoritesCard";
+import { SellerAllInteractionsCard } from "@/components/management/market-intelligence/SellerAllInteractionsCard";
 import { WhatsappTopProductsCard } from "@/components/management/market-intelligence/WhatsappTopProductsCard";
 import type { RangeDays } from "@/lib/management/market-intelligence";
 import { BRANDING, getPageTitle } from "@/config/branding";
@@ -147,6 +148,12 @@ function MarketIntelligencePage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <HotBrandsCategoriesCard days={days} />
         <SellerFavoritesCard days={days} />
+      </div>
+
+      {/* C-11 (unwired wave 1) — sits next to SellerFavoritesCard on purpose: the two read
+          different functions over the same events, and the card body says how they differ. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <SellerAllInteractionsCard days={days} />
       </div>
 
       {/* External WhatsApp-platform customer-demand data (read-only), alongside

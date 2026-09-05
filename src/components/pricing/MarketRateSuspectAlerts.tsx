@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
+import { MarketRateTickStatusControl } from "@/components/pricing/MarketRateTickStatusControl";
 
 type SuspectRow = {
   id: string;
@@ -117,6 +118,8 @@ export function MarketRateSuspectAlerts() {
                     <th className="px-2 py-2">زمان مشاهده</th>
                     <th className="px-2 py-2">تغییر %</th>
                     <th className="px-2 py-2">دلیل</th>
+                    {/* C-8 (unwired wave 1) — resolve a suspect tick without leaving the queue. */}
+                    <th className="px-2 py-2">وضعیت</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -156,6 +159,9 @@ export function MarketRateSuspectAlerts() {
                             title={r.note?.trim() ? r.note : "دلیل ثبت نشده"}
                           >
                             {r.note?.trim() ? r.note : "دلیل ثبت نشده"}
+                          </td>
+                          <td className="px-2 py-2">
+                            <MarketRateTickStatusControl tickId={r.id} status="suspect" />
                           </td>
                         </tr>
                       );

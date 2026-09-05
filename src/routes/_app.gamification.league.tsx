@@ -23,6 +23,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { LeagueBadge } from "@/components/gamification/LeagueBadge";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatNumber } from "@/lib/i18n/formatters";
@@ -81,11 +82,18 @@ function LeaguePage() {
           {mineQ.isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : !myLeague ? (
-            <p className="text-muted-foreground">
-              فصل فعالی ثبت نشده است. مدیر می‌تواند از «مدیریت لیگ‌ها» فصل را شروع کند.
-            </p>
+            // C-6 (unwired wave 1) — LeagueBadge draws its own "no tier yet" state, so it
+            // renders here too rather than only on the happy path. `employee_leagues` is
+            // empty today, so this is the branch that is actually on screen.
+            <div className="flex items-center gap-3">
+              <LeagueBadge tier={null} size="md" label />
+              <p className="text-muted-foreground">
+                فصل فعالی ثبت نشده است. مدیر می‌تواند از «مدیریت لیگ‌ها» فصل را شروع کند.
+              </p>
+            </div>
           ) : (
             <div className="flex flex-wrap gap-3 items-center">
+              <LeagueBadge tier={myLeague} size="md" label />
               <Badge>{TIER_FA[myLeague]}</Badge>
               <span>فصل: {mineQ.data?.season_name ?? "—"}</span>
               <span>امتیاز: {formatNumber(Number(mineQ.data?.score ?? 0))}</span>
@@ -99,7 +107,11 @@ function LeaguePage() {
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between gap-3">
-          <CardTitle className="text-base">جدول لیگ</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            {/* C-6 — the badge tracks the selector, so it is visible whatever the data is. */}
+            <LeagueBadge tier={tier} size="sm" />
+            جدول لیگ
+          </CardTitle>
           <Select value={tier} onValueChange={(v) => setTier(v as LeagueTier)}>
             <SelectTrigger className="w-40">
               <SelectValue />
@@ -107,7 +119,10 @@ function LeaguePage() {
             <SelectContent>
               {LEAGUE_TIERS.map((t) => (
                 <SelectItem key={t} value={t}>
-                  {TIER_FA[t]}
+                  <span className="flex items-center gap-2">
+                    <LeagueBadge tier={t} size="xs" />
+                    {TIER_FA[t]}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
