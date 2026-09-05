@@ -353,6 +353,9 @@ function cleanup(prefix: string, fixture: FixtureIds | null, salespersonSnapshot
           '${fixture.overdueCustomerId}'::uuid
          )
             OR name LIKE '%${prefix}%';
+
+        DELETE FROM public.persons
+         WHERE display_name LIKE '%${prefix}%';
       `);
       restoreSalespersonScores(prefix, fixture.salespersonId, salespersonSnapshot);
     }
@@ -440,13 +443,25 @@ function createFixtures(prefix: string, salespersonId: string): FixtureIds {
     noSalespersonCustomerName: `${prefix} no salesperson`,
     overdueCustomerName: `${prefix} overdue`,
   };
+  // customers.person_id is NOT NULL, so every customer needs a person row first.
+  const personIds = {
+    main: randomUUID(),
+    noSalesperson: randomUUID(),
+    overdue: randomUUID(),
+  };
   dbExecE2e(`
-    -- ${prefix} isolated customers and credit profiles.
-    INSERT INTO public.customers(id, name, phone, is_active, responsible_id, notes)
+    -- ${prefix} isolated persons, customers and credit profiles.
+    INSERT INTO public.persons(id, kind, display_name, visibility_scope, is_active)
     VALUES
-      ('${fixture.customerId}'::uuid, '${sqlText(fixture.customerName)}', '09900000001', true, '${salespersonId}'::uuid, '${prefix} main customer'),
-      ('${fixture.noSalespersonCustomerId}'::uuid, '${sqlText(fixture.noSalespersonCustomerName)}', '09900000002', true, NULL, '${prefix} no salesperson customer'),
-      ('${fixture.overdueCustomerId}'::uuid, '${sqlText(fixture.overdueCustomerName)}', '09900000003', true, '${salespersonId}'::uuid, '${prefix} overdue customer');
+      ('${personIds.main}'::uuid, 'individual', '${sqlText(fixture.customerName)}', 'internal_general', true),
+      ('${personIds.noSalesperson}'::uuid, 'individual', '${sqlText(fixture.noSalespersonCustomerName)}', 'internal_general', true),
+      ('${personIds.overdue}'::uuid, 'individual', '${sqlText(fixture.overdueCustomerName)}', 'internal_general', true);
+
+    INSERT INTO public.customers(id, name, phone, person_id, is_active, responsible_id, notes)
+    VALUES
+      ('${fixture.customerId}'::uuid, '${sqlText(fixture.customerName)}', '09900000001', '${personIds.main}'::uuid, true, '${salespersonId}'::uuid, '${prefix} main customer'),
+      ('${fixture.noSalespersonCustomerId}'::uuid, '${sqlText(fixture.noSalespersonCustomerName)}', '09900000002', '${personIds.noSalesperson}'::uuid, true, NULL, '${prefix} no salesperson customer'),
+      ('${fixture.overdueCustomerId}'::uuid, '${sqlText(fixture.overdueCustomerName)}', '09900000003', '${personIds.overdue}'::uuid, true, '${salespersonId}'::uuid, '${prefix} overdue customer');
 
     INSERT INTO public.customer_credit_profile(customer_id, credit_limit, credit_score, has_overdue)
     VALUES

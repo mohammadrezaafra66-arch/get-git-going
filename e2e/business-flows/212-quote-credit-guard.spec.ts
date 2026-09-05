@@ -179,7 +179,8 @@ DELETE FROM public.sales_quote_send_queue
  WHERE quote_id IN (SELECT id FROM public.sales_quotes WHERE customer_name LIKE '${sqlText(prefix)}%');
 
 DELETE FROM public.sales_quotes
- WHERE customer_name LIKE '${sqlText(prefix)}%';
+ WHERE customer_name LIKE '${sqlText(prefix)}%'
+    OR customer_name LIKE 'seed-${sqlText(prefix)}%';
 
 DELETE FROM public.audit_logs
  WHERE COALESCE(diff::text, '') LIKE '%${sqlText(prefix)}%'
@@ -217,6 +218,9 @@ DELETE FROM public.customer_credit_profile
 
 DELETE FROM public.customers
  WHERE name LIKE '${sqlText(prefix)}%';
+
+DELETE FROM public.persons
+ WHERE display_name LIKE '${sqlText(prefix)}%';
 
 DELETE FROM public.products
  WHERE sku LIKE '${sqlText(prefix)}%';
@@ -258,6 +262,10 @@ DECLARE
   v_overdue uuid;
   v_shortfall uuid;
   v_no_credit uuid;
+  v_person_sufficient uuid;
+  v_person_overdue uuid;
+  v_person_shortfall uuid;
+  v_person_no_credit uuid;
 BEGIN
   SELECT user_id INTO v_actor
     FROM public.user_roles
@@ -311,20 +319,36 @@ BEGIN
     NULL, v_actor, NULL
   );
 
-  INSERT INTO public.customers (name, phone, responsible_id, is_active, notes)
-  VALUES ('${sqlText(sufficientName)}', '091${Date.now().toString().slice(-8)}', '${salespersonId}'::uuid, true, '${sqlText(prefix)}sufficient')
+  INSERT INTO public.persons (kind, display_name, visibility_scope, is_active)
+  VALUES ('individual', '${sqlText(sufficientName)}', 'internal_general', true)
+  RETURNING id INTO v_person_sufficient;
+
+  INSERT INTO public.customers (name, phone, person_id, responsible_id, is_active, notes)
+  VALUES ('${sqlText(sufficientName)}', '091${Date.now().toString().slice(-8)}', v_person_sufficient, '${salespersonId}'::uuid, true, '${sqlText(prefix)}sufficient')
   RETURNING id INTO v_sufficient;
 
-  INSERT INTO public.customers (name, phone, responsible_id, is_active, notes)
-  VALUES ('${sqlText(overdueName)}', '092${Date.now().toString().slice(-8)}', '${salespersonId}'::uuid, true, '${sqlText(prefix)}overdue')
+  INSERT INTO public.persons (kind, display_name, visibility_scope, is_active)
+  VALUES ('individual', '${sqlText(overdueName)}', 'internal_general', true)
+  RETURNING id INTO v_person_overdue;
+
+  INSERT INTO public.customers (name, phone, person_id, responsible_id, is_active, notes)
+  VALUES ('${sqlText(overdueName)}', '092${Date.now().toString().slice(-8)}', v_person_overdue, '${salespersonId}'::uuid, true, '${sqlText(prefix)}overdue')
   RETURNING id INTO v_overdue;
 
-  INSERT INTO public.customers (name, phone, responsible_id, is_active, notes)
-  VALUES ('${sqlText(shortfallName)}', '093${Date.now().toString().slice(-8)}', '${salespersonId}'::uuid, true, '${sqlText(prefix)}shortfall')
+  INSERT INTO public.persons (kind, display_name, visibility_scope, is_active)
+  VALUES ('individual', '${sqlText(shortfallName)}', 'internal_general', true)
+  RETURNING id INTO v_person_shortfall;
+
+  INSERT INTO public.customers (name, phone, person_id, responsible_id, is_active, notes)
+  VALUES ('${sqlText(shortfallName)}', '093${Date.now().toString().slice(-8)}', v_person_shortfall, '${salespersonId}'::uuid, true, '${sqlText(prefix)}shortfall')
   RETURNING id INTO v_shortfall;
 
-  INSERT INTO public.customers (name, phone, responsible_id, is_active, notes)
-  VALUES ('${sqlText(noCreditName)}', '094${Date.now().toString().slice(-8)}', '${salespersonId}'::uuid, true, '${sqlText(prefix)}no_credit')
+  INSERT INTO public.persons (kind, display_name, visibility_scope, is_active)
+  VALUES ('individual', '${sqlText(noCreditName)}', 'internal_general', true)
+  RETURNING id INTO v_person_no_credit;
+
+  INSERT INTO public.customers (name, phone, person_id, responsible_id, is_active, notes)
+  VALUES ('${sqlText(noCreditName)}', '094${Date.now().toString().slice(-8)}', v_person_no_credit, '${salespersonId}'::uuid, true, '${sqlText(prefix)}no_credit')
   RETURNING id INTO v_no_credit;
 
   INSERT INTO public.customer_credit_profile (
@@ -336,6 +360,15 @@ BEGIN
     (v_overdue, 1000000, 700000, 300000, 80, 500000, true, CURRENT_DATE - 1, 60),
     (v_shortfall, 1000000, 1000000, 0, 70, 100000, false, NULL, 70),
     (v_no_credit, 0, 0, 0, 0, 0, false, NULL, 0);
+
+  INSERT INTO public.sales_quotes (
+    customer_id, customer_name, customer_phone, status, settlement_type_id,
+    subtotal_amount, discount_amount, final_amount, accepted_at
+  )
+  VALUES (
+    v_overdue, 'seed-${sqlText(prefix)}overdue-receivable', '09150000001', 'accepted', v_settlement,
+    250000, 0, 250000, now() - interval '45 days'
+  );
 
   INSERT INTO public.customer_credit_balance (customer_id, held_credit)
   VALUES
