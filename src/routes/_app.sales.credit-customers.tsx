@@ -54,12 +54,15 @@ interface TrustedCreditCustomerRow {
   easy_code: string | null;
   responsible_id: string | null;
   responsible_name: string | null;
-  total_purchases: number;
-  credit_score: number;
-  credit_limit: number;
+  // 452 — these four are fed by `customer_credit_profile`, which is empty until
+  // someone runs the credit recompute. They are NULL, not 0, when uncomputed;
+  // `has_credit_profile` says which case a row is in.
+  total_purchases: number | null;
+  credit_score: number | null;
+  credit_limit: number | null;
   available_credit: number;
   held_credit: number;
-  outstanding_balance: number;
+  outstanding_balance: number | null;
   computed_allowed_credit: number;
   has_active_overdue: boolean;
   overdue_amount: number;
@@ -68,6 +71,7 @@ interface TrustedCreditCustomerRow {
   is_trusted: boolean;
   status_code: "trusted" | "overdue" | "no_credit" | "inactive" | string;
   status_reason: string;
+  has_credit_profile: boolean;
   total_count: number;
 }
 
@@ -84,6 +88,14 @@ type TrustedCustomersRpc = (
 ) => RpcResult<TrustedCreditCustomerRow[]>;
 
 const EMPTY_RANGE: NumRange = { from: "", to: "" };
+
+/**
+ * 452 — appended to the three filters that read `customer_credit_profile`.
+ * They cannot match a customer whose profile has never been computed, and before
+ * 452 they silently matched everyone on the strength of a fabricated 0.
+ */
+const FILTER_NEEDS_PROFILE =
+  " تا وقتی امتیاز اعتباری محاسبه نشده باشد، این فیلتر مشتری‌ای برنمی‌گرداند.";
 
 function rangeError(r: NumRange): string | null {
   const f = r.from === "" ? null : Number(r.from);
@@ -184,6 +196,8 @@ function CreditCustomersPage() {
 
   const total = data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // 452 — counted from the rows on screen, never written as a literal.
+  const uncomputedCount = (data?.rows ?? []).filter((r) => !r.has_credit_profile).length;
 
   function clearAll() {
     setPage(0);
@@ -253,6 +267,29 @@ function CreditCustomersPage() {
           />
         }
       />
+
+      {/* 452 — say WHY three columns are empty, instead of leaving the operator to
+          guess. Driven by the rows actually on screen: when the recompute is wired
+          and profiles exist, this disappears on its own with nothing to remember to
+          remove — the same self-clearing pattern the suppliers page uses. */}
+      {uncomputedCount > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="leading-6">
+            <span className="font-medium">
+              برای {toFaDigits(uncomputedCount)} مشتری از {toFaDigits(data?.rows.length ?? 0)} مشتری
+              این صفحه، امتیاز اعتباری هنوز محاسبه نشده است
+            </span>
+            <p className="text-xs text-muted-foreground">
+              ستون‌های «امتیاز»، «سقف اعتبار پایه» و «بدهی جاری» برای این مشتری‌ها «محاسبه نشده»
+              نشان داده می‌شوند، نه صفر. تصمیم فروش حساب‌باز به این سه ستون وابسته نیست: «سقف مجاز
+              حساب‌باز» و وضعیت معتبر/معوق از اعتبار در دسترس و صورت‌حساب‌های سررسیدشده می‌آیند و
+              درست‌اند. فیلتر «امتیاز» و «مجموع خرید» تا وقتی محاسبه انجام نشده نتیجه‌ای
+              برنمی‌گردانند.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="md:hidden">
         <Sheet>
@@ -373,10 +410,18 @@ function CreditCustomersPage() {
                     <TableCell className="font-semibold">
                       {formatNumber(Number(r.computed_allowed_credit ?? 0))}
                     </TableCell>
-                    <TableCell>{formatNumber(Number(r.credit_limit ?? 0))}</TableCell>
-                    <TableCell>{formatNumber(Number(r.outstanding_balance ?? 0))}</TableCell>
                     <TableCell>
-                      <ScoreBadge score={Number(r.credit_score ?? 0)} />
+                      <ComputedNumber value={r.credit_limit} />
+                    </TableCell>
+                    <TableCell>
+                      <ComputedNumber value={r.outstanding_balance} />
+                    </TableCell>
+                    <TableCell>
+                      {r.credit_score === null ? (
+                        <span className="text-xs text-muted-foreground">محاسبه نشده</span>
+                      ) : (
+                        <ScoreBadge score={Number(r.credit_score)} />
+                      )}
                     </TableCell>
                     <TableCell className="min-w-[220px] text-xs text-muted-foreground">
                       <div>{r.status_reason || "—"}</div>
@@ -430,6 +475,21 @@ function CreditCustomersPage() {
       </Card>
     </div>
   );
+}
+
+/**
+ * 452 — a number that was never computed is not the number zero.
+ *
+ * `customer_credit_profile` is empty until the credit recompute runs, and nothing
+ * currently runs it. Before 452 the RPC turned that absence into 0 and this table
+ * printed «۰» — a row flagged «معوق‌دار» with 415,800,000 overdue also read
+ * «بدهی جاری: ۰». The RPC now sends NULL, and this renders the difference.
+ */
+function ComputedNumber({ value }: { value: number | null }) {
+  if (value === null || value === undefined) {
+    return <span className="text-xs text-muted-foreground">محاسبه نشده</span>;
+  }
+  return <>{formatNumber(Number(value))}</>;
 }
 
 function TrustedStatusBadge({ row }: { row: TrustedCreditCustomerRow }) {
@@ -537,7 +597,7 @@ function FiltersForm(p: FiltersFormProps) {
         range={p.purchases}
         onChange={p.setPurchases}
         error={p.errors.purchases}
-        hint="مجموع خرید ثبت‌شده برای مشتری."
+        hint={"مجموع خرید ثبت‌شده برای مشتری." + FILTER_NEEDS_PROFILE}
       />
       <NumberRange
         label="سقف مجاز حساب‌باز (تومان)"
@@ -551,14 +611,17 @@ function FiltersForm(p: FiltersFormProps) {
         range={p.debt}
         onChange={p.setDebt}
         error={p.errors.debt}
-        hint="مانده بدهی فعلی مشتری."
+        hint={"مانده بدهی فعلی مشتری." + FILTER_NEEDS_PROFILE}
       />
       <NumberRange
         label="امتیاز اعتباری"
         range={p.score}
         onChange={p.setScore}
         error={p.errors.score}
-        hint="امتیاز فقط روی مبلغ اعتبار اثر می‌گذارد و به‌تنهایی مجوز فروش نیست."
+        hint={
+          "امتیاز فقط روی مبلغ اعتبار اثر می‌گذارد و به‌تنهایی مجوز فروش نیست." +
+          FILTER_NEEDS_PROFILE
+        }
       />
     </div>
   );
