@@ -179,7 +179,8 @@ DELETE FROM public.sales_quote_send_queue
  WHERE quote_id IN (SELECT id FROM public.sales_quotes WHERE customer_name LIKE '${sqlText(prefix)}%');
 
 DELETE FROM public.sales_quotes
- WHERE customer_name LIKE '${sqlText(prefix)}%';
+ WHERE customer_name LIKE '${sqlText(prefix)}%'
+    OR customer_name LIKE 'seed-${sqlText(prefix)}%';
 
 DELETE FROM public.audit_logs
  WHERE COALESCE(diff::text, '') LIKE '%${sqlText(prefix)}%'
@@ -359,6 +360,15 @@ BEGIN
     (v_overdue, 1000000, 700000, 300000, 80, 500000, true, CURRENT_DATE - 1, 60),
     (v_shortfall, 1000000, 1000000, 0, 70, 100000, false, NULL, 70),
     (v_no_credit, 0, 0, 0, 0, 0, false, NULL, 0);
+
+  INSERT INTO public.sales_quotes (
+    customer_id, customer_name, customer_phone, status, settlement_type_id,
+    subtotal_amount, discount_amount, final_amount, accepted_at
+  )
+  VALUES (
+    v_overdue, 'seed-${sqlText(prefix)}overdue-receivable', '09150000001', 'accepted', v_settlement,
+    250000, 0, 250000, now() - interval '45 days'
+  );
 
   INSERT INTO public.customer_credit_balance (customer_id, held_credit)
   VALUES
