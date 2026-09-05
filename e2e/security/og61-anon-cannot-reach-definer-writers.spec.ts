@@ -343,3 +343,314 @@ test("✅ an authenticated ADMIN still reaches the body — the feature is not b
       `role management is broken, not secured`,
   ).toContain("22P02");
 });
+
+/* ===========================================================================================
+ * WAVE 4 / S-6 — the EXTENSION to `authenticated`.
+ *
+ * Everything above this line asks one question: can an UNAUTHENTICATED caller reach a
+ * SECURITY DEFINER writer? That question is now answered. It is not the whole question.
+ *
+ * `authenticated` on this database is not a privilege level. It is the floor: `viewer` holds
+ * it, and so does every account that has ever logged in. A SECURITY DEFINER function owned by
+ * `supabase_admin` (superuser, bypassrls) that carries no authorization check of its own and
+ * grants EXECUTE to `authenticated` is therefore reachable by the LEAST privileged real user
+ * in the company, with the definer's full rights and RLS bypassed.
+ *
+ * WHY THE ANON HALF COULD NOT HAVE CAUGHT THIS. The derived anon query above ends with
+ *
+ *     AND f.def !~* '[R]AISE\\s+EXCEPTION'
+ *
+ * "it raises, therefore it is guarded". On this codebase that inference is false, and it is
+ * false in the money tier specifically. Read the live body of `hold_credit`:
+ *
+ *     IF p_amount IS NULL OR p_amount <= 0 THEN
+ *       RAISE EXCEPTION '<Persian: the reserved amount must be greater than zero>'
+ *         USING ERRCODE = '22023';
+ *
+ * That is ARGUMENT VALIDATION. 22023 is invalid_parameter_value. It refuses a bad number, not
+ * a bad caller. Under the filter above, `hold_credit` reads as guarded and disappears from the
+ * subject list — while a `viewer` could move a customer's credit ceiling and sign the audit
+ * trail with somebody else's user id, because `p_user_id` was taken from the caller.
+ *
+ * So this half does not ask "does it raise". It asks "does it raise AT A CALLER", and it
+ * recognises exactly four signals, all of them read from live bodies on 2026-09-06:
+ *
+ *   1. a role helper       - has_role / has_any_role / _require_privileged /
+ *                            gamification_assert_manager / is_active_actor
+ *   2. ERRCODE 42501       - insufficient_privilege. The SQLSTATE that MEANS "not you".
+ *   3. ERRCODE 28000       - invalid_authorization_specification.
+ *   4. a membership table  - is_messenger_group_member / messenger_group_members /
+ *                            bot_api_key_table_access / appeal_reviewers. These are the
+ *                            codebase's non-role authorization checks: ownership of a group,
+ *                            possession of a capability row, standing as an appeal reviewer.
+ *                            They are real authorization and must not be mistaken for absence.
+ *
+ * Everything else that raises - 22023, 22P02, P0001, P0002, check_violation, or a bare
+ * `RAISE EXCEPTION 'invalid_key'` - is validation, and validation is not a gate.
+ * =========================================================================================== */
+
+/**
+ * Signals that a body refuses a CALLER rather than an ARGUMENT. Written as a single source of
+ * truth so the two queries below cannot drift apart, and quoted into the failure message so a
+ * future reader sees what "guarded" was taken to mean at the moment the gate fired.
+ */
+const AUTHZ_SIGNALS =
+  "(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor" +
+  // The SQLSTATE literals are matched with `.` in place of the surrounding single quotes.
+  // This string is interpolated into a SQL string literal, and a real `'` here would close it
+  // early — the first draft did exactly that and the query died with a syntax error instead of
+  // asserting, which is a test that fails for the wrong reason.
+  "|ERRCODE\\s*=\\s*.42501.|ERRCODE\\s*=\\s*.28000." +
+  "|is_messenger_group_member|messenger_group_members|bot_api_key_table_access|appeal_reviewers)";
+
+/**
+ * SECURITY DEFINER writers that may keep EXECUTE for `authenticated` without a role check.
+ *
+ * Every entry states WHY, and the reason is a property of the body that was read, not a
+ * category. An entry with no reason should not pass review; an entry whose reason no longer
+ * matches the body is a defect even while the test is green.
+ */
+const AUTHENTICATED_REACHABLE_ALLOWLIST: Record<string, string> = {
+  asan_assign_document_numbers:
+    "Batch wrapper only - a FOREACH over public.asan_assign_document_number, which carries " +
+    "has_any_role(_uid, ARRAY['admin','accountant']). Gating the wrapper would duplicate a " +
+    "check that already exists one call down. Read from the live body 2026-09-06.",
+  bot_authenticate_key:
+    "This function IS the authenticator. It takes a raw key, hashes it with sha256 and refuses " +
+    "unless the hash matches an active, unexpired row in bot_api_keys. Requiring a role to " +
+    "call it would make it impossible to authenticate. Its only write is last_used_at on the " +
+    "row the caller just proved it holds.",
+  cancel_promotion_nomination:
+    "Ownership check, not a role check: it refuses unless nominated_by = auth.uid() AND the " +
+    "nomination is from today. A caller can only cancel a nomination it made itself, so there " +
+    "is no cross-user reach to gate.",
+  delete_bot_api_key_secure:
+    "Carries a real check that reads user_roles directly rather than through has_role, which " +
+    "is why the signal regex does not see it: it refuses unless the caller is 'admin' or holds " +
+    "the key's own managed_by_role. Migration 463 revokes anon and PUBLIC; authenticated stays " +
+    "because src/routes/_app.bot-api-keys.index.tsx calls it as the signed-in user.",
+  expire_pending_documents:
+    "An idempotent time sweep with NO parameters. It expires documents whose review_deadline " +
+    "has already passed and can do nothing a caller chooses - there is no argument to point it " +
+    "at a target. Called on the inquiry board by any group member " +
+    "(src/lib/messenger/inquiry-status.ts); gating it would break the board for the people it " +
+    "exists to serve.",
+  tick_inquiries:
+    "Same shape: no parameters, advances inquiry statuses purely on elapsed time, and is " +
+    "invoked from the inquiry board by ordinary members (src/lib/messenger/inquiry-status.ts, " +
+    "src/routes/_app.messages.inquiries.tsx).",
+  mark_all_notifications_read:
+    "Scoped by `WHERE user_id = auth.uid()`. The caller's own identity IS the filter, so the " +
+    "write set is exactly the caller's own notifications and cannot be aimed elsewhere.",
+  mark_notification_read:
+    "Same: `WHERE id = p_notification_id AND user_id = auth.uid()`. A notification id belonging " +
+    "to somebody else matches no row.",
+  query_dynamic_table_rows_v2:
+    "A READ path (the /data-tables page). It enters the writer set only transitively, through " +
+    "the memoizing helpers _dyn_compute_row_values / _obs_compute_row_values.",
+  submit_quiz_attempt:
+    "Writes exactly one academy_quiz_attempts row for `auth.uid()` and audits it under the same " +
+    "uid. The score is computed in the body from academy_quiz_questions.correct_value, so the " +
+    "caller cannot supply its own result.",
+  refresh_sale_list_prices:
+    "Recomputes sale_list_items from product_computed_prices rows that are already committed. " +
+    "It copies derived numbers forward and accepts no value from the caller other than which " +
+    "list to refresh, so there is nothing a low-privilege caller can inject. Invoked on " +
+    "sale-list page load (src/lib/public/get-public-sale-list.ts and the sale-list route); a " +
+    "role gate would blank the page for viewers who are allowed to see it.",
+};
+
+/**
+ * Same recursive writer closure as the anon half - INSERT/UPDATE/DELETE/MERGE in the body, or a
+ * call to something that has one, so delegating wrappers are caught. The difference is the last
+ * two lines: `authenticated` instead of `anon`, and AUTHZ_SIGNALS instead of "contains RAISE".
+ *
+ * Write verbs are bracketed (`[I]NSERT`) for assertReadOnlySql in e2e/helpers/db.ts, exactly as
+ * above and for exactly the same reason: the query is read-only, but the guard cannot tell a
+ * regex literal from a statement, and the guard is not being relaxed.
+ */
+const DERIVED_SUBJECTS_AUTHENTICATED = `
+  WITH RECURSIVE fn AS (
+    SELECT p.oid, p.proname, pg_get_functiondef(p.oid) AS def,
+           pg_get_function_result(p.oid) AS res, p.prosecdef
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.prokind = 'f'
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')
+  ),
+  direct AS (
+    SELECT proname FROM fn
+    WHERE def ~* '([I]NSERT\\s+INTO|[U]PDATE\\s+(public\\.)?[a-z_]|[D]ELETE\\s+FROM|[M]ERGE\\s+INTO)'
+  ),
+  writer AS (
+    SELECT proname FROM direct
+    UNION
+    SELECT f.proname FROM fn f JOIN writer w ON f.proname <> w.proname
+     AND f.def ~ ('(^|[^a-zA-Z0-9_])(public\\.)?' || w.proname || '\\s*\\(')
+  )
+  SELECT f.proname
+  FROM fn f
+  WHERE f.prosecdef AND f.res <> 'trigger'
+    AND f.proname IN (SELECT proname FROM writer)
+    AND has_function_privilege('authenticated', f.oid, 'EXECUTE')
+    AND f.def !~* '${AUTHZ_SIGNALS}'
+  ORDER BY 1
+`;
+
+test("⛔ DERIVED: no SECURITY DEFINER writer without a CALLER check is reachable by authenticated", () => {
+  const found = dbRows(DERIVED_SUBJECTS_AUTHENTICATED);
+  const unexpected = found.filter((n) => !(n in AUTHENTICATED_REACHABLE_ALLOWLIST));
+  expect(
+    unexpected,
+    `SECURITY DEFINER writer(s) reachable by every authenticated user - a 'viewer' included - ` +
+      `with no check that refuses a CALLER: ${unexpected.join(", ")}.\n` +
+      `A body may raise and still be listed here: only these count as authorization - ` +
+      `${AUTHZ_SIGNALS}. An ERRCODE of 22023/22P02/P0001/P0002 is argument validation.\n` +
+      `Fix by one of: add a body guard (see migration 461), REVOKE EXECUTE ... FROM ` +
+      `authenticated, anon, PUBLIC when there is no direct caller in src/ or server/ ` +
+      `(see migration 436's reasoning for apply_stock_movement), or add the name to ` +
+      `AUTHENTICATED_REACHABLE_ALLOWLIST with the property of the body that makes it safe.`,
+  ).toEqual([]);
+});
+
+test("the authenticated allowlist has not rotted — every entry is still in the derived set", () => {
+  const found = new Set(dbRows(DERIVED_SUBJECTS_AUTHENTICATED));
+  const stale = Object.keys(AUTHENTICATED_REACHABLE_ALLOWLIST).filter((n) => !found.has(n));
+  expect(
+    stale,
+    `allowlist entries that no longer match anything. Either the function was gated (delete the ` +
+      `entry) or it was dropped (delete the entry): ${stale.join(", ")}`,
+  ).toEqual([]);
+});
+
+/**
+ * The INVERTED guard — its own test, because it is the opposite mistake from everything above
+ * and no count of "ungated writers" can express it.
+ *
+ * Three market-rate ingestion functions are written service-role-only like this:
+ *
+ *     IF auth.uid() IS NOT NULL THEN
+ *       RAISE EXCEPTION 'system RPC: not callable by authenticated users';
+ *     END IF;
+ *
+ * The intent is right — only the cron ingester should write market rates. The implementation
+ * inverts it. `auth.uid()` is NULL for the service role, and it is ALSO NULL for `anon`. So the
+ * guard admits precisely the unauthenticated internet, and these three held an explicit
+ * `anon=X` grant in proacl. `record_external_market_rate_tick_system` inserts into
+ * market_rate_ticks — which feeds `_par_latest_usd_rate()` and therefore product pricing — and
+ * writes an audit_logs row with actor_id NULL.
+ *
+ * A guard that refuses everyone EXCEPT the anonymous caller must never be paired with a grant
+ * to a role whose auth.uid() is NULL. The fix (migration 462) leaves the body alone, because
+ * the body is correct FOR service_role, and removes anon, PUBLIC and authenticated from the
+ * grant so service_role is the only role left that can reach it.
+ */
+const INVERTED_GUARD_SUBJECTS = `
+  SELECT p.proname
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.prosecdef AND p.prokind = 'f'
+     AND p.prosrc ~* 'auth\\.uid\\(\\)\\s+IS\\s+NOT\\s+NULL'
+     AND (has_function_privilege('anon', p.oid, 'EXECUTE')
+          OR has_function_privilege('authenticated', p.oid, 'EXECUTE'))
+   ORDER BY 1
+`;
+
+test("⛔ INVERTED GUARD: a function that only admits an unauthenticated caller is service_role-only", () => {
+  const open = dbRows(INVERTED_GUARD_SUBJECTS);
+  expect(
+    open,
+    `these refuse every caller for whom auth.uid() IS NOT NULL, which means the only callers ` +
+      `they ACCEPT are service_role and anon — and they still grant EXECUTE to anon and/or ` +
+      `authenticated: ${open.join(", ")}. REVOKE EXECUTE ... FROM anon, authenticated, PUBLIC ` +
+      `so service_role is the only role that can reach them (migration 462).`,
+  ).toEqual([]);
+});
+
+test("the three system ingest RPCs still EXIST and service_role still reaches them", () => {
+  // The OPEN half of the inverted-guard fix. Revoking from every role would satisfy the test
+  // above perfectly and would silently kill market-rate ingestion, which
+  // src/routes/api/public/hooks/ingest-market-rates.ts drives with supabaseAdmin.
+  const reachable = dbRows(`
+    select p.proname
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('start_market_rate_ingestion_run_system',
+                         'finish_market_rate_ingestion_run_system',
+                         'record_external_market_rate_tick_system')
+       and has_function_privilege('service_role', p.oid, 'EXECUTE')
+     order by 1
+  `);
+  expect(
+    reachable.length,
+    `only ${reachable.length} of 3 ingest RPCs are reachable by service_role — the revoke went ` +
+      `too far and market-rate ingestion is dead, not secured`,
+  ).toBe(3);
+});
+
+/**
+ * The credit ledger, by name and on purpose.
+ *
+ * D-13: the credit ledger IS hold_credit / release_credit. This is the LITERAL half for the
+ * money tier and it exists for the same reason the 26 above are still listed literally — a
+ * derivation can be narrowed, and the next narrowing should not be able to drop these two
+ * quietly. `increase_credit` is included because its entire body is
+ * `PERFORM public.release_credit(...)`: an ungated wrapper is an ungated function.
+ */
+for (const fn of ["hold_credit", "release_credit", "increase_credit"] as const) {
+  test(`⛔ the credit ledger refuses a caller by ROLE: ${fn}`, () => {
+    const guarded = dbRows(`
+      select p.proname
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname = '${fn}'
+         and p.prosrc ~ 'has_any_role'
+    `);
+    expect(
+      guarded,
+      `${fn} carries no has_any_role check. Its RAISEs are Persian argument validation ` +
+        `(ERRCODE 22023 / P0001), which refuse a bad number and not a bad caller.`,
+    ).toEqual([fn]);
+
+    const stillOpen = dbRows(`
+      select r.rolname
+        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        cross join (values ('anon'),('authenticated')) as r(rolname)
+       where n.nspname = 'public' and p.proname = '${fn}'
+         and has_function_privilege(r.rolname, p.oid, 'EXECUTE')
+       order by 1
+    `);
+    expect(
+      stillOpen,
+      `${fn} still grants EXECUTE to ${stillOpen.join(", ")}. It has no direct caller in src/ ` +
+        `or server/ — only the generated src/integrations/supabase/types.ts — so the grant ` +
+        `should be gone and the internal path (hold_credit_for_quote, expire_stale_credit_holds, ` +
+        `increase_credit) reaches it as the definer regardless.`,
+    ).toEqual([]);
+  });
+}
+
+test("✅ the credit ledger is still reachable from its internal path", () => {
+  // The OPEN half for the money tier. Revoking EXECUTE from every role, or gating to a role set
+  // that excludes sales, would satisfy every credit test above and would break the quote flow:
+  // src/routes/_app.sales.quotes.new.tsx calls expire_stale_credit_holds as the signed-in
+  // salesperson, and that function PERFORMs release_credit.
+  const owner = dbRows(`
+    select r.rolname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      join pg_roles r on r.oid = p.proowner
+     where n.nspname = 'public' and p.proname in ('hold_credit','release_credit')
+     group by r.rolname
+  `);
+  expect(owner.length, "hold_credit and release_credit must still exist and share an owner").toBe(1);
+
+  const rolesInGate = dbRows(`
+    select 'sales' where exists (
+      select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+       where n.nspname = 'public' and p.proname = 'release_credit'
+         and p.prosrc ~ 'sales')
+  `);
+  expect(
+    rolesInGate,
+    "release_credit's role set must include 'sales' — expire_stale_credit_holds is called by a " +
+      "salesperson on the new-quote page and PERFORMs release_credit under that uid",
+  ).toEqual(["sales"]);
+});
