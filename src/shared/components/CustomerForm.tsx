@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
 import { cn } from "@/lib/utils";
+import { upsertAsanCode } from "@/lib/persons/asan-code";
 import { ExistingPersonPrompt } from "@/components/persons/ExistingPersonPrompt";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,12 +79,18 @@ export type CustomerFormValues = z.infer<typeof schema>;
 
 interface Props {
   customerId?: string;
+  /**
+   * The person behind this customer. Required to edit the Asan code, because the
+   * code lives on `person_identifiers` and not on the customers row — the same
+   * reason SupplierForm takes this prop. Migration 437.
+   */
+  personId?: string | null;
   defaultValues?: Partial<CustomerFormValues> & {
     responsible?: { id: string; full_name: string | null } | null;
   };
 }
 
-export function CustomerForm({ customerId, defaultValues }: Props) {
+export function CustomerForm({ customerId, personId, defaultValues }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, roles } = useAuth();
@@ -91,6 +98,11 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
   const isAdminOrManager = roles.includes("admin") || roles.includes("manager");
   const isSales = roles.includes("sales");
   const canSetResponsible = isAdminOrManager || isSales;
+  // 437 — mirrors SupplierForm. `person_identifiers_update_admin_manager` gates
+  // UPDATE on the identifier to admin/manager, so anyone else editing the code
+  // would only ever move the mirror out of step with it.
+  const canChangeExistingAsanCode = isAdminOrManager;
+  const asanCodeDisabled = Boolean(customerId) && !canChangeExistingAsanCode;
 
   const [respLabel, setRespLabel] = useState<string>(defaultValues?.responsible?.full_name ?? "");
 
@@ -179,9 +191,26 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       }
 
       if (customerId) {
+        // 437 — accounting_code is deliberately dropped from this UPDATE, exactly
+        // as SupplierForm's edit branch already omits it. The column is a mirror
+        // maintained by migrations 308/310; the source of truth is the person's
+        // asan_person_code identifier, and that identifier is what the receipt
+        // wizard looks the customer up by and what require_asan_code demands.
+        // Writing the column here would put the two out of step and still leave
+        // the code unusable for documents — the defect 437 exists to close.
+        const editPayload = { ...payload };
+        delete (editPayload as { accounting_code?: string | null }).accounting_code;
+
+        // Identifier first: if this code already belongs to someone else the
+        // write throws before anything else has changed, instead of leaving a
+        // mirror that no document can use.
+        if (canChangeExistingAsanCode && personId) {
+          await upsertAsanCode(personId, payload.accounting_code);
+        }
+
         const { data: row, error } = await supabase
           .from("customers")
-          .update(payload as never)
+          .update(editPayload as never)
           .eq("id", customerId)
           .select("id")
           .single();
@@ -333,20 +362,29 @@ export function CustomerForm({ customerId, defaultValues }: Props) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="accounting_code">کد حسابداری</Label>
+        <Label htmlFor="accounting_code">کد حسابداری (کد آسان)</Label>
         <Input
           id="accounting_code"
           dir="ltr"
           maxLength={30}
-          placeholder="مثلاً CUST-1024"
+          inputMode="numeric"
+          disabled={asanCodeDisabled}
+          placeholder="مثلاً 114067"
           {...form.register("accounting_code")}
         />
         {errors.accounting_code && (
           <p className="text-xs text-destructive">{errors.accounting_code.message}</p>
         )}
-        <p className="text-[11px] text-muted-foreground">
-          اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-
+        <p className="text-[11px] text-muted-foreground leading-5">
+          اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-. همین کد همان چیزی است که فرم‌های دریافت و
+          پرداخت زیر عنوان «کد آسان» می‌پرسند؛ اگر خالی بماند، برای این مشتری نمی‌توان سند حسابداری
+          ثبت کرد.
         </p>
+        {asanCodeDisabled && (
+          <p className="text-[11px] text-muted-foreground leading-5">
+            تغییر کد ثبت‌شده فقط از عهدهٔ مدیر کل یا مدیر برمی‌آید.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

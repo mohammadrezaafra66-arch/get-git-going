@@ -114,6 +114,16 @@ const COLUMNS: readonly { sign: string; title: string; items: readonly HubItem[]
         target: { kind: "registry", route: "/sales/customers" },
       },
       { to: "/persons", label: "اشخاص", target: { kind: "registry", route: "/persons" } },
+      // Z-2 — the half-finished people the Asan import left behind are a finance worklist:
+      // an incomplete party file is what blocks a receipt from being posted against it. Gated
+      // through the registry entry, whose allowlist is ["admin"] (registry.ts:1323) and which
+      // mirrors the route's own guard, requireAnyRole(["admin"])
+      // (_app.admin.persons-cleanup.tsx:560). Nothing in registry.ts had to change.
+      {
+        to: "/admin/persons-cleanup",
+        label: "تکمیل و پاک‌سازی اشخاص",
+        target: { kind: "registry", route: "/admin/persons-cleanup" },
+      },
       { to: "/warehouses", label: "انبار", target: { kind: "registry", route: "/warehouses" } },
       {
         to: "/accounting/treasury",

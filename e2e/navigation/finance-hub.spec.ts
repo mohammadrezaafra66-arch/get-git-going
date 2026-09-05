@@ -43,6 +43,9 @@ const HUB_DESTINATIONS = [
   "/accounting/mutual-settlement",
   "/accounting/receivables",
   "/accounting/payables",
+  // Z-2 — the persons-cleanup worklist. Admin-only, and asserted as such below rather than
+  // merely listed here, because being on the hub and being permitted are different claims.
+  "/admin/persons-cleanup",
 ] as const;
 
 /** Deliberately left off the hub — reachable by direct link only. */
@@ -76,7 +79,28 @@ test.describe("finance hub", () => {
     }
     // Non-vacuous: a hub file that lost its links would fail the loop, but an empty
     // destination list would pass it. Pin the count too.
-    expect(HUB_DESTINATIONS).toHaveLength(18);
+    expect(HUB_DESTINATIONS).toHaveLength(19);
+  });
+
+  test("the persons-cleanup button is gated to admin, and agrees with the route guard", () => {
+    // Two separate claims, because the hub is only as narrow as what it defers to.
+    //
+    // (a) The registry allowlist is exactly ["admin"]. This is what actually hides the button:
+    //     `isNavigationEntryPermitted` tests `allowedRoles` BEFORE `hasPermissionEx`, which
+    //     matters because `has_dynamic_permission` fails OPEN for a module with no
+    //     `role_permissions` rows — so the module check alone would NOT keep sales or viewer out.
+    const idx = registrySource.indexOf('"/admin/persons-cleanup": [');
+    expect(idx, "persons-cleanup must carry a role allowlist").toBeGreaterThan(-1);
+    const allowlist = registrySource.slice(idx, registrySource.indexOf("]", idx) + 1);
+    expect(allowlist).toContain('"admin"');
+    for (const role of ["manager", "sales", "accountant", "viewer"]) {
+      expect(allowlist, `${role} must not reach persons-cleanup`).not.toContain(`"${role}"`);
+    }
+
+    // (b) The route's own guard says the same thing. A menu entry wider than its guard sends
+    //     the user to /unauthorized; one that is narrower hides a page they may open.
+    const routeSource = readFileSync("src/routes/_app.admin.persons-cleanup.tsx", "utf8");
+    expect(routeSource).toContain('requireAnyRole(["admin"])');
   });
 
   test("the three pages the owner chose to drop are not on the hub", () => {
