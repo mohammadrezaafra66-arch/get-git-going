@@ -173,3 +173,173 @@ test("authenticated admin is NOT locked out of the same RPC", async () => {
   );
   expect(after, "the open half must not actually revoke anything").toBe(before);
 });
+
+/* ===========================================================================================
+ * 436 — the DERIVED half. Added because the literal above could not have caught this hole.
+ *
+ * 399 closed 26 functions and this file listed those 26 by name. On 2026-09-05 three more were
+ * found open — `assign_user_role_txt`, `assign_user_role`, `revoke_user_role` — and every test
+ * above passed the entire time, because a name that was never added to TARGETS is a name this
+ * gate cannot see. An unauthenticated caller could grant itself `admin`.
+ *
+ * The literal is KEPT rather than replaced. Its comment makes a real argument: a gate that
+ * recomputes its own target set from the rule under test cannot notice the rule being narrowed.
+ * That is true, and it is the opposite failure from the one that actually happened. So both
+ * halves now exist and they fail on different mistakes:
+ *
+ *   LITERAL (above)  — catches the RULE being narrowed. Those 26 must stay closed, whatever
+ *                      any derivation happens to say today.
+ *   DERIVED (below)  — catches a NEW function being added open. This is the half that was
+ *                      missing, and its absence is why the hole recurred.
+ *
+ * "Writes" here follows DELEGATION. `assign_user_role` contains no INSERT of its own — only
+ * `PERFORM public.assign_user_role_txt(...)`. Any detector that looks for write statements in
+ * the body misses wrappers exactly like it, which is the second reason 399's sweep did not
+ * reach them.
+ * =========================================================================================== */
+
+/**
+ * Anon-reachable SECURITY DEFINER writers that are allowed to stay reachable, each with the
+ * reason it is safe. This list is short ON PURPOSE: an allowlist whose entries must each be
+ * justified is a different object from a subject list that has to be remembered.
+ *
+ * Adding a name here without a reason should not pass review.
+ */
+const ANON_REACHABLE_ALLOWLIST: Record<string, string> = {
+  asan_assign_document_numbers:
+    "Batch wrapper. The per-document delegate asan_assign_document_number carries the check " +
+    "has_any_role(_uid, ARRAY['admin','accountant']) — read from the live body 2026-09-05.",
+  mark_all_notifications_read:
+    "Scoped by `WHERE user_id = auth.uid()`. For anon auth.uid() is NULL, so it matches no row.",
+  mark_notification_read:
+    "Same: `WHERE id = p_notification_id AND user_id = auth.uid()`. NULL matches nothing.",
+  query_dynamic_table_rows_v2:
+    "A READ path (the /data-tables page). It only enters the writer set transitively, through " +
+    "the memoizing helpers _dyn_compute_row_values / _obs_compute_row_values.",
+};
+
+/**
+ * The write verbs are written as `[I]NSERT` rather than `INSERT` on purpose.
+ *
+ * `assertReadOnlySql` in e2e/helpers/db.ts refuses any SQL containing a write verb as a whole
+ * word. That rule is correct and is NOT relaxed here: this query is genuinely read-only, but
+ * the verbs appear inside a regex LITERAL, which the guard cannot distinguish from a real
+ * statement. A single-character bracket expression matches the same text while keeping the
+ * whole word from ever appearing, so the guard stays exactly as strict as it was.
+ */
+const DERIVED_SUBJECTS = `
+  WITH RECURSIVE fn AS (
+    SELECT p.oid, p.proname, pg_get_functiondef(p.oid) AS def,
+           pg_get_function_result(p.oid) AS res, p.prosecdef
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public' AND p.prokind = 'f'
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.objid = p.oid AND d.deptype = 'e')
+  ),
+  direct AS (
+    SELECT proname FROM fn
+    WHERE def ~* '([I]NSERT\\s+INTO|[U]PDATE\\s+(public\\.)?[a-z_]|[D]ELETE\\s+FROM|[M]ERGE\\s+INTO)'
+  ),
+  writer AS (
+    SELECT proname FROM direct
+    UNION
+    SELECT f.proname FROM fn f JOIN writer w ON f.proname <> w.proname
+     AND f.def ~ ('(^|[^a-zA-Z0-9_])(public\\.)?' || w.proname || '\\s*\\(')
+  )
+  SELECT f.proname
+  FROM fn f
+  WHERE f.prosecdef AND f.res <> 'trigger'
+    AND f.proname IN (SELECT proname FROM writer)
+    AND has_function_privilege('anon', f.oid, 'EXECUTE')
+    AND f.def !~* '(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor)'
+    AND f.def !~* '[R]AISE\\s+EXCEPTION'
+  ORDER BY 1
+`;
+
+test("⛔ DERIVED: no ungated SECURITY DEFINER writer is reachable by anon", () => {
+  const found = dbRows(DERIVED_SUBJECTS);
+  const unexpected = found.filter((n) => !(n in ANON_REACHABLE_ALLOWLIST));
+  expect(
+    unexpected,
+    `ungated SECURITY DEFINER writer(s) reachable by anon: ${unexpected.join(", ")}. ` +
+      `Either REVOKE EXECUTE ... FROM anon, PUBLIC (see migration 436), add an authorization ` +
+      `check to the body, or add it to ANON_REACHABLE_ALLOWLIST with the reason it is safe.`,
+  ).toEqual([]);
+});
+
+test("the allowlist has not rotted — every entry is still in the derived set", () => {
+  // Without this the allowlist silently accumulates dead names, and a name that later becomes
+  // open again is pre-approved by an entry nobody remembers writing.
+  const found = new Set(dbRows(DERIVED_SUBJECTS));
+  const stale = Object.keys(ANON_REACHABLE_ALLOWLIST).filter((n) => !found.has(n));
+  expect(
+    stale,
+    `allowlist entries that no longer match anything — delete them: ${stale.join(", ")}`,
+  ).toEqual([]);
+});
+
+/* ===========================================================================================
+ * 436 — the OG-74 half that 399 explicitly deferred: an authenticated NON-ADMIN must also be
+ * refused, and by the function BODY, not only by a grant. A rule that lives in a GRANT is one
+ * GRANT away from being lost; 399's own header says so.
+ *
+ * Every call below sends an INVALID role literal. That is what makes these tests safe to run
+ * against a live database: a caller who passes the guard fails on the `::app_role` cast with
+ * 22P02 and writes nothing, and a caller who is refused fails with 42501 first. The two codes
+ * are what distinguish "reached the body" from "was stopped", so nothing has to be granted or
+ * revoked for real to tell them apart.
+ * =========================================================================================== */
+
+const INVALID_ROLE = "__probe_invalid_role__";
+const ROLE_RPCS = ["assign_user_role_txt", "revoke_user_role_txt"] as const;
+
+for (const fn of ROLE_RPCS) {
+  test(`⛔ an authenticated NON-ADMIN is refused by ${fn}`, async () => {
+    // Must be a user who holds a role and does NOT hold admin. `userWithRole('viewer')` is not
+    // enough: on this database the first viewer also holds admin, so the "non-admin" JWT was an
+    // administrator's and the guard correctly let it through — the test passed for the wrong
+    // reason until this was pinned down.
+    const nonAdmin = dbRows(
+      "select user_id::text from public.user_roles group by user_id " +
+        "having bool_and(role <> 'admin') limit 1",
+    )[0];
+    expect(nonAdmin, "no user without the admin role exists to test the non-admin path").toBeTruthy();
+
+    const before = Number(
+      dbRows("select count(*)::text from public.user_roles where role = 'admin'")[0],
+    );
+
+    const res = await rest(mintJwt(nonAdmin), `/rpc/${fn}`, {
+      method: "POST",
+      body: JSON.stringify({ _target_user: HARMLESS_TARGET, _role: INVALID_ROLE }),
+    });
+
+    // 42501 = the body guard refused, which is the only correct outcome for a non-admin.
+    // Anything else means the call reached the body: 22P02 for assign_ (it casts the role) or
+    // a bare 204 for revoke_ (it compares role::text and simply matches nothing). Both were
+    // observed before 436 and both are the hole.
+    expect(
+      res.text,
+      `a non-admin reached the body of ${fn} (status ${res.status}): ${res.text.slice(0, 200)}`,
+    ).toContain("42501");
+
+    const after = Number(
+      dbRows("select count(*)::text from public.user_roles where role = 'admin'")[0],
+    );
+    expect(after, `${fn} changed admin rows during a non-admin call`).toBe(before);
+  });
+}
+
+test("✅ an authenticated ADMIN still reaches the body — the feature is not broken", async () => {
+  // The OPEN half. Guards written too tightly would satisfy every test above and leave role
+  // management dead. The admin must get PAST the guard and fail only on the invalid literal.
+  const res = await rest(mintJwt(ADMIN_USER_ID), "/rpc/assign_user_role_txt", {
+    method: "POST",
+    body: JSON.stringify({ _target_user: HARMLESS_TARGET, _role: INVALID_ROLE }),
+  });
+
+  expect(
+    res.text,
+    `an admin was refused by the guard (status ${res.status}): ${res.text.slice(0, 200)} — ` +
+      `role management is broken, not secured`,
+  ).toContain("22P02");
+});
