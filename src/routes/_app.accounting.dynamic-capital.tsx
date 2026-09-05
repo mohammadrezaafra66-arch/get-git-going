@@ -52,7 +52,9 @@ import {
   useSalespersonAllocations,
   useCustomerAllocations,
   useSalespersonCapitalUsage,
+  useSuggestedDailyCapital,
   type SalespersonAllocationRow,
+  type SuggestedDailyCapital,
 } from "@/hooks/capital/useDynamicCapital";
 
 export const Route = createFileRoute("/_app/accounting/dynamic-capital")({
@@ -94,6 +96,7 @@ function DynamicCapitalPage() {
   );
 
   const existing = useSettingByDate(capitalDate);
+  const suggestion = useSuggestedDailyCapital(capitalDate);
   const history = useAllocationHistory(30);
   const runMutation = useRunDailyAllocation();
   const qc = useQueryClient();
@@ -143,6 +146,13 @@ function DynamicCapitalPage() {
     } finally {
       setIsOverwriting(false);
     }
+  };
+
+  // W-1 — the only route by which the suggestion can reach the form: the accountant asks for
+  // it. It lands in the same field they type into, formatted the same way, and is editable and
+  // clearable exactly like a typed value. Nothing is submitted here.
+  const applySuggestion = (n: number) => {
+    setTotalCapital(Math.round(n).toLocaleString("en-US"));
   };
 
   const handleRun = () => {
@@ -345,6 +355,16 @@ function DynamicCapitalPage() {
               />
             </div>
           </div>
+
+          {/* W-1 — the suggestion from compute_daily_capital. Read-only, never submitted. */}
+          <SystemSuggestion
+            isLoading={suggestion.isLoading}
+            isError={suggestion.isError}
+            error={suggestion.error}
+            data={suggestion.data ?? null}
+            disabled={runMutation.isPending || isOverwriting}
+            onApply={applySuggestion}
+          />
 
           {alreadyExists && existing.data && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -617,6 +637,154 @@ function DynamicCapitalPage() {
           </div>
         </SheetContent>
       </Sheet>
+    </div>
+  );
+}
+
+/**
+ * W-1 — the system's suggestion for today's capital, from `compute_daily_capital`.
+ *
+ * The function is a complete daily cash engine: live receivables and payables due on the date,
+ * plus that date's registered cash position. It had no callers at all, so the accountant typed
+ * the figure from memory while the calculation sat unused in the database.
+ *
+ * Three things this deliberately does NOT do. It does not fill the field by itself — the
+ * accountant presses «درج در فیلد سرمایه کل» and can then edit or clear the number like any
+ * other. It does not submit. And it does not become the value that is stored: the snapshot is
+ * still built from whatever is in the field when «محاسبه و ذخیره» is pressed.
+ *
+ * WHEN THE DAY'S CASH INPUTS ARE MISSING, NO NUMBER IS SHOWN. `daily_capital_inputs` holds the
+ * bank balance, the till, cheques in and out and the reserves for a given date. With no row for
+ * this date all of those COALESCE to zero inside the function, which then still returns a
+ * figure — usually 0, because it is clamped at zero from below. That figure is an artefact of
+ * the missing row, not a suggestion, and presenting it as one is the same defect as printing a
+ * credit ceiling of ۰ for a customer whose ceiling was never computed. So the card names the
+ * missing input instead.
+ */
+function SystemSuggestion({
+  isLoading,
+  isError,
+  error,
+  data,
+  disabled,
+  onApply,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  data: SuggestedDailyCapital | null;
+  disabled: boolean;
+  onApply: (n: number) => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+        <Loader2 className="inline h-4 w-4 ml-2 animate-spin" />
+        در حال محاسبه پیشنهاد سامانه...
+      </div>
+    );
+  }
+
+  if (isError) {
+    const msg = (error as { message?: string } | null)?.message ?? "";
+    return (
+      <Alert className="border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+        <AlertTriangle className="h-4 w-4 text-amber-600" />
+        <AlertTitle className="text-amber-800 dark:text-amber-300">
+          پیشنهاد سامانه در دسترس نیست
+        </AlertTitle>
+        <AlertDescription className="text-xs leading-6">
+          {/forbidden|permission denied|42501/i.test(msg)
+            ? "شما دسترسی محاسبه پیشنهاد سرمایه را ندارید. سرمایه کل را دستی وارد کنید."
+            : "محاسبه پیشنهاد با خطا مواجه شد. سرمایه کل را دستی وارد کنید."}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  if (!data) return null;
+
+  // No `daily_capital_inputs` row for this date — see the note above.
+  if (!data.input_id) {
+    return (
+      <Alert className="border-amber-500/40 bg-amber-50 dark:bg-amber-950/20">
+        <AlertTriangle className="h-4 w-4 text-amber-600" />
+        <AlertTitle className="text-amber-800 dark:text-amber-300">
+          پیشنهاد سامانه محاسبه نشد
+        </AlertTitle>
+        <AlertDescription className="text-xs leading-6">
+          ورودی‌های نقدی این تاریخ (موجودی بانک، صندوق، چک‌های دریافتی و پرداختی، ذخیره ریسک و وجوه
+          مسدود) ثبت نشده است، بنابراین سامانه عددی برای پیشنهاد ندارد. سرمایه کل را دستی وارد کنید.
+          <div className="mt-2">
+            مطالبات جاری: {fmtMoney(data.total_receivables)} تومان{" • "}
+            بدهی‌های جاری: {fmtMoney(data.total_payables)} تومان
+          </div>
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  const rows: Array<{ label: string; value: number; sign: "+" | "-" }> = [
+    { label: "موجودی بانک", value: data.bank_balance, sign: "+" },
+    { label: "موجودی صندوق", value: data.cash_balance, sign: "+" },
+    { label: "چک‌های دریافتی", value: data.incoming_checks, sign: "+" },
+    { label: "مطالبات سررسید امروز", value: data.due_today_receivables, sign: "+" },
+    { label: "مطالبات خارج از سامانه", value: data.external_receivables, sign: "+" },
+    { label: "ارزش نقدشوندگی انبار", value: data.inventory_liquidity_value, sign: "+" },
+    { label: "اصلاح دستی", value: data.manual_adjustment, sign: "+" },
+    { label: "بدهی‌های سررسید امروز", value: data.due_today_payables, sign: "-" },
+    { label: "چک‌های پرداختی", value: data.outgoing_checks, sign: "-" },
+    { label: "بدهی‌های خارج از سامانه", value: data.external_payables, sign: "-" },
+    { label: "هزینه‌های کوتاه‌مدت", value: data.near_term_expenses, sign: "-" },
+    { label: "ذخیره ریسک", value: data.risk_reserve, sign: "-" },
+    { label: "وجوه مسدود", value: data.blocked_funds, sign: "-" },
+  ];
+
+  return (
+    <div
+      data-testid="dynamic-capital-suggestion"
+      className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-3"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-xs text-muted-foreground">
+            پیشنهاد سامانه برای سرمایه {formatDateFa(data.capital_date)}
+            <HelpHint text="این عدد از مطالبات و بدهی‌های سررسید همان روز به‌علاوهٔ موقعیت نقدی ثبت‌شدهٔ همان تاریخ محاسبه می‌شود. فقط یک پیشنهاد است؛ عدد نهایی را حسابدار تعیین می‌کند و در فیلد بالا قابل تغییر است." />
+          </div>
+          <div
+            data-testid="dynamic-capital-suggestion-value"
+            className="text-lg font-semibold mt-1"
+          >
+            {fmtMoney(data.system_suggested_capital)} تومان
+          </div>
+        </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-testid="dynamic-capital-apply-suggestion"
+          disabled={disabled}
+          onClick={() => onApply(data.system_suggested_capital)}
+        >
+          درج در فیلد سرمایه کل
+        </Button>
+      </div>
+
+      <p className="text-xs text-muted-foreground leading-6">
+        این عدد فقط پیشنهاد است و در هیچ جا ثبت نمی‌شود. تصمیم نهایی با حسابدار است: می‌توانید آن را
+        در فیلد «سرمایه کل» درج و سپس ویرایش کنید، یا نادیده بگیرید و عدد دیگری وارد کنید.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-1 text-xs">
+        {rows.map((r) => (
+          <div key={r.label} className="flex justify-between gap-2">
+            <span className="text-muted-foreground">
+              {r.sign === "+" ? "+" : "−"} {r.label}
+            </span>
+            <span className={cn(r.sign === "-" && "text-destructive")}>{fmtMoney(r.value)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
