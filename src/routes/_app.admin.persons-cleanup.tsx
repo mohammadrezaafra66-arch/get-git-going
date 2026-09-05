@@ -556,6 +556,20 @@ function PersonsCleanupPage() {
 }
 
 export const Route = createFileRoute("/_app/admin/persons-cleanup")({
+  // Wave 4 / S-5 — mirrors the requireAnyRole call below.
+  //
+  // MEASURED on 2026-09-06, cold `viewer` session, this route, before this line existed: the
+  // page rendered in full, 93 person rows with delete buttons, and it STAYED — it never
+  // redirected. Instrumenting the guard showed why, and it is not the window this was assumed
+  // to be: on a direct navigation `beforeLoad` ran exactly ONCE, on the server
+  // (`isBrowser=false`), where `ensureAuthReady` cannot see a session that lives in browser
+  // storage, so the guard returned without refusing. It never ran in the browser at all. The
+  // exposure was permanent for the page view, not a race.
+  //
+  // RouteRoleGate in _app reads this staticData and enforces the same rule on the client, which
+  // is the only side that can decide. Nothing here weakens the beforeLoad call; the two mirror
+  // each other on adjacent lines so they cannot drift apart unseen.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin"] } },
   beforeLoad: async () => {
     await requireAnyRole(["admin"]);
   },

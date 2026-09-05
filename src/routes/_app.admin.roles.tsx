@@ -43,6 +43,11 @@ import { toast } from "sonner";
 import { Loader2, Plus, Search } from "lucide-react";
 
 export const Route = createFileRoute("/_app/admin/roles")({
+  // Wave 4 / S-5 — mirrors the requireAdmin call below. The shared guard cannot decide during
+  // SSR, and on a direct navigation SSR is the only pass that runs, so RouteRoleGate in _app
+  // enforces this on the client. This is the role-assignment screen: a cold `sales` session
+  // rendered it with 9 rows on 2026-09-06 before this line existed.
+  staticData: { gate: { kind: "admin" } },
   beforeLoad: async () => {
     await requireAdmin();
   },
