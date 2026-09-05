@@ -67,6 +67,15 @@ export interface CalculatedScoreResult {
   level_order: number | null;
   /** weighted_score on the 0-100 scale the UI already displays. */
   score_pct: number | null;
+  /**
+   * D-9 (migration 455). `period_month` above is the month the score was actually read
+   * from, which is not necessarily the current one: the reader takes the current month
+   * first and falls back to the most recent month this entity was scored in.
+   * `period_is_fallback` is true exactly when that fallback happened, and the UI must
+   * then name `period_month` rather than implying the number is current.
+   */
+  period_is_current?: boolean;
+  period_is_fallback?: boolean;
 }
 
 export interface CustomerLatestAllocation {
@@ -135,21 +144,42 @@ export function useEntityScores(
   });
 }
 
+/**
+ * D-9 (migration 455): with no explicit `periodMonth`, the *database* decides which month
+ * to read — current month first, else the most recent month this entity was scored in —
+ * via the single definition `resolve_score_period`. Passing `currentPeriodMonth()` here
+ * (which is what this did before) pinned the read to the current month with no fallback,
+ * so a customer last scored in July displayed 0.000000 while their real score sat one
+ * month back. Do not reintroduce a client-side default: that is the second implementation
+ * of the rule, and the two would drift.
+ *
+ * An explicit `periodMonth` is still honoured verbatim for point-in-time views.
+ * Read `data.period_month` for the month actually used, and `data.period_is_fallback`
+ * to know whether to label it.
+ */
 export function useCalculatedScore(
   entityType: EntityType,
   entityId: string | undefined,
   periodMonth?: string,
 ) {
-  const period = periodMonth ?? currentPeriodMonth();
   return useQuery({
-    queryKey: ["dyn-calculated-score", entityType, entityId, period],
+    queryKey: ["dyn-calculated-score", entityType, entityId, periodMonth ?? "auto"],
     enabled: Boolean(entityId),
     queryFn: async (): Promise<CalculatedScoreResult | null> => {
-      const { data, error } = await supabase.rpc("calculate_dynamic_score", {
+      // The argument is OMITTED rather than sent as null when no period is named: the
+      // generated type declares it optional (`string | undefined`), and omitting it lets
+      // PostgREST fall through to the SQL default `p_period_month date DEFAULT NULL`,
+      // which is what puts `resolve_score_period` in charge.
+      const args: {
+        p_entity_type: EntityType;
+        p_entity_id: string;
+        p_period_month?: string;
+      } = {
         p_entity_type: entityType,
         p_entity_id: entityId!,
-        p_period_month: period,
-      });
+      };
+      if (periodMonth) args.p_period_month = periodMonth;
+      const { data, error } = await supabase.rpc("calculate_dynamic_score", args);
       if (error) throw error;
       return (data ?? null) as CalculatedScoreResult | null;
     },
@@ -375,6 +405,15 @@ export interface RealtimeCreditResult {
   salesperson_allocated_capital: number;
   share_ratio: number;
   breakdown: RealtimeCreditBreakdownItem[];
+  /**
+   * D-9 (migration 455): the month this card's score was read from. It used to be the
+   * capital snapshot's month, which is why one page could show two different scores for
+   * one customer — the card on the capital month, the entry section on the current one.
+   * Both now resolve through `resolve_score_period`. `capital_date_used` above is
+   * unrelated and still drives the capital snapshot and the peer set.
+   */
+  score_period_month?: string | null;
+  score_period_is_fallback?: boolean;
 }
 
 export function useCustomerRealtimeCredit(customerId: string | undefined) {

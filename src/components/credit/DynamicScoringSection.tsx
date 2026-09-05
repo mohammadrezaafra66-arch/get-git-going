@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { HelpHint } from "@/components/common/HelpHint";
 import { CreditZeroReasonPanel } from "@/components/credit/CreditZeroReasonPanel";
 import { formatNumber, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
+import { isoToJalaliMonthDisplay } from "@/lib/i18n/jalali";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,8 +95,14 @@ export function DynamicScoringSection({
   const qc = useQueryClient();
 
   const paramsQ = useScoringParameters(entityType);
+  // The editing grid and every write stay pinned to the CURRENT month on purpose. D-9's
+  // fallback is a *read* rule: if the form loaded an older month's values and then saved,
+  // it would overwrite that month's history instead of recording this month's.
   const scoresQ = useEntityScores(entityType, entityId, period);
-  const calcQ = useCalculatedScore(entityType, entityId, period);
+  // D-9 (migration 455): no period argument — the database resolves it (current month
+  // first, else the most recent month with data) through the one shared definition, and
+  // tells us which month it used so the header can name it.
+  const calcQ = useCalculatedScore(entityType, entityId);
   const customerAllocQ = useCustomerLatestAllocation(
     entityType === "customer" ? entityId : undefined,
   );
@@ -173,6 +180,12 @@ export function DynamicScoringSection({
     return map;
   }, [calcQ.data]);
 
+  // D-9 (migration 455): name the month the score actually came from. `period_month` is
+  // resolved server-side, so this label cannot drift from the number beside it.
+  const scorePeriodIso = calcQ.data?.period_month ?? period;
+  const scorePeriodLabel = isoToJalaliMonthDisplay(scorePeriodIso);
+  const scoreIsFallback = Boolean(calcQ.data?.period_is_fallback);
+
   const weighted = Number(calcQ.data?.weighted_score ?? 0);
   const weightedPct = Math.max(0, Math.min(100, weighted * 100));
 
@@ -238,9 +251,22 @@ export function DynamicScoringSection({
   return (
     <Card data-testid={`dynamic-score-card-${entityType}`}>
       <CardHeader>
-        <CardTitle className="text-base inline-flex items-center gap-2">
+        <CardTitle className="text-base inline-flex items-center gap-2 flex-wrap">
           <Sparkles className="h-4 w-4 text-primary" />
-          امتیازدهی پویا — ماه جاری
+          {/* D-9: this used to always read «ماه جاری» even when the number shown came from
+              an earlier month, which is precisely the staleness the owner asked to surface. */}
+          <span data-testid="dynamic-score-period-label">
+            امتیازدهی پویا — {scorePeriodLabel || "ماه جاری"}
+          </span>
+          {scoreIsFallback && (
+            <Badge
+              variant="outline"
+              className="mr-2 border-amber-500 text-amber-700 dark:text-amber-400"
+              data-testid="dynamic-score-period-fallback"
+            >
+              آخرین ماه دارای امتیاز
+            </Badge>
+          )}
           <HelpHint
             text={
               "این بخش پارامترهای ارزیابی ماهانه‌ی مشتری را نمایش می‌دهد.\n" +

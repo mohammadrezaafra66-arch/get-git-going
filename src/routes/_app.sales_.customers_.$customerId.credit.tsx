@@ -12,6 +12,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatNumber, toFaDigits, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { isoToJalaliMonthDisplay } from "@/lib/i18n/jalali";
 import { DynamicScoringSection } from "@/components/credit/DynamicScoringSection";
 import {
   useCustomerLatestAllocation,
@@ -117,6 +118,24 @@ function CustomerCreditPage() {
                 {realtime && (
                   <div className="text-xs text-muted-foreground">
                     {toFaDigits(realtime.params_evaluated)} از {toFaDigits(realtime.params_active)} پارامتر ارزیابی شده
+                  </div>
+                )}
+                {/* D-9 (migration 455): this card used to read the capital snapshot's month
+                    while the scoring section below read the current one, so one page could
+                    show two different scores for the same customer. Both now resolve the
+                    period the same way server-side; naming the month is what stops a stale
+                    number from reading as a current one. */}
+                {realtime?.score_period_month && (
+                  <div
+                    className={
+                      realtime.score_period_is_fallback
+                        ? "text-xs text-amber-700 dark:text-amber-400"
+                        : "text-xs text-muted-foreground"
+                    }
+                    data-testid="realtime-score-period"
+                  >
+                    امتیاز {isoToJalaliMonthDisplay(realtime.score_period_month)}
+                    {realtime.score_period_is_fallback ? " (آخرین ماه دارای امتیاز)" : ""}
                   </div>
                 )}
               </div>
