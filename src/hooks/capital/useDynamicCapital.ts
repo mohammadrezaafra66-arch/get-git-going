@@ -254,3 +254,92 @@ export function useSalespersonCapitalUsage(settingId: string | undefined) {
     },
   });
 }
+
+/**
+ * Item W-1 — the daily cash engine, `compute_daily_capital(p_capital_date date)`.
+ *
+ * The function has existed and worked for a long time and had zero callers: nothing in `src/`
+ * or `server/` referenced it, so the accountant typed the day's capital from memory while a
+ * complete calculation of the same figure sat unused in the database.
+ *
+ * It is a SUGGESTION and nothing more. It is never written anywhere, never submitted, and never
+ * placed in the input field on its own — the accountant has to ask for it, and can then edit or
+ * ignore the number like any other. `run_daily_capital_allocation` still reads only what is in
+ * the field.
+ *
+ * `input_id` is the honesty flag. The formula's cash terms — bank, till, cheques in and out,
+ * external receivables and payables, near-term expenses, risk reserve, blocked funds, inventory
+ * liquidity, manual adjustment — all come from a `daily_capital_inputs` row for that exact date.
+ * With no such row every one of them COALESCEs to zero and the function still returns a number,
+ * clamped at zero from below. That number is not a suggestion, it is an artefact of the missing
+ * row, so the caller must not present it as one.
+ */
+export interface SuggestedDailyCapital {
+  capital_date: string;
+  formula_version: string;
+  system_suggested_capital: number;
+  total_receivables: number;
+  overdue_receivables: number;
+  due_today_receivables: number;
+  future_receivables: number;
+  total_payables: number;
+  overdue_payables: number;
+  due_today_payables: number;
+  future_payables: number;
+  /** NULL when no `daily_capital_inputs` row exists for this date — see the note above. */
+  input_id: string | null;
+  bank_balance: number;
+  cash_balance: number;
+  incoming_checks: number;
+  outgoing_checks: number;
+  external_receivables: number;
+  external_payables: number;
+  near_term_expenses: number;
+  risk_reserve: number;
+  blocked_funds: number;
+  inventory_liquidity_value: number;
+  manual_adjustment: number;
+}
+
+/** پیشنهاد سامانه برای سرمایه روز — فقط پیشنهاد؛ در جایی ثبت نمی‌شود. */
+export function useSuggestedDailyCapital(capitalDate: string | undefined) {
+  return useQuery({
+    queryKey: ["dyn-capital-suggestion", capitalDate],
+    enabled: Boolean(capitalDate),
+    staleTime: 60_000,
+    queryFn: async (): Promise<SuggestedDailyCapital | null> => {
+      const { data, error } = await supabase.rpc("compute_daily_capital", {
+        p_capital_date: capitalDate!,
+      });
+      if (error) throw error;
+      const row = (data as SuggestedDailyCapital[] | null)?.[0];
+      if (!row) return null;
+      const num = (v: unknown) => Number(v ?? 0);
+      return {
+        capital_date: row.capital_date,
+        formula_version: row.formula_version,
+        system_suggested_capital: num(row.system_suggested_capital),
+        total_receivables: num(row.total_receivables),
+        overdue_receivables: num(row.overdue_receivables),
+        due_today_receivables: num(row.due_today_receivables),
+        future_receivables: num(row.future_receivables),
+        total_payables: num(row.total_payables),
+        overdue_payables: num(row.overdue_payables),
+        due_today_payables: num(row.due_today_payables),
+        future_payables: num(row.future_payables),
+        input_id: row.input_id ?? null,
+        bank_balance: num(row.bank_balance),
+        cash_balance: num(row.cash_balance),
+        incoming_checks: num(row.incoming_checks),
+        outgoing_checks: num(row.outgoing_checks),
+        external_receivables: num(row.external_receivables),
+        external_payables: num(row.external_payables),
+        near_term_expenses: num(row.near_term_expenses),
+        risk_reserve: num(row.risk_reserve),
+        blocked_funds: num(row.blocked_funds),
+        inventory_liquidity_value: num(row.inventory_liquidity_value),
+        manual_adjustment: num(row.manual_adjustment),
+      };
+    },
+  });
+}
