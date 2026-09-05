@@ -58,6 +58,9 @@ function EditCustomerPage() {
       {data && (
         <CustomerForm
           customerId={customerId}
+          // 437 — the Asan code lives on person_identifiers, so the form needs the
+          // person to be able to change it. The query above already selects it.
+          personId={(data as { person_id?: string | null }).person_id ?? null}
           defaultValues={{
             name: data.name ?? "",
             phone: data.phone ?? "",
