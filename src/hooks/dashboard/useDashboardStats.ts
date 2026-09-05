@@ -2,6 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { startOfTodayIso } from "@/lib/dashboard/utils";
+import {
+  fetchTodaySales,
+  tehranDayRange,
+  type QuoteQueryResult,
+  type TodaySalesStats as TodaySalesStatsType,
+} from "./salesSource";
 
 const COMMON = { staleTime: 60_000, refetchInterval: 120_000, retry: false } as const;
 
@@ -76,33 +82,24 @@ export function useTodayInquiryStats(scope: "all" | "mine" = "all") {
 }
 
 /** ─────────── فروش امروز ─────────── */
-export interface TodaySalesStats {
-  count: number;
-  totalAmount: number;
-  issuedCount: number;
-}
+export type { TodaySalesStats } from "./salesSource";
 
 export function useTodaySalesStats() {
-  return useQuery<TodaySalesStats>({
+  return useQuery<TodaySalesStatsType>({
     ...COMMON,
     queryKey: ["dash", "sales-today"],
-    queryFn: async () => {
-      const todayDate = new Date().toISOString().slice(0, 10);
-      try {
-        const { data, error } = await supabase
-          .from("invoices")
-          .select("total_amount, status, issue_date")
-          .eq("issue_date", todayDate);
-        if (error || !data) return { count: 0, totalAmount: 0, issuedCount: 0 };
-        const rows = data as Array<{ total_amount: number | null; status: string | null }>;
-        const total = rows.reduce((s, r) => s + Number(r.total_amount ?? 0), 0);
-        const issued = rows.filter(
-          (r) => r.status && r.status !== "draft" && r.status !== "cancelled",
-        ).length;
-        return { count: rows.length, totalAmount: total, issuedCount: issued };
-      } catch {
-        return { count: 0, totalAmount: 0, issuedCount: 0 };
-      }
+    queryFn: () => {
+      const { startIso, endIso } = tehranDayRange(new Date());
+      return fetchTodaySales(
+        () =>
+        // types.ts هنوز `accepted_at` را ندارد؛ ستون در دیتابیس زنده هست.
+        // cast در همین مرز انجام می‌شود و شکل واقعی در QuoteQueryResult صریح است.
+          supabase
+            .from("sales_quotes")
+            .select("final_amount, status, accepted_at")
+            .gte("accepted_at", startIso)
+            .lt("accepted_at", endIso) as unknown as PromiseLike<QuoteQueryResult>,
+      );
     },
   });
 }
