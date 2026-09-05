@@ -9,8 +9,17 @@ import {
 } from "@/hooks/gamification/useGamification";
 import { AchievementCard } from "@/components/gamification/AchievementCard";
 import { toPersianDigits } from "@/lib/dashboard/utils";
+import { requirePermission } from "@/lib/rbac/route-guards";
 
+// C-4 (unwired wave 1). Had no beforeLoad. This page is for every employee, so the
+// guard is deliberately the widest one that is still a guard: `dashboard:view`, which
+// role_permissions grants to admin, manager, accountant, sales, viewer and
+// purchase_specialist and denies to `site`. requireAdmin/requireAnyRole would be
+// wrong here — they would hide the badge wall from the people who earn the badges.
 export const Route = createFileRoute("/_app/gamification/achievements")({
+  beforeLoad: async () => {
+    await requirePermission("dashboard", "view");
+  },
   component: AchievementsPage,
 });
 

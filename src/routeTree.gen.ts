@@ -136,6 +136,7 @@ import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.
 import { Route as AppAdminWorkflowSettingsRouteImport } from './routes/_app.admin.workflow-settings'
 import { Route as AppAdminVisitorsRouteImport } from './routes/_app.admin.visitors'
 import { Route as AppAdminValidationRulesRouteImport } from './routes/_app.admin.validation-rules'
+import { Route as AppAdminSystemHealthRouteImport } from './routes/_app.admin.system-health'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminSalesRemindersRouteImport } from './routes/_app.admin.sales-reminders'
 import { Route as AppAdminRolesRouteImport } from './routes/_app.admin.roles'
@@ -873,6 +874,11 @@ const AppAdminValidationRulesRoute = AppAdminValidationRulesRouteImport.update({
   path: '/admin/validation-rules',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminSystemHealthRoute = AppAdminSystemHealthRouteImport.update({
+  id: '/admin/system-health',
+  path: '/admin/system-health',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
   id: '/admin/settings',
   path: '/admin/settings',
@@ -1418,6 +1424,7 @@ export interface FileRoutesByFullPath {
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/admin/system-health': typeof AppAdminSystemHealthRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/visitors': typeof AppAdminVisitorsRoute
   '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -1626,6 +1633,7 @@ export interface FileRoutesByTo {
   '/admin/roles': typeof AppAdminRolesRoute
   '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/admin/system-health': typeof AppAdminSystemHealthRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/visitors': typeof AppAdminVisitorsRoute
   '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -1837,6 +1845,7 @@ export interface FileRoutesById {
   '/_app/admin/roles': typeof AppAdminRolesRoute
   '/_app/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
+  '/_app/admin/system-health': typeof AppAdminSystemHealthRoute
   '/_app/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/_app/admin/visitors': typeof AppAdminVisitorsRoute
   '/_app/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -2049,6 +2058,7 @@ export interface FileRouteTypes {
     | '/admin/roles'
     | '/admin/sales-reminders'
     | '/admin/settings'
+    | '/admin/system-health'
     | '/admin/validation-rules'
     | '/admin/visitors'
     | '/admin/workflow-settings'
@@ -2257,6 +2267,7 @@ export interface FileRouteTypes {
     | '/admin/roles'
     | '/admin/sales-reminders'
     | '/admin/settings'
+    | '/admin/system-health'
     | '/admin/validation-rules'
     | '/admin/visitors'
     | '/admin/workflow-settings'
@@ -2467,6 +2478,7 @@ export interface FileRouteTypes {
     | '/_app/admin/roles'
     | '/_app/admin/sales-reminders'
     | '/_app/admin/settings'
+    | '/_app/admin/system-health'
     | '/_app/admin/validation-rules'
     | '/_app/admin/visitors'
     | '/_app/admin/workflow-settings'
@@ -3516,6 +3528,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminValidationRulesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/system-health': {
+      id: '/_app/admin/system-health'
+      path: '/admin/system-health'
+      fullPath: '/admin/system-health'
+      preLoaderRoute: typeof AppAdminSystemHealthRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/settings': {
       id: '/_app/admin/settings'
       path: '/admin/settings'
@@ -4345,6 +4364,7 @@ interface AppRouteChildren {
   AppAdminRolesRoute: typeof AppAdminRolesRoute
   AppAdminSalesRemindersRoute: typeof AppAdminSalesRemindersRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
+  AppAdminSystemHealthRoute: typeof AppAdminSystemHealthRoute
   AppAdminValidationRulesRoute: typeof AppAdminValidationRulesRoute
   AppAdminVisitorsRoute: typeof AppAdminVisitorsRoute
   AppAdminWorkflowSettingsRoute: typeof AppAdminWorkflowSettingsRoute
@@ -4491,6 +4511,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminRolesRoute: AppAdminRolesRoute,
   AppAdminSalesRemindersRoute: AppAdminSalesRemindersRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
+  AppAdminSystemHealthRoute: AppAdminSystemHealthRoute,
   AppAdminValidationRulesRoute: AppAdminValidationRulesRoute,
   AppAdminVisitorsRoute: AppAdminVisitorsRoute,
   AppAdminWorkflowSettingsRoute: AppAdminWorkflowSettingsRoute,
