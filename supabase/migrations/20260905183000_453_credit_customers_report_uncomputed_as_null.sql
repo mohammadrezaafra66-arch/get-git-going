@@ -1,6 +1,6 @@
 SET client_encoding='UTF8';
 
--- 452 — /sales/credit-customers stops printing "۰" for numbers that were never computed.
+-- 453 — /sales/credit-customers stops printing "۰" for numbers that were never computed.
 --
 -- ============================================================================
 -- WHAT IS WRONG
@@ -72,7 +72,7 @@ SET client_encoding='UTF8';
 -- 20260720110000_credit_customers_search_by_accounting_code.sql apart from the
 -- explicit ::text casts pg_get_functiondef adds (rule 4).
 --
--- Rollback: docs/verification/452-down.sql
+-- Rollback: docs/verification/453-down.sql
 
 DROP FUNCTION public.list_trusted_credit_customers(
   text, text, numeric, numeric, numeric, numeric, numeric, numeric, integer, integer, boolean, integer, integer
@@ -153,10 +153,10 @@ AS $function$
       c.accounting_code AS easy_code,
       c.responsible_id,
       rp.full_name AS responsible_name,
-      -- 452: does a profile row exist at all? Everything below that reads ccp
+      -- 453: does a profile row exist at all? Everything below that reads ccp
       -- is meaningless without one, and the caller must be able to tell.
       (ccp.customer_id IS NOT NULL) AS has_credit_profile,
-      -- 452: reported values are NULL when uncomputed...
+      -- 453: reported values are NULL when uncomputed...
       ccp.total_purchases::numeric AS total_purchases,
       ccp.credit_score::int        AS credit_score,
       ccp.credit_limit::numeric    AS credit_limit,
@@ -268,4 +268,4 @@ GRANT EXECUTE ON FUNCTION public.list_trusted_credit_customers(
 COMMENT ON FUNCTION public.list_trusted_credit_customers(
   text, text, numeric, numeric, numeric, numeric, numeric, numeric, integer, integer, boolean, integer, integer
 ) IS
-'AFK-G3-004: Sanitized read model for trusted credit customers. Exposes safe computed account-sale limit to internal authenticated users without granting direct customer_credit_profile sensitive access. Migration 452: profile-fed columns (total_purchases, credit_score, credit_limit, outstanding_balance) report NULL rather than 0 when the customer has no customer_credit_profile row, and has_credit_profile states whether one exists; trust and allowed-credit logic is unchanged.';
+'AFK-G3-004: Sanitized read model for trusted credit customers. Exposes safe computed account-sale limit to internal authenticated users without granting direct customer_credit_profile sensitive access. Migration 453: profile-fed columns (total_purchases, credit_score, credit_limit, outstanding_balance) report NULL rather than 0 when the customer has no customer_credit_profile row, and has_credit_profile states whether one exists; trust and allowed-credit logic is unchanged.';

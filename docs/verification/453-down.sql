@@ -1,8 +1,8 @@
 SET client_encoding='UTF8';
 
--- 452-down — restore list_trusted_credit_customers to its pre-452 shape
+-- 453-down — restore list_trusted_credit_customers to its pre-453 shape
 -- (migration 20260720110000). Captured from the live test database on
--- 2026-09-05 before 452 was applied. Drops the 22-column form first because
+-- 2026-09-05 before 453 was applied. Drops the 22-column form first because
 -- CREATE OR REPLACE cannot shrink RETURNS TABLE.
 
 DROP FUNCTION public.list_trusted_credit_customers(
