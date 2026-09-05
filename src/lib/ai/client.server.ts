@@ -40,6 +40,9 @@ import {
   type AiVisionOptions,
 } from "./types";
 import type { AiUsageKey } from "./usages";
+// Extracted so it can be unit-tested without importing this module, which reads
+// provider keys at load time. See e2e/unit/ai-usage-route.spec.ts.
+import { applyUsageRoute, type UsageRouteRow } from "./usage-route";
 
 const DEFAULT_TIMEOUT_MS = 120_000;
 
@@ -58,14 +61,6 @@ interface ProviderRow {
   key_prefix: string | null;
   secret_id: string | null;
   notes: string | null;
-}
-
-interface UsageRouteRow {
-  service_key: string;
-  capability: string;
-  provider_id: string | null;
-  is_enabled: boolean;
-  fallback_enabled: boolean;
 }
 
 function toProvider(row: ProviderRow): AiProvider {
@@ -102,18 +97,6 @@ async function getUsageRoute(
     .maybeSingle();
   if (error || !data) return null;
   return data as unknown as UsageRouteRow;
-}
-
-function applyUsageRoute(providers: AiProvider[], route: UsageRouteRow | null): AiProvider[] {
-  if (!route) return providers;
-  if (!route.is_enabled) return [];
-  if (!route.provider_id) return providers;
-
-  const selected = providers.find((p) => p.id === route.provider_id);
-  if (!selected) return route.fallback_enabled ? providers : [];
-  if (!route.fallback_enabled) return [selected];
-
-  return [selected, ...providers.filter((p) => p.id !== selected.id)];
 }
 
 /** Providers that declare `capability`, active, best priority first. */
