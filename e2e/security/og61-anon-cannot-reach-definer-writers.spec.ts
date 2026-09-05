@@ -81,20 +81,103 @@ test("⛔ anon executes NONE of the 26 definer writers", () => {
   ).toEqual([]);
 });
 
-test("authenticated still executes ALL 26 — the revoke cut only the anonymous path", () => {
-  const reachable = dbRows(`
+/**
+ * Of the 26, the twenty that wave 4 deliberately closed to `authenticated` as well.
+ *
+ * 399 revoked ONLY the anon path, and the test below used to assert that all 26 remained
+ * reachable by `authenticated` — "the revoke cut exactly the unauthenticated path and nothing
+ * else". That was the correct assertion for 399 and it is the WRONG assertion after 461-465,
+ * which found that `authenticated` is not a privilege level on this database: `viewer` holds it.
+ *
+ * Every name here has NO direct caller in src/ or server/ — only the generated
+ * src/integrations/supabase/types.ts — and reaches its real callers (triggers, nested SECURITY
+ * DEFINER calls, or the service-role client) as the function OWNER, for which a session role's
+ * grant is irrelevant. That is migration 436's apply_stock_movement reasoning, applied twenty
+ * more times.
+ *
+ * This list is enumerated rather than derived ON PURPOSE, and the two assertions below are
+ * strictly stronger than the one they replace: a name in this list must be closed, a name NOT in
+ * this list must still be open, and nothing can drift in either direction unnoticed. Loosening
+ * the old assertion to `toBeGreaterThan(0)` would have hidden both.
+ */
+const CLOSED_TO_AUTHENTICATED_BY_WAVE4: Record<string, string> = {
+  recalculate_settlement_score: "462 — no caller at all",
+  update_customer_overdue_status: "462 — no caller at all",
+  asan_burn_document_number: "462 — three tg_asan_burn_* triggers only",
+  next_sales_quote_number: "462 — sales_quotes_assign_number trigger only; burns a counter value",
+  next_product_sku: "464 — products_assign_sku trigger only; burns a counter value",
+  apply_required_services_for_quote_item: "464 — trigger + update_sales_quote_status",
+  sync_product_stock_status: "464 — apply_stock_movement only",
+  check_price_alerts_for_product: "464 — _par_after_price_history_insert trigger only",
+  enqueue_pricing_recompute: "464 — four trg_enqueue_on_* triggers only",
+  claim_pricing_recompute_jobs: "464 — process-recompute-queue.server.ts, via supabaseAdmin",
+  upsert_market_product_match_candidate: "464 — the bot upsert route, via supabaseAdmin",
+  cleanup_stale_auto_suppliers: "464 — no caller; DELETEs from product_suppliers",
+  sync_product_price_observatory_rows: "464 — no caller",
+  refresh_all_sale_list_prices: "464 — no caller; rewrites every sale_list_items row",
+  ai_record_provider_health: "465 — src/lib/ai/client.server.ts, via supabaseAdmin",
+  award_xp_from_score: "465 — trg_award_xp_after_score only; gamification.ts states this policy",
+  check_and_unlock_achievements_for_employee: "465 — trg_check_achievements_after_score only",
+  check_and_update_mission_progress_for_employee: "465 — trg_check_missions_after_score only",
+  capture_score_snapshots: "465 — no caller; INSERTs then DELETEs on a 90-day retention",
+  expire_pending_delivery_receipts: "465 — tick_inquiries only; calls auto_submit_penalty",
+};
+
+test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated", () => {
+  const reachable = new Set(
+    dbRows(`
     select p.proname
       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
      where n.nspname = 'public'
        and p.proname in (${nameList})
        and has_function_privilege('authenticated', p.oid, 'EXECUTE')
      order by 1
-  `);
-  // If this drops, the revoke went too far and broke legitimate callers — the messenger
-  // inquiry flow calls expire_pending_documents as an authenticated user.
-  expect(reachable.length, `only ${reachable.length} of 26 remain reachable by authenticated`).toBe(
-    TARGETS.length,
+  `),
   );
+  const shouldBeOpen = TARGETS.filter((n) => !(n in CLOSED_TO_AUTHENTICATED_BY_WAVE4));
+  const wronglyClosed = shouldBeOpen.filter((n) => !reachable.has(n));
+
+  // If this fires, a revoke went too far and broke a legitimate caller — the messenger inquiry
+  // flow calls expire_pending_documents as an authenticated user, ProductForm calls
+  // find_or_create_model, and the bot-api-keys page calls delete_bot_api_key_secure.
+  expect(
+    wronglyClosed,
+    `these have a live authenticated caller and must keep EXECUTE: ${wronglyClosed.join(", ")}`,
+  ).toEqual([]);
+
+  // And the other direction: a name listed as closed must actually BE closed. Without this the
+  // list becomes a place to park names to make the suite quiet.
+  const notActuallyClosed = Object.keys(CLOSED_TO_AUTHENTICATED_BY_WAVE4).filter((n) =>
+    reachable.has(n),
+  );
+  expect(
+    notActuallyClosed,
+    `listed as closed to authenticated by wave 4, but still reachable: ${notActuallyClosed.join(", ")}`,
+  ).toEqual([]);
+});
+
+test("the twenty closed to authenticated are still reachable by their INTERNAL path", () => {
+  // The OPEN half of wave 4's revokes, and the reason they are safe. A trigger or a nested
+  // SECURITY DEFINER call runs with current_user = the function owner, so what has to remain
+  // true is that the OWNER still holds EXECUTE. Revoking from the owner too would satisfy every
+  // closed-half assertion above and would silently break twenty internal paths.
+  const names = Object.keys(CLOSED_TO_AUTHENTICATED_BY_WAVE4);
+  const list = names.map((n) => `'${n}'`).join(",");
+  const ownerReachable = dbRows(`
+    select p.proname
+      from pg_proc p
+      join pg_namespace n on n.oid = p.pronamespace
+      join pg_roles r on r.oid = p.proowner
+     where n.nspname = 'public'
+       and p.proname in (${list})
+       and has_function_privilege(r.rolname, p.oid, 'EXECUTE')
+     order by 1
+  `);
+  expect(
+    ownerReachable.length,
+    `only ${ownerReachable.length} of ${names.length} are still reachable by their own owner — ` +
+      `a revoke went too far and an internal path is dead, not secured`,
+  ).toBe(names.length);
 });
 
 test("all 26 still EXIST — the closed half must not pass by deletion", () => {
