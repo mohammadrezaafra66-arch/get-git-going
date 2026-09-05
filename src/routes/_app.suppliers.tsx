@@ -130,8 +130,32 @@ function SuppliersListPage() {
       if (onlyMissingCode) q = q.is("accounting_code", null);
       if (debounced.trim()) {
         const term = `%${debounced.trim()}%`;
+        // W-1 — accounting_code is ADDED to the four criteria that were already
+        // here (name, contact person, phone, city); none of them is replaced.
+        //
+        // Which side of the Asan code this searches, and why: the code is stored
+        // on person_identifiers (kind = 'asan_person_code') and MIRRORED onto
+        // suppliers.accounting_code by the triggers in migrations 308/309. This
+        // list is one PostgREST request over `suppliers`, and the identifier
+        // lives on another table reachable only through person_id — PostgREST
+        // cannot OR a nested-table filter together with top-level columns in a
+        // single `.or()`, so matching the identifier would mean a second round
+        // trip or a new RPC for every keystroke. The mirror is the right trade
+        // for a list query, and it is the same column the "بدون کد" filter above
+        // already uses.
+        //
+        // The consequence, stated rather than hidden: if the mirror ever drifts
+        // from the identifier — migration 310 documents one real supplier that
+        // carried a stale test code — this search finds the supplier by the
+        // STALE value, while the edit form (which reads the identifier) shows the
+        // live one. Checked 2026-09-05: both suppliers that have a code agree.
+        //
+        // normalizeSearchText has already folded Persian/Arabic digits to ASCII,
+        // so a user typing ۶۰۱۷۰۲ matches the ASCII 601702 that is actually
+        // stored. That is why this reuses the existing normaliser instead of
+        // adding a second one.
         q = q.or(
-          `name.ilike.${term},contact_name.ilike.${term},phone.ilike.${term},city.ilike.${term}`,
+          `name.ilike.${term},contact_name.ilike.${term},phone.ilike.${term},city.ilike.${term},accounting_code.ilike.${term}`,
         );
       }
       const { data, error, count } = await q;
@@ -218,7 +242,7 @@ function SuppliersListPage() {
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="جستجو در نام، شخص تماس، تلفن یا شهر..."
+                placeholder="جستجو در نام، شخص تماس، تلفن، شهر یا کد آسان..."
                 value={search}
                 onChange={(e) => {
                   setSearch(e.target.value);
