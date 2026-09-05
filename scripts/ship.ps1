@@ -26,6 +26,13 @@ $Protected     = @("main","staging","master","production")
 $IdleMinutes   = 60
 $TypecheckCmd  = "npm run typecheck"
 
+# Layer A concurrency guard: hold the ship while another actor's commit is fresh
+# on the base branch, and escalate on ELAPSED TIME, not a skip count -- the run
+# cadence lives in the Scheduled Task, so a count would silently change meaning if
+# the task interval changed. GuardEscalateAfterMinutes is cadence-independent.
+$GuardEscalateAfterMinutes = 120
+$BlockedFile = Join-Path (Split-Path $RepoPath -Parent) "SHIP-BLOCKED.txt"
+
 # LLM — DeepSeek by default; for OpenAI swap the two lines below
 $ApiUrl        = "https://api.deepseek.com/chat/completions"
 $ApiModel      = "deepseek-chat"
@@ -96,7 +103,7 @@ function Load-State {
   } else {
     $s = [pscustomobject]@{}
   }
-  foreach ($p in @('lastFailHash','lastFailAt')) {
+  foreach ($p in @('lastFailHash','lastFailAt','lastSeenHead','guardStreakStart')) {
     if ($s.PSObject.Properties.Name -notcontains $p) {
       $s | Add-Member -NotePropertyName $p -NotePropertyValue "" -Force
     }
@@ -128,6 +135,43 @@ if (-not $status) { exit 0 }   # nothing changed, stay quiet
 
 $changed = $status | ForEach-Object { ($_ -replace '^..\s+','').Trim('"') }
 
+# -- 1b. capture the OBSERVED file set once, in memory, for scoped staging -------
+# $changed (above) still drives the risky/idle/typecheck gates unchanged. For the
+# actual `git add` we stage exactly what we observe HERE, so files another agent
+# drops into this shared tree during typecheck / the LLM call are never swept in.
+# -z is required: NUL-delimited, no core.quotepath octal-escaping of Persian
+# names, and a rename arrives as two paths (both staged so it commits intact).
+$snapPathFile = Join-Path $env:TEMP ("ship-snap-{0}.bin" -f $PID)   # written later, inside the try
+$snapRawFile  = Join-Path $env:TEMP ("ship-rawz-{0}.bin" -f $PID)
+& cmd /c "git -C ""$RepoPath"" status --porcelain -z > ""$snapRawFile""" | Out-Null
+$shipPaths = New-Object System.Collections.Generic.List[string]
+if ((Test-Path $snapRawFile) -and ((Get-Item $snapRawFile).Length -gt 0)) {
+  $tokens = [Text.Encoding]::UTF8.GetString([IO.File]::ReadAllBytes($snapRawFile)) -split "`0"
+  $i = 0
+  while ($i -lt $tokens.Count) {
+    $t = $tokens[$i]
+    if ($t.Length -ge 4) {
+      $xy = $t.Substring(0,2)
+      $p1 = $t.Substring(3)                               # "XY " stripped
+      if ($xy.Contains('R') -or $xy.Contains('C')) {      # rename/copy record: TWO NUL fields
+        $i++
+        $p2 = if ($i -lt $tokens.Count) { $tokens[$i] } else { "" }
+        # Add only the side that still exists on disk (the destination). The source
+        # of a staged rename is already recorded in the index; re-adding a path gone
+        # from the worktree fails with 'pathspec did not match' and aborts the add.
+        # Order-independent, and correct for RM (dest modified after the rename).
+        foreach ($c in @($p1,$p2)) {
+          if ($c -ne "" -and (Test-Path -LiteralPath (Join-Path $RepoPath $c))) { [void]$shipPaths.Add($c) }
+        }
+      } else {
+        [void]$shipPaths.Add($p1)                          # add/mod/delete: one field (deletes match though gone)
+      }
+    }
+    $i++
+  }
+}
+Remove-Item $snapRawFile -Force -ErrorAction SilentlyContinue   # raw consumed; nothing leaks on early exits
+
 # ── 2. risky files? never auto-commit these ──────────────────
 $risky = $changed | Where-Object { $p = $_; $RiskyPatterns | Where-Object { $p -match $_ } }
 if ($risky) {
@@ -150,6 +194,52 @@ if (-not $Force) {
   Log "Idle for $idle min with $($changed.Count) changed files — starting ship"
 } else {
   Log "Forced ship with $($changed.Count) changed files"
+}
+
+# -- 3b. concurrency guard (Layer A) -- hold while another actor's commit is fresh
+# We are otherwise ready to ship. If base HEAD advanced since we last acted AND is
+# still fresh, another actor just landed work -- hold off. lastSeenHead means an
+# unchanged HEAD (including one we produced or already accounted for) never trips
+# this, so the shipper does not stall on its own merge. Escalation is by ELAPSED
+# time of the current hold streak, not a count, so it is cadence-independent.
+if (-not $Force) {
+  $headHash   = (git rev-parse HEAD).Trim()
+  $headEpoch  = [int64](git log -1 --format=%ct HEAD)
+  $headAgeMin = [int]((Get-Date).ToUniversalTime() - [DateTimeOffset]::FromUnixTimeSeconds($headEpoch).UtcDateTime).TotalMinutes
+  $movedByOther = ($state.lastSeenHead -ne "" -and $state.lastSeenHead -ne $headHash)
+
+  if ($movedByOther -and $headAgeMin -lt $IdleMinutes) {
+    if ([string]::IsNullOrEmpty($state.guardStreakStart)) {
+      $state.guardStreakStart = (Get-Date).ToString("o")   # first hold of this streak
+    }
+    $streakMin = [int]((Get-Date) - [datetime]::Parse($state.guardStreakStart, $null, [System.Globalization.DateTimeStyles]::RoundtripKind)).TotalMinutes
+    Log ("Concurrency guard: base HEAD $($headHash.Substring(0,8)) is $headAgeMin min old and moved " +
+         "since our last cycle -- another actor is active. Holding ($streakMin min into this streak).") "WARN"
+    if ($streakMin -ge $GuardEscalateAfterMinutes) {
+      # Escalation: not a louder log, not a notifier -- one breadcrumb OUTSIDE the
+      # repo that the owner sees in the folder. Overwritten in place (idempotent),
+      # and removed the moment the guard passes (below), so it never lies.
+      Write-Utf8 $BlockedFile (@"
+auto-ship has been blocked for ~$streakMin minutes.
+Reason: the base branch ($BaseBranch) keeps moving -- another agent/fleet is
+committing into this shared tree, so the shipper is holding to avoid sweeping
+their work. YOUR $($changed.Count) changed file(s) in $RepoPath are NOT shipped yet.
+This clears itself once the base branch is quiet for $IdleMinutes min, or run
+  .\scripts\ship.ps1 -Force
+to ship now. Last checked: $(Get-Date -Format 'yyyy-MM-dd HH:mm').
+"@)
+      Log "Concurrency guard has held for $streakMin min (>= $GuardEscalateAfterMinutes) -- wrote $BlockedFile" "ERROR"
+    }
+    Save-State $state
+    exit 0
+  }
+
+  # Guard passes: streak over. Account for this HEAD, clear the streak, and remove
+  # the breadcrumb so it never reports a block that has already ended.
+  $state.lastSeenHead     = $headHash
+  $state.guardStreakStart = ""
+  Save-State $state
+  Remove-Item $BlockedFile -Force -ErrorAction SilentlyContinue
 }
 
 # ── 4. don't re-report the same broken state ─────────────────
@@ -287,13 +377,13 @@ $diff
 }
 
 if (-not $msg) {
-  $areas = ($changed | ForEach-Object { ($_ -split '[\\/]')[0] } | Sort-Object -Unique) -join ", "
+  $areas = ($shipPaths | ForEach-Object { ($_ -split '[\\/]')[0] } | Sort-Object -Unique) -join ", "
   $ts = Get-Date -Format "yyyy-MM-dd HH:mm"
   $msg = [pscustomobject]@{
     subject  = "chore: auto-ship $ts"
-    body     = "تغییرات خودکار در: $areas — $($changed.Count) فایل"
+    body     = "تغییرات خودکار در: $areas — $($shipPaths.Count) فایل"
     pr_title = "chore: auto-ship $ts"
-    pr_body  = "Auto-generated.`n`nFiles changed:`n" + (($changed | ForEach-Object { "- $_" }) -join "`n")
+    pr_body  = "Auto-generated.`n`nFiles changed:`n" + (($shipPaths | ForEach-Object { "- $_" }) -join "`n")
   }
 }
 
@@ -328,7 +418,12 @@ try {
   }
   $branchCreated = $true
 
-  $r = Invoke-Native git @("add", "-A") -Label "git"
+  # Stage EXACTLY the observed set (Section 1b), never the whole tree. -A still
+  # means adds+mods+deletions, but restricted to the pathspec file, so a deletion
+  # in $shipPaths stages as a removal and nothing that appeared AFTER our snapshot
+  # (another agent's work) is touched.
+  [IO.File]::WriteAllText($snapPathFile, ($shipPaths -join "`0"), (New-Object Text.UTF8Encoding $false))
+  $r = Invoke-Native git @("add","-A","--pathspec-from-file=$snapPathFile","--pathspec-file-nul") -Label "git"
   if ($r.ExitCode -ne 0) {
     Log "GIT ADD FAILED (exit $($r.ExitCode)) — nothing shipped" "ERROR"
     exit 22
@@ -368,6 +463,7 @@ try {
 }
 finally {
   Remove-Item $msgFile -Force -ErrorAction SilentlyContinue
+  Remove-Item $snapPathFile -Force -ErrorAction SilentlyContinue   # scoped-add pathspec temp; would leak on every post-branch failure path otherwise
   if ($branchCreated) {
     $back = Invoke-Native git @("checkout", $BaseBranch) -Label "git"
     if ($back.ExitCode -ne 0) {
@@ -378,7 +474,10 @@ finally {
 
 if (Test-Path $intentFile) { Remove-Item $intentFile }
 
-$state.lastFailHash = ""
+$state.lastFailHash     = ""
+$state.guardStreakStart = ""
+$state.lastSeenHead     = (git rev-parse HEAD).Trim()   # base HEAD we shipped from
+Remove-Item $BlockedFile -Force -ErrorAction SilentlyContinue   # a ship happened -- no longer blocked
 Save-State $state
 
 Log "SHIPPED  $($msg.subject)" "SHIP"
