@@ -16,9 +16,20 @@ import {
   itemsForModule,
   type PrimaryModuleKey,
 } from "./primary-modules";
+import { buildNavigationSections, findActiveSectionKey } from "./nav-items";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx, ROLE_LABELS } from "@/lib/rbac/roles";
-import { Sparkles, Search, Bell, HelpCircle, LogOut, Star, ScanSearch } from "lucide-react";
+import {
+  Sparkles,
+  Search,
+  Bell,
+  HelpCircle,
+  LogOut,
+  Star,
+  ScanSearch,
+  ChevronDown,
+  ChevronLeft,
+} from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { getPrimaryActionEntry, getVisibleNavigationEntries } from "@/lib/navigation/selectors";
 import { normalizeNavigationSearch, searchNavigationEntries } from "@/lib/navigation/search";
@@ -103,6 +114,40 @@ export function AppSidebar() {
     () => itemsForModule(activeModule, visible),
     [activeModule, visible],
   );
+
+  // SECTIONS — the open page's parent group, drawn and opened.
+  //
+  // The list is the same `submenuItems` as before, only bracketed by the `group`/`subgroup`
+  // the registry has always carried; nothing is added to or removed from the menu here, and
+  // the row highlight below (`renderItem`) is untouched — it just gets a heading above it.
+  const sections = useMemo(() => buildNavigationSections(submenuItems), [submenuItems]);
+  const activeSectionKey = useMemo(
+    () => findActiveSectionKey(sections, location.pathname),
+    [sections, location.pathname],
+  );
+
+  // OPEN/CLOSED. Two rules, and the second one is the important one:
+  //
+  //  1. The section holding the open page is the one that is open. Everything else collapses,
+  //     which is what makes the parent legible — measured on the `admin` module, the panel
+  //     goes from 50 flat rows to 5 headings plus the 15 rows of the section you are in.
+  //  2. When NO section holds the open page, every section stays open. 28 pages resolve to a
+  //     module that does not list them (research note F9/F10) and would otherwise be shown an
+  //     all-collapsed panel — strictly worse than today's flat list, and a panel that implies
+  //     "you are somewhere in here" when we do not know that. Opening everything says nothing
+  //     false and hides nothing.
+  //
+  // Resetting on navigation mirrors the `activeModule` effect above rather than inventing a
+  // second convention: a manual toggle survives until the next navigation, then the route wins.
+  const [openSections, setOpenSections] = useState<string[]>([]);
+  useEffect(() => {
+    setOpenSections(activeSectionKey ? [activeSectionKey] : sections.map((s) => s.key));
+  }, [activeSectionKey, sections]);
+
+  const toggleSection = (key: string) =>
+    setOpenSections((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key],
+    );
 
   const quickAccess = useMemo(() => {
     const seen = new Set<string>();
@@ -573,8 +618,50 @@ export function AppSidebar() {
                   )}
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  {submenuItems.length > 0 ? (
-                    submenuItems.map(renderItem)
+                  {sections.length > 0 ? (
+                    sections.map((section) => {
+                      const open = openSections.includes(section.key);
+                      return (
+                        <div
+                          key={section.key}
+                          data-nav-section={section.key}
+                          data-nav-section-open={open ? "true" : "false"}
+                          data-nav-section-active={
+                            section.key === activeSectionKey ? "true" : "false"
+                          }
+                        >
+                          <button
+                            type="button"
+                            onClick={() => toggleSection(section.key)}
+                            aria-expanded={open}
+                            aria-controls={`nav-section-${section.key}`}
+                            // Prefixed so the accessible name cannot collide with the module
+                            // rail button of the same label — `main` is «داشبورد» in both.
+                            aria-label={`گروه ${section.label}`}
+                            className="mt-1 flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/55 transition-colors hover:bg-sidebar-accent/30 hover:text-sidebar-foreground/80"
+                          >
+                            {open ? (
+                              <ChevronDown className="h-3 w-3 shrink-0" />
+                            ) : (
+                              <ChevronLeft className="h-3 w-3 shrink-0" />
+                            )}
+                            <span className="truncate">{section.label}</span>
+                            {!open && (
+                              <span className="mr-auto shrink-0 rounded-full bg-sidebar-accent/50 px-1.5 text-[10px] font-normal tabular-nums">
+                                {section.items.length}
+                              </span>
+                            )}
+                          </button>
+                          <div
+                            id={`nav-section-${section.key}`}
+                            hidden={!open}
+                            className="flex flex-col gap-0.5"
+                          >
+                            {section.items.map((item) => renderItem(item))}
+                          </div>
+                        </div>
+                      );
+                    })
                   ) : (
                     <div className="px-3 py-4 text-center text-xs text-sidebar-foreground/60">
                       موردی برای نمایش وجود ندارد
