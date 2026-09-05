@@ -376,9 +376,9 @@ export function CustomerForm({ customerId, personId, defaultValues }: Props) {
           <p className="text-xs text-destructive">{errors.accounting_code.message}</p>
         )}
         <p className="text-[11px] text-muted-foreground leading-5">
-          اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-. همین کد همان چیزی است که
-          فرم‌های دریافت و پرداخت زیر عنوان «کد آسان» می‌پرسند؛ اگر خالی بماند، برای این
-          مشتری نمی‌توان سند حسابداری ثبت کرد.
+          اختیاری، یکتا، فقط حروف انگلیسی/اعداد/_/-. همین کد همان چیزی است که فرم‌های دریافت و
+          پرداخت زیر عنوان «کد آسان» می‌پرسند؛ اگر خالی بماند، برای این مشتری نمی‌توان سند حسابداری
+          ثبت کرد.
         </p>
         {asanCodeDisabled && (
           <p className="text-[11px] text-muted-foreground leading-5">
