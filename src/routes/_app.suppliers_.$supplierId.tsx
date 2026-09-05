@@ -46,6 +46,11 @@ interface SupplierDetail {
   updated_at: string;
   created_by: string | null;
   person_id: string | null;
+  /**
+   * The person's Asan code, fetched in the SAME query as the supplier row — see
+   * the note on the query below for why it cannot be a second useQuery.
+   */
+  asan_code: string;
 }
 
 function SupplierDetailPage() {
@@ -57,11 +62,29 @@ function SupplierDetailPage() {
   // P1.5b — see SupplierForm: role_permissions is the source of truth.
   const canManage = hasPermissionEx(roles, "suppliers", "update");
 
+  // The Asan code is read from person_identifiers, not from
+  // suppliers.accounting_code. The column is a mirror kept in step by triggers
+  // (migrations 308/309); the identifier is the source, and it is what
+  // asan_list_purchase_export actually reads.
+  //
+  // W-2 — it is fetched HERE, inside the supplier query, and not in a second
+  // useQuery chained off `data.person_id`. A chained query resolves one render
+  // AFTER SupplierForm has already mounted, and SupplierForm hands
+  // `defaultValues` to react-hook-form, which snapshots them at mount and
+  // ignores every later change. So the code arrived, the prop updated, and the
+  // input stayed empty — measured on 2026-09-05 against
+  // «تأمین‌کنندهٔ آزمایشی 12» (code 601702): empty on a cold load, correct on a
+  // second visit once react-query had the value cached before mount. A user
+  // reading the empty box concludes no code was ever recorded.
+  //
+  // Fetching both in one query also means the single invalidation SupplierForm
+  // already fires on ["supplier", supplierId] refreshes the code too; the old
+  // ["supplier-asan-code", personId] cache was never invalidated after a save.
   const { data, isLoading } = useQuery({
     queryKey: ["supplier", supplierId],
     enabled: !isNew,
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data: row, error } = await supabase
         .from("suppliers")
         .select(
           "id, name, contact_name, phone, city, notes, trust_level, status, created_at, updated_at, created_by, person_id",
@@ -69,27 +92,27 @@ function SupplierDetailPage() {
         .eq("id", supplierId)
         .maybeSingle();
       if (error) throw error;
-      return data as SupplierDetail | null;
-    },
-  });
 
-  // The Asan code is read from person_identifiers, not from
-  // suppliers.accounting_code. The column is a mirror kept in step by triggers
-  // (migrations 308/309); the identifier is the source, and it is what
-  // asan_list_purchase_export actually reads.
-  const { data: asanCode } = useQuery({
-    queryKey: ["supplier-asan-code", data?.person_id],
-    enabled: Boolean(data?.person_id),
-    queryFn: async () => {
-      const { data: row, error } = await supabase
+      // The cast keeps `| null` for the same reason the previous one did: the
+      // generated Supabase types do not carry `suppliers.person_id`, and only a
+      // union that still contains null is comparable to what maybeSingle returns.
+      const supplier = row as Omit<SupplierDetail, "asan_code"> | null;
+      if (!supplier) return null;
+      if (!supplier.person_id) return { ...supplier, asan_code: "" } satisfies SupplierDetail;
+
+      const { data: identifier, error: identifierError } = await supabase
         .from("person_identifiers")
         .select("value_raw")
-        .eq("person_id", data!.person_id as string)
+        .eq("person_id", supplier.person_id)
         .eq("kind", "asan_person_code")
         .neq("status", "revoked")
         .maybeSingle();
-      if (error) throw error;
-      return ((row as { value_raw: string | null } | null)?.value_raw ?? "") as string;
+      if (identifierError) throw identifierError;
+
+      return {
+        ...supplier,
+        asan_code: (identifier as { value_raw: string | null } | null)?.value_raw ?? "",
+      } satisfies SupplierDetail;
     },
   });
 
@@ -239,7 +262,7 @@ function SupplierDetailPage() {
               phone: data.phone ?? "",
               city: data.city ?? "",
               notes: data.notes ?? "",
-              accounting_code: asanCode ?? "",
+              accounting_code: data.asan_code,
               trust_level: data.trust_level,
               status: data.status,
             }}
