@@ -29,7 +29,6 @@ import { Route as AppRolesRouteImport } from './routes/_app.roles'
 import { Route as AppReportsRouteImport } from './routes/_app.reports'
 import { Route as AppPurchasesRouteImport } from './routes/_app.purchases'
 import { Route as AppPurchaseRouteImport } from './routes/_app.purchase'
-import { Route as AppPriceListsRouteImport } from './routes/_app.price-lists'
 import { Route as AppPresenceRouteImport } from './routes/_app.presence'
 import { Route as AppPopupCenterRouteImport } from './routes/_app.popup-center'
 import { Route as AppPersonsRouteImport } from './routes/_app.persons'
@@ -112,7 +111,6 @@ import { Route as AppOperationsReceiptsRouteImport } from './routes/_app.operati
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
-import { Route as AppOperationsApiKeysRouteImport } from './routes/_app.operations.api-keys'
 import { Route as AppMessagesInquiriesRouteImport } from './routes/_app.messages.inquiries'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
@@ -316,11 +314,6 @@ const AppPurchasesRoute = AppPurchasesRouteImport.update({
 const AppPurchaseRoute = AppPurchaseRouteImport.update({
   id: '/purchase',
   path: '/purchase',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppPriceListsRoute = AppPriceListsRouteImport.update({
-  id: '/price-lists',
-  path: '/price-lists',
   getParentRoute: () => AppRoute,
 } as any)
 const AppPresenceRoute = AppPresenceRouteImport.update({
@@ -746,11 +739,6 @@ const AppOperationsDidarRoute = AppOperationsDidarRouteImport.update({
 const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
   id: '/operations/daily-mood',
   path: '/operations/daily-mood',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppOperationsApiKeysRoute = AppOperationsApiKeysRouteImport.update({
-  id: '/operations/api-keys',
-  path: '/operations/api-keys',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMessagesInquiriesRoute = AppMessagesInquiriesRouteImport.update({
@@ -1364,7 +1352,6 @@ export interface FileRoutesByFullPath {
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
   '/presence': typeof AppPresenceRoute
-  '/price-lists': typeof AppPriceListsRoute
   '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
@@ -1440,7 +1427,6 @@ export interface FileRoutesByFullPath {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/messages/inquiries': typeof AppMessagesInquiriesRoute
-  '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -1573,7 +1559,6 @@ export interface FileRoutesByTo {
   '/persons': typeof AppPersonsRoute
   '/popup-center': typeof AppPopupCenterRoute
   '/presence': typeof AppPresenceRoute
-  '/price-lists': typeof AppPriceListsRoute
   '/purchase': typeof AppPurchaseRoute
   '/purchases': typeof AppPurchasesRoute
   '/reports': typeof AppReportsRoute
@@ -1648,7 +1633,6 @@ export interface FileRoutesByTo {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/messages/inquiries': typeof AppMessagesInquiriesRoute
-  '/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -1783,7 +1767,6 @@ export interface FileRoutesById {
   '/_app/persons': typeof AppPersonsRoute
   '/_app/popup-center': typeof AppPopupCenterRoute
   '/_app/presence': typeof AppPresenceRoute
-  '/_app/price-lists': typeof AppPriceListsRoute
   '/_app/purchase': typeof AppPurchaseRoute
   '/_app/purchases': typeof AppPurchasesRoute
   '/_app/reports': typeof AppReportsRoute
@@ -1859,7 +1842,6 @@ export interface FileRoutesById {
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/_app/messages/inquiries': typeof AppMessagesInquiriesRoute
-  '/_app/operations/api-keys': typeof AppOperationsApiKeysRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -1995,7 +1977,6 @@ export interface FileRouteTypes {
     | '/persons'
     | '/popup-center'
     | '/presence'
-    | '/price-lists'
     | '/purchase'
     | '/purchases'
     | '/reports'
@@ -2071,7 +2052,6 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/messages/inquiries'
-    | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
@@ -2204,7 +2184,6 @@ export interface FileRouteTypes {
     | '/persons'
     | '/popup-center'
     | '/presence'
-    | '/price-lists'
     | '/purchase'
     | '/purchases'
     | '/reports'
@@ -2279,7 +2258,6 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/messages/inquiries'
-    | '/operations/api-keys'
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
@@ -2413,7 +2391,6 @@ export interface FileRouteTypes {
     | '/_app/persons'
     | '/_app/popup-center'
     | '/_app/presence'
-    | '/_app/price-lists'
     | '/_app/purchase'
     | '/_app/purchases'
     | '/_app/reports'
@@ -2489,7 +2466,6 @@ export interface FileRouteTypes {
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
     | '/_app/messages/inquiries'
-    | '/_app/operations/api-keys'
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
     | '/_app/operations/purchase-advisor'
@@ -2764,13 +2740,6 @@ declare module '@tanstack/react-router' {
       path: '/purchase'
       fullPath: '/purchase'
       preLoaderRoute: typeof AppPurchaseRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/price-lists': {
-      id: '/_app/price-lists'
-      path: '/price-lists'
-      fullPath: '/price-lists'
-      preLoaderRoute: typeof AppPriceListsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/presence': {
@@ -3345,13 +3314,6 @@ declare module '@tanstack/react-router' {
       path: '/operations/daily-mood'
       fullPath: '/operations/daily-mood'
       preLoaderRoute: typeof AppOperationsDailyMoodRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/operations/api-keys': {
-      id: '/_app/operations/api-keys'
-      path: '/operations/api-keys'
-      fullPath: '/operations/api-keys'
-      preLoaderRoute: typeof AppOperationsApiKeysRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages/inquiries': {
@@ -4295,7 +4257,6 @@ interface AppRouteChildren {
   AppPersonsRoute: typeof AppPersonsRoute
   AppPopupCenterRoute: typeof AppPopupCenterRoute
   AppPresenceRoute: typeof AppPresenceRoute
-  AppPriceListsRoute: typeof AppPriceListsRoute
   AppPurchaseRoute: typeof AppPurchaseRoute
   AppPurchasesRoute: typeof AppPurchasesRoute
   AppReportsRoute: typeof AppReportsRoute
@@ -4359,7 +4320,6 @@ interface AppRouteChildren {
   AppMarketingMyTasksRoute: typeof AppMarketingMyTasksRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
-  AppOperationsApiKeysRoute: typeof AppOperationsApiKeysRoute
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsDidarRoute: typeof AppOperationsDidarRoute
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
@@ -4439,7 +4399,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppPersonsRoute: AppPersonsRoute,
   AppPopupCenterRoute: AppPopupCenterRoute,
   AppPresenceRoute: AppPresenceRoute,
-  AppPriceListsRoute: AppPriceListsRoute,
   AppPurchaseRoute: AppPurchaseRoute,
   AppPurchasesRoute: AppPurchasesRoute,
   AppReportsRoute: AppReportsRoute,
@@ -4505,7 +4464,6 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingMyTasksRoute: AppMarketingMyTasksRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
-  AppOperationsApiKeysRoute: AppOperationsApiKeysRoute,
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsDidarRoute: AppOperationsDidarRoute,
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,

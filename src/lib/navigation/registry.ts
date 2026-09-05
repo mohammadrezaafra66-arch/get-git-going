@@ -233,18 +233,10 @@ const NAVIGATION_SEEDS = [
     group: "products-pricing",
     subgroup: "pp-publish",
   },
-  // Phase 9.3 — same situation as /messages: the route exists with
-  // requirePermission("price-lists", "view") and is already declared in
-  // PRIMARY_MODULES.paths for the catalog module, but had no seed. Guard
-  // unchanged.
-  {
-    to: "/price-lists",
-    label: "لیست‌های قیمت",
-    icon: ListOrdered,
-    module: "price-lists",
-    group: "products-pricing",
-    subgroup: "pp-publish",
-  },
+  // Wave 1 (B-10): the /price-lists seed was removed together with its route.
+  // The page was a self-declared shell ("ماژول لیست‌های قیمت — به‌زودی") and the
+  // owner asked for it to be taken out of the menu. Its tables were renamed to
+  // zz_retired_price_lists / zz_retired_price_list_items in migration 450.
   {
     to: "/pricing/recompute-prices",
     label: "انتشار دسته‌ای قیمت",

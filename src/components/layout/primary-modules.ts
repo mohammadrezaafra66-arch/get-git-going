@@ -93,7 +93,6 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/pricing/attention",
       "/pricing/sale-lists",
       "/pricing/live-price-list",
-      "/price-lists",
       "/pricing/amin-hozoor-board",
       "/pricing/rules",
       "/pricing/sale-price-types",
