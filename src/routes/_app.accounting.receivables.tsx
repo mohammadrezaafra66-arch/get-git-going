@@ -95,6 +95,12 @@ type ListRow = {
   due_date_unknown: boolean | null;
   due_date_unknown_reason: string | null;
   settlement_inactive_flag: boolean | null;
+  /** Migration 466 — the quote's own salesperson, resolved to a name by the RPC. */
+  salesperson_id: string | null;
+  salesperson_name: string | null;
+  /** Migration 466 — final_limit from the newest capital snapshot. NULL means never computed. */
+  credit_ceiling: number | null;
+  credit_ceiling_date: string | null;
 };
 
 type DetailRow = {
@@ -172,6 +178,47 @@ function DueDate({
         <Badge variant="secondary" className="font-normal">
           نوع تسویه غیرفعال
         </Badge>
+      ) : null}
+    </span>
+  );
+}
+
+/**
+ * The credit ceiling, and the one case where a number would be a lie.
+ *
+ * Migration 466 returns `credit_ceiling` as `customer_capital_allocations_dynamic.final_limit`
+ * for the newest capital snapshot, deliberately NOT COALESCEd to zero. NULL therefore means one
+ * of two things — the customer has no allocation in that snapshot, or the row is a guest quote
+ * with no `customer_id` to allocate against — and in both of them no ceiling was ever computed.
+ *
+ * Printing ۰ there would be the defect migration 453 already had to fix once on the
+ * credit-customers report: a customer whose ceiling was computed as zero and a customer whose
+ * ceiling was never computed are different facts, and the accountant reads the number, not the
+ * absence of one. A computed zero is still shown as ۰, because that one really is a ceiling.
+ *
+ * The snapshot's own date is shown beneath the figure. The allocation is only rerun when the
+ * accountant runs one, so the number on screen is routinely days old and must say which day it
+ * belongs to.
+ */
+function CreditCeiling({
+  row,
+}: {
+  row: { credit_ceiling: number | null; credit_ceiling_date?: string | null };
+}) {
+  if (row.credit_ceiling == null) {
+    return (
+      <Badge data-testid="receivables-ceiling" variant="outline" className="font-normal">
+        سقفی ثبت نشده
+      </Badge>
+    );
+  }
+  return (
+    <span data-testid="receivables-ceiling" className="inline-flex flex-col items-start">
+      <span className="font-medium">{fmtMoney(row.credit_ceiling)}</span>
+      {row.credit_ceiling_date ? (
+        <span className="text-xs text-muted-foreground">
+          سقف {fmtDate(row.credit_ceiling_date)}
+        </span>
       ) : null}
     </span>
   );
@@ -512,6 +559,8 @@ function ReceivablesPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-right">مشتری</TableHead>
+                      <TableHead className="text-right">کارشناس فروش</TableHead>
+                      <TableHead className="text-right">سقف اعتبار</TableHead>
                       <TableHead className="text-right">شماره فاکتور</TableHead>
                       <TableHead className="text-right">سررسید</TableHead>
                       <TableHead className="text-right">مبلغ کل</TableHead>
@@ -527,6 +576,12 @@ function ReceivablesPage() {
                     {listQ.data!.map((r) => (
                       <TableRow key={r.invoice_id}>
                         <TableCell>{r.customer_name || NA}</TableCell>
+                        <TableCell data-testid="receivables-salesperson">
+                          {r.salesperson_name || NA}
+                        </TableCell>
+                        <TableCell>
+                          <CreditCeiling row={r} />
+                        </TableCell>
                         <TableCell>
                           {r.invoice_number ? toFaDigits(r.invoice_number) : NA}
                         </TableCell>
@@ -584,6 +639,9 @@ function ReceivablesPage() {
                         <div className="text-xs text-muted-foreground">
                           فاکتور {r.invoice_number ? toFaDigits(r.invoice_number) : NA}
                         </div>
+                        <div className="text-xs text-muted-foreground">
+                          کارشناس فروش: {r.salesperson_name || NA}
+                        </div>
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         {r.is_overdue ? (
@@ -612,6 +670,10 @@ function ReceivablesPage() {
                       <div>
                         <span className="text-muted-foreground">پرداخت‌شده: </span>
                         {fmtMoney(r.confirmed_paid_amount)}
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">سقف اعتبار: </span>
+                        <CreditCeiling row={r} />
                       </div>
                     </div>
                     <div className="flex gap-2">
