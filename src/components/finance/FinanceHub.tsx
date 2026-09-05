@@ -104,6 +104,15 @@ const COLUMNS: readonly { sign: string; title: string; items: readonly HubItem[]
         label: "دفتر اسناد",
         target: { kind: "registry", route: "/accounting/documents" },
       },
+      // W-3 — the hub sends you to a party's file, and a customer file was the
+      // one it could not reach. Gated through the registry entry that already
+      // exists for this route, exactly like every other item here, so nothing
+      // in src/lib/navigation/registry.ts had to change.
+      {
+        to: "/sales/customers",
+        label: "مشتریان",
+        target: { kind: "registry", route: "/sales/customers" },
+      },
       { to: "/persons", label: "اشخاص", target: { kind: "registry", route: "/persons" } },
       { to: "/warehouses", label: "انبار", target: { kind: "registry", route: "/warehouses" } },
       {
