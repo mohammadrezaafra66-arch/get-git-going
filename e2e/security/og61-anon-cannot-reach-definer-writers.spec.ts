@@ -82,7 +82,8 @@ test("⛔ anon executes NONE of the 26 definer writers", () => {
 });
 
 /**
- * Of the 26, the twenty that wave 4 deliberately closed to `authenticated` as well.
+ * Of the 26, the twenty-one closed to `authenticated` as well: twenty by wave 4, plus
+ * expire_pending_documents by wave 2 (470), which wave 4 missed.
  *
  * 399 revoked ONLY the anon path, and the test below used to assert that all 26 remained
  * reachable by `authenticated` — "the revoke cut exactly the unauthenticated path and nothing
@@ -92,7 +93,7 @@ test("⛔ anon executes NONE of the 26 definer writers", () => {
  * Every name here has NO direct caller in src/ or server/ — only the generated
  * src/integrations/supabase/types.ts — and reaches its real callers (triggers, nested SECURITY
  * DEFINER calls, or the service-role client) as the function OWNER, for which a session role's
- * grant is irrelevant. That is migration 436's apply_stock_movement reasoning, applied twenty
+ * grant is irrelevant. That is migration 436's apply_stock_movement reasoning, applied twenty-one
  * more times.
  *
  * This list is enumerated rather than derived ON PURPOSE, and the two assertions below are
@@ -100,7 +101,7 @@ test("⛔ anon executes NONE of the 26 definer writers", () => {
  * this list must still be open, and nothing can drift in either direction unnoticed. Loosening
  * the old assertion to `toBeGreaterThan(0)` would have hidden both.
  */
-const CLOSED_TO_AUTHENTICATED_BY_WAVE4: Record<string, string> = {
+const CLOSED_TO_AUTHENTICATED: Record<string, string> = {
   recalculate_settlement_score: "462 — no caller at all",
   update_customer_overdue_status: "462 — no caller at all",
   asan_burn_document_number: "462 — three tg_asan_burn_* triggers only",
@@ -121,9 +122,16 @@ const CLOSED_TO_AUTHENTICATED_BY_WAVE4: Record<string, string> = {
   check_and_update_mission_progress_for_employee: "465 — trg_check_missions_after_score only",
   capture_score_snapshots: "465 — no caller; INSERTs then DELETEs on a 90-day retention",
   expire_pending_delivery_receipts: "465 — tick_inquiries only; calls auto_submit_penalty",
+  expire_pending_documents:
+    "470 — tick_inquiries only, body line 54, exactly like its sibling above. It had NO call " +
+    "site in src/ at all; the two source hits that looked like callers are both prose sitting " +
+    "beside a call to tick_inquiries (inquiry-status.ts:18 is a docblock, InquiryBoard.tsx:211 " +
+    "is a comment in a catch). 465 revoked the other two of the three functions tick_inquiries " +
+    "PERFORMs and the board kept working, which is why the nested path surviving is measured " +
+    "here rather than predicted.",
 };
 
-test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated", () => {
+test("the 26 minus the twenty-one closed are STILL reachable by authenticated", () => {
   const reachable = new Set(
     dbRows(`
     select p.proname
@@ -134,12 +142,18 @@ test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated
      order by 1
   `),
   );
-  const shouldBeOpen = TARGETS.filter((n) => !(n in CLOSED_TO_AUTHENTICATED_BY_WAVE4));
+  const shouldBeOpen = TARGETS.filter((n) => !(n in CLOSED_TO_AUTHENTICATED));
   const wronglyClosed = shouldBeOpen.filter((n) => !reachable.has(n));
 
-  // If this fires, a revoke went too far and broke a legitimate caller — the messenger inquiry
-  // flow calls expire_pending_documents as an authenticated user, ProductForm calls
-  // find_or_create_model, and the bot-api-keys page calls delete_bot_api_key_secure.
+  // If this fires, a revoke went too far and broke a legitimate caller — the inquiry board
+  // calls tick_inquiries as an ordinary group member, ProductForm calls find_or_create_model,
+  // and the bot-api-keys page calls delete_bot_api_key_secure.
+  //
+  // This comment used to name expire_pending_documents here instead of tick_inquiries, a claim
+  // inherited from migration 399's header (line 41) and repeated by every reader after it. It
+  // was wrong: expire_pending_documents has no call site anywhere, and the inquiry flow reaches
+  // it only nested inside tick_inquiries. Migration 470 revoked it and moved it to the closed
+  // list above. A justification that names a caller must name a line that calls it.
   expect(
     wronglyClosed,
     `these have a live authenticated caller and must keep EXECUTE: ${wronglyClosed.join(", ")}`,
@@ -147,7 +161,7 @@ test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated
 
   // And the other direction: a name listed as closed must actually BE closed. Without this the
   // list becomes a place to park names to make the suite quiet.
-  const notActuallyClosed = Object.keys(CLOSED_TO_AUTHENTICATED_BY_WAVE4).filter((n) =>
+  const notActuallyClosed = Object.keys(CLOSED_TO_AUTHENTICATED).filter((n) =>
     reachable.has(n),
   );
   expect(
@@ -156,12 +170,12 @@ test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated
   ).toEqual([]);
 });
 
-test("the twenty closed to authenticated are still reachable by their INTERNAL path", () => {
+test("the twenty-one closed to authenticated are still reachable by their INTERNAL path", () => {
   // The OPEN half of wave 4's revokes, and the reason they are safe. A trigger or a nested
   // SECURITY DEFINER call runs with current_user = the function owner, so what has to remain
   // true is that the OWNER still holds EXECUTE. Revoking from the owner too would satisfy every
-  // closed-half assertion above and would silently break twenty internal paths.
-  const names = Object.keys(CLOSED_TO_AUTHENTICATED_BY_WAVE4);
+  // closed-half assertion above and would silently break twenty-one internal paths.
+  const names = Object.keys(CLOSED_TO_AUTHENTICATED);
   const list = names.map((n) => `'${n}'`).join(",");
   const ownerReachable = dbRows(`
     select p.proname
@@ -550,12 +564,12 @@ const AUTHENTICATED_REACHABLE_ALLOWLIST: Record<string, string> = {
     "is why the signal regex does not see it: it refuses unless the caller is 'admin' or holds " +
     "the key's own managed_by_role. Migration 463 revokes anon and PUBLIC; authenticated stays " +
     "because src/routes/_app.bot-api-keys.index.tsx calls it as the signed-in user.",
-  expire_pending_documents:
-    "An idempotent time sweep with NO parameters. It expires documents whose review_deadline " +
-    "has already passed and can do nothing a caller chooses - there is no argument to point it " +
-    "at a target. Called on the inquiry board by any group member " +
-    "(src/lib/messenger/inquiry-status.ts); gating it would break the board for the people it " +
-    "exists to serve.",
+  // expire_pending_documents was here, on the reason "called on the inquiry board by any group
+  // member (src/lib/messenger/inquiry-status.ts)". That reason was false — that file calls
+  // tick_inquiries, and the only mention of expire_pending_documents in it is a docblock.
+  // Migration 470 revoked the direct grant; the entry now lives in the closed list at the top
+  // of this file. Left as a comment, not deleted silently, because the allowlist's own rule is
+  // that an entry whose reason no longer matches the body is a defect even while it is green.
   tick_inquiries:
     "Same shape: no parameters, advances inquiry statuses purely on elapsed time, and is " +
     "invoked from the inquiry board by ordinary members (src/lib/messenger/inquiry-status.ts, " +
