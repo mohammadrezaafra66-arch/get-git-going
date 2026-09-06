@@ -9,8 +9,8 @@ import type { AppRole } from "@/lib/rbac/roles";
  *
  * ## What is broken
  *
- * `requireAnyRole` / `requirePermission` / `requireAdmin` each return WITHOUT throwing in two
- * situations, and both are fail-open:
+ * `requireAnyRole` / `requirePermission` / `requireAdmin` each returned WITHOUT throwing in two
+ * situations, and both were fail-open:
  *
  *   1. `typeof window === "undefined"` — the SSR pass. `ensureAuthReady` reads the session out
  *      of browser storage, so the server genuinely cannot know who the caller is.
@@ -20,6 +20,20 @@ import type { AppRole } from "@/lib/rbac/roles";
  * accounting routes rendered in full on a cold page load, and three of four rendered while
  * roles were still in flight. Client-side navigation was correct on all thirteen. That
  * asymmetry is the defect.
+ *
+ * **CORRECTION, wave 2 (2026-09-06): case 2 is FIXED and this header described it as live.**
+ * `settleRoles()` (src/lib/rbac/route-guards.ts:79-109) now awaits the role load instead of
+ * returning while it is in flight, and all three guards refuse an unsettled snapshot with
+ * `redirect({ to: "/unauthorized" })` at `:126`, `:160` and `:194`. There is no roles-loading
+ * race left to describe; a reader who takes the paragraph above at face value will believe
+ * client-side navigation is unsafe, and it is not.
+ *
+ * **Case 1 — the SSR fail-open — is what remains, and it is deliberate.** `resolveAuthWithRetry()`
+ * returns null on the server (`route-guards.ts:15`) and each guard then returns
+ * `{ user: null, roles: [] }` (`:114`, `:151`, `:185`). Because a cold direct navigation runs
+ * `beforeLoad` ONLY on the server, the exposure is permanent for that page view rather than a
+ * window that closes — which is precisely why this component, and not a fix in the guards, is the
+ * enforcement point.
  *
  * ## Why this is not fixed on the server
  *
@@ -59,6 +73,24 @@ import type { AppRole } from "@/lib/rbac/roles";
  * One line per route. That is why this mission applies it to the thirteen accounting routes
  * only and leaves the other 136 guarded routes alone — a repo-wide rollout is a decision the
  * owner has not taken, and it is recorded as an Owner-Gate rather than assumed here.
+ *
+ * **UPDATE, wave 2 (2026-09-06): that Owner-Gate was opened, partly.** The owner took the
+ * decision for the routes the wave-2 investigation classified as **tier 1** — money, credit,
+ * roles/permissions, API keys, PII, or a destructive control — and 36 of them were gated
+ * (docs/missions/security2/CONTRACTS.md §1 decision 1 and §10). Tier 2 (62 routes) and tier 3
+ * (47) were explicitly NOT taken and are carried forward as a named backlog with their exposure
+ * lines and live role sets already written, in
+ * docs/research/security2-investigation-20260906.md. So a route with a guard and no gate is still
+ * an open item rather than a settled exemption.
+ *
+ * ## Where `allowed` comes from — the one thing that is easy to get wrong
+ *
+ * `allowed` mirrors the LIVE `role_permissions` table, never `src/lib/rbac/roles.ts`. The static
+ * table disagrees with the database on 13 modules. The worst is `pricing`: live grants view to
+ * admin, manager, accountant, **sales and purchase_specialist**, where the static table names
+ * three — so a gate copied from `roles.ts` would deny every real salesperson on ~15 routes, a
+ * false denial that also makes the two layers contradict each other. Read the module's row out of
+ * the database before writing a gate.
  *
  * The role list still lives in one place per route, on the line above the `beforeLoad` call it
  * mirrors, so the two cannot drift apart without both being visible in the same three lines.

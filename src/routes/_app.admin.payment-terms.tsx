@@ -347,6 +347,10 @@ function PaymentTermsPage() {
 }
 
 export const Route = createFileRoute("/_app/admin/payment-terms")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requireAdmin() below.
+  staticData: { gate: { kind: "admin" } },
   // This route had no beforeLoad guard, unlike every other /admin/* route.
   // Writes were still blocked by the payment_terms RLS policy, so this was not
   // a write leak — but the page itself was reachable by any signed-in user.

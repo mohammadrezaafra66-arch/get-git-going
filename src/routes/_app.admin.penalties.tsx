@@ -296,6 +296,10 @@ function AdminPenaltiesPage() {
 }
 
 export const Route = createFileRoute("/_app/admin/penalties")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors the requireAnyRole call below, which is this route's own authority.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager"] } },
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager"]);
   },

@@ -14,6 +14,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { regenerateProductNames, type RegenerateNameResult } from "@/lib/products/regenerate-names";
 
 export const Route = createFileRoute("/_app/products/regenerate-names")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requirePermission("products", "update"). `allowed` is the LIVE
+  // role_permissions.products.can_update set read from the database on 2026-09-06 —
+  // NOT src/lib/rbac/roles.ts, whose static table disagrees for several modules.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager", "accountant"] } },
   beforeLoad: async () => {
     await requirePermission("products", "update");
   },

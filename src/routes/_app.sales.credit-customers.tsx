@@ -39,6 +39,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/_app/sales/credit-customers")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requirePermission("sales", "view"). `allowed` is the LIVE
+  // role_permissions.sales.can_view set read from the database on 2026-09-06 —
+  // NOT src/lib/rbac/roles.ts, whose static table disagrees for several modules.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager", "accountant", "sales"] } },
   beforeLoad: async () => {
     await requirePermission("sales", "view");
   },

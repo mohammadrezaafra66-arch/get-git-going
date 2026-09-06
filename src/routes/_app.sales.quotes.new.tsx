@@ -61,6 +61,11 @@ import {
 export const ALLOWED_ROLES: AppRole[] = ["admin", "manager", "sales"];
 
 export const Route = createFileRoute("/_app/sales/quotes/new")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Reads the same ALLOWED_ROLES constant the requireAnyRole call below uses, so the client
+  // gate and the server guard cannot drift apart.
+  staticData: { gate: { kind: "anyRole", allowed: ALLOWED_ROLES } },
   beforeLoad: async () => {
     // Phase 6.7 — was a hand-rolled ensureAuthReady() guard, which redirected
     // authenticated users to /login on any server-rendered navigation.

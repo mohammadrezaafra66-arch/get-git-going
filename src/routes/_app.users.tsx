@@ -47,6 +47,10 @@ type Status = "all" | "pending" | "active" | "inactive" | "rejected";
 const VALID_STATUS: Status[] = ["all", "pending", "active", "inactive", "rejected"];
 
 export const Route = createFileRoute("/_app/users")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requireAdmin() below.
+  staticData: { gate: { kind: "admin" } },
   validateSearch: (s: Record<string, unknown>): { status?: Status } => {
     const v = s.status;
     return {
