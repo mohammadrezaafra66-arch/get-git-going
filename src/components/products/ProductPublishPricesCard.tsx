@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { publishProductPrices, type PublishProductResult } from "@/lib/pricing/publish-prices";
 import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
 
@@ -18,7 +18,7 @@ interface Props {
 export function ProductPublishPricesCard({ productId }: Props) {
   const { roles } = useAuth();
   const canPrice =
-    hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
+    hasPermissionEx(roles, "pricing", "update") || hasPermissionEx(roles, "pricing", "create");
   const queryClient = useQueryClient();
   const [running, setRunning] = useState(false);
   const [lastResult, setLastResult] = useState<PublishProductResult | null>(null);

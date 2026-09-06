@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 import {
@@ -112,8 +112,8 @@ function normalizeProduct(r: any): ProductRow {
 
 function ProductsPage() {
   const { roles } = useAuth();
-  const canCreate = hasPermission(roles, "products", "create");
-  const canUpdate = hasPermission(roles, "products", "update");
+  const canCreate = hasPermissionEx(roles, "products", "create");
+  const canUpdate = hasPermissionEx(roles, "products", "update");
 
   const [filters, setFilters] = useSessionStorageState<ProductFilterState>(
     "products:list:filters",
