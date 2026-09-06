@@ -26,8 +26,26 @@ import {
   USD_DRIFT_THRESHOLD_PCT,
 } from "@/lib/popups/config";
 import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
+import { requirePermission } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/pricing/attention")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requirePermission("pricing", "view"). `allowed` is the LIVE
+  // role_permissions.pricing.can_view set read from the database on 2026-09-06 —
+  // NOT src/lib/rbac/roles.ts, whose static table disagrees for several modules.
+  // This route had NO guard of any kind before wave 2 (investigation class (i) row 18): it reads
+  // supplier cost prices via v_latest_active_purchase_prices and renders product-owner names,
+  // so the beforeLoad below was added in the same change as the gate.
+  staticData: {
+    gate: {
+      kind: "anyRole",
+      allowed: ["admin", "manager", "accountant", "sales", "purchase_specialist"],
+    },
+  },
+  beforeLoad: async () => {
+    await requirePermission("pricing", "view");
+  },
   component: AttentionPage,
 });
 

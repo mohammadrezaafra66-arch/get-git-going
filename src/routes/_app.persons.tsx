@@ -101,6 +101,14 @@ function isViewerOnly(roles: AppRole[]): boolean {
 }
 
 export const Route = createFileRoute("/_app/persons")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requirePermission("persons", "view"). `allowed` is the LIVE
+  // role_permissions.persons.can_view set read from the database on 2026-09-06 —
+  // NOT src/lib/rbac/roles.ts, whose static table disagrees for several modules.
+  staticData: {
+    gate: { kind: "anyRole", allowed: ["admin", "manager", "accountant", "sales", "viewer"] },
+  },
   validateSearch: (s: Record<string, unknown>): PersonsSearch => {
     const kindRaw = typeof s.kind === "string" ? s.kind : undefined;
     const kind =

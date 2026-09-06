@@ -16,6 +16,12 @@ import { requirePermission } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/persons_/create")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requirePermission("persons", "create"). `allowed` is the LIVE
+  // role_permissions.persons.can_create set read from the database on 2026-09-06 —
+  // NOT src/lib/rbac/roles.ts, whose static table disagrees for several modules.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager"] } },
   beforeLoad: async () => {
     await requirePermission("persons", "create");
   },

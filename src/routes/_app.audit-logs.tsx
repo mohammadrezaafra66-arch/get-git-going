@@ -9,6 +9,10 @@ import { requireAdmin } from "@/lib/rbac/route-guards";
 import { formatDateFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/audit-logs")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requireAdmin() below.
+  staticData: { gate: { kind: "admin" } },
   beforeLoad: async () => {
     await requireAdmin();
   },

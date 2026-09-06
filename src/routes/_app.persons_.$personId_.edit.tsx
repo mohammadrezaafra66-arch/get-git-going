@@ -20,6 +20,12 @@ import { hasPermissionEx } from "@/lib/rbac/roles";
 import { requirePermission } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/persons_/$personId_/edit")({
+  // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
+  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
+  // Mirrors requirePermission("persons", "update"). `allowed` is the LIVE
+  // role_permissions.persons.can_update set read from the database on 2026-09-06 —
+  // NOT src/lib/rbac/roles.ts, whose static table disagrees for several modules.
+  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager"] } },
   beforeLoad: async () => {
     await requirePermission("persons", "update");
   },
