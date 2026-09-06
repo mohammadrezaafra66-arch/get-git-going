@@ -454,12 +454,15 @@ function AllocationWorkbenchPage() {
             ) : suggestion.input_id ? (
               <span>
                 سرمایهٔ پیشنهادی سامانه برای این روز:{" "}
-                <span className="font-semibold">{fmtMoney(suggestion.system_suggested_capital)}</span>
+                <span className="font-semibold">
+                  {fmtMoney(suggestion.system_suggested_capital)}
+                </span>
               </span>
             ) : (
               <span className="text-muted-foreground">
-                پیشنهاد سرمایهٔ روز محاسبه نشد؛ ورودی‌های نقدی این تاریخ («موجودی بانک، صندوق، چک‌ها»)
-                ثبت نشده است. ارقام معوق و سررسید بالا از خودِ اسناد خوانده شده‌اند و معتبرند.
+                پیشنهاد سرمایهٔ روز محاسبه نشد؛ ورودی‌های نقدی این تاریخ («موجودی بانک، صندوق،
+                چک‌ها») ثبت نشده است. ارقام معوق و سررسید بالا از خودِ اسناد خوانده شده‌اند و
+                معتبرند.
               </span>
             )}
           </div>
@@ -487,7 +490,8 @@ function AllocationWorkbenchPage() {
             <div className="space-y-2">
               {receivables.map((r) => {
                 const signal = r.customer_id ? overdueQ.data?.[r.customer_id] : undefined;
-                const selected = payer?.customerId === r.customer_id && payer?.quoteId === r.invoice_id;
+                const selected =
+                  payer?.customerId === r.customer_id && payer?.quoteId === r.invoice_id;
                 return (
                   <div
                     key={r.invoice_id}
@@ -576,7 +580,10 @@ function AllocationWorkbenchPage() {
                 </div>
                 <div className="space-y-1">
                   <Label>اولویت</Label>
-                  <Select value={priority} onValueChange={(v) => setPriority(v as AllocationPriority)}>
+                  <Select
+                    value={priority}
+                    onValueChange={(v) => setPriority(v as AllocationPriority)}
+                  >
                     <SelectTrigger data-testid="wb-new-priority">
                       <SelectValue />
                     </SelectTrigger>
@@ -837,9 +844,7 @@ function AllocationRowCard({ row, onChanged }: { row: AllocationRow; onChanged: 
       <div className="font-semibold">{fmtMoney(row.amount)}</div>
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-        <span data-testid="wb-row-status">
-          وضعیت: {row.status ? row.status : "پیگیری نشده"}
-        </span>
+        <span data-testid="wb-row-status">وضعیت: {row.status ? row.status : "پیگیری نشده"}</span>
         {row.promised_at ? <span>· قول: {fmtDate(row.promised_at)}</span> : null}
         {row.promised_note ? <span>· {row.promised_note}</span> : null}
       </div>

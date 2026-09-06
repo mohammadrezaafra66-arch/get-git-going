@@ -290,9 +290,7 @@ async function coldVisit(page: Page) {
     // The page's own <h1>. It has to be the heading and not any text: the app chrome renders
     // for everybody, and the sidebar carries the same label — a substring match would report a
     // false exposure on a page RouteRoleGate had correctly refused.
-    heading: await page
-      .getByRole("heading", { level: 1, name: HEADING, exact: true })
-      .count(),
+    heading: await page.getByRole("heading", { level: 1, name: HEADING, exact: true }).count(),
   };
 }
 
@@ -360,9 +358,9 @@ test("the open half — a cold accountant reaches the workbench and all three co
 
     // And the hub actually offers it to this role.
     await page.goto("/accounting/receipts/create", { waitUntil: "domcontentloaded" });
-    await expect(
-      page.getByRole("link", { name: HEADING, exact: true }).first(),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("link", { name: HEADING, exact: true }).first()).toBeVisible({
+      timeout: 15_000,
+    });
   } finally {
     await close();
   }

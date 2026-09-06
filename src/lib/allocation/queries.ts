@@ -231,10 +231,7 @@ export async function fetchSupplierPersonIds(
 ): Promise<Record<string, string>> {
   const unique = Array.from(new Set(supplierIds.filter(Boolean)));
   if (unique.length === 0) return {};
-  const { data, error } = await supabase
-    .from("suppliers")
-    .select("id, person_id")
-    .in("id", unique);
+  const { data, error } = await supabase.from("suppliers").select("id, person_id").in("id", unique);
   if (error) throw new Error(error.message);
   const out: Record<string, string> = {};
   for (const row of (data as unknown as Array<{ id: string; person_id: string | null }> | null) ??
