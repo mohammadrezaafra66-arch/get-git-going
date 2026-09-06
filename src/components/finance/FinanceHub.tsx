@@ -201,6 +201,14 @@ const COLUMNS: readonly { sign: string; title: string; items: readonly HubItem[]
         label: "بدهی تأمین‌کنندگان",
         target: { kind: "registry", route: "/accounting/payables" },
       },
+      {
+        // Wave 5 — the two columns above, side by side, plus the day's allocation decision.
+        // Visibility is not restated here: the hub reads the registry entry, so this row
+        // appears for exactly the roles `role_permissions.accounting.can_view` allows.
+        to: "/accounting/allocation-workbench",
+        label: "پخش حساب",
+        target: { kind: "registry", route: "/accounting/allocation-workbench" },
+      },
     ],
   },
 ];

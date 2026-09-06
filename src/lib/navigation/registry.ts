@@ -463,6 +463,19 @@ const NAVIGATION_SEEDS = [
     group: "finance",
   },
   {
+    // Wave 5 / [U] D-22 — «پخش حساب». No new role_permissions row: the entry keys off
+    // `module: "accounting"`, whose live rows already grant can_view to exactly
+    // admin/manager/accountant and refuse sales, viewer, purchase_specialist and site —
+    // the same three roles the route's own gate and compute_daily_capital name.
+    // NOTE: `group` is "finance", matching every neighbour here. The mission brief said
+    // "accounting"; there is no such NavigationGroupKey, and the live code is the authority.
+    to: "/accounting/allocation-workbench",
+    label: "پخش حساب",
+    icon: Coins,
+    module: "accounting",
+    group: "finance",
+  },
+  {
     to: "/accounting/purchase-payments",
     label: "پرداخت خرید",
     icon: CreditCard,

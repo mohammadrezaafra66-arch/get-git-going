@@ -170,6 +170,7 @@ import { Route as AppAccountingDocumentsRouteImport } from './routes/_app.accoun
 import { Route as AppAccountingDailyCapitalRouteImport } from './routes/_app.accounting.daily-capital'
 import { Route as AppAccountingCustomerCapitalAllocationsRouteImport } from './routes/_app.accounting.customer-capital-allocations'
 import { Route as AppAccountingBankAccountsRouteImport } from './routes/_app.accounting.bank-accounts'
+import { Route as AppAccountingAllocationWorkbenchRouteImport } from './routes/_app.accounting.allocation-workbench'
 import { Route as AppAcademyManageRouteImport } from './routes/_app.academy_.manage'
 import { Route as AppAcademyCourseIdRouteImport } from './routes/_app.academy_.$courseId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -1055,6 +1056,12 @@ const AppAccountingBankAccountsRoute =
     path: '/accounting/bank-accounts',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAccountingAllocationWorkbenchRoute =
+  AppAccountingAllocationWorkbenchRouteImport.update({
+    id: '/accounting/allocation-workbench',
+    path: '/accounting/allocation-workbench',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppAcademyManageRoute = AppAcademyManageRouteImport.update({
   id: '/academy_/manage',
   path: '/academy/manage',
@@ -1361,6 +1368,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
+  '/accounting/allocation-workbench': typeof AppAccountingAllocationWorkbenchRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
@@ -1566,6 +1574,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/academy/$courseId': typeof AppAcademyCourseIdRoute
   '/academy/manage': typeof AppAcademyManageRoute
+  '/accounting/allocation-workbench': typeof AppAccountingAllocationWorkbenchRoute
   '/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
@@ -1774,6 +1783,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_app/academy_/$courseId': typeof AppAcademyCourseIdRoute
   '/_app/academy_/manage': typeof AppAcademyManageRoute
+  '/_app/accounting/allocation-workbench': typeof AppAccountingAllocationWorkbenchRoute
   '/_app/accounting/bank-accounts': typeof AppAccountingBankAccountsRoute
   '/_app/accounting/customer-capital-allocations': typeof AppAccountingCustomerCapitalAllocationsRoute
   '/_app/accounting/daily-capital': typeof AppAccountingDailyCapitalRoute
@@ -1983,6 +1993,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/academy/$courseId'
     | '/academy/manage'
+    | '/accounting/allocation-workbench'
     | '/accounting/bank-accounts'
     | '/accounting/customer-capital-allocations'
     | '/accounting/daily-capital'
@@ -2188,6 +2199,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/academy/$courseId'
     | '/academy/manage'
+    | '/accounting/allocation-workbench'
     | '/accounting/bank-accounts'
     | '/accounting/customer-capital-allocations'
     | '/accounting/daily-capital'
@@ -2395,6 +2407,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_app/academy_/$courseId'
     | '/_app/academy_/manage'
+    | '/_app/accounting/allocation-workbench'
     | '/_app/accounting/bank-accounts'
     | '/_app/accounting/customer-capital-allocations'
     | '/_app/accounting/daily-capital'
@@ -3717,6 +3730,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAccountingBankAccountsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/accounting/allocation-workbench': {
+      id: '/_app/accounting/allocation-workbench'
+      path: '/accounting/allocation-workbench'
+      fullPath: '/accounting/allocation-workbench'
+      preLoaderRoute: typeof AppAccountingAllocationWorkbenchRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/academy_/manage': {
       id: '/_app/academy_/manage'
       path: '/academy/manage'
@@ -4249,6 +4269,7 @@ interface AppRouteChildren {
   AppWarehousesRoute: typeof AppWarehousesRoute
   AppAcademyCourseIdRoute: typeof AppAcademyCourseIdRoute
   AppAcademyManageRoute: typeof AppAcademyManageRoute
+  AppAccountingAllocationWorkbenchRoute: typeof AppAccountingAllocationWorkbenchRoute
   AppAccountingBankAccountsRoute: typeof AppAccountingBankAccountsRoute
   AppAccountingCustomerCapitalAllocationsRoute: typeof AppAccountingCustomerCapitalAllocationsRoute
   AppAccountingDailyCapitalRoute: typeof AppAccountingDailyCapitalRoute
@@ -4390,6 +4411,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppWarehousesRoute: AppWarehousesRoute,
   AppAcademyCourseIdRoute: AppAcademyCourseIdRoute,
   AppAcademyManageRoute: AppAcademyManageRoute,
+  AppAccountingAllocationWorkbenchRoute: AppAccountingAllocationWorkbenchRoute,
   AppAccountingBankAccountsRoute: AppAccountingBankAccountsRoute,
   AppAccountingCustomerCapitalAllocationsRoute:
     AppAccountingCustomerCapitalAllocationsRoute,
