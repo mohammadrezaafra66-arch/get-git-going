@@ -6,6 +6,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole, type AppRole } from "@/lib/rbac/roles";
 import { useDebounce } from "@/hooks/use-debounce";
+import {
+  findPersonIdsByFieldValue,
+  listPersonFieldDefinitions,
+} from "@/lib/persons/field-definitions";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { PageHeader } from "@/components/common/PageHeader";
 import { getPageTitle } from "@/config/branding";
@@ -77,6 +81,10 @@ type PersonsSearch = {
   active?: ActiveStatus;
   /** CSV of MissingFilter */
   missing?: string;
+  /** Wave 6 B-4 — person_field_definitions.id to filter on. */
+  fieldId?: string;
+  /** Wave 6 B-4 — substring matched against that field's stored value. */
+  fieldValue?: string;
   /** 1-based page */
   page?: number;
 };
@@ -138,6 +146,12 @@ export const Route = createFileRoute("/_app/persons")({
       contexts: contextsCsv,
       active,
       missing: missingCsv,
+      fieldId:
+        typeof s.fieldId === "string" && /^[0-9a-fA-F-]{36}$/.test(s.fieldId)
+          ? s.fieldId
+          : undefined,
+      fieldValue:
+        typeof s.fieldValue === "string" && s.fieldValue.length <= 80 ? s.fieldValue : undefined,
       page,
     };
   },
@@ -181,6 +195,8 @@ function PersonsListPage() {
   const contexts = parseCsvEnum(searchParams.contexts, CONTEXT_VALUES);
   const active = searchParams.active ?? "all";
   const missing = viewerOnly ? [] : parseCsvEnum(searchParams.missing, MISSING_VALUES);
+  const fieldId = searchParams.fieldId ?? "";
+  const fieldValue = searchParams.fieldValue ?? "";
   const page = Math.max(0, (searchParams.page ?? 1) - 1);
 
   const debouncedRaw = useDebounce(search, 350);
@@ -196,6 +212,11 @@ function PersonsListPage() {
         if (!next.contexts) delete next.contexts;
         if (!next.active || next.active === "all") delete next.active;
         if (!next.missing || viewerOnly) delete next.missing;
+        if (!next.fieldId) {
+          delete next.fieldId;
+          delete next.fieldValue;
+        }
+        if (!next.fieldValue) delete next.fieldValue;
         if (!next.page || next.page <= 1) delete next.page;
         return next;
       },
@@ -203,9 +224,42 @@ function PersonsListPage() {
     });
   };
 
+  // The custom-field filter (wave 6 B-4) needs its own query path, and that is deliberate.
+  // `search_visible_persons` computes `total_count` inside the function, before any filter a
+  // caller could add, so an extra `.in("id", …)` on the RPC would return a correct page with a
+  // WRONG total and silently break paging. Adding a `p_person_ids` parameter to the RPC would
+  // mean a backend change, which B-4 is explicitly not allowed to make without proving a
+  // column missing — and nothing is missing here.
+  //
+  // So when the field filter is on, the list is built from `person_field_values` -> `persons`
+  // instead. That is not a visibility hole: `pfv_select_via_person` already restricts the id
+  // set by the person's `visibility_scope`, and `persons` has its own RLS on top, so both ends
+  // are enforced by the database exactly as the RPC path is.
   const { data, isLoading, error } = useQuery({
-    queryKey: ["persons", { q: term, kind, contexts, active, missing, page }],
+    queryKey: ["persons", { q: term, kind, contexts, active, missing, fieldId, fieldValue, page }],
     queryFn: async () => {
+      if (fieldId) {
+        const ids = await findPersonIdsByFieldValue(fieldId, fieldValue);
+        if (ids.length === 0) return { rows: [] as PersonRow[], count: 0 };
+
+        let q = supabase
+          .from("persons")
+          .select("id, kind, display_name, legal_name, visibility_scope, is_active, created_at", {
+            count: "exact",
+          })
+          .in("id", ids)
+          .order("display_name", { ascending: true })
+          .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+
+        if (kind !== "all") q = q.eq("kind", kind);
+        if (active !== "all") q = q.eq("is_active", active === "active");
+        if (term) q = q.ilike("display_name", `%${term}%`);
+
+        const { data, error, count } = await q;
+        if (error) throw error;
+        return { rows: (data ?? []) as unknown as PersonRow[], count: count ?? 0 };
+      }
+
       const { data, error } = await supabase.rpc("search_visible_persons", {
         p_query: term,
         p_limit: PAGE_SIZE,
@@ -222,6 +276,14 @@ function PersonsListPage() {
     },
   });
 
+  // Only the ACTIVE definitions are offered as a filter; a deactivated field is not something
+  // to search the whole directory by.
+  const fieldDefsQuery = useQuery({
+    queryKey: ["person-field-definitions"],
+    queryFn: listPersonFieldDefinitions,
+  });
+  const filterableFields = (fieldDefsQuery.data ?? []).filter((d) => d.is_active);
+
   const rows = data?.rows ?? [];
   const total = data?.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -230,7 +292,8 @@ function PersonsListPage() {
     (kind !== "all" ? 1 : 0) +
     contexts.length +
     (active !== "all" ? 1 : 0) +
-    missing.length;
+    missing.length +
+    (fieldId ? 1 : 0);
 
   const toggleContext = (value: ContextFilter) => {
     const next = contexts.includes(value)
@@ -403,6 +466,38 @@ function PersonsListPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : null}
+
+            {/* Wave 6 B-4 — filter by a custom field's value. Only rendered once at least one
+                active definition exists, so the row stays clean on an installation that has
+                never defined one. */}
+            {filterableFields.length > 0 ? (
+              <>
+                <Select
+                  value={fieldId || "none"}
+                  onValueChange={(v) => patchSearch({ fieldId: v === "none" ? undefined : v })}
+                >
+                  <SelectTrigger className="w-44">
+                    <SelectValue placeholder="فیلد سفارشی" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">فیلد سفارشی</SelectItem>
+                    {filterableFields.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {fieldId ? (
+                  <Input
+                    className="w-40"
+                    value={fieldValue}
+                    placeholder="مقدار دقیق (خالی = دارای مقدار)"
+                    onChange={(e) => patchSearch({ fieldValue: e.target.value || undefined })}
+                  />
+                ) : null}
+              </>
             ) : null}
 
             {activeFilterCount > 0 || search.trim() ? (

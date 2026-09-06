@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/tooltip";
 import { PersonIdentifiersForm } from "@/components/persons/PersonIdentifiersForm";
 import { PersonAliasesManager } from "@/components/persons/PersonAliasesManager";
+import { PersonCustomFields } from "@/components/persons/PersonCustomFields";
 import { PersonDeepLinks } from "@/components/persons/PersonDeepLinks";
 import { PersonMergePanel } from "@/components/persons/PersonMergePanel";
 import { PersonCollisionPanel } from "@/components/persons/PersonCollisionPanel";
@@ -337,6 +338,11 @@ function PersonProfilePage() {
             <PersonAliasesManager personId={personId} canManage={canUpdate} />
           </CardContent>
         </Card>
+
+        {/* 4b. Custom fields (wave 6 B-4). person_field_definitions, person_field_values, their
+            RLS, validation triggers and audit triggers have all existed for months with no UI
+            reading them at all. Renders itself away when no definition applies to this person. */}
+        <PersonCustomFields personId={personId} personKind={person.kind} />
 
         {/* 5–6. Alerts: merge + collision */}
         <div className="grid gap-4 lg:grid-cols-2">
