@@ -98,9 +98,16 @@ Highest on disk **and** in ledger: `466 @ 20260906103000`. Disk 641 = ledger 641
 
 | Agent | Numbers | Timestamps (use in order, skip unused) |
 |---|---|---|
-| **F** (Group C) | `467`–`474` | `20260906110000`, `111500`, `113000`, `114500`, `120000`, `121500`, `123000`, `124500` |
+| **H** (halt rows) | `467`–`468` | `20260906110000`, `111500` — **both now USED and applied** |
+| **F** (Group C) | `469`–`474` | `20260906113000`, `114500`, `120000`, `121500`, `123000`, `124500` |
 | **D** (Group D) | `475` | `20260906130000` |
 | **R** (Group B) | none — no migrations in Group B | — |
+
+> ⚠️ **CORRECTED 2026-09-06 after Agent H reported the collision.** This table originally
+> allocated `467`–`474` to Agent F, which overlapped the `467`/`468` that Agent H's own brief
+> assigned it. **Agent H's dispatch brief was authoritative and H has already applied both.**
+> Agent F's dispatch brief already said `469`–`474`, so no collision occurred — but the row above
+> was wrong and is fixed here. **Agent F starts at `469` @ `20260906113000`.**
 
 Filename form: `2026MMDD<HHMMSS>_<NNN>_<snake_name>.sql`. **ASCII-only migrations preferred.**
 
@@ -369,3 +376,80 @@ gates read live, and the divergence is handed forward.**
 |---|---|---|---|---|
 | 2026-09-06 | orchestrator | Stage 0 | done | Q-0 3/3 pass · census §2 · numbers §3 · typecheck 70 · security suite 219/1 |
 | 2026-09-06 | orchestrator | Stage 1 dispatch | done | Agent A launched on `feature/security2-agentA`; A-1 and A-2 are gates |
+| 2026-09-06 | orchestrator | Stage 1 verify | done | 5 of A's claims re-derived independently; all 5 exact. Halt fired → 12 rows |
+| 2026-09-06 | **H** | **H-1** | **done, verified** | `feature/security2-halt` `3ab8eab8`. Orchestrator re-read `pg_policies`: all three SELECT quals now `has_any_role(auth.uid(), ARRAY['admin','manager','accountant'])`; the three write policies and `viewer_restricted` present and unchanged |
+| 2026-09-06 | **H** | **H-2** | **done, verified** | `feature/security2-halt` `eb9ce51d`. Orchestrator re-ran `has_function_privilege`: all four `bot_*` writers `anon=false, authenticated=true, service_role=true`, PUBLIC `=X` entry gone. Body guard confirmed in `prosrc`: `invalid_key` / `inactive_key` / `expired_key` |
+
+### Orchestrator's note on H's judgement call — accepted
+
+H did **not** halt on the brief's "INVOKER reader executable by sales" clause, and gave its reasoning:
+three INVOKER readers exist, two `sales`-executable, but no **sales feature** consumes any of them —
+executable-by-sales ≠ read-by-sales. **Accepted.** The clause existed to prevent breaking a working
+feature, and H established none exists. Its supporting finding is the more valuable one and is
+recorded here because a future author will need it:
+
+> `compute_normalized_raw_score` is the `BEFORE INSERT OR UPDATE` trigger on `dynamic_entity_scores`.
+> It reads `dynamic_scoring_parameters` and RAISEs on empty. `accountant` has **no write policy** on
+> that table (write is admin/manager), so **accountant score entry depends entirely on the SELECT
+> policy 467 rewrote.** Narrowing that SELECT to admin/manager would silently break accountant
+> score entry. Keeping `accountant` is load-bearing, not incidental.
+
+| 2026-09-06 | **D** | **D-1** | **done, verified** | `feature/security2-audit` `320624bd`, migration `475`. Orchestrator re-read the catalogue: both `trg_audit_*` triggers present (`AFTER INSERT OR DELETE OR UPDATE … FOR EACH ROW`), `audit_ai_routing_change` is `prosecdef=true` with `search_path=public`, **both pre-existing `set_updated_at` triggers still present**, OCR pin intact (`receipt_ocr.vision · ollama · http://192.168.170.8:11434 · enabled · active`), `audit_logs` unchanged at **50,607 rows / max_id 62,711** — identical to the orchestrator's own Stage-0 reading, so the eight proofs left nothing behind |
+
+| 2026-09-06 | **F** | **C-1** | **done, no migration — verified** | Split reproduced `120\|71\|70\|1`. Orchestrator's own query for anon-reachable DEFINER writers consulting **no** caller identity returns **zero rows**. F's method correction kept: a *helper-shaped* guard (`gamification_assert_manager`, `_mi_require_privileged`, `has_dynamic_permission`, `dyn_table_role_can_view`, `kd_role_can_view`, `can_read_person`) is invisible to a `has_role` grep — it caught two false "unguarded" entries this way |
+| 2026-09-06 | **F** | **C-2** | **done, migration 470 — verified** | Initial verdict "no migration needed" was **wrong for one of three sweeps**; orchestrator found it and F corrected. See the box below |
+| 2026-09-06 | **F** | **C-3** | **done, migration 469 — verified** | Orchestrator re-read all three bodies: `IF COALESCE(auth.role(),'') <> 'service_role' … 42501`; inverted `auth.uid() IS NOT NULL` gone. Grants unchanged `anon=f, authenticated=f, service_role=t` — a body-only fix moves no grant, which is the point |
+| 2026-09-06 | **F** | **C-4** | **done, verified** | og61 **23/23**. Extended with a *grant-independent* rule: no definer function may have the **absence of a uid** as its sole authorization — deliberately narrower than banning `IS NOT NULL`, with a third test proving legitimate supplemental uses stay allowed |
+
+### 🔍 The C-2 miss, and why it is the most instructive finding of the wave
+
+F grouped three "sweep" functions and concluded revoking `authenticated` would break live callers.
+True for two; **false for `expire_pending_documents`**, which has **no direct call site at all**.
+Both citations dissolved on inspection — one calls `tick_inquiries` instead, the other is a comment
+inside a `catch`. Its only path is nested: `tick_inquiries` (DEFINER) PERFORMs it at body line 54,
+so the caller's EXECUTE grant is never consulted.
+
+**What made it provable rather than predicted:** `tick_inquiries` PERFORMs three functions, and
+wave 4 had already revoked `authenticated` from two of them while the inquiry board kept working.
+Measured before and after migration 470:
+
+```
+BEFORE                                    AFTER
+auto_submit_penalty              authn=f   authn=f
+expire_pending_delivery_receipts authn=f   authn=f
+expire_pending_documents         authn=t   authn=f   <- the miss, now matching its siblings
+tick_inquiries                   authn=t   authn=t   <- entry point, correctly untouched
+```
+
+**The root cause is worse than a miss, and is the thing to carry forward.** og61's allowlist
+justified the entry with *"the messenger inquiry flow calls expire_pending_documents as an
+authenticated user."* That sentence originates in **migration 399's header, line 41**, was copied
+into og61 by wave 4, and repeated by F from og61. **Four readers in a row accepted it because it
+was written down.** It describes the call *chain* correctly and the call *site* wrongly. F fixed
+the comment at its source rather than only the grant, so the next reader inherits the correction
+instead of the claim.
+
+### 🔧 Orchestrator setup defect — found by Agent D, fixed mid-stage
+
+**`deploy/lan/.env.lan` was never seeded into any worktree.** It is gitignored and exists only in
+the main tree. §8b seeded `node_modules` and `e2e/auth/*.storage.json` and **missed this one.**
+
+Six spec files under `e2e/security/` import `e2e/helpers/pgrest.ts`, which reads it at setup.
+Without it they fail `ENOENT` before a single assertion, and the `describe.serial` blocks they head
+are skipped — producing **158 passed / 15 failed / 47 did not run**, which looks exactly like a
+catastrophic regression and is not one. Agent D measured this, correctly attributed it to the
+environment rather than to its migration, **and did not work around the permission prompt that
+blocked it from seeding the file itself.** That was the right call twice over.
+
+**Fixed 2026-09-06:** copied into all four worktrees, verified present and still gitignored
+(`git status` unaffected in F, D, H). Agents R and F were notified mid-flight to **discard any
+suite measurement in that shape and re-run.** Carry this into the completion report as a
+deviation — a suite result taken in a worktree before this fix is not valid evidence.
+
+### Known-transient red — do not chase
+
+`e2e/security/og81-migration-ledger-matches-disk` is **RED for the rest of Stage 2, by design.**
+Ledger is 645; the main tree has 641 files. The four extra rows —
+`20260906110000`, `111500` (H), `113000` (F), `130000` (D) — have files that live only in their
+authors' worktrees until those branches land. **It goes green at Stage 3 integration.** No agent
+should try to fix it, re-run a migration, or treat it as a regression.
