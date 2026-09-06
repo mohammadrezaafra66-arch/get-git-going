@@ -82,7 +82,8 @@ test("⛔ anon executes NONE of the 26 definer writers", () => {
 });
 
 /**
- * Of the 26, the twenty that wave 4 deliberately closed to `authenticated` as well.
+ * Of the 26, the twenty-one closed to `authenticated` as well: twenty by wave 4, plus
+ * expire_pending_documents by wave 2 (470), which wave 4 missed.
  *
  * 399 revoked ONLY the anon path, and the test below used to assert that all 26 remained
  * reachable by `authenticated` — "the revoke cut exactly the unauthenticated path and nothing
@@ -92,7 +93,7 @@ test("⛔ anon executes NONE of the 26 definer writers", () => {
  * Every name here has NO direct caller in src/ or server/ — only the generated
  * src/integrations/supabase/types.ts — and reaches its real callers (triggers, nested SECURITY
  * DEFINER calls, or the service-role client) as the function OWNER, for which a session role's
- * grant is irrelevant. That is migration 436's apply_stock_movement reasoning, applied twenty
+ * grant is irrelevant. That is migration 436's apply_stock_movement reasoning, applied twenty-one
  * more times.
  *
  * This list is enumerated rather than derived ON PURPOSE, and the two assertions below are
@@ -100,7 +101,7 @@ test("⛔ anon executes NONE of the 26 definer writers", () => {
  * this list must still be open, and nothing can drift in either direction unnoticed. Loosening
  * the old assertion to `toBeGreaterThan(0)` would have hidden both.
  */
-const CLOSED_TO_AUTHENTICATED_BY_WAVE4: Record<string, string> = {
+const CLOSED_TO_AUTHENTICATED: Record<string, string> = {
   recalculate_settlement_score: "462 — no caller at all",
   update_customer_overdue_status: "462 — no caller at all",
   asan_burn_document_number: "462 — three tg_asan_burn_* triggers only",
@@ -121,9 +122,16 @@ const CLOSED_TO_AUTHENTICATED_BY_WAVE4: Record<string, string> = {
   check_and_update_mission_progress_for_employee: "465 — trg_check_missions_after_score only",
   capture_score_snapshots: "465 — no caller; INSERTs then DELETEs on a 90-day retention",
   expire_pending_delivery_receipts: "465 — tick_inquiries only; calls auto_submit_penalty",
+  expire_pending_documents:
+    "470 — tick_inquiries only, body line 54, exactly like its sibling above. It had NO call " +
+    "site in src/ at all; the two source hits that looked like callers are both prose sitting " +
+    "beside a call to tick_inquiries (inquiry-status.ts:18 is a docblock, InquiryBoard.tsx:211 " +
+    "is a comment in a catch). 465 revoked the other two of the three functions tick_inquiries " +
+    "PERFORMs and the board kept working, which is why the nested path surviving is measured " +
+    "here rather than predicted.",
 };
 
-test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated", () => {
+test("the 26 minus the twenty-one closed are STILL reachable by authenticated", () => {
   const reachable = new Set(
     dbRows(`
     select p.proname
@@ -134,12 +142,18 @@ test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated
      order by 1
   `),
   );
-  const shouldBeOpen = TARGETS.filter((n) => !(n in CLOSED_TO_AUTHENTICATED_BY_WAVE4));
+  const shouldBeOpen = TARGETS.filter((n) => !(n in CLOSED_TO_AUTHENTICATED));
   const wronglyClosed = shouldBeOpen.filter((n) => !reachable.has(n));
 
-  // If this fires, a revoke went too far and broke a legitimate caller — the messenger inquiry
-  // flow calls expire_pending_documents as an authenticated user, ProductForm calls
-  // find_or_create_model, and the bot-api-keys page calls delete_bot_api_key_secure.
+  // If this fires, a revoke went too far and broke a legitimate caller — the inquiry board
+  // calls tick_inquiries as an ordinary group member, ProductForm calls find_or_create_model,
+  // and the bot-api-keys page calls delete_bot_api_key_secure.
+  //
+  // This comment used to name expire_pending_documents here instead of tick_inquiries, a claim
+  // inherited from migration 399's header (line 41) and repeated by every reader after it. It
+  // was wrong: expire_pending_documents has no call site anywhere, and the inquiry flow reaches
+  // it only nested inside tick_inquiries. Migration 470 revoked it and moved it to the closed
+  // list above. A justification that names a caller must name a line that calls it.
   expect(
     wronglyClosed,
     `these have a live authenticated caller and must keep EXECUTE: ${wronglyClosed.join(", ")}`,
@@ -147,7 +161,7 @@ test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated
 
   // And the other direction: a name listed as closed must actually BE closed. Without this the
   // list becomes a place to park names to make the suite quiet.
-  const notActuallyClosed = Object.keys(CLOSED_TO_AUTHENTICATED_BY_WAVE4).filter((n) =>
+  const notActuallyClosed = Object.keys(CLOSED_TO_AUTHENTICATED).filter((n) =>
     reachable.has(n),
   );
   expect(
@@ -156,12 +170,12 @@ test("the 26 minus the twenty wave 4 closed are STILL reachable by authenticated
   ).toEqual([]);
 });
 
-test("the twenty closed to authenticated are still reachable by their INTERNAL path", () => {
+test("the twenty-one closed to authenticated are still reachable by their INTERNAL path", () => {
   // The OPEN half of wave 4's revokes, and the reason they are safe. A trigger or a nested
   // SECURITY DEFINER call runs with current_user = the function owner, so what has to remain
   // true is that the OWNER still holds EXECUTE. Revoking from the owner too would satisfy every
-  // closed-half assertion above and would silently break twenty internal paths.
-  const names = Object.keys(CLOSED_TO_AUTHENTICATED_BY_WAVE4);
+  // closed-half assertion above and would silently break twenty-one internal paths.
+  const names = Object.keys(CLOSED_TO_AUTHENTICATED);
   const list = names.map((n) => `'${n}'`).join(",");
   const ownerReachable = dbRows(`
     select p.proname
@@ -282,6 +296,46 @@ test("authenticated admin is NOT locked out of the same RPC", async () => {
  * =========================================================================================== */
 
 /**
+ * Signals that a body refuses a CALLER rather than an ARGUMENT. A single source of truth for
+ * BOTH derived queries in this file, so they cannot drift apart, and quoted into the failure
+ * messages so a future reader sees what "guarded" was taken to mean at the moment a gate fired.
+ *
+ * WAVE 2 MOVED THIS UP HERE, and the move is the point. Until now only the `authenticated`
+ * half used it; the `anon` half below ended with the far weaker
+ *
+ *     AND f.def !~* '[R]AISE\\s+EXCEPTION'
+ *
+ * — "it raises, therefore it is guarded". That inference is false on this codebase, and it was
+ * false in exactly the case that mattered. The four `bot_*` table writers were granted to
+ * `anon` and refused nothing but a bad argument:
+ *
+ *     IF _can_update IS NULL THEN RAISE EXCEPTION 'forbidden_table'; END IF;
+ *
+ * A bare RAISE with no ERRCODE, guarding a lookup keyed by a UUID the CALLER supplies. Under
+ * the old filter all four read as guarded and never entered the derived set at all — so the
+ * anon half of this gate, whose entire job is to notice a new function added open, was blind
+ * to them for as long as they existed. Migration 468 closed those four; this filter is what
+ * makes the NEXT one visible.
+ *
+ * KNOWN WEAKNESS, recorded rather than silently accepted: `bot_api_key_table_access` is still
+ * treated as an authorization signal below, and wave 2 established that it is not one. That
+ * table is looked up BY AN ARGUMENT, with no session identity involved, which is precisely why
+ * a revoked key id kept working. Removing it from this list is the right next step and is
+ * deliberately NOT done here: it would put four functions into the derived set in the same
+ * commit that another mission is still changing them, and their disposition (an allowlist
+ * entry, or a revoke from `authenticated`) belongs to whoever owns those bodies.
+ *
+ * The SQLSTATE literals are matched with `.` in place of the surrounding single quotes. This
+ * string is interpolated into a SQL string literal, and a real quote here would close it early
+ * — the first draft did exactly that and the query died with a syntax error instead of
+ * asserting, which is a test that fails for the wrong reason.
+ */
+const AUTHZ_SIGNALS =
+  "(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor" +
+  "|ERRCODE\\s*=\\s*.42501.|ERRCODE\\s*=\\s*.28000." +
+  "|is_messenger_group_member|messenger_group_members|bot_api_key_table_access|appeal_reviewers)";
+
+/**
  * Anon-reachable SECURITY DEFINER writers that are allowed to stay reachable, each with the
  * reason it is safe. This list is short ON PURPOSE: an allowlist whose entries must each be
  * justified is a different object from a subject list that has to be remembered.
@@ -296,6 +350,13 @@ const ANON_REACHABLE_ALLOWLIST: Record<string, string> = {
     "Scoped by `WHERE user_id = auth.uid()`. For anon auth.uid() is NULL, so it matches no row.",
   mark_notification_read:
     "Same: `WHERE id = p_notification_id AND user_id = auth.uid()`. NULL matches nothing.",
+  submit_quiz_attempt:
+    "Surfaced by the wave-2 tightening of AUTHZ_SIGNALS, and safe. It opens with " +
+    "`IF _uid IS NULL THEN RAISE EXCEPTION 'unauthenticated'` — a real caller check, which " +
+    "AUTHZ_SIGNALS does not match only because that raise carries no ERRCODE. An anon caller " +
+    "is refused there, before any write. Its write set is one academy_quiz_attempts row for " +
+    "auth.uid(), and the score is computed in the body from academy_quiz_questions." +
+    "correct_value, so no caller can supply its own result. Live body read 2026-09-06.",
   query_dynamic_table_rows_v2:
     "A READ path (the /data-tables page). It only enters the writer set transitively, through " +
     "the memoizing helpers _dyn_compute_row_values / _obs_compute_row_values.",
@@ -334,8 +395,7 @@ const DERIVED_SUBJECTS = `
     AND f.proname IN (SELECT proname FROM writer)
     AND has_function_privilege('anon', f.oid, 'EXECUTE')
     AND f.def !~* '(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor)'
-    AND f.def !~* '[R]AISE\\s+EXCEPTION'
-  ORDER BY 1
+    AND f.def !~* '${AUTHZ_SIGNALS}'
 `;
 
 test("⛔ DERIVED: no ungated SECURITY DEFINER writer is reachable by anon", () => {
@@ -473,18 +533,10 @@ test("✅ an authenticated ADMIN still reaches the body — the feature is not b
  * =========================================================================================== */
 
 /**
- * Signals that a body refuses a CALLER rather than an ARGUMENT. Written as a single source of
- * truth so the two queries below cannot drift apart, and quoted into the failure message so a
- * future reader sees what "guarded" was taken to mean at the moment the gate fired.
+ * AUTHZ_SIGNALS is declared ABOVE, beside the anon half, because wave 2 made BOTH halves use
+ * it and a `const` cannot be referenced from a template literal that is evaluated earlier in
+ * the file. See its comment there for what each signal means and why the anon half needed it.
  */
-const AUTHZ_SIGNALS =
-  "(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor" +
-  // The SQLSTATE literals are matched with `.` in place of the surrounding single quotes.
-  // This string is interpolated into a SQL string literal, and a real `'` here would close it
-  // early — the first draft did exactly that and the query died with a syntax error instead of
-  // asserting, which is a test that fails for the wrong reason.
-  "|ERRCODE\\s*=\\s*.42501.|ERRCODE\\s*=\\s*.28000." +
-  "|is_messenger_group_member|messenger_group_members|bot_api_key_table_access|appeal_reviewers)";
 
 /**
  * SECURITY DEFINER writers that may keep EXECUTE for `authenticated` without a role check.
@@ -512,12 +564,12 @@ const AUTHENTICATED_REACHABLE_ALLOWLIST: Record<string, string> = {
     "is why the signal regex does not see it: it refuses unless the caller is 'admin' or holds " +
     "the key's own managed_by_role. Migration 463 revokes anon and PUBLIC; authenticated stays " +
     "because src/routes/_app.bot-api-keys.index.tsx calls it as the signed-in user.",
-  expire_pending_documents:
-    "An idempotent time sweep with NO parameters. It expires documents whose review_deadline " +
-    "has already passed and can do nothing a caller chooses - there is no argument to point it " +
-    "at a target. Called on the inquiry board by any group member " +
-    "(src/lib/messenger/inquiry-status.ts); gating it would break the board for the people it " +
-    "exists to serve.",
+  // expire_pending_documents was here, on the reason "called on the inquiry board by any group
+  // member (src/lib/messenger/inquiry-status.ts)". That reason was false — that file calls
+  // tick_inquiries, and the only mention of expire_pending_documents in it is a docblock.
+  // Migration 470 revoked the direct grant; the entry now lives in the closed list at the top
+  // of this file. Left as a comment, not deleted silently, because the allowlist's own rule is
+  // that an entry whose reason no longer matches the body is a defect even while it is green.
   tick_inquiries:
     "Same shape: no parameters, advances inquiry statuses purely on elapsed time, and is " +
     "invoked from the inquiry board by ordinary members (src/lib/messenger/inquiry-status.ts, " +
@@ -736,4 +788,148 @@ test("✅ the credit ledger is still reachable from its internal path", () => {
     "release_credit's role set must include 'sales' — expire_stale_credit_holds is called by a " +
       "salesperson on the new-quote page and PERFORMs release_credit under that uid",
   ).toEqual(["sales"]);
+});
+
+/* ===========================================================================================
+ * WAVE 2 / C-3 — the inverted guard again, this time INDEPENDENT OF THE GRANT.
+ *
+ * The INVERTED GUARD test above is real and stays. But read what it actually asserts: it
+ * selects functions carrying `auth.uid() IS NOT NULL` **and** still granting EXECUTE to `anon`
+ * or `authenticated`. Migration 462 removed those grants, so from that moment the test passes
+ * on an empty set — and it passes just as happily whether the three bodies were fixed or never
+ * touched. They were never touched. The inverted logic sat in all three for a full wave with a
+ * green suite over it.
+ *
+ * That is not a criticism of 462; 462 said so itself ("THE FIX IS A REVOKE, NOT A BODY
+ * CHANGE"). It is the reason a second assertion is needed. The whole hazard of a rule that
+ * lives only in a GRANT is that ONE statement can lose it, and for a function the statement is
+ * ordinary and innocent-looking:
+ *
+ *     CREATE OR REPLACE FUNCTION public.record_external_market_rate_tick_system(...)
+ *
+ * A future author fixing an unrelated bug in the ingester writes exactly that, the default
+ * privileges hand EXECUTE back, and an inverted guard that admits precisely the unauthenticated
+ * caller is live again — inside a diff whose subject line is about market rates. Nothing above
+ * this comment would go red, because the grant and the body would have been restored together.
+ *
+ * So this half asks a question that has no reference to any grant at all:
+ *
+ *     is there a SECURITY DEFINER function whose ONLY authorization is the ABSENCE of a uid?
+ *
+ * The rule is deliberately narrower than "contains auth.uid() IS NOT NULL". That form is
+ * LEGITIMATE as a supplement — `generate_marketing_tasks` and `recompute_dynamic_capital_setting`
+ * both use it to mean "a NULL uid is the service-role cron; a non-NULL uid must additionally be
+ * admin/manager", and both carry the role test in the same condition. Measured 2026-09-06, both
+ * match `IS NOT NULL` and both match the role-test regex, so both are correctly excluded. What
+ * is never legitimate is the form with NO positive test anywhere in the body, because
+ * `auth.uid()` is NULL for `service_role` and equally NULL for `anon`.
+ *
+ * Migration 469 rewrites all three to the positive form — `COALESCE(auth.role(), '') <>
+ * 'service_role'` with ERRCODE 42501 — which names the one role that may call them instead of
+ * naming the many that may not.
+ * =========================================================================================== */
+
+/**
+ * A positive caller test, in any of the forms this codebase actually uses. `auth.role()` is
+ * included here and deliberately NOT added to AUTHZ_SIGNALS above: it is a genuine positive
+ * test, but only when compared against a privileged role, and the authenticated-half detector
+ * must not start reading `auth.role() = 'authenticated'` as a gate.
+ */
+const POSITIVE_CALLER_TEST =
+  "(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor" +
+  "|auth\\.role\\(\\))";
+
+const SOLE_AUTHZ_IS_ABSENCE_OF_UID = `
+  SELECT p.proname
+    FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+   WHERE n.nspname = 'public' AND p.prosecdef AND p.prokind = 'f'
+     AND p.prosrc ~* 'auth\\.uid\\(\\)\\s+IS\\s+NOT\\s+NULL'
+     AND p.prosrc !~* '${POSITIVE_CALLER_TEST}'
+   ORDER BY 1
+`;
+
+test("⛔ INVERTED GUARD, in the BODY: no definer function is authorized by the absence of a uid", () => {
+  const inverted = dbRows(SOLE_AUTHZ_IS_ABSENCE_OF_UID);
+  expect(
+    inverted,
+    `these are authorized ONLY by "auth.uid() IS NOT NULL" and carry no positive caller test ` +
+      `at all: ${inverted.join(", ")}.\n` +
+      `auth.uid() is NULL for service_role AND for anon, so that guard refuses every ` +
+      `legitimate caller and admits the unauthenticated internet. It is inert only while the ` +
+      `EXECUTE grant happens to be closed, and a bare CREATE OR REPLACE restores the grant.\n` +
+      `Fix in the BODY: test for the service role positively — ` +
+      `IF COALESCE(auth.role(), '') <> 'service_role' THEN RAISE ... USING ERRCODE = 42501 ` +
+      `(migration 469). Supplementing a role test with an IS NOT NULL branch is fine and is ` +
+      `not matched here.`,
+  ).toEqual([]);
+});
+
+test("✅ the three ingest RPCs carry the POSITIVE service_role test — not merely no guard", () => {
+  // The OPEN half, and it is not decoration. Deleting the guard outright, or deleting the three
+  // functions, satisfies the CLOSED half above perfectly. What has to be true is that a
+  // POSITIVE test replaced the inverted one.
+  const guarded = dbRows(`
+    select p.proname
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('start_market_rate_ingestion_run_system',
+                         'finish_market_rate_ingestion_run_system',
+                         'record_external_market_rate_tick_system')
+       and p.prosrc ~* 'auth\\.role\\(\\)'
+       and p.prosrc ~ 'service_role'
+       and p.prosrc ~ '42501'
+     order by 1
+  `);
+  expect(
+    guarded,
+    `only ${guarded.length} of 3 name service_role positively with ERRCODE 42501: ` +
+      `${guarded.join(", ")} — a guard was removed rather than corrected`,
+  ).toEqual([
+    "finish_market_rate_ingestion_run_system",
+    "record_external_market_rate_tick_system",
+    "start_market_rate_ingestion_run_system",
+  ]);
+});
+
+test("the SUPPLEMENT form is still allowed — the rule above has not become a blanket ban", () => {
+  // Without this, tightening SOLE_AUTHZ_IS_ABSENCE_OF_UID into "no IS NOT NULL anywhere" would
+  // look like a stricter gate and would actually be a wrong one: both functions below use a
+  // NULL uid to mean "the service-role cron is calling", and both then require admin/manager of
+  // any caller that DOES have a uid. That is correct and must keep passing.
+  const supplements = dbRows(`
+    select p.proname
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public' and p.prosecdef
+       and p.proname in ('generate_marketing_tasks','recompute_dynamic_capital_setting')
+       and p.prosrc ~* 'IS\\s+NOT\\s+NULL'
+       and p.prosrc ~* '${POSITIVE_CALLER_TEST}'
+     order by 1
+  `);
+  expect(
+    supplements,
+    "the supplement form must remain recognised as authorized, or the rule is a blanket ban",
+  ).toEqual(["generate_marketing_tasks", "recompute_dynamic_capital_setting"]);
+});
+
+test("service_role still reaches all three, and anon/authenticated still do not", () => {
+  // 469 re-asserts the ACL after its CREATE OR REPLACEs. This proves the re-assertion landed:
+  // the closed half (a body fix must not quietly re-open the grant) and the open half (the
+  // re-grant must not have been forgotten, which would kill ingestion) in one place.
+  const acl = dbRows(`
+    select p.proname || '|' ||
+           has_function_privilege('anon', p.oid, 'EXECUTE')::text || '|' ||
+           has_function_privilege('authenticated', p.oid, 'EXECUTE')::text || '|' ||
+           has_function_privilege('service_role', p.oid, 'EXECUTE')::text
+      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname in ('start_market_rate_ingestion_run_system',
+                         'finish_market_rate_ingestion_run_system',
+                         'record_external_market_rate_tick_system')
+     order by 1
+  `);
+  expect(acl).toEqual([
+    "finish_market_rate_ingestion_run_system|false|false|true",
+    "record_external_market_rate_tick_system|false|false|true",
+    "start_market_rate_ingestion_run_system|false|false|true",
+  ]);
 });
