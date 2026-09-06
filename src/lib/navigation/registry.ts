@@ -58,6 +58,7 @@
   ArrowLeftRight,
   ScrollText as ScrollTextIcon,
   PhoneOff,
+  PhoneCall,
   UserRoundCog,
   Activity,
 } from "lucide-react";
@@ -804,6 +805,23 @@ const NAVIGATION_SEEDS = [
     group: "admin",
     subgroup: "adm-settings",
     adminOnly: true,
+  },
+  {
+    // Wave 6 / C-3 — naming the PBX extensions (owner decision D-35). Settings, not
+    // tools: it is a table you configure once and then leave alone, not a worklist.
+    //
+    // allowedRoles rather than adminOnly, and the two are not the same thing: adminOnly
+    // means admin OR manager, which happens to be right here, but saying it explicitly
+    // keeps the menu, the route guard (requireAnyRole admin/manager) and the RLS on
+    // call_log_extensions (admin/manager write) all stating the same rule in the same
+    // words. Three layers that agree by coincidence drift; three that agree by name do not.
+    to: "/admin/call-extensions",
+    label: "داخلی‌های تلفن",
+    icon: PhoneCall,
+    module: "roles",
+    group: "admin",
+    subgroup: "adm-settings",
+    allowedRoles: ["admin", "manager"],
   },
   {
     // ASAN M3.2 — the phone collision review queue. Admin tools, not settings:
