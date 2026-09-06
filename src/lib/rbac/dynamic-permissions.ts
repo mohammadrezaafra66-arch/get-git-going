@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { ModuleKey, Action } from "./roles";
-import { hasPermission as hasPermissionStatic } from "./roles";
-import { setCachedRolePermissions } from "./permissions-cache";
+import { clearCachedRolePermissions, setCachedRolePermissions } from "./permissions-cache";
 
 export type DynamicAction = Action | "approve" | "export" | "view_sensitive";
 
@@ -68,7 +67,9 @@ export async function loadRolePermissions(force = false): Promise<RolePermission
 
 export function invalidateRolePermissionsCache() {
   cache = null;
-  setCachedRolePermissions([]);
+  // clear, NOT setCachedRolePermissions([]) — the latter marks the cache "loaded" while holding
+  // no rows, so every non-admin check would answer a confident "denied" until the refetch lands.
+  clearCachedRolePermissions();
 }
 
 const ACTION_COL: Record<DynamicAction, keyof RolePermissionRow> = {
@@ -91,9 +92,7 @@ export function hasPermissionDynamic(
   const col = ACTION_COL[action];
   const matched = rows.filter((r) => roles.includes(r.role_name) && r.module === module);
   if (matched.length > 0) return matched.some((r) => Boolean(r[col]));
-  // Fallback to static matrix for standard actions
-  if (action === "view" || action === "create" || action === "update" || action === "delete") {
-    return hasPermissionStatic(roles as never, module as ModuleKey, action);
-  }
+  // No static fallback: the static PERMISSIONS matrix was removed in wave 6 (X-3), and
+  // migration 485 closed the last three role x module gaps, so a missing row is a real denial.
   return false;
 }

@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import {
   PRODUCT_TYPE_LABELS,
   BASE_CURRENCY_LABELS,
@@ -70,8 +70,8 @@ function ProductDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { roles, user } = useAuth();
-  const canUpdate = hasPermission(roles, "products", "update");
-  const canDelete = hasPermission(roles, "products", "delete");
+  const canUpdate = hasPermissionEx(roles, "products", "update");
+  const canDelete = hasPermissionEx(roles, "products", "delete");
   const [ownerOpen, setOwnerOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
