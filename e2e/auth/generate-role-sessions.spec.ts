@@ -17,7 +17,7 @@ import { execFileSync } from "node:child_process";
 import { BASE_URL } from "../helpers/app";
 
 type RoleTarget = {
-  key: "admin" | "accountant" | "salesperson-a" | "salesperson-b";
+  key: "admin" | "manager" | "accountant" | "salesperson-a" | "salesperson-b" | "viewer";
   emailEnv: string;
   passwordEnv: string;
   defaultEmail: string;
@@ -85,6 +85,35 @@ const TARGETS: RoleTarget[] = [
     storageFile: "e2e/auth/salesperson-b.storage.json",
     probeRoute: "/sales/quotes",
     probeText: /پیش‌فاکتور|پیش فاکتور/,
+  },
+  // Wave 6, hazard H·e. Six test accounts exist but only four had a generator, so there was no
+  // `manager` and no `viewer` storageState — and two wave-6 rows need exactly those: X-3's cold
+  // `viewer` demo and B-3's `manager` approval. Added here rather than in either mission,
+  // because this spec is the shared path and a session generated twice in two places drifts.
+  //
+  // Both probe `/dashboard`: it is the one route every role may see, so the probe proves the
+  // session works without also asserting a permission that belongs to another mission's row.
+  {
+    key: "manager",
+    emailEnv: "E2E_MANAGER_EMAIL",
+    passwordEnv: "E2E_MANAGER_PASSWORD",
+    defaultEmail: "test.manager@afrakala.local",
+    expectedRole: "مدیر بخش",
+    expectedDbRole: "manager",
+    storageFile: "e2e/auth/manager.storage.json",
+    probeRoute: "/dashboard",
+    probeText: /داشبورد|میز کار|خلاصه/,
+  },
+  {
+    key: "viewer",
+    emailEnv: "E2E_VIEWER_EMAIL",
+    passwordEnv: "E2E_VIEWER_PASSWORD",
+    defaultEmail: "test.viewer@afrakala.local",
+    expectedRole: "بیننده",
+    expectedDbRole: "viewer",
+    storageFile: "e2e/auth/viewer.storage.json",
+    probeRoute: "/dashboard",
+    probeText: /داشبورد|میز کار|خلاصه/,
   },
 ];
 

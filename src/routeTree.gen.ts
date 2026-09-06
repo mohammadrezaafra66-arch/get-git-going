@@ -150,6 +150,7 @@ import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.adm
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
 import { Route as AppAdminDocumentsRouteImport } from './routes/_app.admin.documents'
 import { Route as AppAdminDeliveryReceiptsRouteImport } from './routes/_app.admin.delivery-receipts'
+import { Route as AppAdminCallExtensionsRouteImport } from './routes/_app.admin.call-extensions'
 import { Route as AppAdminAutomationRouteImport } from './routes/_app.admin.automation'
 import { Route as AppAdminAuditRouteImport } from './routes/_app.admin.audit'
 import { Route as AppAdminAsanImportRouteImport } from './routes/_app.admin.asan-import'
@@ -945,6 +946,11 @@ const AppAdminDeliveryReceiptsRoute =
     path: '/admin/delivery-receipts',
     getParentRoute: () => AppRoute,
   } as any)
+const AppAdminCallExtensionsRoute = AppAdminCallExtensionsRouteImport.update({
+  id: '/admin/call-extensions',
+  path: '/admin/call-extensions',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminAutomationRoute = AppAdminAutomationRouteImport.update({
   id: '/admin/automation',
   path: '/admin/automation',
@@ -1389,6 +1395,7 @@ export interface FileRoutesByFullPath {
   '/admin/asan-import': typeof AppAdminAsanImportRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
+  '/admin/call-extensions': typeof AppAdminCallExtensionsRoute
   '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
   '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
@@ -1595,6 +1602,7 @@ export interface FileRoutesByTo {
   '/admin/asan-import': typeof AppAdminAsanImportRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/automation': typeof AppAdminAutomationRoute
+  '/admin/call-extensions': typeof AppAdminCallExtensionsRoute
   '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
   '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
@@ -1804,6 +1812,7 @@ export interface FileRoutesById {
   '/_app/admin/asan-import': typeof AppAdminAsanImportRoute
   '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/automation': typeof AppAdminAutomationRoute
+  '/_app/admin/call-extensions': typeof AppAdminCallExtensionsRoute
   '/_app/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
   '/_app/admin/documents': typeof AppAdminDocumentsRoute
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
@@ -2014,6 +2023,7 @@ export interface FileRouteTypes {
     | '/admin/asan-import'
     | '/admin/audit'
     | '/admin/automation'
+    | '/admin/call-extensions'
     | '/admin/delivery-receipts'
     | '/admin/documents'
     | '/admin/gamification'
@@ -2220,6 +2230,7 @@ export interface FileRouteTypes {
     | '/admin/asan-import'
     | '/admin/audit'
     | '/admin/automation'
+    | '/admin/call-extensions'
     | '/admin/delivery-receipts'
     | '/admin/documents'
     | '/admin/gamification'
@@ -2428,6 +2439,7 @@ export interface FileRouteTypes {
     | '/_app/admin/asan-import'
     | '/_app/admin/audit'
     | '/_app/admin/automation'
+    | '/_app/admin/call-extensions'
     | '/_app/admin/delivery-receipts'
     | '/_app/admin/documents'
     | '/_app/admin/gamification'
@@ -3590,6 +3602,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminDeliveryReceiptsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/call-extensions': {
+      id: '/_app/admin/call-extensions'
+      path: '/admin/call-extensions'
+      fullPath: '/admin/call-extensions'
+      preLoaderRoute: typeof AppAdminCallExtensionsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/automation': {
       id: '/_app/admin/automation'
       path: '/admin/automation'
@@ -4290,6 +4309,7 @@ interface AppRouteChildren {
   AppAdminAsanImportRoute: typeof AppAdminAsanImportRoute
   AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminAutomationRoute: typeof AppAdminAutomationRoute
+  AppAdminCallExtensionsRoute: typeof AppAdminCallExtensionsRoute
   AppAdminDeliveryReceiptsRoute: typeof AppAdminDeliveryReceiptsRoute
   AppAdminDocumentsRoute: typeof AppAdminDocumentsRoute
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
@@ -4434,6 +4454,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminAsanImportRoute: AppAdminAsanImportRoute,
   AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminAutomationRoute: AppAdminAutomationRoute,
+  AppAdminCallExtensionsRoute: AppAdminCallExtensionsRoute,
   AppAdminDeliveryReceiptsRoute: AppAdminDeliveryReceiptsRoute,
   AppAdminDocumentsRoute: AppAdminDocumentsRoute,
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
