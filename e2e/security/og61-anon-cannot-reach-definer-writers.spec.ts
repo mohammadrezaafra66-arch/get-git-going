@@ -343,23 +343,22 @@ const AUTHZ_SIGNALS =
  * Adding a name here without a reason should not pass review.
  */
 const ANON_REACHABLE_ALLOWLIST: Record<string, string> = {
-  asan_assign_document_numbers:
-    "Batch wrapper. The per-document delegate asan_assign_document_number carries the check " +
-    "has_any_role(_uid, ARRAY['admin','accountant']) — read from the live body 2026-09-05.",
-  mark_all_notifications_read:
-    "Scoped by `WHERE user_id = auth.uid()`. For anon auth.uid() is NULL, so it matches no row.",
-  mark_notification_read:
-    "Same: `WHERE id = p_notification_id AND user_id = auth.uid()`. NULL matches nothing.",
-  submit_quiz_attempt:
-    "Surfaced by the wave-2 tightening of AUTHZ_SIGNALS, and safe. It opens with " +
-    "`IF _uid IS NULL THEN RAISE EXCEPTION 'unauthenticated'` — a real caller check, which " +
-    "AUTHZ_SIGNALS does not match only because that raise carries no ERRCODE. An anon caller " +
-    "is refused there, before any write. Its write set is one academy_quiz_attempts row for " +
-    "auth.uid(), and the score is computed in the body from academy_quiz_questions." +
-    "correct_value, so no caller can supply its own result. Live body read 2026-09-06.",
-  query_dynamic_table_rows_v2:
-    "A READ path (the /data-tables page). It only enters the writer set transitively, through " +
-    "the memoizing helpers _dyn_compute_row_values / _obs_compute_row_values.",
+  // EMPTY SINCE MIGRATION 476, AND THAT IS THE POINT - it is not an oversight and it is not a
+  // list nobody has filled in yet.
+  //
+  // It held five names: asan_assign_document_numbers, mark_all_notifications_read,
+  // mark_notification_read, submit_quiz_attempt, query_dynamic_table_rows_v2. Every one was
+  // tolerated for the same reason - the body refuses an anonymous caller anyway, so the EXECUTE
+  // grant bought an attacker nothing. That reasoning was sound and each entry carried it.
+  //
+  // 476 removed the grant as well, so all five dropped out of DERIVED_SUBJECTS (which selects on
+  // `has_function_privilege('anon', ...)`) and the rot check below correctly reported them as
+  // stale. They are deleted rather than kept, exactly as that check instructs: an allowlist that
+  // accumulates dead names pre-approves a function that later becomes reachable again, and
+  // nobody remembers writing the entry that waved it through.
+  //
+  // If a name has to come back here, it needs the reason it is safe - not the observation that
+  // it used to be listed.
 };
 
 /**
