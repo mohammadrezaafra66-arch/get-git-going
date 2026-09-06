@@ -282,6 +282,46 @@ test("authenticated admin is NOT locked out of the same RPC", async () => {
  * =========================================================================================== */
 
 /**
+ * Signals that a body refuses a CALLER rather than an ARGUMENT. A single source of truth for
+ * BOTH derived queries in this file, so they cannot drift apart, and quoted into the failure
+ * messages so a future reader sees what "guarded" was taken to mean at the moment a gate fired.
+ *
+ * WAVE 2 MOVED THIS UP HERE, and the move is the point. Until now only the `authenticated`
+ * half used it; the `anon` half below ended with the far weaker
+ *
+ *     AND f.def !~* '[R]AISE\\s+EXCEPTION'
+ *
+ * — "it raises, therefore it is guarded". That inference is false on this codebase, and it was
+ * false in exactly the case that mattered. The four `bot_*` table writers were granted to
+ * `anon` and refused nothing but a bad argument:
+ *
+ *     IF _can_update IS NULL THEN RAISE EXCEPTION 'forbidden_table'; END IF;
+ *
+ * A bare RAISE with no ERRCODE, guarding a lookup keyed by a UUID the CALLER supplies. Under
+ * the old filter all four read as guarded and never entered the derived set at all — so the
+ * anon half of this gate, whose entire job is to notice a new function added open, was blind
+ * to them for as long as they existed. Migration 468 closed those four; this filter is what
+ * makes the NEXT one visible.
+ *
+ * KNOWN WEAKNESS, recorded rather than silently accepted: `bot_api_key_table_access` is still
+ * treated as an authorization signal below, and wave 2 established that it is not one. That
+ * table is looked up BY AN ARGUMENT, with no session identity involved, which is precisely why
+ * a revoked key id kept working. Removing it from this list is the right next step and is
+ * deliberately NOT done here: it would put four functions into the derived set in the same
+ * commit that another mission is still changing them, and their disposition (an allowlist
+ * entry, or a revoke from `authenticated`) belongs to whoever owns those bodies.
+ *
+ * The SQLSTATE literals are matched with `.` in place of the surrounding single quotes. This
+ * string is interpolated into a SQL string literal, and a real quote here would close it early
+ * — the first draft did exactly that and the query died with a syntax error instead of
+ * asserting, which is a test that fails for the wrong reason.
+ */
+const AUTHZ_SIGNALS =
+  "(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor" +
+  "|ERRCODE\\s*=\\s*.42501.|ERRCODE\\s*=\\s*.28000." +
+  "|is_messenger_group_member|messenger_group_members|bot_api_key_table_access|appeal_reviewers)";
+
+/**
  * Anon-reachable SECURITY DEFINER writers that are allowed to stay reachable, each with the
  * reason it is safe. This list is short ON PURPOSE: an allowlist whose entries must each be
  * justified is a different object from a subject list that has to be remembered.
@@ -296,6 +336,13 @@ const ANON_REACHABLE_ALLOWLIST: Record<string, string> = {
     "Scoped by `WHERE user_id = auth.uid()`. For anon auth.uid() is NULL, so it matches no row.",
   mark_notification_read:
     "Same: `WHERE id = p_notification_id AND user_id = auth.uid()`. NULL matches nothing.",
+  submit_quiz_attempt:
+    "Surfaced by the wave-2 tightening of AUTHZ_SIGNALS, and safe. It opens with " +
+    "`IF _uid IS NULL THEN RAISE EXCEPTION 'unauthenticated'` — a real caller check, which " +
+    "AUTHZ_SIGNALS does not match only because that raise carries no ERRCODE. An anon caller " +
+    "is refused there, before any write. Its write set is one academy_quiz_attempts row for " +
+    "auth.uid(), and the score is computed in the body from academy_quiz_questions." +
+    "correct_value, so no caller can supply its own result. Live body read 2026-09-06.",
   query_dynamic_table_rows_v2:
     "A READ path (the /data-tables page). It only enters the writer set transitively, through " +
     "the memoizing helpers _dyn_compute_row_values / _obs_compute_row_values.",
@@ -334,8 +381,7 @@ const DERIVED_SUBJECTS = `
     AND f.proname IN (SELECT proname FROM writer)
     AND has_function_privilege('anon', f.oid, 'EXECUTE')
     AND f.def !~* '(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor)'
-    AND f.def !~* '[R]AISE\\s+EXCEPTION'
-  ORDER BY 1
+    AND f.def !~* '${AUTHZ_SIGNALS}'
 `;
 
 test("⛔ DERIVED: no ungated SECURITY DEFINER writer is reachable by anon", () => {
@@ -473,18 +519,10 @@ test("✅ an authenticated ADMIN still reaches the body — the feature is not b
  * =========================================================================================== */
 
 /**
- * Signals that a body refuses a CALLER rather than an ARGUMENT. Written as a single source of
- * truth so the two queries below cannot drift apart, and quoted into the failure message so a
- * future reader sees what "guarded" was taken to mean at the moment the gate fired.
+ * AUTHZ_SIGNALS is declared ABOVE, beside the anon half, because wave 2 made BOTH halves use
+ * it and a `const` cannot be referenced from a template literal that is evaluated earlier in
+ * the file. See its comment there for what each signal means and why the anon half needed it.
  */
-const AUTHZ_SIGNALS =
-  "(has_role|has_any_role|_require_privileged|gamification_assert_manager|is_active_actor" +
-  // The SQLSTATE literals are matched with `.` in place of the surrounding single quotes.
-  // This string is interpolated into a SQL string literal, and a real `'` here would close it
-  // early — the first draft did exactly that and the query died with a syntax error instead of
-  // asserting, which is a test that fails for the wrong reason.
-  "|ERRCODE\\s*=\\s*.42501.|ERRCODE\\s*=\\s*.28000." +
-  "|is_messenger_group_member|messenger_group_members|bot_api_key_table_access|appeal_reviewers)";
 
 /**
  * SECURITY DEFINER writers that may keep EXECUTE for `authenticated` without a role check.
