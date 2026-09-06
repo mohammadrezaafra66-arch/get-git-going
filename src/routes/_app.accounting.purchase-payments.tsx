@@ -119,6 +119,43 @@ function PurchasePaymentsPage() {
   const [payeePartyId, setPayeePartyId] = useState<string>("");
   const [trackingNumber, setTrackingNumber] = useState("");
   const [payeeAccountingCode, setPayeeAccountingCode] = useState("");
+  /**
+   * H-2 (wave 6) — the payment amount. This page had NO amount field at all: it
+   * always sent `_amount: null`, so migration 478's partial-payment capability
+   * had no user interface, and a purchase whose cash_price is below its
+   * total_amount could never be settled from here — the first click paid
+   * cash_price and every later click was refused because the implicit amount
+   * stayed cash_price while the remainder was smaller.
+   *
+   * Empty means "pay the outstanding balance", which is exactly what the RPC
+   * does for a NULL amount after migration 495.
+   */
+  const [amountText, setAmountText] = useState("");
+
+  /**
+   * The outstanding balance of the purchase in the dialog: total_amount minus
+   * the approved, un-reversed vouchers already recorded against it. Mirrors the
+   * `_outstanding` the RPC computes, so the number the operator is shown is the
+   * number the database will enforce.
+   */
+  const outstandingQ = useQuery({
+    queryKey: ["purchase-outstanding", target?.id],
+    enabled: !!target?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("payment_vouchers")
+        .select("amount")
+        .eq("purchase_id", target!.id)
+        .eq("status", "approved")
+        .is("reversed_at", null);
+      if (error) throw error;
+      const paid = (data ?? []).reduce(
+        (sum, v) => sum + Number((v as { amount: number | null }).amount ?? 0),
+        0,
+      );
+      return Math.max(Number(target!.total_amount ?? 0) - paid, 0);
+    },
+  });
 
   const accountsQ = useQuery({
     queryKey: ["account-balances", "purchase-payment"],
@@ -177,6 +214,10 @@ function PurchasePaymentsPage() {
           chequeNumber: voucherChannel === "cheque" ? chequeNumber : null,
           chequeDueDate: voucherChannel === "cheque" ? chequeDueDate || null : null,
           description: "پرداخت خرید",
+          // H-2 — an empty box means "pay the outstanding balance": the RPC
+          // resolves a NULL amount to _outstanding itself (migration 495), so
+          // the default is enforced in one place rather than two.
+          amount: amountText.trim() === "" ? null : Number(amountText.trim()),
           // Migration 313 — payee identity + tracking number reach the RPC,
           // which records them on the voucher and posts the journal entry.
           payeePartyId: payeePartyId || null,
@@ -434,6 +475,10 @@ function PurchasePaymentsPage() {
                                     setPayeePartyId("");
                                     setTrackingNumber("");
                                     setPayeeAccountingCode("");
+                                    // H-2 — empty means "the outstanding
+                                    // balance"; the placeholder shows what that
+                                    // is once outstandingQ resolves.
+                                    setAmountText("");
                                   }}
                                 >
                                   <Wallet className="ml-1 h-4 w-4" />
@@ -614,6 +659,33 @@ function PurchasePaymentsPage() {
                       اگر پول به‌جای تأمین‌کننده به شخص دیگری پرداخت شده، او را اینجا انتخاب کنید.
                       بدهی تأمین‌کننده در هر دو حالت کم می‌شود؛ فقط گیرندهٔ واقعی در سند ثبت
                       می‌گردد.
+                    </p>
+                  </div>
+
+                  {/* H-2 (wave 6) — the amount. Empty pays the outstanding
+                      balance. Before this field existed the page always sent a
+                      NULL amount and a purchase with cash_price below
+                      total_amount could never be settled here. */}
+                  <div className="space-y-1">
+                    <Label>مبلغ پرداخت</Label>
+                    <Input
+                      dir="ltr"
+                      inputMode="numeric"
+                      className="text-left font-mono"
+                      placeholder={
+                        outstandingQ.data != null
+                          ? String(outstandingQ.data)
+                          : "ماندهٔ بدهی"
+                      }
+                      value={amountText}
+                      onChange={(e) => setAmountText(e.target.value.replace(/[^\d.]/g, ""))}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {outstandingQ.data != null
+                        ? `ماندهٔ بدهی این خرید ${toFaDigits(
+                            outstandingQ.data.toLocaleString("en-US"),
+                          )} است. اگر خالی بگذارید، همین مبلغ پرداخت می‌شود.`
+                        : "اگر خالی بگذارید، ماندهٔ بدهی این خرید پرداخت می‌شود."}
                     </p>
                   </div>
 
