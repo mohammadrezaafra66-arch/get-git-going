@@ -395,6 +395,27 @@ Band A (the 29) and Band C (420, 421) do carry over — Band A only if the §5 q
 
 ---
 
+## 11 · The state R-4 / R-5 inherit, and how to rewind it
+
+`prod_rehearsal_20260908` is left **reconciled**: ledger **579 / `20260904150000`**. That is
+deliberate — the runbook's first real step is the reconciliation, so this is the state every later
+step starts from.
+
+To put the lying ledger back (to re-rehearse step 1, or to test a change to the script), delete
+the ten rows R-3 added and nothing else:
+
+```sql
+BEGIN;
+DELETE FROM supabase_migrations.schema_migrations WHERE version > '20260827120000';
+SELECT count(*), max(version) FROM supabase_migrations.schema_migrations;  -- expect 569 / 20260827120000
+COMMIT;
+```
+
+To rebuild the whole rehearsal from scratch, drop it and re-run §1's `CREATE DATABASE … TEMPLATE
+afrakala_prod_clone4`, then the §2 applies and `r2-reproduce-lying-ledger.sql`.
+**`afrakala_prod_clone4` must not be dropped** — it is the only pristine copy of the production
+dump on this host.
+
 ## Housekeeping
 
 - Worktree `D:\AfraKalaTest\wt-prodprep`, branch `feature/prodprep-20260908`.
