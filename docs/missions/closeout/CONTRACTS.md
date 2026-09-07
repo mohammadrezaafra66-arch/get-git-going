@@ -468,3 +468,53 @@ use each** — plus **one** recommendation. The owner chooses after reading.
 
 `H-1 … H-8` (8) · `V-1 … V-3` (3) · `C-4 … C-8` (5). Group C is unblocked; nothing is blocked on a
 credential any more.
+
+---
+
+## 18. FINDING — concurrent orchestrator sessions on one shared tree
+
+**Named at the owner's instruction. Recorded, not acted on. No remediation is attempted here.**
+
+Reported by the owner: **two live orchestrator sessions on this one shared tree corrupted a sibling
+mission's evaluation directory earlier today.**
+
+The ledger drift this mission observed is **the same family of fault**, and it is worth writing down
+precisely because in our case it stayed benign:
+
+```
+ledger 675  ·  wt-h disk 674  ·  wt-cc disk 673
+```
+
+Three different numbers, no two agreeing, none of them wrong. Each worktree holds only its own
+migration files while the ledger is a **single shared row set in one shared database**. The
+divergence is structural: worktrees isolate the filesystem, and nothing isolates the database.
+
+Why it stayed benign here was procedure, not luck — and the procedure is the transferable part:
+
+- Migration numbers were allocated **once, atomically, before any dispatch**, in non-overlapping
+  ranges (508–511 / 512–514), so two agents could never claim one number.
+- Each agent was told **explicitly** that ledger rows outside its range belong to another worktree and
+  must not be touched, re-run, or "fixed". The tempting repair — re-running a migration to make the
+  count match — is the destructive one: several migrations in this repo are not idempotent.
+- Applied-but-uncommitted was treated as an **incident**, not untidiness (§14), because that is the
+  state where the shared database and the isolated filesystem actively disagree.
+
+**What this does not cover.** Migration numbers were the only shared resource this mission
+partitioned. Everything else two orchestrators can collide on was left unpartitioned and simply did
+not collide:
+
+- the **live database** — business data moves under another session's tests while yours run
+- **`test-results/`, `.artifacts/`, `.output/`** and every other gitignored working directory
+- **`e2e/auth/*.storage.json`** — regenerating sessions rotates refresh tokens another session is
+  about to read
+- the **deployed container** at `:3100`, which is one machine serving every session at once
+
+The sibling mission's evaluation directory falls in the second category. Nothing in this mission's
+design would have prevented it.
+
+**Stated as a hypothesis, not a finding**: worktrees are widely treated as sufficient isolation for
+parallel agents, and for tracked source files they are. For a shared Postgres instance, a shared
+deployed container, and shared gitignored scratch directories they provide **none at all** — and the
+first two are precisely where this project keeps its irreversible state. Whether that warrants
+per-session scratch directories, a database naming convention, or simply a rule that one tree hosts
+one orchestrator at a time is **the owner's call and explicitly out of scope here.**
