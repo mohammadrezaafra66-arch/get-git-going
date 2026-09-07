@@ -738,3 +738,51 @@ where it is present.
 
 **Not built, by owner decision. Adding a trigger is a schema change nobody has approved and it sits
 outside C-7.**
+
+---
+
+## 23. F-1 closed on all three verbs — the third measured by the orchestrator
+
+Migration **518** extended the guard to `BEFORE INSERT OR UPDATE OF manual_credit_floor`. The builder
+proved INSERT and UPDATE and **explicitly flagged one case it had reasoned rather than measured**:
+`DELETE` followed by a re-`INSERT` carrying the ceiling. I measured it ([B-7]).
+
+```
+trg_customers_guard_manual_credit_floor
+  BEFORE INSERT OR UPDATE OF manual_credit_floor ON public.customers FOR EACH ROW
+```
+
+Probe delivered over stdin, **md5 identical both sides** (`146b322b…`), entirely inside
+`BEGIN … ROLLBACK`:
+
+| Step | Result |
+|---|---|
+| `sales` DELETEs a customer it owns | succeeds — `rows_after_delete = 0` |
+| `sales` re-INSERTs **with** a ceiling | **REFUSED 42501** — «تغییر سقف دستی فقط با نقش مدیر یا حسابدار ممکن است» |
+| **control**: `sales` re-INSERTs **without** a ceiling | **ALLOWED** — normal customer creation unbroken |
+| residue after rollback | 0 probe customers · 0 probe floors · 1 live floor (the legitimate H-7 one) |
+
+The Persian message survived the transport intact — no `?` substitution — confirming the stdin route
+holds for non-ASCII SQL.
+
+### The probe's first version passed for the WRONG reason — recorded because it nearly counted
+
+My first attempt read a `TEMP TABLE` after `SET LOCAL ROLE authenticated` and came back:
+
+```
+REINSERT RESULT: REFUSED sqlstate=42501 msg=permission denied for table _p
+```
+
+**`42501` is the same sqlstate the guard raises.** A probe checking only "was it refused" or only the
+error code would have scored that as a pass, while the ceiling guard was never reached at all — the
+statement died on the scaffolding. Only the *message* distinguished them.
+
+Generalises the wave-5 lesson one notch: it is not enough for a negative test to fail. **It must fail
+for the reason under test**, and on a shared error code the code alone cannot tell you that. The
+corrected probe resolves the person id into a `psql` variable *before* dropping privileges, so
+nothing under `authenticated` touches scaffolding it cannot read, and it asserts the exact message.
+
+Also noted from the builder, and worth keeping: the two branches need **different conditions** —
+UPDATE fires on `IS DISTINCT FROM`, INSERT on `IS NOT NULL`, because there is nothing to differ from.
+And `OLD` is unassigned during INSERT, so merely *referencing* `OLD.manual_credit_floor` raises; the
+function branches on `TG_OP` before touching it.
