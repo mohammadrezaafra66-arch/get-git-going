@@ -301,3 +301,101 @@ So C-6 has a real decision to make, and it is a decision, not a detail: install 
 in `afrakala` via a migration, or schedule outside the database. **Left open for the C-data agent to
 resolve and justify** ([B-1]: the agent gets the measurement and the question, not my answer).
 Installing an extension is a schema change and goes in a numbered migration like anything else.
+
+---
+
+## 12. Owner decisions taken 2026-09-07 — the four that unblocked Group C
+
+Agent C-backend halted **before writing a single row** because three CDR columns meant something
+different from the only existing documentation, and the schema required a mapping that was empty.
+The halt was correct. I reproduced its load-bearing measurements independently before escalating
+([B-7]): my own probe returned 47,728 rows / 26,749 distinct `uniqueid` / 6,210 distinct `linkedid`
+over 7 days, a worst-case fanout of **435 rows on one `uniqueid`**, and `CONGESTION` at **191,511**
+— the second-commonest disposition, which the `[doc]` map omits entirely.
+
+| # | Decision | Consequence |
+|---|---|---|
+| **D-56a** | **One call = one `linkedid`.** `external_id = linkedid`. | A queue call nobody answered is **1 missed call, not 15**. ~887 calls/day, not 6,818. The traced 61-row call becomes one row answered by ext 445. |
+| **D-56b** | **`call_logs.employee_id` becomes NULLABLE.** | Unanswered and internal calls import with `employee_id NULL`, so volume and missed counts are truthful. Dissolves the empty-mapping blocker. |
+| **D-56c** | **Missed = `disposition IN ('NO ANSWER','BUSY')` only.** | CONGESTION/FAILED are trunk faults: stored in `disposition`, never counted against a score. The rejected alternative charged ~211k technical failures per 120 days to employees. |
+| **D-40** | **Go-live = `2026-09-07`**, stored as a **settings row, not a code constant**. The importer **refuses to run** when it is NULL or missing — never defaults to all history. | Owner's words: *"That is the guard against the 1.86M-row sweep, and it survives cron."* The guard lives server-side because cron calls the route unattended. |
+
+**Two things the agent measured that override the documentation** — its own data governs:
+- **Direction is not derivable from `dcontext`.** `from-internal` carries 65,261 inbound legs
+  against 5,413 outbound in 30 days. Direction comes from extension position, not the documented rule.
+- **Outbound `dst` carries a trunk dial prefix.** `909XXXXXXXXX` (12 digits) fails every branch of
+  `normalize_identifier`, so **outbound calls matched no customer at all**. The groundwork doc's six
+  tested shapes did not include this one. The strip is implemented behind a named setting and the
+  prefix is recorded as **inferred from shape frequency, not read from `extensions.conf`**.
+
+---
+
+## 13. Findings that are NOT this mission's rows — for the owner
+
+### 13.1 🔴 Pressing the daily-allocation button today would zero every customer's ceiling
+
+Measured by me, independently, on the live test database:
+
+```
+dynamic_entity_scores:  2026-08-01 -> 95 rows · 2026-07-01 -> 55 rows · 2026-09 -> NONE
+daily_capital_settings: latest capital_date = 2026-08-31 · rows for tehran_today() = 0
+tehran_today() = 2026-09-07
+```
+
+With no September scores, `run_daily_capital_allocation` computes against zeros — the rolled-back
+probe returned `{"customers_count": 0, "total_allocated_to_customers": 0}`. **The button on
+`/accounting/dynamic-capital` is live and a human can press it.** Nothing was committed; no snapshot
+for today exists. Recorded, not fixed — writing a snapshot is exactly what must not happen by accident.
+
+### 13.2 The credit override does not survive the formula run the UI offers
+
+Migration 506 taught **only** `recompute_dynamic_capital_setting` about `manual_credit_floor`.
+Confirmed from the live catalog, counting references in `pg_get_functiondef`:
+
+```
+run_daily_capital_allocation        -> 0 references to manual_credit_floor
+recompute_dynamic_capital_setting   -> 1 reference
+```
+
+Same customer, same 2,000,000,000 ﷼ approved floor: `recompute_dynamic_capital_setting` yields
+`final_limit = 2,000,000,000` (`binding_constraint = manual_override`), while
+`run_daily_capital_allocation` yields **1,247,149,593** (`binding_constraint = formula`).
+
+The UI's only formula button calls **`run_daily_capital_allocation`**
+(`src/hooks/capital/useDynamicCapital.ts:101`). `recompute_dynamic_capital_setting` has **no
+application caller at all** — only the trigger `trg_refresh_dyn_capital_after_score_change`, which is
+inert today on both of its conditions (no current-month score rows, no settings row for today).
+
+So the credit-requests page's footer — «فرمول تخصیص سرمایه از آن پس این سقف را به‌عنوان کف در نظر
+می‌گیرد» — **is not true** of the run a user can trigger. Either the function learns the floor or the
+promise is corrected. **Not fixed here**: this moves real credit ceilings, and CLAUDE.md rule 10
+requires the owner to approve ceiling movement, not merely the numbers.
+
+### 13.3 H-6 Calendar — measured, correctly stopped, needs one owner choice
+
+Passing a `locale` is the **wrong** fix: `react-day-picker@9.14.0` types it as
+`Partial<DayPickerLocale>` and it only renames a Gregorian grid. The library *can* do Jalali — it
+ships a `react-day-picker/persian` entry point with `date-fns-jalali` already bundled.
+
+Real size: **6 JSX render sites in 4 files**, zero new dependencies —
+`_app.accounting.allocation-workbench.tsx:239` · `payables.tsx:329,356` ·
+`receivables.tsx:419,446` · `purchase-payments.tsx:548`.
+
+The blocker is not size, it is that **the repo already has four competing Jalali mechanisms**,
+including `JalaliDateInput` (react-multi-date-picker + `calendar={persian}`) at ~20 sites — one of
+them in `purchase-payments.tsx:628`, the same file that renders an English calendar at line 548.
+Choosing between two existing mechanisms is the "until a proper Jalali picker is chosen" gate.
+
+### 13.4 Smaller, recorded, not acted on
+
+- `src/routes/_app.persons.tsx:85` calls the custom-field filter "substring matched";
+  `findPersonIdsByFieldValue` (`src/lib/persons/field-definitions.ts:178`) uses `.eq()` — exact
+  equality. The Persian placeholder («مقدار دقیق») is right; the code comment is wrong.
+- A denied page still prints its title in the breadcrumb to a refused viewer. Cosmetic — the content
+  itself never renders.
+- `pay_purchase_with_voucher` and `settle_league_season` still use `CURRENT_DATE`. The first is
+  genuinely reachable from the UI (`src/lib/treasury/queries.ts:237` sends `_payment_date ?? null`
+  into a `COALESCE(_payment_date, CURRENT_DATE)`), making it the highest-value remaining OG-64 item —
+  deliberately left, because rewriting a payment-critical `SECURITY DEFINER` function inside a hotfix
+  on a shared live database is not hotfix scope.
+- `src/shared/components/PurchaseForm.tsx:26` imports `Calendar` and never renders it.
