@@ -63,6 +63,42 @@ type StaffRow = { id: string; full_name: string | null };
 /** Radix Select forbids an empty item value, so "unassigned" needs a sentinel. */
 const UNASSIGNED = "__unassigned__";
 
+/**
+ * داخلی‌هایی که خودِ مرکز تلفن واقعاً گزارش کرده، با تعداد تماس ۹۰ روز.
+ *
+ * چرا ثابت است و از داده زنده ساخته نمی‌شود: منبعِ راستش جدول `cdr` روی MySQL
+ * ایزابل است که فقط از سمت سرور خواندنی است، و ساختن یک route تازه صرفاً برای
+ * پر کردن یک فهرست پیشنهاد، یک قابلیت جدید می‌شد نه یک راحتی. پس این‌ها یک
+ * اندازه‌گیریِ تاریخ‌دارند، نه حدس:
+ *
+ *   اندازه‌گیری ۲۰۲۶-۰۹-۰۷ روی ۹۰ روز `cdr` — هر مقدار ۳ تا ۴ رقمی که بیش از
+ *   ۲۰ بار در `src` یا `dst` دیده شده باشد.
+ *
+ * `411` عمداً اینجا نیست: در CDR اصلاً وجود ندارد.
+ * داخلی‌های دیده‌شده در `call_logs` هم به این فهرست اضافه می‌شوند، پس هر داخلی
+ * تازه‌ای که از این به بعد تماس بگیرد خودش ظاهر می‌شود و فهرست کهنه نمی‌ماند.
+ */
+const CDR_EXTENSIONS_90D: ReadonlyArray<{ ext: string; calls: number }> = [
+  { ext: "405", calls: 422 },
+  { ext: "406", calls: 13507 },
+  { ext: "409", calls: 14058 },
+  { ext: "410", calls: 382 },
+  { ext: "412", calls: 13766 },
+  { ext: "446", calls: 13477 },
+  { ext: "447", calls: 13468 },
+  { ext: "448", calls: 13469 },
+  { ext: "449", calls: 13590 },
+  { ext: "450", calls: 13671 },
+];
+
+/**
+ * صف (ring group)، نه داخلیِ یک نفر. `6002` به‌تنهایی ۱۸۶٬۲۲۰ پا در ۹۰ روز دارد؛
+ * نسبت دادنش به یک نفر یعنی گذاشتن ترافیک کل یک صف روی امتیاز یک کارمند.
+ * فقط برای اطلاع نمایش داده می‌شوند و قابل انتخاب نیستند.
+ * `909` هم داخلی نیست — اثر پیشوند شماره‌گیری خط بیرون است و اصلاً نمی‌آید.
+ */
+const CDR_QUEUES: ReadonlyArray<string> = ["6001", "6002", "6003"];
+
 export const Route = createFileRoute("/_app/admin/call-extensions")({
   // The client half of the guard below. `beforeLoad` runs only on the server for a direct
   // navigation and cannot see a localStorage session, so RouteRoleGate reads this instead.
@@ -98,11 +134,46 @@ function CallExtensionsPage() {
   const [newLabel, setNewLabel] = useState("");
   const [newEmployee, setNewEmployee] = useState<string>(UNASSIGNED);
 
+  // داخلی‌هایی که در تماس‌های واردشده دیده شده‌اند — نیمهٔ زندهٔ فهرست پیشنهاد.
+  const [seenInCallLogs, setSeenInCallLogs] = useState<string[]>([]);
+
   const staffName = useMemo(() => {
     const m = new Map<string, string>();
     for (const s of staff) m.set(s.id, s.full_name?.trim() || "بدون نام");
     return m;
   }, [staff]);
+
+  /**
+   * عنوان‌های تکراری. فقط نشان داده می‌شوند — نه ادغام، نه هشدارِ خطا.
+   * دو داخلی برای یک نفر در این شرکت عادی است؛ اینکه هر دو به یک کارمند وصل
+   * شوند یا به دو نفر، تصمیم کسی است که نگاشت را انجام می‌دهد، نه این صفحه.
+   */
+  const duplicateLabels = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      const l = (r.label ?? "").trim();
+      if (l) counts.set(l, (counts.get(l) ?? 0) + 1);
+    }
+    return new Set([...counts.entries()].filter(([, n]) => n > 1).map(([l]) => l));
+  }, [rows]);
+
+  const unmappedCount = useMemo(
+    () => rows.filter((r) => !r.employee_id).length,
+    [rows],
+  );
+
+  /** داخلی‌های شناخته‌شدهٔ مرکز تلفن که هنوز در این جدول نیستند. */
+  const suggestions = useMemo(() => {
+    const known = new Set(rows.map((r) => r.extension));
+    const merged = new Map<string, number | null>();
+    for (const c of CDR_EXTENSIONS_90D) if (!known.has(c.ext)) merged.set(c.ext, c.calls);
+    for (const e of seenInCallLogs) {
+      if (!known.has(e) && !merged.has(e) && !CDR_QUEUES.includes(e)) merged.set(e, null);
+    }
+    return [...merged.entries()]
+      .map(([ext, calls]) => ({ ext, calls }))
+      .sort((a, b) => a.ext.localeCompare(b.ext));
+  }, [rows, seenInCallLogs]);
 
   const load = useCallback(async () => {
     setListLoading(true);
@@ -141,6 +212,29 @@ function CallExtensionsPage() {
   useEffect(() => {
     if (allowed) void load();
   }, [allowed, load]);
+
+  // داخلی‌های واقعاً دیده‌شده در تماس‌های واردشده. این نیمه زنده است، پس فهرست
+  // پیشنهاد با گذشت زمان خودش کامل می‌شود و به عدد ثابت بالا گیر نمی‌کند.
+  useEffect(() => {
+    if (!allowed) return;
+    void (async () => {
+      // `call_logs.extension` (مهاجرت ۴۹۷) هنوز در types.ts تولیدشده نیست —
+      // همان قرارداد cast که بالای همین فایل برای call_log_extensions هست.
+      const { data } = await supabase
+        .from("call_logs" as never)
+        .select("extension")
+        .not("extension", "is", null)
+        .limit(2000);
+      const list = [
+        ...new Set(
+          ((data ?? []) as unknown as { extension: string | null }[])
+            .map((r) => r.extension)
+            .filter((e): e is string => Boolean(e)),
+        ),
+      ];
+      setSeenInCallLogs(list);
+    })();
+  }, [allowed]);
 
   async function addExtension() {
     const ext = newExtension.trim();
@@ -245,6 +339,48 @@ function CallExtensionsPage() {
         </div>
       ) : null}
 
+      {/* چرا آمار تماس هنوز از CDR محاسبه نمی‌شود — و چه چیزی این را تمام می‌کند. */}
+      {rows.length > 0 && unmappedCount === rows.length ? (
+        <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
+          تا وقتی داخلی‌ها به کارمندان نسبت داده نشوند، آمار تماس از CDR محاسبه نمی‌شود و ثبت
+          دستی آمار تماس ادامه پیدا می‌کند. عنوان گذاشتن روی یک داخلی کافی نیست؛ باید همکارِ آن
+          داخلی هم از فهرست «همکار» انتخاب و ذخیره شود.
+        </div>
+      ) : null}
+
+      {/* داخلی‌هایی که مرکز تلفن گزارش کرده ولی هنوز اینجا ثبت نشده‌اند */}
+      {suggestions.length > 0 ? (
+        <div className="rounded-md border p-4">
+          <div className="mb-2 text-sm font-medium">
+            داخلی‌هایی که مرکز تلفن گزارش کرده ولی هنوز اینجا ثبت نشده‌اند
+          </div>
+          <p className="mb-3 text-xs text-muted-foreground">
+            عدد کنار هر داخلی، تعداد تماس آن در ۹۰ روز گذشته است — یک میز واقعی از یک آیفون
+            درِ ورودی با همین عدد قابل تشخیص است. برای ثبت، روی داخلی بزنید تا فرم بالا پر شود.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <Button
+                key={s.ext}
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setNewExtension(s.ext)}
+              >
+                <span className="font-mono">{s.ext}</span>
+                <span className="mr-2 text-xs text-muted-foreground">
+                  {s.calls === null ? "دیده‌شده در تماس‌ها" : `${s.calls.toLocaleString("fa-IR")} تماس`}
+                </span>
+              </Button>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-muted-foreground">
+            صف‌ها ({CDR_QUEUES.join("، ")}) داخلیِ یک نفر نیستند و پیشنهاد نمی‌شوند؛ ترافیک یک صف
+            روی چند نفر پخش می‌شود و نسبت دادنش به یک کارمند امتیاز او را غلط بالا می‌برد.
+          </p>
+        </div>
+      ) : null}
+
       {/* Add a new extension */}
       <div className="rounded-md border p-4">
         <div className="mb-3 text-sm font-medium">افزودن داخلی تازه</div>
@@ -303,6 +439,7 @@ function CallExtensionsPage() {
                 <TableHead>داخلی</TableHead>
                 <TableHead>عنوان</TableHead>
                 <TableHead>همکار</TableHead>
+                <TableHead>وضعیت</TableHead>
                 <TableHead>آخرین تغییر</TableHead>
                 <TableHead>عملیات</TableHead>
               </TableRow>
@@ -345,6 +482,23 @@ function CallExtensionsPage() {
                         {row.employee_id ? (staffName.get(row.employee_id) ?? "—") : "بدون همکار"}
                       </span>
                     )}
+                  </TableCell>
+                  {/* یک ردیف با عنوان ولی بدون کارمند نباید «تمام‌شده» به نظر برسد —
+                      دقیقاً همین بود که این جدول را کامل نشان داد در حالی که هیچ
+                      تماسی به کسی نسبت داده نمی‌شد. */}
+                  <TableCell className="min-w-[13rem]">
+                    {row.employee_id ? (
+                      <span className="text-xs text-muted-foreground">نسبت داده شده</span>
+                    ) : (
+                      <span className="inline-flex items-center rounded-md border border-amber-500/60 bg-amber-500/15 px-2 py-1 text-xs font-semibold text-amber-700 dark:text-amber-300">
+                        کارمند انتخاب نشده
+                      </span>
+                    )}
+                    {duplicateLabels.has((row.label ?? "").trim()) ? (
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        عنوان «{(row.label ?? "").trim()}» روی بیش از یک داخلی ثبت شده است.
+                      </div>
+                    ) : null}
                   </TableCell>
                   <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                     {new Date(row.updated_at).toLocaleString("fa-IR")}
