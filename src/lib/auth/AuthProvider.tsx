@@ -145,14 +145,36 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   useEffect(() => {
     const uid = state.user?.id;
     if (!uid) return;
+    // H-11. `error` is NOT sufficient to tell whether this worked. `viewer_restricted` on
+    // `profiles` is a RESTRICTIVE policy over ALL commands (`polpermissive = f`, `polcmd = '*'`,
+    // `USING (NOT is_viewer_only(uid()))`), so it ANDs into the UPDATE and a viewer-only account
+    // matches ZERO rows. A zero-row UPDATE is not an error — PostgREST answers 204 — so `error`
+    // is null and the heartbeat reported success while writing nothing. Measured 2026-09-07 with
+    // a simulated JWT: viewer-only -> ROW_COUNT 0 and no exception; sales -> ROW_COUNT 1.
+    //
+    // `.select("id")` makes the outcome legible: the affected rows come back, so zero rows is
+    // observable instead of silent. This does not grant the viewer anything — the row still is
+    // not written, and `is_user_online` still reports them offline. Whether a viewer-only account
+    // SHOULD have presence at all is an owner decision and is deliberately NOT taken here; it
+    // would need a carve-out in a restrictive policy on a table that security wave 3 is already
+    // looking at. This change only stops the failure from being invisible.
     const ping = () => {
       void (async () => {
         try {
-          const { error } = await supabase
+          const { data, error } = await supabase
             .from("profiles")
             .update({ last_seen_at: new Date().toISOString() })
-            .eq("id", uid);
-          if (error) console.warn("[presence] last_seen_at heartbeat failed:", error.message);
+            .eq("id", uid)
+            .select("id");
+          if (error) {
+            console.warn("[presence] last_seen_at heartbeat failed:", error.message);
+          } else if (!data || data.length === 0) {
+            console.warn(
+              "[presence] last_seen_at heartbeat matched 0 rows for user",
+              uid,
+              "- the row exists but RLS refused the write, so this account will read as offline.",
+            );
+          }
         } catch (err) {
           console.warn("[presence] last_seen_at heartbeat threw:", err);
         }
