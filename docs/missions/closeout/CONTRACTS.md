@@ -850,3 +850,78 @@ the documented recipe says to.
 - After recording, assert the row is **yours**: check `INSERT 0 1`, or re-select the row and compare
   `inserted_at` against when you applied it. `ON CONFLICT DO NOTHING` returning zero rows means
   either "already recorded" or "someone else owns this version", and only a second query separates them.
+
+---
+
+## 25. Two rows are BUILT AND PROVEN but NOT LIVE — they read as OPEN in the final table
+
+**Owner's instruction, and it governs how the completion report presents these.** Both depend on an
+owner action that has not happened. Neither may be listed as done.
+
+> *"The crontab is not installed until I run it, so the completion report must not list C-6 as done.
+> … Same for the extension mapping: `employee_id` is still null on all rows, so the C-7 switchover
+> guard is closed by design, not by accident. Both are mine, and both should read as open in the
+> final table."*
+
+The distinction the report must hold: **the engineering row closed; the operational state did not.**
+Code landed and was proven; the thing the code exists to do is not yet happening. Reporting the first
+as if it were the second is the reporting equivalent of the silent-success failures this mission
+caught four times.
+
+| Row | Engineering | Operational | **Final table** |
+|---|---|---|---|
+| **C-6** schedule | built, D-39's 17 fire times simulated and matched exactly | **crontab not installed** | **OPEN — owner installs** |
+| **C-7** derivation | built, guard proven in **both** states | **`employee_id` NULL on all 9 rows → switchover closed** | **OPEN — owner maps employees** |
+
+C-7's closed state is **by design, not by accident**, and the report says so in those words: the
+guard's predicate is `count(*) WHERE employee_id IS NOT NULL > 0`, it evaluates to 0, manual entry
+continues, and the screen states why. Verified in both directions — closed live, open under a
+simulated mapping in a rolled-back transaction.
+
+### The crontab block the report carries, with the decision rule beside it
+
+Measured, so the report states it rather than leaving a choice:
+
+| | Measured 2026-09-07 |
+|---|---|
+| Windows test host | **`West Asia Standard Time` = UTC+05:00** — neither Tehran (+03:30) nor UTC; **no `crontab`**, no scheduled task |
+| `afrakala-lan-web` / `-db` | **UTC** (`TZ` empty, no `/etc/timezone`) |
+| Established repo pattern | host cron on a **Linux self-host server** (`pricing-worker`, `marketing-tasks` are the same shape) |
+
+So the crontab target is the Linux self-host server, whose timezone this session cannot reach.
+**Owner runs `timedatectl` before installing.**
+
+```bash
+# 1. confirm the clock, and that cron honours CRON_TZ (cronie/vixie — NOT busybox)
+timedatectl
+crond -V 2>&1 || cron -V 2>&1
+
+# 2. install the driver
+sudo install -m 0755 deploy/app/scripts/issabel-import-cron.example.sh \
+    /usr/local/bin/afrakala-issabel-import.sh
+
+# 3. crontab — the CRON_TZ line is what makes the five below unambiguous
+sudo crontab -e
+```
+```cron
+CRON_TZ=Asia/Tehran
+0    8,9          * * *  /usr/local/bin/afrakala-issabel-import.sh   # window 1
+0,30 10,11,12     * * *  /usr/local/bin/afrakala-issabel-import.sh   # window 2
+0    13,14,15,16  * * *  /usr/local/bin/afrakala-issabel-import.sh   # window 3
+0    17,18,19     * * *  /usr/local/bin/afrakala-issabel-import.sh   # window 4
+0    20,2         * * *  /usr/local/bin/afrakala-issabel-import.sh   # window 5
+```
+
+**Decision rule — `CRON_TZ` removes the choice rather than making it blind.** Iran abolished DST in
+2022, so `Asia/Tehran` is a fixed +03:30 and these lines never shift.
+
+Only if `CRON_TZ` is unsupported does the server's own zone matter:
+
+| `timedatectl` says | Use |
+|---|---|
+| `Asia/Tehran` | the five lines above, **without** the `CRON_TZ` header |
+| `UTC` | the **seven**-line variant in the script's header — the half-hour offset splits window 2 into three expressions |
+| **anything else** (incl. this machine's UTC+05:00) | **neither documented variant is correct** — recompute all five windows from that zone |
+
+Getting this wrong shifts every window by hours and would go unnoticed for a day, which is why the
+report states the measurement and the rule instead of a bare command.
