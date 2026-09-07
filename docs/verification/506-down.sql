@@ -1,0 +1,17 @@
+-- Reverse of migration 506. Applied to the afrakala database.
+--
+-- There is no mechanical down script for this one, and pretending otherwise would be worse
+-- than saying so: 506 REPLACED recompute_dynamic_capital_setting, whose previous body is
+-- Agent X's X-1 version. To revert, read that version back out of migration
+-- 20260906181000_484_retire_capital_allocation_ledger.sql (or whichever migration last
+-- rewrote the function) and CREATE OR REPLACE it with the signature unchanged - (uuid, text).
+--
+-- Reverting the FUNCTION alone is enough to disable the floor: with the old body, nothing
+-- reads customers.manual_credit_floor and every allocation falls back to the formula. The
+-- column can then stay in place harmlessly.
+--
+-- Before doing that, re-read the LIVE definition with pg_get_functiondef (CLAUDE.md rule 4).
+-- Another agent may have rewritten it again since 506, and re-applying an older text
+-- wholesale would silently revert their work - exactly the hazard 506 itself was written to
+-- avoid.
+SET client_encoding = 'UTF8';

@@ -72,6 +72,7 @@ import { Route as AppSalesQuoteShareLogsRouteImport } from './routes/_app.sales.
 import { Route as AppSalesPromotionNominationsRouteImport } from './routes/_app.sales.promotion-nominations'
 import { Route as AppSalesProductVideosRouteImport } from './routes/_app.sales.product-videos'
 import { Route as AppSalesCreditRulesRouteImport } from './routes/_app.sales.credit-rules'
+import { Route as AppSalesCreditRequestsRouteImport } from './routes/_app.sales.credit-requests'
 import { Route as AppSalesCreditCustomersRouteImport } from './routes/_app.sales.credit-customers'
 import { Route as AppPurchasesCreateRouteImport } from './routes/_app.purchases_.create'
 import { Route as AppProductsRegenerateNamesRouteImport } from './routes/_app.products.regenerate-names'
@@ -143,6 +144,7 @@ import { Route as AppAdminProfileFieldsRouteImport } from './routes/_app.admin.p
 import { Route as AppAdminPlatformReleasesRouteImport } from './routes/_app.admin.platform-releases'
 import { Route as AppAdminPhoneCollisionsRouteImport } from './routes/_app.admin.phone-collisions'
 import { Route as AppAdminPersonsCleanupRouteImport } from './routes/_app.admin.persons-cleanup'
+import { Route as AppAdminPersonFieldsRouteImport } from './routes/_app.admin.person-fields'
 import { Route as AppAdminPenaltiesRouteImport } from './routes/_app.admin.penalties'
 import { Route as AppAdminPaymentTermsRouteImport } from './routes/_app.admin.payment-terms'
 import { Route as AppAdminMarketingTaskTemplatesRouteImport } from './routes/_app.admin.marketing-task-templates'
@@ -535,6 +537,11 @@ const AppSalesCreditRulesRoute = AppSalesCreditRulesRouteImport.update({
   path: '/credit-rules',
   getParentRoute: () => AppSalesRoute,
 } as any)
+const AppSalesCreditRequestsRoute = AppSalesCreditRequestsRouteImport.update({
+  id: '/credit-requests',
+  path: '/credit-requests',
+  getParentRoute: () => AppSalesRoute,
+} as any)
 const AppSalesCreditCustomersRoute = AppSalesCreditCustomersRouteImport.update({
   id: '/credit-customers',
   path: '/credit-customers',
@@ -906,6 +913,11 @@ const AppAdminPhoneCollisionsRoute = AppAdminPhoneCollisionsRouteImport.update({
 const AppAdminPersonsCleanupRoute = AppAdminPersonsCleanupRouteImport.update({
   id: '/admin/persons-cleanup',
   path: '/admin/persons-cleanup',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminPersonFieldsRoute = AppAdminPersonFieldsRouteImport.update({
+  id: '/admin/person-fields',
+  path: '/admin/person-fields',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminPenaltiesRoute = AppAdminPenaltiesRouteImport.update({
@@ -1403,6 +1415,7 @@ export interface FileRoutesByFullPath {
   '/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/admin/person-fields': typeof AppAdminPersonFieldsRoute
   '/admin/persons-cleanup': typeof AppAdminPersonsCleanupRoute
   '/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
@@ -1474,6 +1487,7 @@ export interface FileRoutesByFullPath {
   '/products/regenerate-names': typeof AppProductsRegenerateNamesRoute
   '/purchases/create': typeof AppPurchasesCreateRoute
   '/sales/credit-customers': typeof AppSalesCreditCustomersRoute
+  '/sales/credit-requests': typeof AppSalesCreditRequestsRoute
   '/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/sales/product-videos': typeof AppSalesProductVideosRoute
   '/sales/promotion-nominations': typeof AppSalesPromotionNominationsRoute
@@ -1610,6 +1624,7 @@ export interface FileRoutesByTo {
   '/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/admin/person-fields': typeof AppAdminPersonFieldsRoute
   '/admin/persons-cleanup': typeof AppAdminPersonsCleanupRoute
   '/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
@@ -1681,6 +1696,7 @@ export interface FileRoutesByTo {
   '/products/regenerate-names': typeof AppProductsRegenerateNamesRoute
   '/purchases/create': typeof AppPurchasesCreateRoute
   '/sales/credit-customers': typeof AppSalesCreditCustomersRoute
+  '/sales/credit-requests': typeof AppSalesCreditRequestsRoute
   '/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/sales/product-videos': typeof AppSalesProductVideosRoute
   '/sales/promotion-nominations': typeof AppSalesPromotionNominationsRoute
@@ -1820,6 +1836,7 @@ export interface FileRoutesById {
   '/_app/admin/marketing-task-templates': typeof AppAdminMarketingTaskTemplatesRoute
   '/_app/admin/payment-terms': typeof AppAdminPaymentTermsRoute
   '/_app/admin/penalties': typeof AppAdminPenaltiesRoute
+  '/_app/admin/person-fields': typeof AppAdminPersonFieldsRoute
   '/_app/admin/persons-cleanup': typeof AppAdminPersonsCleanupRoute
   '/_app/admin/phone-collisions': typeof AppAdminPhoneCollisionsRoute
   '/_app/admin/platform-releases': typeof AppAdminPlatformReleasesRoute
@@ -1891,6 +1908,7 @@ export interface FileRoutesById {
   '/_app/products/regenerate-names': typeof AppProductsRegenerateNamesRoute
   '/_app/purchases_/create': typeof AppPurchasesCreateRoute
   '/_app/sales/credit-customers': typeof AppSalesCreditCustomersRoute
+  '/_app/sales/credit-requests': typeof AppSalesCreditRequestsRoute
   '/_app/sales/credit-rules': typeof AppSalesCreditRulesRoute
   '/_app/sales/product-videos': typeof AppSalesProductVideosRoute
   '/_app/sales/promotion-nominations': typeof AppSalesPromotionNominationsRoute
@@ -2031,6 +2049,7 @@ export interface FileRouteTypes {
     | '/admin/marketing-task-templates'
     | '/admin/payment-terms'
     | '/admin/penalties'
+    | '/admin/person-fields'
     | '/admin/persons-cleanup'
     | '/admin/phone-collisions'
     | '/admin/platform-releases'
@@ -2102,6 +2121,7 @@ export interface FileRouteTypes {
     | '/products/regenerate-names'
     | '/purchases/create'
     | '/sales/credit-customers'
+    | '/sales/credit-requests'
     | '/sales/credit-rules'
     | '/sales/product-videos'
     | '/sales/promotion-nominations'
@@ -2238,6 +2258,7 @@ export interface FileRouteTypes {
     | '/admin/marketing-task-templates'
     | '/admin/payment-terms'
     | '/admin/penalties'
+    | '/admin/person-fields'
     | '/admin/persons-cleanup'
     | '/admin/phone-collisions'
     | '/admin/platform-releases'
@@ -2309,6 +2330,7 @@ export interface FileRouteTypes {
     | '/products/regenerate-names'
     | '/purchases/create'
     | '/sales/credit-customers'
+    | '/sales/credit-requests'
     | '/sales/credit-rules'
     | '/sales/product-videos'
     | '/sales/promotion-nominations'
@@ -2447,6 +2469,7 @@ export interface FileRouteTypes {
     | '/_app/admin/marketing-task-templates'
     | '/_app/admin/payment-terms'
     | '/_app/admin/penalties'
+    | '/_app/admin/person-fields'
     | '/_app/admin/persons-cleanup'
     | '/_app/admin/phone-collisions'
     | '/_app/admin/platform-releases'
@@ -2518,6 +2541,7 @@ export interface FileRouteTypes {
     | '/_app/products/regenerate-names'
     | '/_app/purchases_/create'
     | '/_app/sales/credit-customers'
+    | '/_app/sales/credit-requests'
     | '/_app/sales/credit-rules'
     | '/_app/sales/product-videos'
     | '/_app/sales/promotion-nominations'
@@ -3056,6 +3080,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCreditRulesRouteImport
       parentRoute: typeof AppSalesRoute
     }
+    '/_app/sales/credit-requests': {
+      id: '/_app/sales/credit-requests'
+      path: '/credit-requests'
+      fullPath: '/sales/credit-requests'
+      preLoaderRoute: typeof AppSalesCreditRequestsRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/sales/credit-customers': {
       id: '/_app/sales/credit-customers'
       path: '/credit-customers'
@@ -3551,6 +3582,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/persons-cleanup'
       fullPath: '/admin/persons-cleanup'
       preLoaderRoute: typeof AppAdminPersonsCleanupRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/person-fields': {
+      id: '/_app/admin/person-fields'
+      path: '/admin/person-fields'
+      fullPath: '/admin/person-fields'
+      preLoaderRoute: typeof AppAdminPersonFieldsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/penalties': {
@@ -4160,6 +4198,7 @@ const AppSalesQuotesRouteWithChildren = AppSalesQuotesRoute._addFileChildren(
 
 interface AppSalesRouteChildren {
   AppSalesCreditCustomersRoute: typeof AppSalesCreditCustomersRoute
+  AppSalesCreditRequestsRoute: typeof AppSalesCreditRequestsRoute
   AppSalesCreditRulesRoute: typeof AppSalesCreditRulesRoute
   AppSalesProductVideosRoute: typeof AppSalesProductVideosRoute
   AppSalesPromotionNominationsRoute: typeof AppSalesPromotionNominationsRoute
@@ -4173,6 +4212,7 @@ interface AppSalesRouteChildren {
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
   AppSalesCreditCustomersRoute: AppSalesCreditCustomersRoute,
+  AppSalesCreditRequestsRoute: AppSalesCreditRequestsRoute,
   AppSalesCreditRulesRoute: AppSalesCreditRulesRoute,
   AppSalesProductVideosRoute: AppSalesProductVideosRoute,
   AppSalesPromotionNominationsRoute: AppSalesPromotionNominationsRoute,
@@ -4317,6 +4357,7 @@ interface AppRouteChildren {
   AppAdminMarketingTaskTemplatesRoute: typeof AppAdminMarketingTaskTemplatesRoute
   AppAdminPaymentTermsRoute: typeof AppAdminPaymentTermsRoute
   AppAdminPenaltiesRoute: typeof AppAdminPenaltiesRoute
+  AppAdminPersonFieldsRoute: typeof AppAdminPersonFieldsRoute
   AppAdminPersonsCleanupRoute: typeof AppAdminPersonsCleanupRoute
   AppAdminPhoneCollisionsRoute: typeof AppAdminPhoneCollisionsRoute
   AppAdminPlatformReleasesRoute: typeof AppAdminPlatformReleasesRoute
@@ -4462,6 +4503,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminMarketingTaskTemplatesRoute: AppAdminMarketingTaskTemplatesRoute,
   AppAdminPaymentTermsRoute: AppAdminPaymentTermsRoute,
   AppAdminPenaltiesRoute: AppAdminPenaltiesRoute,
+  AppAdminPersonFieldsRoute: AppAdminPersonFieldsRoute,
   AppAdminPersonsCleanupRoute: AppAdminPersonsCleanupRoute,
   AppAdminPhoneCollisionsRoute: AppAdminPhoneCollisionsRoute,
   AppAdminPlatformReleasesRoute: AppAdminPlatformReleasesRoute,
