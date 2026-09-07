@@ -925,3 +925,78 @@ Only if `CRON_TZ` is unsupported does the server's own zone matter:
 
 Getting this wrong shifts every window by hours and would go unnoticed for a day, which is why the
 report states the measurement and the rule instead of a bare command.
+
+---
+
+## 26. WHERE does the CDR import cron run? — **UNKNOWN by design decision; NOWHERE today**
+
+§25's install block targeted a Linux self-host server. The owner challenged whether that machine
+exists in this environment. **It does not**, and I should have measured before writing "established
+repo pattern" from the mere existence of two example scripts — that is [A-1], and I repeated the
+claim twice before checking it.
+
+### The measurement that settles it
+
+The repo ships `pricing-worker-cron.example.sh` and `marketing-tasks-cron.example.sh` in exactly the
+shape C-6 copied. **Neither has ever run in this environment:**
+
+```
+pricing_recompute_queue
+  pending  41745   newest enqueued 2026-08-19   newest processed NULL
+  done        42   newest enqueued 2026-05-24   newest processed 2026-08-11
+  failed       8                                newest processed 2026-07-18
+```
+
+41,745 items queued and unprocessed; the last successful processing was **2026-08-11, four weeks
+ago**, and 42 "done" out of ~41,795 is consistent with manual invocation, not a cron running twice a
+minute as its own header prescribes.
+
+So **the host-cron pattern in this repo is aspirational — inherited from documentation written for a
+deployment we do not have.** Its scripts point at `https://app.afrakala.ir/...`, which is not on this LAN.
+
+### What exists here
+
+| | Measured |
+|---|---|
+| `192.168.170.8` | **Windows**, `West Asia Standard Time` = **UTC+05:00**, **no `crontab`**, no scheduled task |
+| WSL | **Ubuntu present but STOPPED**; `docker-desktop` running |
+| Containers | **UTC** — `afrakala-lan-web` has `/usr/sbin/crond`, but a rebuild wipes anything installed inside it |
+| Linux self-host server | **does not exist on this LAN** |
+
+**Answer: the CDR import cron runs NOWHERE today, and there is no machine in this environment
+currently able to run the block §25 gave.** That block is correct for a Linux self-host server and
+wrong for this environment.
+
+### Four options, none silently chosen
+
+| # | Where | Timezone behaviour | Survives a deploy |
+|---|---|---|---|
+| **A** | **Cron sidecar container in `deploy/lan/docker-compose.yml`** | **UTC**, same as the database | **yes** — declared in code |
+| B | Windows Task Scheduler on `192.168.170.8` | **machine local = UTC+05:00**; `schtasks` has **no `CRON_TZ` equivalent** | yes |
+| C | WSL Ubuntu | must be started and kept running; clock follows Windows | no |
+| D | A real Linux self-host server | `CRON_TZ=Asia/Tehran` as in §25 | yes |
+
+**Recommendation: A.** It is the only option whose timezone is already correct and deterministic —
+the containers run UTC, `tehran_today()` exists precisely because the codebase assumes a UTC server,
+and a sidecar deploys with the stack instead of depending on a machine's clock. It is also the only
+one that behaves identically here and on a future Linux host. **It is new scope** — C-6 built a
+host-cron driver, not a sidecar — so it is recorded as a recommendation, not done.
+
+**If B is chosen, every window must be restated in UTC+05:00**, because Task Scheduler runs in
+machine-local time and Tehran is 1.5 h *behind* it (`local = Tehran + 1:30`):
+
+| Window | Tehran (D-39) | Machine-local UTC+05:00 |
+|---|---|---|
+| 1 | 08:00, 09:00 | **09:30, 10:30** |
+| 2 | 10:00 … 12:30 /30m | **11:30 … 14:00 /30m** |
+| 3 | 13:00, 14:00, 15:00, 16:00 | **14:30, 15:30, 16:30, 17:30** |
+| 4 | 17:00, 18:00, 19:00 | **18:30, 19:30, 20:30** |
+| 5 | 20:00, 02:00 | **21:30, 03:30** |
+
+17 runs/day either way. **The five-line Tehran crontab and the seven-line UTC crontab are BOTH wrong
+on this machine**, by 1.5 h and 5 h respectively — which is the failure the owner named: nobody would
+notice for a day.
+
+**The report carries this as UNKNOWN-pending-owner-decision with all four options, not a picked one.**
+The `CRON_TZ` reasoning from §25 stands and is unaffected: it is right for options A and D, and has
+no equivalent under B.
