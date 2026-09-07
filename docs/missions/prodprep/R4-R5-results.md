@@ -599,7 +599,11 @@ nobody rehearsed.
   which appeared mid-run, plus this file. **The modified `src/` file, the two untracked migrations
   and `C1-results.md` are other agents' work — not touched, not committed.** Only
   `docs/missions/prodprep/R4-R5-results.md` was created by this row.
-- No `git stash`, no push, no merge, no rebase, no force, no reset. HEAD did not move during the run.
+- No `git stash`, no push, no merge, no rebase, no force, no reset.
+- **HEAD moved between the run and this commit**, `aa9c3c06` → `f1d5dcf1`, via another agent's
+  `fix(gamification)` commit which absorbed the modified `src/` file, the two untracked migrations
+  and `C1-results.md` listed above. Expected coordination in a shared worktree, recorded per the
+  shared-tree rule. HEAD did not move *during* the 74-migration run itself.
 - **Databases written: `prod_rehearsal_20260908` only.** `afrakala` was read twice (§4.3, §5.1),
   read-only, `SELECT` statements only. No `afrakala_prod_clone*` was touched. The database name
   `postgres` was never used in any command.
