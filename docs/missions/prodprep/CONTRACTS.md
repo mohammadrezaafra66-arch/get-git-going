@@ -264,3 +264,71 @@ onto the extension mapping, recorded as a deliberate decision rather than a sile
 
 This is why "prove both directions" is the rule. A guard tested only in its blocking state would
 have passed review here, twice.
+
+---
+
+## R-4 / R-5 — three findings that outrank the 74-row table
+
+**60 applied · 14 failed · 0 already-true · 0 unrehearsable · 31.8 s.** Ledger 579 → 639, every row
+asserted `ROW_COUNT = 1`. 74/74 md5-matched on delivery; Persian NOTICEs arrived intact.
+
+### 🔴 A · Migration 460 will ABORT on production — the run stops at step 25 of 74
+
+Verified by the orchestrator from the file itself:
+
+```
+460 hard-codes : '0fbe576a-9ef3-475b-92e7-fabd981a7d5d'  ·  'd30816a9-8ff0-4d0e-8f25-0661f8cbea61'
+production has : f6a5bc04 (gpt)  ·  e07894ce (ollama)
+```
+
+Those are the **test** database's provider UUIDs. 460 also carries four `RAISE EXCEPTION` guards —
+*"refusing to deactivate an unidentified provider"*. **The guards are correct behaviour**; combined
+with hard-coded UUIDs they make the migration test-database-specific and unrunnable on production.
+The R-4 agent simulated the owner's manual fix in its most favourable form — even granting ollama the
+`vision` capability it lacks — and 460 still raised.
+
+**R-5's premise fails for this object.** "No change" is not what happens; the run ends. Needs an
+`OWNER DECISION` at that point in the sequence. **The view-REVOKE half of R-5 behaved exactly as
+hoped** — both halves observed, second pass byte-identical.
+
+### 🔴 B · PREFLIGHT #1's query is insufficient — the ledger lies in BOTH directions
+
+Migration **408** (`hold_credit_for_quote`) is also absent from the baseline. It sits **above** the
+336–370 band, so the preflight query misses it — and **the ledger records 408 as applied.**
+
+So the ledger both **under**-reports (410–424 applied, unrecorded) and **over**-reports (408 recorded,
+not applied). Add to the preflight:
+
+```sql
+SELECT to_regprocedure('public.hold_credit_for_quote(uuid,uuid)');
+```
+
+### 🔴 C · `ALTER DEFAULT PRIVILEGES … TO anon` is a PREREQUISITE, not a clean-up
+
+Production carries **nine open `pg_default_acl` anon entries**. The test computer carries **zero** —
+verified directly by the orchestrator. That asymmetry is why this defect class is invisible on test,
+and why 507 passes there and fails on the rehearsal.
+
+**26 of the 80 functions created by the successful migrations are born `anon`-EXECUTE-able** —
+including `pay_purchase_with_voucher`, `review_credit_request` and `reverse_document`.
+
+**Running the 74 without closing the default privilege first manufactures 26 anon-callable functions
+on production**, three of them money- or identity-bearing. This moves from "step 2 of the three
+things the migrations don't cover" to **a prerequisite in the preflight.**
+
+### The 14 failures, classified — and why the split matters
+
+- **(a) real defect, would fail on production — 5:** `449`, `450`, `452` (absolute row-count
+  assertions carrying test-only constants — the same defect as `410`/`418`, now **five** instances),
+  `460`, `507`. Plus `475` cascading behind 460.
+- **(b) artefact of the 336–370 hole — 4:** `476`, `477`, `478`, `487`. Plus `497 → 514 → 516`
+  cascading behind 477.
+- **(b′) the newly-found 408 hole — 1:** `462`.
+
+**(b) and (b′) may evaporate entirely** if the owner's preflight shows production has those objects.
+**(a) will fail on production regardless.** Reporting them as one number would hide that.
+
+### Correction — nothing in the 74 is unrehearsable for `pg_cron`
+
+Zero non-comment `cron.` references across all 74 files. My brief and R-1 §6.5 both claimed
+otherwise; both were wrong.
