@@ -148,3 +148,67 @@ there, an unattended reboot mid-migration may not bring the database back on its
 
 **Not measured on production and must not be** — flagged in the runbook as a preflight question for
 the owner to answer about their own machine.
+
+---
+
+## 🔴 PREFLIGHT #1 — production may be missing 29 migrations BELOW its stated ceiling
+
+**Found by the rehearsal agent. Verified independently by the orchestrator. This is the first thing
+the runbook asks the owner to check, before any backup or migration.**
+
+### What was found
+
+The rehearsal baseline (a pristine restore of the real production dump `prod-full-20260831.dump`,
+md5 `41830357199bf4fe743e824fee89f3f5`) is missing the whole ledger-documents / dual-document /
+reversal module — **migrations 336–370**. Absent objects include `document_numbers`,
+`document_attachments`, `dual_documents`, `journal_entries.doc_kind`,
+`journal_entries.reverses_entry_id` and 16 reversal columns.
+
+Direct symptom: **migration 422 cannot run on that baseline** —
+`relation "public.document_numbers" does not exist`.
+
+### Why "the dump is just stale" does NOT explain it
+
+Verified by the orchestrator from local git only — **no production contact**:
+
+```
+migrations 336-370 are dated   2026-08-18 … 2026-08-22
+the dump is dated              2026-08-31          <-- NINE DAYS LATER
+production's commit 469fe0a9 CONTAINS all 36 of those files
+migration 422 = 20260903160000_422_document_register_view.sql
+```
+
+The code has shipped 336–370 since 22 August. The dump was taken on 31 August. **If production had
+applied them, the dump would contain their objects.** It does not.
+
+### The contradiction the owner must resolve
+
+The audit states production's schema ceiling is **424**, which requires 422 to have applied. **422
+cannot apply without the 336–370 module.** So exactly one of these is true:
+
+1. **Production's ceiling is not really 424** — 422 never applied, and the audit's two
+   discriminators cannot tell, because *a database with this hole passes both of them*
+   (`bank_accounts.asan_code` exists, `asan_import_person_rows.applied_action` does not).
+2. **Production applied 336–370 between 2026-08-31 and the 2026-09-04 deploy**, after the dump was
+   taken. Possible, and would make the hole a dump artefact only.
+
+**This is genuinely UNKNOWN and cannot be settled without reading production**, which no agent may
+do. One read-only query answers it:
+
+```sql
+-- OWNER RUNS THIS ON PRODUCTION, READ ONLY, BEFORE ANYTHING ELSE
+SELECT to_regclass('public.document_numbers')  AS document_numbers,
+       to_regclass('public.dual_documents')    AS dual_documents,
+       to_regclass('public.document_attachments') AS document_attachments;
+```
+
+**If any is NULL, do not start the migration run.** The 74 assume that module exists; several
+depend on it, and the failure mode is a partial apply on the company's real records rather than a
+clean refusal.
+
+### Why the audit could not have caught this
+
+Its discriminators were chosen to distinguish 424 from 425+, and they do that correctly. They were
+never meant to detect a hole *below* the ceiling, and they cannot. **This is not a defect in the
+audit; it is a limit of ceiling-based reasoning** — a ceiling tells you the highest thing applied,
+never that everything beneath it was.
