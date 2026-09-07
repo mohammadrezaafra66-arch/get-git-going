@@ -1000,3 +1000,89 @@ notice for a day.
 **The report carries this as UNKNOWN-pending-owner-decision with all four options, not a picked one.**
 The `CRON_TZ` reasoning from §25 stands and is unaffected: it is right for options A and D, and has
 no equivalent under B.
+
+---
+
+## 27. REGRESSION caught before merge — H-10's guard broke 13 persons spec files
+
+**Row 519.** The most important thing this mission caught, and it was nearly merged.
+
+### How it surfaced
+
+H-10 added an `admin` guard to three unguarded `SECURITY DEFINER` readers. Its report claimed
+*"zero other functions and zero views reference these three, and no e2e spec calls them."* The first
+half was true. The second was false.
+
+It surfaced only because the builder **re-measured the stated baseline instead of trusting it**. Had
+it reported against the pinned 15/451, this would have shipped.
+
+### The diagnosis, closed rather than hypothesised
+
+`e2e/persons/` run in the **main tree on unmodified `origin/staging` code** against the shared
+database — so the cause is the database, not any branch's TypeScript:
+
+```
+21 failed · 124 passed · 2 skipped · 1 did not run   (of 148)
+= 8 of the pinned 9, plus 13 NEW
+```
+
+```
+ERROR:  دسترسی به گزارش سلامت سامانه فقط برای مدیر سیستم مجاز است.
+CONTEXT:  PL/pgSQL function person_fk_drift_report() line 4 at RAISE
+```
+
+I tested the causal claim rather than asserting it — the set difference is the evidence:
+
+```
+new-failure files that do NOT call the guarded reporters:  (none)
+```
+
+**One-to-one, zero unexplained.** All thirteen callers:
+`aliases-crud · aliases-ui · credit-unchanged · credit-uses-person · external-party-person ·
+filters-ui · filters-visible-persons · merge-ui · permission-matrix · profile-dossier-jwt ·
+profile-dossier-ui · search-ui · search-visible-persons` — `merge-ui` was already in the pinned 9,
+so twelve of them show as new files and thirteen call sites.
+
+Most call it from `test.afterAll`, so the failure lands on the **last test in the file**
+(`aliases-crud:256`, `aliases-ui:120`, `filters-ui:138`) rather than on anything topically related.
+`external-party-person` shifted from `:130` to `:57`/`:115` for the same reason — which is exactly
+why the rule is **compare the set, never the count**.
+
+### Why three separate checks missed it
+
+| Check | What it verified | Why it missed |
+|---|---|---|
+| Builder's catalog scan | "zero functions/views reference these" — **true** | `pg_depend` cannot see a caller that lives in a **test spec** over a direct psql connection |
+| Builder's `grep src/` | no application caller — **true** | the callers are in `e2e/`, not `src/` |
+| My [B-7] pass | `proacl` correct, `guarded` f→t | I verified **the claim**, never ran the suite |
+
+**Verifying the claim is not the same as verifying the change.** The builder proved the property it
+set out to create; nobody asked what else touched that property.
+
+### The mechanism, and its link to a decision made deliberately
+
+`dbScalar(...)` connects as `supabase_admin` with **no JWT**, so `auth.uid()` is NULL and
+`has_role(NULL,'admin')` is false.
+
+On **H-9** the builder allowed actor-less writes, reasoning the only JWT-less writers are
+`service_role`, migrations and cron — all trusted. On **H-10** it chose the opposite, and recorded
+the asymmetry: *"Note I chose the opposite for H-10, and both migrations say why."* That asymmetry is
+precisely where this broke. The decision was documented, defensible in isolation, and wrong against a
+caller nobody had enumerated.
+
+### The fix (519)
+
+Gate on **how the call arrived**, not on a NULL uid: a PostgREST request runs as `authenticated`/`anon`
+and is refused without `admin`; a direct connection is already trusted at the connection level.
+Closes on four halves — plain `authenticated` still refused, `admin` still succeeds, **direct
+connection succeeds** (the half nobody tested), `anon` still holds no EXECUTE from `proacl` — and the
+persons failure **set** back to the pinned 9.
+
+### The transferable rule
+
+> **Before declaring a database function has no callers, grep the whole repository for its name —
+> not just the catalog and not just `src/`.** Tests, scripts, migrations and docs all call functions,
+> and none of them appears in `pg_depend`.
+
+Companion to §19: that rule was about what a revived path can *reach*; this one is about what already
+reaches *it*. Both are invisible to a diff-shaped review.
