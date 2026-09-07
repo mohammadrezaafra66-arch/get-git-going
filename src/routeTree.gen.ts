@@ -111,6 +111,7 @@ import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
+import { Route as AppOperationsCallActivityRouteImport } from './routes/_app.operations.call-activity'
 import { Route as AppMessagesInquiriesRouteImport } from './routes/_app.messages.inquiries'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
@@ -746,6 +747,12 @@ const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
   path: '/operations/daily-mood',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsCallActivityRoute =
+  AppOperationsCallActivityRouteImport.update({
+    id: '/operations/call-activity',
+    path: '/operations/call-activity',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppMessagesInquiriesRoute = AppMessagesInquiriesRouteImport.update({
   id: '/inquiries',
   path: '/inquiries',
@@ -1463,6 +1470,7 @@ export interface FileRoutesByFullPath {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/messages/inquiries': typeof AppMessagesInquiriesRoute
+  '/operations/call-activity': typeof AppOperationsCallActivityRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -1674,6 +1682,7 @@ export interface FileRoutesByTo {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/messages/inquiries': typeof AppMessagesInquiriesRoute
+  '/operations/call-activity': typeof AppOperationsCallActivityRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -1888,6 +1897,7 @@ export interface FileRoutesById {
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/_app/messages/inquiries': typeof AppMessagesInquiriesRoute
+  '/_app/operations/call-activity': typeof AppOperationsCallActivityRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -2103,6 +2113,7 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/messages/inquiries'
+    | '/operations/call-activity'
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
@@ -2314,6 +2325,7 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/messages/inquiries'
+    | '/operations/call-activity'
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
@@ -2527,6 +2539,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
     | '/_app/messages/inquiries'
+    | '/_app/operations/call-activity'
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
     | '/_app/operations/purchase-advisor'
@@ -3379,6 +3392,13 @@ declare module '@tanstack/react-router' {
       path: '/operations/daily-mood'
       fullPath: '/operations/daily-mood'
       preLoaderRoute: typeof AppOperationsDailyMoodRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/call-activity': {
+      id: '/_app/operations/call-activity'
+      path: '/operations/call-activity'
+      fullPath: '/operations/call-activity'
+      preLoaderRoute: typeof AppOperationsCallActivityRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/messages/inquiries': {
@@ -4425,6 +4445,7 @@ interface AppRouteChildren {
   AppMarketingMyTasksRoute: typeof AppMarketingMyTasksRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
+  AppOperationsCallActivityRoute: typeof AppOperationsCallActivityRoute
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsDidarRoute: typeof AppOperationsDidarRoute
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
@@ -4571,6 +4592,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingMyTasksRoute: AppMarketingMyTasksRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
+  AppOperationsCallActivityRoute: AppOperationsCallActivityRoute,
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsDidarRoute: AppOperationsDidarRoute,
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
