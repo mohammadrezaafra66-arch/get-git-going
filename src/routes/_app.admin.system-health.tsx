@@ -57,8 +57,17 @@ type RpcFn = (
 ) => Promise<{ data: unknown; error: { message: string } | null }>;
 
 // RPCs not present in the generated types — cast the fn name to satisfy the client.
-// Same idiom as _app.gamification.admin.manual-metrics.tsx:111.
-const rpc = supabase.rpc as unknown as RpcFn;
+//
+// NOT the same idiom as _app.gamification.admin.manual-metrics.tsx:111, despite what this comment
+// used to claim — and that mis-copy is how the defect got here. That site calls INLINE,
+// `await (supabase.rpc as unknown as Fn)("name", args)`, which keeps `this` bound. This site
+// assigns to a variable, which detaches the method: supabase-js's rpc() reads `this.rest`, so
+// every call through it threw "Cannot read properties of undefined (reading 'rest')" before any
+// network request. `.bind(supabase)` is the fix, as in src/lib/warehouses/queries.ts:64-70.
+//
+// Only the two ASSIGNMENT sites in this repo were affected; the fifteen inline casts are safe and
+// were deliberately left alone.
+const rpc = supabase.rpc.bind(supabase) as unknown as RpcFn;
 
 type DriftRow = { table_name: string; drifted_rows: number };
 type OrphanRow = { source_table: string; kind: string; problem: string; rows: number };

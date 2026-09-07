@@ -98,7 +98,15 @@ export async function reviewCreditRequest(input: {
   decision: "approved" | "rejected";
   notes?: string | null;
 }): Promise<void> {
-  const rpc = supabase.rpc as unknown as UntypedRpc;
+  // ⚠️ `.bind(supabase)` is not decoration — see src/lib/warehouses/queries.ts:64-70, which
+  // carries the same warning after the same defect. Detaching the method
+  // (`const rpc = supabase.rpc`) loses `this`, and supabase-js's rpc() reads `this.rest`, so the
+  // call threw "Cannot read properties of undefined (reading 'rest')" before opening any socket.
+  // Measured 2026-09-07 on the deployed build: a manager clicking تأیید on /sales/credit-requests
+  // got the toast «بررسی درخواست ناموفق بود / Cannot read properties of undefined (reading 'rest')»
+  // and ZERO network requests. Approve and reject both route here, so no credit request could be
+  // actioned from the UI at all. The `review_credit_request` RPC itself was never at fault.
+  const rpc = supabase.rpc.bind(supabase) as unknown as UntypedRpc;
   const { error } = await rpc("review_credit_request", {
     p_request_id: input.requestId,
     p_decision: input.decision,
