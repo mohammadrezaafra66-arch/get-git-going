@@ -1086,3 +1086,67 @@ persons failure **set** back to the pinned 9.
 
 Companion to §19: that rule was about what a revived path can *reach*; this one is about what already
 reaches *it*. Both are invisible to a diff-shaped review.
+
+---
+
+## 28. STAGE-0 CHECK THAT DOES NOT EXIST YET — verify the branch family against Boundary Guard
+
+**My error, and it survived the entire mission undetected.**
+
+At Stage 0 I invented the branch names `closeout/group-h` and `closeout/group-c`. Neither I nor any
+of the five agents checked that prefix against CI. **Boundary Guard is a required status check**, and
+its allowed families for a branch carrying migrations are:
+
+```
+cursor/core/WPC-*   ·   feature/*   ·   approved hotfix/WPC-*
+```
+
+`closeout/*` is in none of them. So **five migrations sat on an illegal branch for the whole mission**
+and it surfaced only at merge, as five violations at once:
+
+```
+Database branch violation: migration ..._512_... should be changed from
+  `cursor/core/WPC-*`, `feature/*` or approved `hotfix/WPC-*`, not `closeout/group-c`
+   ... identically for 513, 514, 516, 517
+```
+
+`CLAUDE.md` names `feature/*`, `hotfix/*`, `cursor/*`, `lovable/*` as where work happens. I read that
+file at Stage 0, allocated migration numbers atomically, seeded worktrees, pinned a baseline, and
+verified a typecheck to the file — and then named the branches something the CI would reject, because
+**nothing in the checklist said to check the name**.
+
+### Why every existing safeguard missed it
+
+| Safeguard | Why it did not fire |
+|---|---|
+| §4 migration-number allocation | partitioned numbers, said nothing about the branch carrying them |
+| §5 worktree seeding ([B-3]) | `node_modules`, env, sessions, clean `git status` — nothing about the branch name |
+| §9 baseline | measures the tree's behaviour, not its provenance |
+| Per-file typecheck gate | local, never consults CI |
+| Both critics | reviewed the change, not where it lived |
+
+Every one of them validates **content**. None validates the **container** the content ships in.
+
+### The check to add, before dispatching anyone
+
+> **Stage 0: assert the branch family against the repository's own CI guard, not against
+> `CLAUDE.md`'s prose.** Read `.github/workflows/` for the guard's allowed patterns and confirm the
+> intended branch name matches one — for *every* branch the mission will create, before the first
+> agent is dispatched. A name is cheap to change at Stage 0 and costs a rebranch plus a fresh PR at
+> merge.
+
+It also belongs beside [B-4]: numbers were allocated atomically and correctly, and the work still
+could not merge. **Partitioning the resource is not the same as validating the vehicle.**
+
+### The cost, recorded honestly
+
+Two branches rebranched, one PR closed and reopened, and a merge attempt that reported success while
+`staging` had none of Group C's code — which would have produced a deploy verifying the wrong
+container had the ledger and file checks not caught it first. No data was lost and no work was
+redone; the cost was entirely in cycles at the end of the mission, which is exactly where the most
+expensive place to find it is.
+
+**Related, same family as §18/§24**: those record that partitioning migration *numbers* did not
+prevent a *timestamp* collision. This records that partitioning numbers did not prevent an illegal
+*branch*. Three instances now of the same shape — **the thing that was partitioned was not the thing
+that had to be right.**
