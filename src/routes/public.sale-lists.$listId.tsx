@@ -71,14 +71,32 @@ export const Route = createFileRoute("/public/sale-lists/$listId")({
   component: PublicSaleListPage,
 });
 
+/**
+ * Wave H H-5, owner decision D-24.
+ *
+ * This page is CLOSED to anonymous visitors and stays closed — `anon` has no SELECT on
+ * `sale_lists` or `sale_list_items` (verified 2026-09-07:
+ * `has_table_privilege('anon','sale_lists','SELECT')` -> false), and D-24 explicitly rules
+ * out a grant change. Only the wording is fixed here.
+ *
+ * `getPublicSaleList` collapses three different outcomes into `null` — the list does not
+ * exist, the list is not published, and the reader is not permitted to see it — and the old
+ * copy asserted the first two: «این لیست وجود ندارد یا هنوز منتشر نشده است». For every
+ * anonymous visitor that sentence is simply false: the list may well exist and be published,
+ * and they are being refused. Telling a visitor a record does not exist when it does is the
+ * kind of wrong that sends people to support.
+ *
+ * The replacement says only what is actually known to be true — this list is not available to
+ * visitors — without leaking whether the id exists, which is the correct disclosure level for
+ * a page anon may not read.
+ */
 function PublicNotFound() {
   return (
     <div dir="rtl" className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-6xl font-bold text-foreground">۴۰۴</h1>
-        <h2 className="mt-3 text-lg font-semibold">لیست فروش یافت نشد</h2>
+        <h2 className="text-lg font-semibold">این لیست برای بازدیدکنندگان در دسترس نیست</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          این لیست وجود ندارد یا هنوز منتشر نشده است.
+          برای دیدن این لیست فروش وارد حساب کاربری خود شوید.
         </p>
       </div>
     </div>
