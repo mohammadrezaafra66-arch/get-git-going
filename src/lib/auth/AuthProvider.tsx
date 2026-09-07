@@ -126,14 +126,37 @@ function AuthProviderInner({ children }: { children: ReactNode }) {
   }, [state.user, state.rolesLoading]);
 
   // Heartbeat: keep profiles.last_seen_at fresh for online-status indicators.
+  //
+  // Wave H H-2 — the same lazy-builder defect B-1 fixed above, in the other supabase-js idiom.
+  // This read `void supabase.from("profiles").update(...)`, and a PostgrestBuilder only issues
+  // its `fetch` inside `PostgrestBuilder.then()`. `void <builder>` evaluates the builder and
+  // throws it away without ever calling `then()`, so the PATCH never left the browser and the
+  // column was never written. Measured 2026-09-07 before the fix: the newest `last_seen_at` in
+  // `public.profiles` was 2026-07-19 — 49 days stale — while the app was in daily use.
+  //
+  // It is NOT a permissions problem. The `users update own profile` policy (UPDATE, `uid() = id`)
+  // and the `authenticated` UPDATE grant on the column are both in place. The missing `await` was
+  // the whole defect.
+  //
+  // Unlike the audit writes above, this is a true heartbeat: a failure must never surface to the
+  // user or reject an unhandled promise, so it is awaited inside an async wrapper and swallowed
+  // with a console warning. The `void` on the *wrapper call* is correct and is not the old bug —
+  // an async function starts executing eagerly when called; only the query builder was lazy.
   useEffect(() => {
     const uid = state.user?.id;
     if (!uid) return;
     const ping = () => {
-      void supabase
-        .from("profiles")
-        .update({ last_seen_at: new Date().toISOString() })
-        .eq("id", uid);
+      void (async () => {
+        try {
+          const { error } = await supabase
+            .from("profiles")
+            .update({ last_seen_at: new Date().toISOString() })
+            .eq("id", uid);
+          if (error) console.warn("[presence] last_seen_at heartbeat failed:", error.message);
+        } catch (err) {
+          console.warn("[presence] last_seen_at heartbeat threw:", err);
+        }
+      })();
     };
     ping();
     const id = setInterval(ping, 60_000);
