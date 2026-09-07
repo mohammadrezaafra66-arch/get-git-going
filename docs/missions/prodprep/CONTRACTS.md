@@ -1,0 +1,104 @@
+# CONTRACTS — production-migration preparation, overnight 2026-09-08
+
+Orchestrator, Stage 0. Every number below was **measured tonight**, not copied.
+
+## 🔴 PRODUCTION IS FORBIDDEN
+
+`192.168.170.10` — no HTTP, no psql, no ping, no DNS. **Not one packet.** We build a runbook the
+owner executes; we never migrate production. Its database is named `postgres`; that name appearing
+in a command means you are on the wrong machine.
+
+## Ground truth, measured
+
+| Item | Value |
+|---|---|
+| Repo | `D:\AfraKalaTest\app`, branch `staging` @ **`9c113aac`** ✓ |
+| Mission worktree | `D:\AfraKalaTest\wt-prodprep`, branch **`feature/prodprep-20260908`** |
+| Branch family | `feature/*` — **verified against `.github/workflows/boundary-guard.yml` `is_feature_branch()` before the first commit** (rule 6; `closeout/*` blocked a PR today) |
+| Typecheck | **70**, per file `18/15/13/13/6/5` — confirmed in the worktree, not a silent 0 |
+| Test DB | `afrakala` on `afrakala-lan-db` |
+| Production (read-only fact) | commit `469fe0a9`, code+schema ceiling **424**, ledger **569 rows / `20260827120000`** |
+
+## 🔴 CORRECTION TO THE AUDIT — the gap is **74**, not 62
+
+The audit's list is correct **as of migration 507**. Staging has moved since: migrations
+**508–519** landed today (close-out mission, PRs #432 and #434). Measured:
+
+```
+audit list rows                     : 62
+disk candidates (>424, plus 420/421): 74
+in audit but missing from disk      : NONE
+on disk but absent from the audit   : 508 509 510 511 512 513 514 515 516 517 518 519
+TRUE GAP                            : 74
+```
+
+**Running only the 62 leaves production 12 migrations behind**, including the security work a cold
+review produced today: **511** (credit-floor guard), **515/519** (system-health DEFINER guards),
+**518** (the guard extended to INSERT). The runbook must carry **74**, in apply order, and the
+report must correct the audit's number so the next reader is not misled.
+
+Apply order is **filename timestamp order**, not number order — the numbers interleave
+(e.g. `446` sorts before `443`).
+
+## The rehearsal baseline test — both must hold
+
+Production's live schema is at 424. The audit gives two discriminators; a rehearsal that fails
+either is on the wrong baseline:
+
+- `bank_accounts.asan_code` **EXISTS**
+- `asan_import_person_rows.applied_action` **DOES NOT** (`42703`)
+
+## The lying ledger — reproduce it, do not fix it by re-running
+
+Production: **569 ledger rows, highest `20260827120000` (= migration 410), schema applied through
+424.** Anyone reading that ledger concludes 410–424 are outstanding and re-runs them; several are
+not idempotent. The reconciliation **records the gap and re-runs nothing**, and must assert the
+inserted count equals the gap count — `ON CONFLICT DO NOTHING` exits 0 on a collision, which is how
+migration 517 nearly went unrecorded today (`CONTRACTS.md` §24 of the close-out mission).
+
+## Two production objects are ALREADY in the desired state
+
+Fixed manually by the owner on 2026-09-07, **before** these migrations run:
+
+1. `receipt_ocr.vision` → `ollama`, fallback off, `gpt.is_active=f` — this is **migration 460's target**.
+2. `anon` REVOKEd on `v_promotion_suggestions` and `vw_account_balances`.
+
+Migrations landing on these must read **"no change" as "already applied"**, not as failure. R-5 proves it.
+
+## What the 74 do NOT cover — the runbook needs three extra steps
+
+1. **Migration 477 only covers tables** (`relkind = 'r'`). **Views are not covered** — the view
+   REVOKE is a separate step.
+2. **`ALTER DEFAULT PRIVILEGES … TO anon` is still open** on production; no migration closes it.
+3. **The deploy of the new build** is not a migration.
+
+## Rules that bit this project
+
+1. **Persian SQL by file only** — `docker cp` with `MSYS_NO_PATHCONV=1`, then `psql -f`. Never a pipe;
+   a pipe destroyed Persian in 44 functions on 2026-07-11. Verify `md5sum` both sides.
+2. **Apply, then record the ledger row, then assert the row is yours.**
+3. **Read live** — `pg_get_functiondef`, `pg_policies`, `proacl`, `relacl`. Never from a migration file.
+4. **Discover column names by querying** — it is `persons.display_name`, not `full_name`;
+   `audit_logs.entity_id`, not `record_id`; `daily_capital_settings.capital_date`, not `setting_date`.
+5. **Never `git stash`.** Record `git status --porcelain` at start and end.
+6. A test that cannot go red proves nothing. A negative test must fail **for the reason under test** —
+   assert the message, not `42501`, which RLS, a missing grant and a guard all raise.
+7. `--single-transaction -v ON_ERROR_STOP=1` on every apply.
+8. Migration **328**'s event trigger: adding an FK to `persons` requires `person_merge` updated
+   **first**, or the DDL aborts.
+
+## Migration numbers
+
+**520+** belong to C-1 only. No other row writes a migration.
+
+## Owner decisions — carry, do not relitigate
+
+**D-59** 23 of 42 production users hold `admin`; they stay for now — record the consequence (the 15
+new admin gates are open to half the company), change nothing.
+**D-24** the public sale-list page stays closed to anonymous visitors.
+**D-56** `product_images` public read is intentional.
+
+## Deliverables
+
+- `docs/runbooks/production-migration-20260908.md` — every step rehearsed, or marked `UNREHEARSED`.
+- `docs/research/prodprep-20260908.md` — the completion report.
