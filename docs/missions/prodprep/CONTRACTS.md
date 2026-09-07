@@ -102,3 +102,49 @@ new admin gates are open to half the company), change nothing.
 
 - `docs/runbooks/production-migration-20260908.md` — every step rehearsed, or marked `UNREHEARSED`.
 - `docs/research/prodprep-20260908.md` — the completion report.
+
+---
+
+## Addendum — three corrections from C-2, one of them to this contract
+
+### 1. 🔴 My brief said "6 jobs, all running successfully". That was wrong.
+
+Measured independently after C-2 reported it:
+
+```
+jobid 9  daily-birthday-notifications              ok=0   bad=56
+jobid 20 afrakala-capture-score-snapshots-nightly  ok=2   bad=0
+jobid 21 afrakala-refresh-sale-list-prices-nightly ok=2   bad=0
+jobid 22 afrakala-sync-price-observatory-daily     ok=2   bad=0
+jobid 23 afrakala-accrual-daily-notice             ok=2   bad=0
+jobid 25 afrakala-employee-streaks-nightly         ok=2   bad=0
+```
+
+**Five of six. `daily-birthday-notifications` has never once succeeded** — 56 failures, zero
+successes, failing with `ERROR: authentication required` at `generate_birthday_notifications()`
+line 17: the cron-has-no-`auth.uid()` trap that migration 507 documents.
+
+I asserted this as a measured fact and it was not measured. It is also the same shape as everything
+else this project keeps finding: **a job that has failed 56 consecutive times, and nothing reports
+it.** Recorded, not fixed — out of scope tonight.
+
+### 2. A fourth cron candidate existed on record and my brief omitted it
+
+The compose **cron sidecar** (`docs/missions/closeout/CONTRACTS.md` §26). C-2 measured it rather
+than dropping it: CLAUDE.md's OG-68 objection does **not** currently reproduce
+(`afrakala-lan-db-role-fix` exits 0), but the deploy command `up -d --no-deps --build web` would
+never start or refresh a sidecar — which is a real argument against it, and only visible because
+the candidate was measured instead of discarded.
+
+### 3. All cron candidates share a dependency nobody named — and it affects the runbook
+
+`com.docker.service` is **Stopped/Manual**; Docker Desktop runs in **SessionId 1** from a per-user
+`HKCU\…\Run` key, and `AutoAdminLogon` is empty.
+
+**The containers come back after a reboot only when that user session does**, and by what mechanism
+is **UNKNOWN**. This is upstream of every scheduling choice: a schedule inside a container that does
+not start is not a schedule. It also bears on the production runbook — if the same arrangement holds
+there, an unattended reboot mid-migration may not bring the database back on its own.
+
+**Not measured on production and must not be** — flagged in the runbook as a preflight question for
+the owner to answer about their own machine.
