@@ -28,6 +28,7 @@
  */
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
+import { dbScalar } from "../helpers/db";
 
 const CONTAINER = process.env.E2E_DB_CONTAINER ?? "afrakala-lan-db";
 const DB_NAME = process.env.E2E_DB_NAME ?? "afrakala";
@@ -88,28 +89,46 @@ BEGIN
   PERFORM set_config('request.jwt.claims',
     json_build_object('sub', _actor, 'role', 'authenticated')::text, true);
 
+  -- SET LOCAL ROLE IS REQUIRED, NOT DECORATION - migration 519. The guard asks how the call
+  -- ARRIVED, not whether auth.uid() is NULL, because thirteen e2e/persons specs reach these
+  -- functions over a direct psql connection with no JWT and must keep working. Claims alone
+  -- leave the role GUC at 'none', which IS a direct connection and is deliberately permitted;
+  -- a real PostgREST request always carries role=authenticated (measured on this database:
+  -- session_user=authenticator, role=authenticated). Without this line the probe simulates the
+  -- wrong caller and this whole file asserts nothing.
+  --
+  -- RESET ROLE before every write into the probe table: it belongs to the connection's own
+  -- role, and writing to it as authenticated fails with 42501 - the very code the guard
+  -- raises. A probe once scored green on exactly that confusion.
+  -- (No backticks anywhere in this template literal: one would terminate it.)
+  EXECUTE 'SET LOCAL ROLE authenticated';
   BEGIN
     SELECT count(*) INTO _n FROM public.person_fk_drift_report();
     _res := 'ALLOWED';
   EXCEPTION WHEN insufficient_privilege THEN
     GET STACKED DIAGNOSTICS _msg = MESSAGE_TEXT; _res := 'REFUSED:' || _msg;
   END;
+  EXECUTE 'RESET ROLE';
   INSERT INTO probe VALUES ('person_fk_drift_report=' || _res);
 
+  EXECUTE 'SET LOCAL ROLE authenticated';
   BEGIN
     SELECT count(*) INTO _n FROM public.polymorphic_ref_orphan_report();
     _res := 'ALLOWED';
   EXCEPTION WHEN insufficient_privilege THEN
     GET STACKED DIAGNOSTICS _msg = MESSAGE_TEXT; _res := 'REFUSED:' || _msg;
   END;
+  EXECUTE 'RESET ROLE';
   INSERT INTO probe VALUES ('polymorphic_ref_orphan_report=' || _res);
 
+  EXECUTE 'SET LOCAL ROLE authenticated';
   BEGIN
     SELECT count(*) INTO _n FROM public.validate_journal_entry_balance(_entry);
     _res := 'ALLOWED';
   EXCEPTION WHEN insufficient_privilege THEN
     GET STACKED DIAGNOSTICS _msg = MESSAGE_TEXT; _res := 'REFUSED:' || _msg;
   END;
+  EXECUTE 'RESET ROLE';
   INSERT INTO probe VALUES ('validate_journal_entry_balance=' || _res);
 END
 $p$;`;
@@ -181,4 +200,29 @@ $f$;`;
   ).toBe("ALLOWED");
   // and the guarded siblings, untouched by the preamble, still refuse in the same transaction
   expect(r["person_fk_drift_report"]).toBe(`REFUSED:${MESSAGE}`);
+});
+
+/**
+ * THE HALF NOBODY TESTED, and the one migration 515 broke.
+ *
+ * Thirteen `e2e/persons` specs assert `person_fk_drift_report()` is empty, through `dbScalar` —
+ * a direct psql connection with no JWT. 515's guard refused exactly that (`auth.uid()` is NULL,
+ * so `has_role(NULL,'admin')` is false) and took the persons suite from 9 failures to 21, most
+ * of them landing in `test.afterAll` on an unrelated-looking line. 519 fixed it by gating on how
+ * the call arrived rather than on a NULL uid.
+ *
+ * This test exists so that regression cannot come back silently: it is the same access path
+ * those specs use, asserted here on purpose rather than as a side effect of thirteen other files.
+ */
+test("a direct connection with no JWT still reads the reports — dbScalar must keep working", () => {
+  expect(dbScalar("select count(*) from public.person_fk_drift_report()")).toBe("0");
+  // The other two only need to RUN; their row counts are data-dependent and are not the point.
+  expect(Number(dbScalar("select count(*) from public.polymorphic_ref_orphan_report()"))).toBeGreaterThanOrEqual(0);
+  expect(
+    Number(
+      dbScalar(
+        "select count(*) from public.validate_journal_entry_balance('00000000-0000-0000-0000-000000000000')",
+      ),
+    ),
+  ).toBeGreaterThanOrEqual(0);
 });
