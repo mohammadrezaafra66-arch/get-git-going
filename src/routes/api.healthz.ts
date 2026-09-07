@@ -24,6 +24,29 @@ import { createFileRoute } from "@tanstack/react-router";
  * a 200 proves the whole web -> Kong -> PostgREST -> Postgres path is alive,
  * and RLS legitimately returning zero rows is still a 200. There is no reason
  * for a liveness probe to hold more privilege than that.
+ *
+ * WHICH TABLE THE PROBE READS — not an arbitrary choice.
+ * This probe used to read `shop_settings`. Migration 477 revoked anon's SELECT on
+ * 188 tables including that one, so from 477 onwards PostgREST answered 401, the
+ * probe reported `database: down`, and Docker marked the web container `unhealthy`
+ * continuously while the app itself was serving perfectly. Measured 2026-09-07,
+ * before this fix:
+ *   GET /api/healthz -> 503
+ *   {"ok":false,...,"database":{"state":"down","ms":7,"detail":"HTTP 401"}}
+ *   docker inspect afrakala-lan-web --format '{{.State.Health.Status}}' -> unhealthy
+ *
+ * The fix is NOT to re-grant anything to anon — that would reopen exactly what 477
+ * closed. It is to point the probe at a table anon is *supposed* to be able to read.
+ * `currencies` is one of the eleven tables listed as KEEP_OPEN in
+ * e2e/security/og103-anon-table-grants-stay-closed.spec.ts, and that spec asserts in
+ * BOTH directions: the 188 stay closed, and the eleven stay readable ("⛔ the eleven
+ * stay readable by anon — the direction nobody checks"). So this probe's dependency is
+ * now pinned by a test — the property `shop_settings` never had. A future hardening
+ * sweep that closed `currencies` would fail og103 first, instead of silently breaking
+ * the healthcheck again.
+ *
+ * If this table ever has to change, pick another name from that KEEP_OPEN list rather
+ * than granting anon a new one.
  */
 
 const DB_TIMEOUT_MS = 2000;
@@ -62,7 +85,7 @@ async function checkDatabase(): Promise<Probe> {
   }
   try {
     const res = await timedFetch(
-      `${url.replace(/\/+$/, "")}/rest/v1/shop_settings?select=key&limit=1`,
+      `${url.replace(/\/+$/, "")}/rest/v1/currencies?select=id&limit=1`,
       DB_TIMEOUT_MS,
       { apikey: key, Authorization: `Bearer ${key}` },
     );
