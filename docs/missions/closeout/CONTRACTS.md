@@ -786,3 +786,67 @@ Also noted from the builder, and worth keeping: the two branches need **differen
 UPDATE fires on `IS DISTINCT FROM`, INSERT on `IS NOT NULL`, because there is nothing to differ from.
 And `OLD` is unassigned during INSERT, so merely *referencing* `OLD.manual_credit_floor` raises; the
 function branches on `TG_OP` before touching it.
+
+---
+
+## 24. Second instance of the shared-tree fault — and a trap in our own documented recipe
+
+§18 predicted this family. Here is a concrete second instance, found by the Group C agent, and it
+carries a facet the migration-number allocation in §4 does **not** cover.
+
+### What happened
+
+C's migration 517 was written with timestamp `20260907150000`. Recording the ledger row returned:
+
+```
+INSERT 0 0
+```
+
+`inserted_at` settled ownership:
+
+```
+20260907150000 | inserted_at 14:24:01   <- Group H's migration 518, in wt-h
+   C's 517 was applied at 14:40:54, sixteen minutes later
+20260907154500 | inserted_at 14:42:26   <- C's 517 after renaming
+```
+
+Verified independently by me: `20260907150000_518_manual_credit_floor_guard_covers_insert.sql`
+lives in `wt-h`; `20260907154500_517_derive_staff_call_metrics.sql` lives in `wt-cc`. The agent
+renamed its **still-uncommitted** file (content unchanged, md5 identical) and recorded the new
+version. Nothing was lost, nothing was double-applied, and it did not touch H's row.
+
+### The facet §4 missed: the number and the timestamp are different fields
+
+Migration numbers were allocated atomically and never overlapped — H held 508–511/515/518/519,
+C held 512–514/516/517. **That partition worked and was never violated.** But the ledger keys on the
+**timestamp**, not the number, and the timestamp was left to each agent to choose. Two agents in two
+worktrees picked `20260907150000` for migrations numbered 518 and 517 respectively.
+
+> **Allocating distinct migration numbers does not prevent ledger collisions.** The number is for
+> humans and the timestamp is the key. Partition the timestamp too, or derive it from the number.
+
+### The trap: `ON CONFLICT DO NOTHING` makes a collision look like success
+
+The recording command this project documents — and which every brief in this mission repeated — is:
+
+```sql
+INSERT INTO supabase_migrations.schema_migrations (version)
+VALUES ('...') ON CONFLICT (version) DO NOTHING;
+```
+
+On a collision that returns `INSERT 0 0` and **exits 0**. It does not error, and `ON CONFLICT DO
+NOTHING` is exactly what the rule 2b recipe prescribes — for the good reason that re-recording an
+already-recorded migration must be harmless. But the same clause that makes re-recording safe makes
+a *collision* invisible: the agent's migration was applied and unrecorded, which is precisely the
+state §14 flagged as a deploy hazard.
+
+**It was caught only because the agent read the row count rather than the exit code.** Nothing in
+the documented recipe says to.
+
+### What to change (recorded, not applied — out of scope here)
+
+- Derive the timestamp from the allocated number, or hand each agent an explicit timestamp range
+  alongside its number range, so §4's partition covers the field the ledger actually keys on.
+- After recording, assert the row is **yours**: check `INSERT 0 1`, or re-select the row and compare
+  `inserted_at` against when you applied it. `ON CONFLICT DO NOTHING` returning zero rows means
+  either "already recorded" or "someone else owns this version", and only a second query separates them.
