@@ -630,3 +630,59 @@ Both would have looked like a working importer:
 - **The crontab is not installed.** The schedule is wired but not running.
 - **`call_log_extensions` is empty of real mappings.** The owner enters `401-413` / `445-450`; until
   then every `call_logs` row carries `employee_id NULL` and D-57b keeps manual entry alive.
+
+---
+
+## 21. Owner refinements, 2026-09-07 — four, all folded into existing rows
+
+### 21.1 H-9 · the refusal speaks Persian and names the rule, not the mechanism
+
+```
+تغییر سقف دستی فقط با نقش مدیر یا حسابدار ممکن است
+```
+
+An accountant who hits this must learn **what rule stopped them**, not which database object did.
+No trigger name, no column name, no `42501` in user-visible text.
+
+**F-2 closes in the same migration (511)**, not a second one: `audit_customer_change`'s diff gains
+`manual_credit_floor`. Proof is the old and new values appearing in a real (rolled-back) update's
+diff — not that the code mentions the column.
+
+### 21.2 F-3 · the hole is inherited, the reach is ours — see §19
+
+Recorded in full at §19, including the nuance that the **direct PostgREST path predates H-7 and is
+untouched by it**, while the **product** surface — three RPCs going from dead code to a live feature —
+is this branch's. Both readings converge on the same fix.
+
+### 21.3 C-7 · the go-live boundary is a hard guard, and D-34 now means something narrower
+
+The derivation writes only dates `>=` the go-live settings row — **the same row the importer refuses
+to run without** — and **REFUSES** anything earlier. Not "filters to": a filter can be handed an
+earlier date by a later caller, a backfill, or a cron misconfiguration, and would silently overwrite
+8 people's recorded work, of which there is no second copy.
+
+**Proof**: run the derivation, then show the 11 manual rows **byte-identical** afterwards — not
+"still 11 rows".
+
+> **D-34 restated.** "The call columns become derived" now means **"derived from go-live forward"**,
+> not "derived always". The column legitimately carries **two sources with a 26-day gap** — manual
+> through 2026-08-11, CDR from 2026-09-07, nothing between. Written down here because without this
+> sentence, someone reading the code in six months finds a column with two provenances and a hole,
+> and files it as a bug.
+
+### 21.4 C-7 · the refusal is visible, and the mapping is offered rather than remembered
+
+While `call_log_extensions` has no mapped employee, the screen says:
+
+```
+تا وقتی داخلی‌ها به کارمندان نسبت داده نشوند، آمار تماس از CDR محاسبه نمی‌شود
+```
+
+and manual entry continues. **A guard that declines silently is indistinguishable from a feature that
+is broken** — whoever maintains the manual screen needs to know why they still are, and what ends it.
+
+`/admin/call-extensions` offers the extensions the **CDR actually contains** (`401-413`, `445-450`) as
+suggestions. The existing `ext 101` row — **zero occurrences in the CDR, ever** — is **flagged as
+unseen, not deleted**: it is another mission's demonstration row and the admin decides its fate.
+That screen's gate was verified in a browser this session (admin names an extension and it persists;
+a cold `viewer` is refused) and must not be weakened.
