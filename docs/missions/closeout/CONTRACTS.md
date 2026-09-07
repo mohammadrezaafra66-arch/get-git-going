@@ -399,3 +399,72 @@ Choosing between two existing mechanisms is the "until a proper Jalali picker is
   deliberately left, because rewriting a payment-critical `SECURITY DEFINER` function inside a hotfix
   on a shared live database is not hotfix scope.
 - `src/shared/components/PurchaseForm.tsx:26` imports `Calendar` and never renders it.
+
+---
+
+## 14. Session-limit interruption, 2026-09-07 — state recovered, nothing lost
+
+Both builders were killed mid-flight by an API rate limit, not by any fault of their own. Neither
+was restarted; both were **resumed** from their transcripts. What I measured in their worktrees
+before resuming, so neither had to rediscover it:
+
+| Worktree | HEAD | In flight when killed |
+|---|---|---|
+| `wt-h` | `8f37414c`, 5 commits | `requests.ts` + `system-health.tsx` modified (the H-7 `.bind` edits, both correct); 3 untracked `h7-*.mjs` probes |
+| `wt-cc` | `43f24d27`, 1 commit | **migration 512 applied + ledger-recorded but its FILE untracked**; `src/lib/calls/{issabel-cdr,import-issabel-calls}.server.ts` untracked |
+
+### 🔴 The one real hazard: 512 applied but uncommitted
+
+```
+ledger version 20260907100000        -> recorded
+call_logs.employee_id                -> is_nullable = YES  (it really ran)
+supabase/migrations/…_512_….sql      -> ?? untracked
+```
+
+This is exactly the state the rules forbid: lose the file and the ledger claims a migration nothing
+can reproduce, `og81` goes red, and a deploy cannot rebuild the schema. The C agent was instructed to
+commit it **before anything else**. Recorded here so it is not lost a second time if the session dies
+again — the file's content was read and verified sound.
+
+**Ledger vs disk during the split** — expected, not a defect: ledger **675** = 672 base + 508 + 509
+(committed in `wt-h`) + 512 (untracked in `wt-cc`). Each agent sees a different disk count because
+each holds only its own files. It reconciles when both commit. Neither agent may "fix" the other's
+ledger rows.
+
+### Migration numbers after reallocation
+
+| Range | Owner | Used |
+|---|---|---|
+| 508 – 511 | Group H | 508, 509 used · **510, 511 free for H-8** |
+| 512 – 514 | Group C | 512 used · **513, 514 free** |
+
+---
+
+## 15. D-52 — owner decision, 2026-09-07: the floor asymmetry is a defect, fix it
+
+> **YES — `run_daily_capital_allocation` must honour `manual_credit_floor` exactly as
+> `recompute_dynamic_capital_setting` does. D-52 was the owner's decision and is half-implemented.**
+> *"This moves real ceilings on the TEST database only — approved."*
+
+Becomes **row H-8**. Closes with the same customer through both functions showing the **same**
+ceiling — before, they disagree (2,000,000,000 vs 1,247,149,593); after, they agree, with
+`binding_constraint = manual_override` when the floor binds.
+
+Mirror the guard shape `recompute_dynamic_capital_setting` already uses, read from its **live** body,
+rather than inventing a second floor mechanism.
+
+**The approval covers the ceiling movement, and nothing beyond it.** It does **not** authorise
+pressing the daily-allocation button or committing an allocation snapshot: there are no
+`dynamic_entity_scores` rows for 2026-09 and no `daily_capital_settings` row for today, so a real run
+computes against zeros and would zero every ceiling. Proof stays in `BEGIN … ROLLBACK`.
+**Owner: "Nobody presses that button."**
+
+## 16. H-6 — the owner's instruction is REPORT, DO NOT FIX
+
+Deliverable is a list, not a change: the four Jalali mechanisms — **file, one line each, which pages
+use each** — plus **one** recommendation. The owner chooses after reading.
+
+## 17. Row count is now 16
+
+`H-1 … H-8` (8) · `V-1 … V-3` (3) · `C-4 … C-8` (5). Group C is unblocked; nothing is blocked on a
+credential any more.
