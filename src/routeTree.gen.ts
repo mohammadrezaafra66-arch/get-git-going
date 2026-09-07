@@ -184,6 +184,7 @@ import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/
 import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/api/public/hooks/ingest-market-rates'
 import { Route as ApiPublicHooksGenerateMarketingTasksRouteImport } from './routes/api/public/hooks/generate-marketing-tasks'
 import { Route as ApiPublicBotProductsRouteImport } from './routes/api.public.bot.products'
+import { Route as ApiAdminCallsImportIssabelRouteImport } from './routes/api.admin.calls.import-issabel'
 import { Route as AppSalesCustomersCreditTrainingRouteImport } from './routes/_app.sales_.customers_.credit-training'
 import { Route as AppSalesCustomersCreditAllocationGuideRouteImport } from './routes/_app.sales_.customers_.credit-allocation-guide'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
@@ -1135,6 +1136,12 @@ const ApiPublicBotProductsRoute = ApiPublicBotProductsRouteImport.update({
   path: '/api/public/bot/products',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminCallsImportIssabelRoute =
+  ApiAdminCallsImportIssabelRouteImport.update({
+    id: '/api/admin/calls/import-issabel',
+    path: '/api/admin/calls/import-issabel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppSalesCustomersCreditTrainingRoute =
   AppSalesCustomersCreditTrainingRouteImport.update({
     id: '/sales_/customers_/credit-training',
@@ -1532,6 +1539,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
+  '/api/admin/calls/import-issabel': typeof ApiAdminCallsImportIssabelRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
@@ -1740,6 +1748,7 @@ export interface FileRoutesByTo {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
+  '/api/admin/calls/import-issabel': typeof ApiAdminCallsImportIssabelRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
@@ -1953,6 +1962,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales_/customers_/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/_app/sales_/customers_/credit-training': typeof AppSalesCustomersCreditTrainingRoute
+  '/api/admin/calls/import-issabel': typeof ApiAdminCallsImportIssabelRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
@@ -2166,6 +2176,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
+    | '/api/admin/calls/import-issabel'
     | '/api/public/bot/products'
     | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/ingest-market-rates'
@@ -2374,6 +2385,7 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
+    | '/api/admin/calls/import-issabel'
     | '/api/public/bot/products'
     | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/ingest-market-rates'
@@ -2586,6 +2598,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/create'
     | '/_app/sales_/customers_/credit-allocation-guide'
     | '/_app/sales_/customers_/credit-training'
+    | '/api/admin/calls/import-issabel'
     | '/api/public/bot/products'
     | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/ingest-market-rates'
@@ -2626,6 +2639,7 @@ export interface RootRouteChildren {
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
   ApiPublicProductsRoute: typeof ApiPublicProductsRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
+  ApiAdminCallsImportIssabelRoute: typeof ApiAdminCallsImportIssabelRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksGenerateMarketingTasksRoute: typeof ApiPublicHooksGenerateMarketingTasksRoute
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
@@ -3864,6 +3878,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicBotProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/calls/import-issabel': {
+      id: '/api/admin/calls/import-issabel'
+      path: '/api/admin/calls/import-issabel'
+      fullPath: '/api/admin/calls/import-issabel'
+      preLoaderRoute: typeof ApiAdminCallsImportIssabelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/sales_/customers_/credit-training': {
       id: '/_app/sales_/customers_/credit-training'
       path: '/sales/customers/credit-training'
@@ -4641,6 +4662,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
   ApiPublicProductsRoute: ApiPublicProductsRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
+  ApiAdminCallsImportIssabelRoute: ApiAdminCallsImportIssabelRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,
   ApiPublicHooksGenerateMarketingTasksRoute:
     ApiPublicHooksGenerateMarketingTasksRoute,
