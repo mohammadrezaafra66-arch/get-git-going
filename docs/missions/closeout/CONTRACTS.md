@@ -243,3 +243,61 @@ The web UI at `192.168.170.252` is never logged into.
 When those four keys exist, C-4 runs `DESCRIBE cdr` **first** and reconciles it against the
 `[doc]`-marked column map before a single row is written — that map is documentation, not a
 measurement, and every column that differs is reported before the import.
+
+---
+
+## 11. Group C UNBLOCKED — 2026-09-07, owner created the MySQL user
+
+The four keys are present in `deploy/lan/.env.lan`, all non-empty (the file went 44 → 49 lines,
+39 → 43 keys). TCP 3306 on `192.168.170.252` is open from this host. The owner reports
+`SELECT COUNT(*) FROM cdr` = **1,864,933** — recorded as **the owner's claim**, to be confirmed by
+C-4's own count ([A-1]: a number you did not measure is a hypothesis).
+
+**Section 3 above is superseded.** All 14 rows are now live; nothing is blocked.
+
+### Migration numbers — reallocated, still atomic and non-overlapping ([B-4])
+
+| Range | Owner | Status |
+|---|---|---|
+| **508 – 511** | Group H (`dev-bug-hunter`) | live |
+| **512 – 514** | Group C backend (C-4, C-5) | live |
+| **515 – 517** | Group C data (C-6, C-7, C-8) | reserved, not yet dispatched |
+
+### What I measured for Group C, so no agent re-derives it
+
+**`call_logs` already carries the C-2 columns** (live catalog, not the migration file):
+`id, employee_id, direction, duration_seconds, started_at, ended_at, customer_id, external_id,
+source, metadata, extension, is_missed, is_internal, disposition, created_at`.
+`external_id` is where `uniqueid` belongs; `metadata` is where `unknown_number` belongs.
+`call_log_extensions` exists: `extension, employee_id, label, created_at, updated_at, updated_by`.
+
+**`mysql_fdw` is not merely uninstalled — it is not available.** `pg_available_extensions` offers
+`http` 1.6, `pg_cron` 1.6, `pg_net` 0.13.0, and **no `mysql_fdw`**. So there is no Postgres→MySQL
+path at all, which is precisely why C-4 is a Node route. Confirmed, not assumed.
+
+### A constraint C-6 will hit — measured, and deliberately left unsolved here
+
+`pg_cron` is installed **only in the `postgres` database**, not in `afrakala`. That matches wave 6's
+correction: you schedule into afrakala with `cron.schedule_in_database('afrakala', …)`.
+
+All six existing jobs look like this — every one calls a plain SQL function, and **not one makes an
+HTTP call**:
+
+```
+ 9  0 6 * * *   postgres   SELECT public.generate_birthday_notifications();
+20  30 22 * * * afrakala   SELECT public.capture_score_snapshots();
+21  45 22 * * * afrakala   SELECT public.refresh_all_sale_list_prices();
+22  0 23 * * *  afrakala   SELECT public.sync_product_price_observatory_rows();
+23  0 20 * * *  afrakala   SELECT public.notify_accountants_daily_accrual_summary();
+25  0 21 * * *  afrakala   SELECT public.roll_employee_daily_streaks();
+```
+
+**Neither `http` nor `pg_net` is installed in either database.** The brief assumes C-6 can reach the
+Node route "through the `http` extension or a `curl` in a cron shell" — but pg_cron executes **SQL**,
+not shell, so the curl half of that sentence has no mechanism behind it, and the `http` half needs an
+extension that is available but **not currently installed**.
+
+So C-6 has a real decision to make, and it is a decision, not a detail: install `http` (or `pg_net`)
+in `afrakala` via a migration, or schedule outside the database. **Left open for the C-data agent to
+resolve and justify** ([B-1]: the agent gets the measurement and the question, not my answer).
+Installing an extension is a schema change and goes in a numbered migration like anything else.
