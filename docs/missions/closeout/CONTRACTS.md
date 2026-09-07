@@ -518,3 +518,51 @@ deployed container, and shared gitignored scratch directories they provide **non
 first two are precisely where this project keeps its irreversible state. Whether that warrants
 per-session scratch directories, a database naming convention, or simply a rule that one tree hosts
 one orchestrator at a time is **the owner's call and explicitly out of scope here.**
+
+---
+
+## 19. LESSON — a `.bind` fix restores a feature *and everything that feature could reach*
+
+**Corrects a claim I made.** I first reported F-3 (three unguarded `SECURITY DEFINER` readers) as
+"pre-existing, not caused by this branch." The owner corrected the framing, and the correction is
+right:
+
+> *"That is right about the missing guard and wrong about the reachability.
+> `system-health.tsx:61` is one of the two sites H-7 fixed — before it, the page threw before
+> issuing any request, so those three RPCs had no live client path. H-7 gave them one.
+> Same distinction as F-1: the hole is inherited, the reach is ours."*
+
+The precise state before H-7: `const rpc = supabase.rpc` detached the method, so `this.rest` threw
+**before any socket opened**. Every call from that page failed at the first statement. The page was
+inert, and so was everything behind it.
+
+**One nuance, which sharpens the point rather than blunting it.** The *attacker* path never went
+through the page: any holder of an `authenticated` JWT could always `POST /rest/v1/rpc/validate_journal_entry_balance`
+directly, and still can. So the direct exposure predates H-7 and is untouched by it. What H-7 changed
+is the **product** surface — three RPCs went from dead code nothing called to a live feature. That is
+exactly why the page guard was never the control: `requireAdmin()` is client-side only
+(`route-guards.ts:16` returns `null` server-side and `requireAdmin` treats `null` as a pass), so the
+only real control was always the one that did not exist in the function bodies.
+
+Both readings converge on the same conclusion — the guard has to be in the database — and the owner's
+framing is the one that generalises:
+
+> **A `.bind` fix does not only restore a feature. It restores whatever that feature could reach.**
+
+The same shape produced **both** HIGH findings on this branch:
+
+| Row | What it restored | What that reached |
+|---|---|---|
+| **H-7** (`.bind`) | the credit-review buttons **and** the system-health page | three unguarded `SECURITY DEFINER` readers (F-3) |
+| **H-8** (D-52) | `manual_credit_floor` becomes authoritative | a column any `sales` user can write directly (F-1) |
+
+Neither was a defect in the fix. Both were dormant holes that the fix woke up.
+
+**The transferable rule**: when a change makes a dead path live — restoring a broken call, enabling a
+feature flag, fixing a silent failure — the review scope is **not** the diff. It is the diff plus
+everything newly reachable through it. Ask "what could this code always have called, that it never
+actually called until now?" and audit *that*. A diff-shaped review would have found neither F-1 nor
+F-3, because neither is in the diff.
+
+This is a candidate for `CONSTITUTION.md` §11 — recorded here, not filed there, since amending the
+constitution is out of this mission's scope.
