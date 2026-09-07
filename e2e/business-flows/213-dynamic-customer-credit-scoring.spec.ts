@@ -396,7 +396,7 @@ function runSafetyPrecheck(prefix: string, salespersonId: string): { classificat
            AND COALESCE(notes, '') NOT LIKE '%E2E_AUDIT_213_%'
       ),
       'ledger_rows', (
-        SELECT count(*) FROM public.capital_allocation_ledger l
+        SELECT count(*) FROM public.zz_retired_capital_allocation_ledger l
          WHERE EXISTS (
           SELECT 1 FROM public.customer_capital_allocations_dynamic c
            WHERE c.id = l.allocation_id
