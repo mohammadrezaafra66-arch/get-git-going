@@ -111,6 +111,7 @@ import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
+import { Route as AppOperationsCallActivityRouteImport } from './routes/_app.operations.call-activity'
 import { Route as AppMessagesInquiriesRouteImport } from './routes/_app.messages.inquiries'
 import { Route as AppMarketingSuggestionsHistoryRouteImport } from './routes/_app.marketing.suggestions-history'
 import { Route as AppMarketingSuggestionsRouteImport } from './routes/_app.marketing.suggestions'
@@ -182,8 +183,10 @@ import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quo
 import { Route as AppGamificationAdminIndexRouteImport } from './routes/_app.gamification.admin.index'
 import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/api/public/hooks/process-pricing-queue'
 import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/api/public/hooks/ingest-market-rates'
+import { Route as ApiPublicHooksImportIssabelCallsRouteImport } from './routes/api/public/hooks/import-issabel-calls'
 import { Route as ApiPublicHooksGenerateMarketingTasksRouteImport } from './routes/api/public/hooks/generate-marketing-tasks'
 import { Route as ApiPublicBotProductsRouteImport } from './routes/api.public.bot.products'
+import { Route as ApiAdminCallsImportIssabelRouteImport } from './routes/api.admin.calls.import-issabel'
 import { Route as AppSalesCustomersCreditTrainingRouteImport } from './routes/_app.sales_.customers_.credit-training'
 import { Route as AppSalesCustomersCreditAllocationGuideRouteImport } from './routes/_app.sales_.customers_.credit-allocation-guide'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
@@ -744,6 +747,12 @@ const AppOperationsDailyMoodRoute = AppOperationsDailyMoodRouteImport.update({
   path: '/operations/daily-mood',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsCallActivityRoute =
+  AppOperationsCallActivityRouteImport.update({
+    id: '/operations/call-activity',
+    path: '/operations/call-activity',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppMessagesInquiriesRoute = AppMessagesInquiriesRouteImport.update({
   id: '/inquiries',
   path: '/inquiries',
@@ -1124,6 +1133,12 @@ const ApiPublicHooksIngestMarketRatesRoute =
     path: '/api/public/hooks/ingest-market-rates',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksImportIssabelCallsRoute =
+  ApiPublicHooksImportIssabelCallsRouteImport.update({
+    id: '/api/public/hooks/import-issabel-calls',
+    path: '/api/public/hooks/import-issabel-calls',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksGenerateMarketingTasksRoute =
   ApiPublicHooksGenerateMarketingTasksRouteImport.update({
     id: '/api/public/hooks/generate-marketing-tasks',
@@ -1135,6 +1150,12 @@ const ApiPublicBotProductsRoute = ApiPublicBotProductsRouteImport.update({
   path: '/api/public/bot/products',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminCallsImportIssabelRoute =
+  ApiAdminCallsImportIssabelRouteImport.update({
+    id: '/api/admin/calls/import-issabel',
+    path: '/api/admin/calls/import-issabel',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AppSalesCustomersCreditTrainingRoute =
   AppSalesCustomersCreditTrainingRouteImport.update({
     id: '/sales_/customers_/credit-training',
@@ -1449,6 +1470,7 @@ export interface FileRoutesByFullPath {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/messages/inquiries': typeof AppMessagesInquiriesRoute
+  '/operations/call-activity': typeof AppOperationsCallActivityRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -1532,8 +1554,10 @@ export interface FileRoutesByFullPath {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
+  '/api/admin/calls/import-issabel': typeof ApiAdminCallsImportIssabelRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
+  '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/gamification/admin/': typeof AppGamificationAdminIndexRoute
@@ -1658,6 +1682,7 @@ export interface FileRoutesByTo {
   '/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/messages/inquiries': typeof AppMessagesInquiriesRoute
+  '/operations/call-activity': typeof AppOperationsCallActivityRoute
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -1740,8 +1765,10 @@ export interface FileRoutesByTo {
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
+  '/api/admin/calls/import-issabel': typeof ApiAdminCallsImportIssabelRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
+  '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/gamification/admin': typeof AppGamificationAdminIndexRoute
@@ -1870,6 +1897,7 @@ export interface FileRoutesById {
   '/_app/marketing/suggestions': typeof AppMarketingSuggestionsRoute
   '/_app/marketing/suggestions-history': typeof AppMarketingSuggestionsHistoryRoute
   '/_app/messages/inquiries': typeof AppMessagesInquiriesRoute
+  '/_app/operations/call-activity': typeof AppOperationsCallActivityRoute
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
@@ -1953,8 +1981,10 @@ export interface FileRoutesById {
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales_/customers_/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/_app/sales_/customers_/credit-training': typeof AppSalesCustomersCreditTrainingRoute
+  '/api/admin/calls/import-issabel': typeof ApiAdminCallsImportIssabelRoute
   '/api/public/bot/products': typeof ApiPublicBotProductsRouteWithChildren
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
+  '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/_app/gamification/admin/': typeof AppGamificationAdminIndexRoute
@@ -2083,6 +2113,7 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/messages/inquiries'
+    | '/operations/call-activity'
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
@@ -2166,8 +2197,10 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
+    | '/api/admin/calls/import-issabel'
     | '/api/public/bot/products'
     | '/api/public/hooks/generate-marketing-tasks'
+    | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
     | '/gamification/admin/'
@@ -2292,6 +2325,7 @@ export interface FileRouteTypes {
     | '/marketing/suggestions'
     | '/marketing/suggestions-history'
     | '/messages/inquiries'
+    | '/operations/call-activity'
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
@@ -2374,8 +2408,10 @@ export interface FileRouteTypes {
     | '/sales/customers/create'
     | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
+    | '/api/admin/calls/import-issabel'
     | '/api/public/bot/products'
     | '/api/public/hooks/generate-marketing-tasks'
+    | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
     | '/gamification/admin'
@@ -2503,6 +2539,7 @@ export interface FileRouteTypes {
     | '/_app/marketing/suggestions'
     | '/_app/marketing/suggestions-history'
     | '/_app/messages/inquiries'
+    | '/_app/operations/call-activity'
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
     | '/_app/operations/purchase-advisor'
@@ -2586,8 +2623,10 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers_/create'
     | '/_app/sales_/customers_/credit-allocation-guide'
     | '/_app/sales_/customers_/credit-training'
+    | '/api/admin/calls/import-issabel'
     | '/api/public/bot/products'
     | '/api/public/hooks/generate-marketing-tasks'
+    | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/process-pricing-queue'
     | '/_app/gamification/admin/'
@@ -2626,8 +2665,10 @@ export interface RootRouteChildren {
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
   ApiPublicProductsRoute: typeof ApiPublicProductsRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
+  ApiAdminCallsImportIssabelRoute: typeof ApiAdminCallsImportIssabelRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
   ApiPublicHooksGenerateMarketingTasksRoute: typeof ApiPublicHooksGenerateMarketingTasksRoute
+  ApiPublicHooksImportIssabelCallsRoute: typeof ApiPublicHooksImportIssabelCallsRoute
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
   ApiAdminAutomationTorobEnqueueRoute: typeof ApiAdminAutomationTorobEnqueueRoute
@@ -3353,6 +3394,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsDailyMoodRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/call-activity': {
+      id: '/_app/operations/call-activity'
+      path: '/operations/call-activity'
+      fullPath: '/operations/call-activity'
+      preLoaderRoute: typeof AppOperationsCallActivityRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/messages/inquiries': {
       id: '/_app/messages/inquiries'
       path: '/inquiries'
@@ -3850,6 +3898,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksIngestMarketRatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/import-issabel-calls': {
+      id: '/api/public/hooks/import-issabel-calls'
+      path: '/api/public/hooks/import-issabel-calls'
+      fullPath: '/api/public/hooks/import-issabel-calls'
+      preLoaderRoute: typeof ApiPublicHooksImportIssabelCallsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/generate-marketing-tasks': {
       id: '/api/public/hooks/generate-marketing-tasks'
       path: '/api/public/hooks/generate-marketing-tasks'
@@ -3862,6 +3917,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/bot/products'
       fullPath: '/api/public/bot/products'
       preLoaderRoute: typeof ApiPublicBotProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/calls/import-issabel': {
+      id: '/api/admin/calls/import-issabel'
+      path: '/api/admin/calls/import-issabel'
+      fullPath: '/api/admin/calls/import-issabel'
+      preLoaderRoute: typeof ApiAdminCallsImportIssabelRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/sales_/customers_/credit-training': {
@@ -4383,6 +4445,7 @@ interface AppRouteChildren {
   AppMarketingMyTasksRoute: typeof AppMarketingMyTasksRoute
   AppMarketingSuggestionsRoute: typeof AppMarketingSuggestionsRoute
   AppMarketingSuggestionsHistoryRoute: typeof AppMarketingSuggestionsHistoryRoute
+  AppOperationsCallActivityRoute: typeof AppOperationsCallActivityRoute
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsDidarRoute: typeof AppOperationsDidarRoute
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
@@ -4529,6 +4592,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMarketingMyTasksRoute: AppMarketingMyTasksRoute,
   AppMarketingSuggestionsRoute: AppMarketingSuggestionsRoute,
   AppMarketingSuggestionsHistoryRoute: AppMarketingSuggestionsHistoryRoute,
+  AppOperationsCallActivityRoute: AppOperationsCallActivityRoute,
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsDidarRoute: AppOperationsDidarRoute,
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
@@ -4641,9 +4705,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
   ApiPublicProductsRoute: ApiPublicProductsRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
+  ApiAdminCallsImportIssabelRoute: ApiAdminCallsImportIssabelRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,
   ApiPublicHooksGenerateMarketingTasksRoute:
     ApiPublicHooksGenerateMarketingTasksRoute,
+  ApiPublicHooksImportIssabelCallsRoute: ApiPublicHooksImportIssabelCallsRoute,
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
   ApiPublicHooksProcessPricingQueueRoute:
     ApiPublicHooksProcessPricingQueueRoute,

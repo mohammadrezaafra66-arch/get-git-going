@@ -68,6 +68,20 @@ services:
       # never VITE_ prefixed. Empty = the endpoint answers 500 and generates
       # nothing, which is the correct default for an unconfigured install.
       MARKETING_TASKS_WORKER_TOKEN: ${MARKETING_TASKS_WORKER_TOKEN:-}
+      # C-4 — اتصال فقط-خواندنی به MySQL مرکز تلفن ایزابل، برای واردسازی CDR.
+      # این کلیدها از قبل در .env.lan بودند ولی هرگز به کانتینر پاس داده نمی‌شدند.
+      # اندازه‌گیری‌شده روی کانتینر در حال اجرا: `env | grep -c ISSABEL` -> 0.
+      # یعنی مسیر واردسازی داخل کانتینر با config_missing برمی‌گشت، هرچند روی
+      # هاست درست کار می‌کرد. همه server-only اند و هیچ‌کدام پیشوند VITE_ ندارند.
+      ISSABEL_CDR_HOST: ${ISSABEL_CDR_HOST:-}
+      ISSABEL_CDR_PORT: ${ISSABEL_CDR_PORT:-3306}
+      ISSABEL_CDR_USER: ${ISSABEL_CDR_USER:-}
+      ISSABEL_CDR_PASSWORD: ${ISSABEL_CDR_PASSWORD:-}
+      ISSABEL_CDR_DB: ${ISSABEL_CDR_DB:-}
+      # C-6 — توکن مشترک برای صدا زدن hook واردسازی از cron هاست
+      # (POST /api/public/hooks/import-issabel-calls). خالی بودنش یعنی endpoint
+      # با ۵۰۰ برمی‌گردد و هیچ کاری نمی‌کند — همان رفتار درست برای نصب پیکربندی‌نشده.
+      ISSABEL_IMPORT_WORKER_TOKEN: ${ISSABEL_IMPORT_WORKER_TOKEN:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:
