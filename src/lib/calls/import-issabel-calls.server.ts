@@ -39,10 +39,7 @@ type MatchedPersonRow = { raw_number: string; person_id: string };
 type SupabaseError = { message: string } | null;
 
 type UntypedSupabaseSurface = {
-  rpc(
-    fn: string,
-    args: Record<string, unknown>,
-  ): PromiseLike<{ data: MatchedPersonRow[] | null; error: SupabaseError }>;
+  rpc(fn: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: SupabaseError }>;
   from(table: string): {
     select(columns: string): PromiseLike<{
       data: { extension: string | null; employee_id: string | null }[] | null;
@@ -186,7 +183,7 @@ async function matchCustomers(
         details: error.message,
       };
     }
-    for (const row of data ?? []) {
+    for (const row of (data ?? []) as MatchedPersonRow[]) {
       byNumber.set(row.raw_number, row.person_id);
     }
   }
@@ -213,6 +210,12 @@ export type ImportIssabelCallsOptions = {
    * (که uid ندارد) خطای ۴۲۵۰۱ می‌دهد و باید با توکن خود کاربر صدا زده شود.
    */
   userAccessToken?: string;
+  /**
+   * اجرای بدون‌ناظر (cron). در این حالت کاربری وجود ندارد، پس بازمحاسبه از
+   * `recompute_employee_scores_from_calls_worker` (مهاجرت ۵۱۳) استفاده می‌کند
+   * که فقط به service_role داده شده است.
+   */
+  workerMode?: boolean;
 };
 
 export async function importIssabelCalls(
@@ -366,9 +369,18 @@ export async function importIssabelCalls(
   // ── بازمحاسبه: دقیقاً یک بار، در پایان. نه داخل حلقهٔ بالا. ──────────────
   let recomputeInvocations = 0;
   let recomputeResult: unknown = null;
-  if (inserted > 0 && options.userAccessToken) {
-    recomputeInvocations = 1;
-    recomputeResult = await invokeBatchRecompute(sinceUtc, options.userAccessToken);
+  if (inserted > 0) {
+    if (options.workerMode) {
+      recomputeInvocations = 1;
+      const { data, error } = await untypedDb.rpc(
+        "recompute_employee_scores_from_calls_worker",
+        { _since: sinceUtc.toISOString() },
+      );
+      recomputeResult = error ? { error: error.message } : data;
+    } else if (options.userAccessToken) {
+      recomputeInvocations = 1;
+      recomputeResult = await invokeBatchRecompute(sinceUtc, options.userAccessToken);
+    }
   }
 
   return {
