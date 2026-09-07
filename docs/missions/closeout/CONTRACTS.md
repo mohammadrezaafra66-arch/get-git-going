@@ -566,3 +566,67 @@ F-3, because neither is in the diff.
 
 This is a candidate for `CONSTITUTION.md` §11 — recorded here, not filed there, since amending the
 constitution is out of this mission's scope.
+
+---
+
+## 20. Owner decisions on the security findings and on C-7
+
+### 20.1 F-1 and F-3 are fixed now, before H merges — rows H-9 and H-10
+
+| Row | Finding | Fix, as decided |
+|---|---|---|
+| **H-9** | `authenticated` holds `UPDATE` on `customers.manual_credit_floor`; the `manage customers by role` policy admits `sales` for `responsible_id = uid() OR responsible_id IS NULL`; the `CHECK` has no upper bound. H-8 made that column override the `credit_limit` cap. | A **`BEFORE UPDATE` trigger** on `customers` refusing a change to that column unless the actor holds `admin`/`manager`/`accountant` — the form no write path routes around ([A-3]). Plus F-2: extend `audit_customer_change`'s diff to carry the column, which today omits it entirely. Migration **511**. |
+| **H-10** | `person_fk_drift_report`, `polymorphic_ref_orphan_report`, `validate_journal_entry_balance` are `SECURITY DEFINER`, `authenticated`-executable, and `guarded=false` — no `has_role`, no `auth.uid()`, no `42501`. `requireAdmin()` is client-side only. | A real server-side guard on all three. `anon_exec` stays false. Migration **515**. |
+
+**F-4 (self-approval via `profiles.status`, no `WITH CHECK`) is handed to security wave 3**, not fixed
+here — its reachability depends on whether an unapproved registrant is issued a JWT at all, which
+nobody has measured.
+
+### 20.2 C-7 — two decisions, both refusing a silent zeroing
+
+| # | Decision |
+|---|---|
+| **D-57a** | **Keep the 11 pre-go-live manual rows; derive only from 2026-09-07 forward.** No double-counting is possible: `min(started_at)::date` in `call_logs` is exactly `2026-09-07`. **A real gap remains — 2026-08-12 → 2026-09-06 has no data from either source.** Recorded, not backfilled. |
+| **D-57b** | **Manual entry stops only once `call_log_extensions` holds real mappings**, enforced rather than documented: the switchover predicate is `count(*) WHERE employee_id IS NOT NULL > 0`. Counting rows instead of *mapped* rows would pass on today's single `ext 101` row — which appears **0 times in the CDR** — and switch over into all-zero KPIs, the exact outcome the owner rejected. |
+
+`gamification_kpis.source` is corrected to match reality **as it is today** (calls come from
+`staff_daily_performance_metrics`), not as it will be after the mapping is filled.
+`compute_employee_score`'s body stays untouched.
+
+### 20.3 Verified independently before acceptance ([B-7])
+
+| Claim | My measurement |
+|---|---|
+| Importer closing condition | `call_logs`: **1429 rows / 1429 distinct `external_id`** — zero duplicates · 23 matched · **0 with an employee** |
+| D-40 cutoff held | `min(started_at)::date = 2026-09-07` — no history sweep |
+| D-56c missed rule | NO ANSWER 644/**644** · BUSY 199/**199** · ANSWERED 580/**0** · CONGESTION 6/**0** |
+| Manual metrics C-7 would displace | **11 rows, 8 staff**, 2026-07-23 → 2026-08-11, 3,435 inbound / 4,475 outbound / 3,405 minutes |
+| F-1 write path | `authenticated \| UPDATE` on the column; policy admits `sales` on own-or-unassigned |
+| F-3 guards | all three `secdef=true`, `authed_exec=true`, **`guarded=false`**, `anon_exec=false` |
+
+### 20.4 C-6 resolved its constraint without adding an extension
+
+The C agent measured the same thing §11 recorded and chose **host cron + a shared token** over
+installing `http`/`pg_net`: driving it from the database needed **two** new extensions plus outbound
+network access *from* the database, to reach an endpoint host cron already reaches with nothing
+installed — and host cron is the existing repo pattern (`marketing-tasks`, `pricing-worker`), so
+anything else would have breached rule 14. **No new extension was installed in `afrakala`.**
+A simulated day hit exactly D-39's 17 fire times, nothing missing or extra.
+
+### 20.5 Two silent-success defects the C agent caught before they shipped
+
+Both would have looked like a working importer:
+1. **Outbound matched nothing** — `dst` carries the trunk prefix, and live `normalize_identifier`
+   returns empty on `909XXXXXXXXX`. Strip is conditional on the remainder being a valid mobile, the
+   prefix lives in `shop_settings`, and `metadata.raw_number` preserves the original.
+2. **`ISSABEL_CDR_*` never reached the container** — measured
+   `docker exec afrakala-lan-web env | grep -c ISSABEL` → **0**. It worked on the agent's host and
+   would have surfaced only in production, as `config_missing`. Fixed in
+   `deploy/lan/docker-compose.yml`.
+
+### 20.6 Remaining operator steps — not code, and not done
+
+- **`ISSABEL_IMPORT_WORKER_TOKEN` is absent from `.env.lan`**; without it the cron hook returns 500.
+- **The crontab is not installed.** The schedule is wired but not running.
+- **`call_log_extensions` is empty of real mappings.** The owner enters `401-413` / `445-450`; until
+  then every `call_logs` row carries `employee_id NULL` and D-57b keeps manual entry alive.
