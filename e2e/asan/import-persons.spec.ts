@@ -342,13 +342,23 @@ test.describe("M3.3 — Asan person import", () => {
       'module: "asan-import"',
     );
 
-    // The static PERMISSIONS matrix is only the fallback for when the dynamic cache
-    // has not loaded, but a fallback that disagrees with `role_permissions` is how a
-    // menu ends up offering something the backend refuses.
+    // This used to assert that the static PERMISSIONS matrix in `src/lib/rbac/roles.ts` named
+    // admin and accountant for asan-import, because a fallback that disagreed with
+    // `role_permissions` is how a menu ends up offering something the backend refuses.
+    //
+    // Wave 6 X-3 deleted that matrix, so there is no second list left to disagree. The
+    // requirement it protected is now asserted where it actually decides — the live table.
     const roles = fs.readFileSync("src/lib/rbac/roles.ts", "utf8");
-    expect(roles, "asan-import is missing from the static permission matrix").toMatch(
-      /"asan-import":\s*\{\s*view:\s*\["admin",\s*"accountant"\]/,
-    );
+    expect(
+      /export const PERMISSIONS/.test(roles),
+      "the static PERMISSIONS matrix is back in roles.ts — X-3 removed it on purpose",
+    ).toBe(false);
+    expect(
+      dbRows(
+        "select role_name from public.role_permissions where module='asan-import' and can_view order by role_name",
+      ),
+      "asan-import view is no longer granted to exactly admin and accountant",
+    ).toEqual(["accountant", "admin"]);
   });
 
   test("every role has an explicit asan-import permission row", async () => {

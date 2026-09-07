@@ -673,24 +673,27 @@ test.describe("who may export", () => {
     ).toEqual(["accountant", "admin"]);
   });
 
-  test("the static permission matrix agrees with what the migration seeded", () => {
-    // The M3.3 lesson: a fallback matrix that disagrees with the table is how a menu ends up
-    // offering something the backend refuses. Only non-admin roles are compared, because
-    // `hasPermission` short-circuits to true for admin whatever the matrix says.
+  test("there is no second permission table to disagree with what the migration seeded", () => {
+    // The M3.3 lesson was: a fallback matrix that disagrees with the table is how a menu ends up
+    // offering something the backend refuses. This test used to enforce agreement between the
+    // static matrix in `src/lib/rbac/roles.ts` and `role_permissions`.
+    //
+    // Wave 6 X-3 removed that matrix outright, which is the stronger form of the same guarantee:
+    // two tables cannot disagree when there is only one. So the assertion is inverted — it now
+    // holds the matrix DELETED, and checks the seed against the live table directly.
     const src = fs.readFileSync(path.resolve("src/lib/rbac/roles.ts"), "utf8");
-    const block = src.slice(src.indexOf('"asan-export": {'));
-    expect(block.slice(0, block.indexOf("}"))).toContain('view: ["admin", "accountant"]');
+    expect(
+      /export const PERMISSIONS/.test(src),
+      "the static PERMISSIONS matrix is back in roles.ts — X-3 removed it precisely so it could " +
+        "not drift from role_permissions again",
+    ).toBe(false);
 
-    const seededView = new Set(
-      dbRows("select role_name from role_permissions where module='asan-export' and can_view"),
-    );
-    for (const role of dbRows("select distinct role_name from role_permissions")) {
-      if (role === "admin") continue;
-      const staticSays = block.slice(0, block.indexOf("}")).includes(`"${role}"`);
-      expect(staticSays, `${role}: static matrix and migration 291 disagree`).toBe(
-        seededView.has(role),
-      );
-    }
+    expect(
+      dbRows(
+        "select role_name from role_permissions where module='asan-export' and can_view order by role_name",
+      ),
+      "migration 291's asan-export view seed changed",
+    ).toEqual(["accountant", "admin"]);
   });
 
   test("the page keeps the guards this phase depends on", () => {

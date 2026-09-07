@@ -52,7 +52,7 @@ import {
 import { useDebounce } from "@/hooks/use-debounce";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
 import { fetchEffectiveCurrencies } from "@/lib/pricing/effective-currencies";
@@ -156,7 +156,7 @@ function SalesSearchPage() {
   const isPrivileged =
     roles.includes("admin") || roles.includes("manager") || roles.includes("accountant");
   const canRecalcPrice =
-    hasPermission(roles, "pricing", "update") || hasPermission(roles, "pricing", "create");
+    hasPermissionEx(roles, "pricing", "update") || hasPermissionEx(roles, "pricing", "create");
   const queryClient = useQueryClient();
 
   // PRICE-RT.7 — هرگاه worker «product_computed_prices» را به‌روزرسانی کند،

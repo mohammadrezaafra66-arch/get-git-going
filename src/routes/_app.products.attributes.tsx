@@ -31,7 +31,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 
 export const Route = createFileRoute("/_app/products/attributes")({
   beforeLoad: async () => {
@@ -78,7 +78,7 @@ function normalizeKey(s: string): string {
 
 function ProductAttributesPage() {
   const { roles } = useAuth();
-  const canWrite = hasPermission(roles, "products", "update");
+  const canWrite = hasPermissionEx(roles, "products", "update");
   const qc = useQueryClient();
 
   const [filterGroupId, setFilterGroupId] = useState<string | "all">("all");

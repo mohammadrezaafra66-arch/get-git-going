@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { hasPermission } from "@/lib/rbac/roles";
+import { hasPermissionEx } from "@/lib/rbac/roles";
 import { labelSchema, type LabelFormValues } from "@/lib/products/schemas";
 import { normalizeSearchText } from "@/lib/i18n/search-normalizer";
 
@@ -77,7 +77,7 @@ const labelToFormValues = (label: Lbl | null): LabelFormValues =>
 
 function LabelsPage() {
   const { roles } = useAuth();
-  const canWrite = hasPermission(roles, "products", "update");
+  const canWrite = hasPermissionEx(roles, "products", "update");
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Lbl | null>(null);

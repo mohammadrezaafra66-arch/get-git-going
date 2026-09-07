@@ -85,12 +85,15 @@ import type { AppRole } from "@/lib/rbac/roles";
  *
  * ## Where `allowed` comes from — the one thing that is easy to get wrong
  *
- * `allowed` mirrors the LIVE `role_permissions` table, never `src/lib/rbac/roles.ts`. The static
- * table disagrees with the database on 13 modules. The worst is `pricing`: live grants view to
- * admin, manager, accountant, **sales and purchase_specialist**, where the static table names
- * three — so a gate copied from `roles.ts` would deny every real salesperson on ~15 routes, a
- * false denial that also makes the two layers contradict each other. Read the module's row out of
- * the database before writing a gate.
+ * `allowed` mirrors the LIVE `role_permissions` table. Read the module's row out of the database
+ * before writing a gate.
+ *
+ * **UPDATE, wave 6 (X-3): the static table this paragraph warned about is GONE.** It used to
+ * disagree with the database on 13 modules — worst on `pricing`, where live grants view to admin,
+ * manager, accountant, **sales and purchase_specialist** while the static copy named three, so a
+ * gate copied from `roles.ts` denied every real salesperson on ~15 routes. `src/lib/rbac/roles.ts`
+ * no longer holds a permission matrix at all, so that particular way of writing a wrong gate is
+ * now impossible. The instruction stands: the database is the source.
  *
  * The role list still lives in one place per route, on the line above the `beforeLoad` call it
  * mirrors, so the two cannot drift apart without both being visible in the same three lines.
@@ -100,15 +103,19 @@ import type { AppRole } from "@/lib/rbac/roles";
  * NO `permission` KIND, DELIBERATELY. An earlier draft mirrored `requirePermission` here with a
  * direct `hasPermissionEx(...)` call, and a reviewer found that it silently diverges from the
  * guard it claims to mirror: `requirePermission` does `await loadRolePermissions()` FIRST, while
- * a React render cannot await, so an unpopulated dynamic cache makes `hasPermissionEx` fall
- * through to the STATIC permission table (`roles.ts` — "Fallback to static"). The two would then
- * disagree for any role whose `role_permissions` row differs from the static default.
+ * a React render cannot await, so an unpopulated dynamic cache made `hasPermissionEx` fall
+ * through to the STATIC permission table. The two would then disagree for any role whose
+ * `role_permissions` row differs from the static default.
  *
- * No route uses that kind today, so shipping it would have added an untested branch that is
- * wrong in a way nothing here can catch — the same failure this mission already deleted once,
- * when the router-context mechanism turned out never to fire. Whoever takes OG-41 and adopts the
- * 74 `requirePermission` routes has to solve the cache load first, and removing the kind makes
- * TypeScript say so rather than letting it pass silently.
+ * **UPDATE, wave 6 (X-3): the divergence described above no longer exists**, and half of the
+ * "render cannot await" problem is now solved. The static table is deleted, so there is nothing
+ * left to fall through TO, and this component holds on `permissionsLoading` until the table has
+ * been read — which is the render-time equivalent of the `await` a render cannot perform. A
+ * `permission` kind is therefore no longer blocked on the cache-load problem.
+ *
+ * It is still NOT added here, because no route uses one and adopting the 74 `requirePermission`
+ * routes is OG-41's scope, not X-3's. Shipping an unused branch remains the thing this comment
+ * was written to prevent.
  */
 export type RouteGate = { kind: "anyRole"; allowed: readonly AppRole[] } | { kind: "admin" };
 
@@ -143,7 +150,8 @@ function passes(gate: RouteGate, roles: AppRole[]): boolean {
 
 export function RouteRoleGate({ children }: { children: ReactNode }) {
   const matches = useMatches();
-  const { roles, rolesLoading, profileLoading, loading, rolesError } = useAuth();
+  const { roles, rolesLoading, profileLoading, loading, permissionsLoading, rolesError } =
+    useAuth();
 
   // Every gate on the matched chain has to pass — a nested layout may carry one of its own.
   const gates = matches
@@ -153,7 +161,17 @@ export function RouteRoleGate({ children }: { children: ReactNode }) {
   if (gates.length === 0) return <>{children}</>;
 
   // 1. The answer is not known yet. Hold. Never render the page, and never call this a denial.
-  if (rolesLoading || profileLoading || loading) {
+  //
+  //    `permissionsLoading` joins this list in wave 6 (X-3). The gates themselves are only
+  //    `anyRole` / `admin` and do not read `role_permissions` — but the PAGE this component
+  //    wraps does, through `hasPermissionEx`, and X-3 removed the static matrix that used to
+  //    answer while the table was in flight. Without holding here, a permitted user's controls
+  //    render absent and then appear: the flash of the wrong one. Holding for the whole subtree
+  //    fixes it in one place instead of at every call site.
+  //
+  //    This cannot hang: `permissionsLoading` tracks "finished trying", not "has rows", so a
+  //    failed fetch falls through to the denial path rather than spinning forever.
+  if (rolesLoading || profileLoading || loading || permissionsLoading) {
     return (
       <div className="p-6 text-muted-foreground" data-testid="route-gate-checking">
         در حال بررسی دسترسی…
