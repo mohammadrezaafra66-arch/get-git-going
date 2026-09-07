@@ -686,3 +686,55 @@ suggestions. The existing `ext 101` row — **zero occurrences in the CDR, ever*
 unseen, not deleted**: it is another mission's demonstration row and the admin decides its fate.
 That screen's gate was verified in a browser this session (admin names an extension and it persists;
 a cold `viewer` is refused) and must not be weakened.
+
+---
+
+## 22. HANDED FORWARD, as a ROW — `call_log_extensions` has no audit trail at all
+
+**Owner's instruction: this does not go into the handed-forward list as a footnote.** It is named
+here with its lineage so the next mission's brief opens with it as a row rather than rediscovering
+it. **Nothing was built. Nothing should be built now.**
+
+### The measurement
+
+```
+triggers on public.call_log_extensions  ->  trg_call_log_extensions_updated_at   (timestamp only)
+audit_logs rows for that table          ->  0, and 0 for entity_id='101', and 0 in any diff
+```
+
+There is **no audit trigger**. Not a partial one — none. Every change to this table since it was
+created is unrecorded, which is why the disappearance of `ext 101` is answerable only as **UNKNOWN**.
+
+### Why it is a row and not a footnote — the lineage
+
+This is the **third instance of one failure**, each a strictly worse version of the last:
+
+| # | Where | Shape | What the record actually covered |
+|---|---|---|---|
+| 1 | **Wave 5, `[A-3]`** | "every change is logged" was true **only through the RPC**. `authenticated` held direct INSERT/UPDATE and only DELETE carried a trigger. A PostgREST `PATCH` left **no trace**. | some verbs |
+| 2 | **Today, F-2** | `audit_customer_change` fires on the right verb but builds its diff from a **fixed field list** that omitted `manual_credit_floor`. A ceiling moved and every logged field read unchanged. | the verb, not the field |
+| 3 | **`call_log_extensions`** | No trigger of any kind. | nothing |
+
+Instance 1 cost wave 5 a finding. Instance 2 was caught today only because a cold reviewer went
+looking. Instance 3 is already live, and the table is **about to become score-bearing**: once
+`employee_id` is populated, D-57b opens the switchover and this table decides which employee is
+credited with which calls — feeding `compute_employee_score`.
+
+H-1 today is the counter-example that proves the shape is fixable: the residue delete produced its
+fifth audit row precisely because `trg_allocation_rows_audit_delete` existed. The mechanism works
+where it is present.
+
+### What the next brief should start from
+
+- The rule this project states — *sensitive actions require audit logs* — is enforced per-table by
+  hand, so it is true exactly where someone remembered it and false everywhere else. **Nobody has
+  ever enumerated which sensitive tables have audit coverage and which do not.** That census is the
+  row, not this one table.
+- The three instances above suggest the census needs **three** columns, not one: does a trigger
+  exist · does it cover every verb · does its diff carry the fields that matter. Instance 2 passes
+  the first two tests and still lost the data.
+- `call_log_extensions` is the concrete starting case and should be fixed first, because its
+  score-bearing date is known and near.
+
+**Not built, by owner decision. Adding a trigger is a schema change nobody has approved and it sits
+outside C-7.**
