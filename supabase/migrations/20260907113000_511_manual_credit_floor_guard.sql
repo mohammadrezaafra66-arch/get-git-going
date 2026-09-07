@@ -52,7 +52,7 @@ BEGIN
     IF _actor IS NOT NULL
        AND NOT public.has_any_role(_actor, ARRAY['admin','manager','accountant']::text[]) THEN
       RAISE EXCEPTION
-        'تغییر سقف اعتبار دستی فقط از راه بررسی درخواست اعتبار و توسط مدیر سیستم، مدیر بخش یا حسابدار ممکن است.'
+        'تغییر سقف دستی فقط با نقش مدیر یا حسابدار ممکن است'
         USING ERRCODE = '42501';
     END IF;
   END IF;
