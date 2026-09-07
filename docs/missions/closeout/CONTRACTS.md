@@ -169,3 +169,77 @@ Every row closes with the evidence its kind demands, and no other:
 | **INVESTIGATE → …** | The measurement first, then the action or the stop. |
 
 `PARTIAL` and `BLOCKED` are honourable. A `COMPLETE` that cannot show its evidence is not.
+
+---
+
+## 9. Scoped baseline — measured this session, before any change
+
+`npx playwright test e2e/security/ e2e/business-flows/ e2e/persons/` — sequential, one worker, 14.4 min.
+
+```
+15 failed · 4 skipped · 451 passed
+```
+
+**Compare the SET, never the count** (OG-47: treating the number as exact manufactures false
+regressions). The 15, in full:
+
+| Suite | Count | Specs |
+|---|---|---|
+| `persons` | **9** | `credit-unchanged:125` · `credit-uses-person:21` · `external-party-person:130` · `inline-supplier-create:106` · `merge-ui:62` · `person-create-normalize:54` · `person-create-with-identifier:37` · `quote-list-link:33` · `supplier-form-person:42` |
+| `business-flows` | **5** | `211-216-rejected-quote-notification:401` · `212-quote-credit-guard:640` · `213-dynamic-customer-credit-scoring:501` · `214-whatsapp-market-purchase-advisor:35` · `215-quote-inventory-finalization:329` |
+| `security` | **1** | `rule12-no-gate-creates-posted-documents:109` |
+
+This is exactly the 9 + 5 + 1 the brief predicted.
+
+**`rule12`'s offender list — one entry, quoted from the failure:**
+
+```
+Error: these specs create a financial document with no rolled-back transaction:
+  e2e\unit\ledger-wizard-party-pick.spec.ts
+```
+
+Unchanged. **One offender is the expected state; it is not a pass.** If this list grows, the new
+entry is a regression owned by whoever added it.
+
+**Green and confirmed green:** `og81` (ledger = disk), `og103` (anon table grants), `og61` (anon
+cannot reach definer writers) — none appears in the failure set.
+
+**Both timing-sensitive specs passed on this run:** `217-allocation-workbench` and
+`og-bot-api-keys-cold-gate`. If either goes red later, **re-run it once** before calling it a
+regression.
+
+---
+
+## 10. Group C — the exact unblock, for the owner
+
+Group C needs one thing: a **read-only** MySQL user on the Issabel box, and the four env keys
+pointing at it. The statements are already written out, with their security rationale, at
+`docs/research/issabel-groundwork-20260906.md:715-737`:
+
+```sql
+CREATE USER 'afrakala_cdr_ro'@'192.168.170.8' IDENTIFIED BY '<a strong password you choose>';
+GRANT SELECT ON asteriskcdrdb.cdr TO 'afrakala_cdr_ro'@'192.168.170.8';
+FLUSH PRIVILEGES;
+```
+
+Three properties of those two lines matter, and all three are deliberate:
+`@'192.168.170.8'` restricts the user to the **test computer only** — not `'%'`; `GRANT SELECT` is
+**read-only**, so the company's call records cannot be altered even if the password leaks; and
+naming `asteriskcdrdb.cdr` keeps every other database on the phone server — including its own
+settings and passwords — invisible.
+
+Then add to `deploy/lan/.env.lan` (which is gitignored and must stay that way):
+
+```
+ISSABEL_CDR_HOST=192.168.170.252
+ISSABEL_CDR_USER=afrakala_cdr_ro
+ISSABEL_CDR_PASSWORD=<the password>
+ISSABEL_CDR_DB=asteriskcdrdb
+```
+
+**The password is never committed, never pasted into chat, and never logged** (project rule 4).
+The web UI at `192.168.170.252` is never logged into.
+
+When those four keys exist, C-4 runs `DESCRIBE cdr` **first** and reconciles it against the
+`[doc]`-marked column map before a single row is written — that map is documentation, not a
+measurement, and every column that differs is reported before the import.
