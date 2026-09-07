@@ -212,3 +212,55 @@ Its discriminators were chosen to distinguish 424 from 425+, and they do that co
 never meant to detect a hole *below* the ceiling, and they cannot. **This is not a defect in the
 audit; it is a limit of ceiling-based reasoning** — a ceiling tells you the highest thing applied,
 never that everything beneath it was.
+
+---
+
+## C-1 verified by the orchestrator — and two more corrections to my briefs
+
+**The guard now works in both directions.** Same input, before and after, measured independently:
+
+```
+before: {"switched_over": true,  "mapped_extensions": 1, "rows_written": 0}
+after : {"switched_over": false, "reason": "unmapped_extensions",
+         "blocked_by": ["201","401","402","404","406","407","413","449","450"],
+         "unmapped_calls": 323, "unmapped_extensions": 9, "extensions_in_window": 10}
+```
+
+`trg_staff_call_metrics_manual_guard` exists on `staff_daily_performance_metrics`, and the 11
+pre-go-live manual rows are byte-identical (`md5 90f6f5e0…`, unchanged since before the work began).
+
+A **third** safe state appeared that nobody specified: for a date with no imported calls the function
+returns `reason: "no_call_data"` and stays closed, rather than treating an empty window as full
+coverage. That is the right behaviour and worth keeping.
+
+### Correction 1 — I said 18 extensions; in the derived window there are 10
+
+My "18 agent extensions" came from **90 days of MySQL CDR**. The predicate is **per-window** and sees
+what is in `call_logs`: **10** extensions, 9 unmapped. Both numbers are right for their scope, and
+the difference is the property working as intended — a per-window predicate must not be blocked by a
+desk that emitted nothing in the window.
+
+Three rows in `call_log_extensions` (`408`, `409`, `445`) had **no calls at all** in the window and
+correctly do not block. That is the "decommissioned desk" case the traffic-weighting was for.
+
+### Correction 2 — extension `201` exists and neither of my measurements listed it
+
+`201` appears in `blocked_by`. My 90-day sweep produced `401-413, 445-450` and never saw it. So the
+list I gave the owner for mapping was **incomplete**, and the screen suggestion list built from it
+would be too.
+
+Recorded as out-of-scope by the C-1 agent and worth repeating: **`/admin/call-extensions` should
+offer the extensions actually present in `call_logs`, not a hardcoded list** — otherwise `201`,
+`406`, `449` and `450` are invisible to the operator, and four of the nine blockers can never be
+cleared through the UI.
+
+### Correction 3 — the old guard could never have opened at all
+
+The C-1 agent measured, before changing anything, that even a **fully simulated mapping** produced
+`rows_written: 0`. The aggregation keyed on `cl.employee_id`, which is NULL on all 1509 rows. So the
+gate was not merely mis-thresholded: **neither of its states was reachable** — it could report
+`switched_over: true` while being structurally incapable of writing a row. Fixed with a `COALESCE`
+onto the extension mapping, recorded as a deliberate decision rather than a silent repair.
+
+This is why "prove both directions" is the rule. A guard tested only in its blocking state would
+have passed review here, twice.
