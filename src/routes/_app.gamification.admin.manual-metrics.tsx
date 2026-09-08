@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { AlertTriangle, BookOpen, Loader2, Save } from "lucide-react";
+import { AlertTriangle, BookOpen, Loader2, Phone, Save } from "lucide-react";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,6 +80,34 @@ const EMPTY_FORM = {
 };
 
 type SalesSource = "auto" | "manual";
+
+/**
+ * C-1 — the other half of the switchover, which C-7 described but never built.
+ *
+ * Migration 517 wrote "manual entry continues" into a comment and stopped there: this
+ * screen carried no reference to the switchover at all, and the only trigger on
+ * `staff_daily_performance_metrics` was `staff_daily_perf_updated_at` (a timestamp
+ * trigger). There was no gate anywhere — UI or database — so the manual screen would have
+ * gone on overwriting derived numbers the moment the extension mapping was completed.
+ *
+ * The authority is `public.staff_call_metrics_coverage(date)` (migration 520) and the
+ * BEFORE INSERT OR UPDATE trigger that calls it. This component only *mirrors* that
+ * decision, it never makes it: with the fields disabled here the trigger still refuses
+ * the same write, which is why the gate is not frontend-only authorisation.
+ *
+ * The RPC is newer than the generated Supabase types, so the call is cast the same way
+ * `set_gamification_sales_source` and `manual_daily_metrics_totals` already are here.
+ */
+interface CallCoverage {
+  covered: boolean;
+  reason: "no_go_live_date" | "before_go_live" | "no_call_data" | "unmapped_extensions" | "covered";
+  for_date: string;
+  go_live: string | null;
+  extensions_in_window: number;
+  unmapped_extensions: number;
+  unmapped_calls: number;
+  blocked_by: string[];
+}
 
 function ManualMetricsPage() {
   const { roles } = useAuth();
@@ -187,6 +215,30 @@ function ManualMetricsPage() {
       notes: r.notes ?? "",
     });
   }, [existingQ.data]);
+
+  // Is the CDR authoritative for the selected day? Same predicate the trigger uses.
+  const coverageQ = useQuery({
+    queryKey: ["staff-call-metrics-coverage", metricDate],
+    enabled: Boolean(metricDate),
+    staleTime: 60_000,
+    queryFn: async (): Promise<CallCoverage | null> => {
+      const { data, error } = await (
+        supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: unknown; error: { message: string } | null }>
+      )("staff_call_metrics_coverage", { _for_date: metricDate });
+      if (error) throw new Error(error.message);
+      return (data ?? null) as CallCoverage | null;
+    },
+    // A viewer/sales account is refused by the RPC on purpose; that must not retry.
+    retry: false,
+  });
+  const coverage = coverageQ.data ?? null;
+  // Fail closed on the *manual* side only while we know the answer. If the RPC errored we
+  // leave manual entry open, because the trigger is the thing that actually enforces this.
+  const callsDerived = coverage?.covered === true;
+  const callsBlocked = coverage?.reason === "unmapped_extensions";
 
   const recentQ = useQuery({
     queryKey: ["manual-metrics-recent", staffId],
@@ -408,6 +460,53 @@ function ManualMetricsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/*
+            C-1 · A guard that declines silently is indistinguishable from a broken
+            feature. Whoever maintains this screen needs to know why they are still
+            entering call numbers by hand, and what ends it.
+          */}
+          {callsBlocked && (
+            <Alert>
+              <Phone className="h-4 w-4" />
+              <AlertTitle>آمار تماس هنوز دستی است</AlertTitle>
+              <AlertDescription className="space-y-2 text-xs leading-6">
+                <p>
+                  تا وقتی داخلی‌ها به کارمندان نسبت داده نشوند، آمار تماس از CDR محاسبه نمی‌شود.
+                </p>
+                <p>
+                  در {formatDateFa(metricDate)} این {toFaDigits(coverage?.unmapped_extensions ?? 0)}{" "}
+                  داخلی تماس داشته‌اند ولی به هیچ کارمندی نسبت داده نشده‌اند (
+                  {toFaDigits(coverage?.unmapped_calls ?? 0)} تماس):{" "}
+                  <span dir="ltr" className="font-mono">
+                    {(coverage?.blocked_by ?? []).join(" ، ")}
+                  </span>
+                </p>
+                <p>
+                  <Link
+                    to="/admin/call-extensions"
+                    className="font-medium text-primary underline underline-offset-4"
+                  >
+                    نسبت دادن داخلی‌ها به کارمندان
+                  </Link>{" "}
+                  — پس از کامل شدن نگاشت، سه ستون تماس خودکار محاسبه می‌شوند و در همین صفحه غیرفعال
+                  می‌گردند.
+                </p>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {callsDerived && (
+            <Alert>
+              <Phone className="h-4 w-4" />
+              <AlertTitle>آمار تماس این روز از CDR محاسبه می‌شود</AlertTitle>
+              <AlertDescription className="text-xs leading-6">
+                نگاشت هر {toFaDigits(coverage?.extensions_in_window ?? 0)} داخلیِ دارای تماس در{" "}
+                {formatDateFa(metricDate)} کامل است، پس تماس ورودی، تماس خروجی و دقایق مکالمه دیگر
+                دستی ثبت نمی‌شوند. فروش و سود همچنان دستی هستند.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {field(
               "sales_amount",
@@ -418,9 +517,30 @@ function ManualMetricsPage() {
               "در حالت خودکار، فروش از پیش‌فاکتورهای نهایی‌شده (پذیرفته‌شده) خوانده می‌شود و این مقدار نادیده گرفته می‌شود.",
             )}
             {field("profit_amount", "مبلغ سود", "تومان", true)}
-            {field("inbound_calls_count", "تماس ورودی", "تماس")}
-            {field("outbound_calls_count", "تماس خروجی", "تماس")}
-            {field("talk_time_minutes", "دقایق مکالمه", "دقیقه")}
+            {field(
+              "inbound_calls_count",
+              "تماس ورودی",
+              "تماس",
+              false,
+              callsDerived,
+              "از CDR محاسبه می‌شود؛ ثبت دستی برای این روز رد می‌شود.",
+            )}
+            {field(
+              "outbound_calls_count",
+              "تماس خروجی",
+              "تماس",
+              false,
+              callsDerived,
+              "از CDR محاسبه می‌شود؛ ثبت دستی برای این روز رد می‌شود.",
+            )}
+            {field(
+              "talk_time_minutes",
+              "دقایق مکالمه",
+              "دقیقه",
+              false,
+              callsDerived,
+              "از CDR محاسبه می‌شود؛ ثبت دستی برای این روز رد می‌شود.",
+            )}
           </div>
           <div className="space-y-1">
             <Label>توضیح (اختیاری)</Label>

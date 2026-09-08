@@ -1,0 +1,55 @@
+# Versions at or below the ceiling 20260904150000 that are NOT applied to the rehearsal
+# database prod_rehearsal_20260908, and must therefore never be recorded in the ledger.
+# Rule used: WHEN IN DOUBT, DO NOT RECORD. Under-recording is recoverable; over-recording
+# hides a genuinely missing migration forever.
+#
+# ── Band A · migrations 336–370, the ledger-documents / dual-document / reversal module.
+#    NEVER APPLIED to the production baseline. Hard evidence (live catalogue, E3):
+#      document_numbers, document_attachments, dual_documents  ......... absent (present on test)
+#      journal_entries.doc_kind, journal_entries.reverses_entry_id ..... absent
+#      payment_vouchers.endorsed_receipt_id + 15 reversal columns ...... absent
+#      migration 422 aborted with: relation "public.document_numbers" does not exist
+#    No migration anywhere in supabase/migrations DROPs these objects, so this is absence,
+#    not supersession. The GRANT/COMMENT-only members of the band leave no checkable artefact;
+#    they are listed here because they sit inside a contiguous proven-absent band.
+20260818150000
+20260818151000
+20260818152000
+20260818153000
+20260818154000
+20260818155000
+20260818156000
+20260818157000
+20260818158000
+20260818160000
+20260818161000
+20260818170000
+20260818180000
+20260819091000
+20260819092000
+20260819093000
+20260819100000
+20260819101000
+20260819111000
+20260819130000
+20260819140000
+20260819150000
+20260819151000
+20260819160000
+20260819180000
+20260821120000
+20260821121000
+20260822143000
+20260822210000
+#
+# ── Band B · migrations the rehearsal could not apply, each rolled back whole.
+# 418 backfill_accepted_at — its own assertion rejects this data ("expected 9 accepted quotes,
+#     found 151"). sales_quotes.accepted_at is entirely NULL here.
+20260831190000
+# 422 document_register_view — depends on document_numbers (Band A). Cannot apply at all.
+20260903160000
+#
+# ── Band C · migrations absent from production's own checkout 469fe0a9 (610 files, verified
+#    with git ls-tree). They are step 1 and step 2 of the migration runbook.
+20260903100000
+20260903140000
