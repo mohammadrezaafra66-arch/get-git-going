@@ -516,3 +516,326 @@ The `service_role` half (228 of 228) is unchanged, so the hardening did not over
 - The gate's **first** half (`has_table_privilege` over existing tables) was left alone — it
   already folds in PUBLIC and inherited roles correctly, so it has no equivalent blind spot.
 - No change to what 537 revokes; only to what it verifies.
+
+---
+
+# Item 4 · The Latin-digit sweep
+
+**Status: done in one commit (`22611452`), 43 files.** The reviewer's headline was right about the
+cause and wrong about the shape — see "What the report got wrong".
+
+## The helper — chosen, not invented
+
+Five Persian-digit helpers exist in `src/`. The canonical one is
+`src/lib/i18n/formatters.ts` by a wide margin:
+
+```
+lib/i18n/formatters      152 importing files      toFaDigits used 349x
+lib/dashboard/utils       15                      toPersianDigits used 141x (across 4 modules)
+lib/documents/labels       5
+lib/purchase/labels        8
+lib/settings/labels        4
+```
+
+No new helper was added (project rule 14).
+
+## `toLocaleString("fa-IR")` was rejected as the general fix
+
+It localises the digits **and** switches the thousands separator to U+066C, which changes how
+every number *looks*, not just which glyphs it uses. The brief forbids changing grouping. The
+existing helper already makes the narrower choice, so the rule applied throughout was:
+
+| site already… | fix | why |
+|---|---|---|
+| grouped via `toLocaleString("en-US")` | `formatNumber` (= `toFaDigits(n.toLocaleString("en-US"))`) | same grouping, Persian glyphs |
+| ungrouped (`${n}`, `.toFixed(k)`) | `toFaDigits` alone | no number silently gains separators it never had |
+
+Proved (E4) — grouping and decimals byte-identical, only glyphs differ:
+
+```
+value      | BEFORE       | AFTER          | grouping+decimals identical?
+1234567    | 1,234,567    | ۱,۲۳۴,۵۶۷      | true
+4850000    | 4,850,000    | ۴,۸۵۰,۰۰۰      | true
+0          | 0            | ۰              | true
+12.5       | 12.5         | ۱۲.۵           | true
+1234.56    | 1,234.56     | ۱,۲۳۴.۵۶       | true
+98765.4321 | 98,765.432   | ۹۸,۷۶۵.۴۳۲     | true
+
+A real breakdown line:
+  BEFORE: نرخ ارز: 58,500 → قیمت خرید تومانی: 4,850,000 تومان
+  AFTER : نرخ ارز: ۵۸,۵۰۰ → قیمت خرید تومانی: ۴,۸۵۰,۰۰۰ تومان
+```
+
+## What the report got wrong
+
+It said 14 sites come from `src/lib/pricing/engine.ts:59` feeding both
+`_app.pricing.calculator.tsx` and `_app.pricing.quick-price.tsx`. **`quick-price.tsx` does not
+consume `engine.ts`.** It consumes `src/lib/pricing/quick-price.ts`, which carries its **own
+duplicate** of the same line:
+
+```
+src/lib/pricing/engine.ts:59       const fmt = (n: number) => n.toLocaleString("en-US");
+src/lib/pricing/quick-price.ts:42  const fmt = (n: number) => n.toLocaleString("en-US");
+```
+
+Fixing only the reported line would have left the quick-price screen exactly as it was, and a
+re-run of the same review would have reported it again. Both now delegate to `formatNumber`:
+**26 breakdown lines fixed by two one-line changes.**
+
+Two further leaks in the same strings the report did not mention: `margin_value` is interpolated
+raw in `` `سود (%${margin_value})` `` and `` `سود (ترکیبی %${margin_value} + …)` `` in *both*
+modules — 4 sites, now wrapped. The modules were already internally inconsistent, hard-coding
+`نرخ ارز ۱` and `هزینه حمل: ۰` in Persian two lines away.
+
+## Scale
+
+```
+new toFaDigits(...) call sites   80
+new formatNumber(...) call sites  5
+files changed                    43
+```
+
+Plus the 26 render sites covered by the two `fmt` one-liners — roughly **110 rendered numbers**.
+The reviewer's "roughly 45" was an undercount.
+
+## Deliberately Latin — left alone
+
+- `src/lib/sales/quote-pdf.ts:65-70` `formatMoney` — carries its own comment: *"Money stays in
+  Latin digits with comma grouping. Persian digits mixed with commas and a currency label reorder
+  visually inside an RTL run."* Its sibling `fmtNum` is the Persian variant. Overriding a
+  documented, deliberate decision is not a sweep.
+- **Editable numeric `<input value>`** — `_app.accounting.dynamic-capital.tsx:155,336`,
+  `DynamicScoringSection.tsx:490,493`, `_app.gamification.admin.manual-metrics.tsx:319`. All
+  `dir="ltr"`; Persian glyphs in a field the user types into would break typing and parsing. Their
+  *display* echoes already localise.
+- **Identifiers, not quantities** — SKUs (`_app.pricing.calculator.tsx:388`), quote/tracking/
+  reference numbers (`quote-share.ts:55`, `_app.sales.quotes.$quoteId.tsx:230`,
+  `receipt-ocr-structured.ts:492-496`), currency codes echoed raw in the engine steps.
+- **Machine-readable dates** — every `Intl.DateTimeFormat("en-CA"|"en-GB"|"en-US")` (asan export
+  filenames, CDR parsing, jalali conversion). `ScoreChart.tsx:12` deliberately uses
+  `"fa-IR-u-nu-latn"` for axis ticks.
+- **Vendored shadcn primitives** — `ui/chart.tsx:225`, `ui/calendar.tsx:35`. Editing these
+  diverges from upstream; localise at the call site if wanted.
+- **Never rendered** — `Number(x.toFixed(n))` rounding in `lib/pricing/*`, audit-log payloads,
+  LLM prompt context, React keys, URLs, filenames, non-display JSX props.
+- `SemanticSearchBar.tsx:113` — a `%` badge explicitly wrapped in `dir="ltr"`; borderline, left
+  for a human call.
+- **Clock-style `HH:MM`** — `AudioPlayer.tsx:9-10`, `AudioRecorder.tsx:69,72`,
+  `_app.presence.tsx:66`. Latin-by-convention for timers; flagged for a decision, not changed.
+
+## Deferred, and why (NOT done)
+
+`StatCard`/`Stat` components that receive a **number prop** and format internally —
+`HealthReportTab.tsx:134-139`, `AfraMarketIndexCard.tsx:69-71`,
+`MarketRateIngestionHistory.tsx:230-232,281-289`, plus badge counts in `AppSidebar.tsx:298,552,651`,
+`_app.popup-center.tsx:29`, `BoardAccessRequestsCard.tsx:57`, `BoardOnlineUsersCard.tsx:26`,
+`ConversationsSidebar.tsx:81`, `_app.admin.roles.tsx:265,510`, `_app.admin.workflow-stages.tsx:246`,
+`gamification.admin.leagues.tsx:793`, `gamification.admin.kpi-rules.tsx:148`,
+`_app.products.attributes.tsx:353`, `_app.pricing.market-intelligence.tsx:231`,
+`_app.pricing.sale-lists_.$listId.tsx:874,1015`, `src/lib/sales/quotes.ts:123-158`,
+`src/lib/accounting/functions.ts:99`, `receipt-ocr-structured.ts:352`.
+
+Fixing these properly means changing the *component* so every caller benefits, not wrapping at
+one call site — a different and larger change than "wrap the digits", and one that alters shared
+component signatures. Listed here rather than half-done.
+
+## Verification
+
+```
+npx tsc --noEmit   -> 70 errors, PER-FILE IDENTICAL TO BASELINE
+                      (18 products.index, 15 admin.sales-reminders, 13 invoices/functions,
+                       13 accounting/functions, 6 audit/index, 5 admin.automation)
+npm run build      -> ✓ built in 27.77s   BUILD exit=0
+npx eslint <43 touched files> -> 0 errors, 69 warnings
+                      (all pre-existing @typescript-eslint/no-explicit-any; zero prettier errors)
+```
+
+`eslint --fix` was run on the touched files because the longer wrapped lines broke prettier's
+wrapping. **Honest note:** that grew the diff from `153 insertions(+), 88 deletions(-)` to
+`348 insertions(+), 225 deletions(-)` — the extra churn is prettier re-wrapping, some of it on
+lines I did not otherwise touch. The behaviour change is only the digits.
+
+**Not verified:** nothing was rendered in a browser. No screenshot, no running app. The claim
+"these now display Persian digits" rests on the helper's measured behaviour plus a clean build —
+not on seeing the screens.
+
+---
+
+# Item 5 · The RPC in the public sale-list loader
+
+**Status: done (`a8062f6a`) — and the premise is half wrong, so the call was KEPT.**
+
+## Confirmed cheaply, as asked
+
+```
+ relname         | anon_select | authd_select | rls_enabled
+ sale_list_items | f           | t            | t
+ sale_lists      | f           | t            | t
+
+ fn                             | secdef | anon | authenticated | service_role
+ refresh_sale_list_prices(uuid) | t      | f    | t             | t
+ refresh_all_sale_list_prices() | t      | f    | f             | t
+```
+
+So the brief is right that **for an anonymous visitor** the loader dies at its first query
+(line 47, `if (listErr || !list) return null;`) and line 50 is unreachable. The client is indeed
+the anon/publishable-key browser client.
+
+## Why removing it would have been wrong
+
+`authenticated` holds **both** the table SELECTs and EXECUTE on the function. The loader works
+for signed-in users, and for them line 50 runs and does real work. It is not dead code; it is
+code an anonymous visitor never reaches.
+
+Worse, og61 itself carries a justification entry for exactly this:
+
+> `refresh_sale_list_prices`: "… Invoked on sale-list page load
+> (**src/lib/public/get-public-sale-list.ts** and the sale-list route); a role gate would blank
+> the page for viewers who are allowed to see it."
+
+Deleting the call would have falsified a gate's own recorded reason for leaving the function open
+to `authenticated`, while leaving the gate green — the next person re-deriving that list could
+reasonably close it and break the sale-list route, which also calls it.
+
+## What was actually fixed
+
+The narrow, real defect the brief identified: supabase-js does not throw, so the bare `await`
+discarded every failure silently. The result is now destructured, and a failure warns and
+continues (a stale price is not worth blanking a page over). `console.warn` with a bracketed
+prefix is the established convention here — 52 uses in `src/lib`, no `no-console` rule.
+
+**This is cleanup. It does not restore the public page, and the page was never broken in the way
+the RPC line suggested.**
+
+## What making the page work anonymously would actually require
+
+Measured — the two blockers are narrow and specific:
+
+```
+ relname          | anon_select | rls | policies_for_anon
+ brands           | t           | t   | 2
+ categories       | t           | t   | 3
+ products         | t           | t   | 2
+ sale_price_types | t           | t   | 3
+ sale_lists       | f           | t   | 0      <-- blocker
+ sale_list_items  | f           | t   | 0      <-- blocker
+```
+
+Four of the six tables are already anon-readable with policies. To make it work anonymously:
+
+1. `GRANT SELECT` to `anon` on `sale_lists` and `sale_list_items`, **plus** an RLS policy on each
+   scoped to `status = 'published'` (the grant alone does nothing — RLS is on and there are zero
+   anon policies).
+2. Decide what happens to the refresh. `anon` must **not** get EXECUTE — og61 asserts that, and
+   the function writes. So the refresh has to move to a server route using the service-role
+   client, or be dropped for anonymous viewers (who would then see last-published prices).
+3. Confirm `sale_lists.terms_text`/`description` and the joined product fields carry nothing
+   commercially sensitive, since publishing the list publishes those too.
+
+That is an owner decision about exposing pricing publicly, not a bug fix. **Nothing in that list
+was done.**
+
+---
+
+# Final end-to-end run — all thirteen, twice, on a fresh production-shape restore
+
+This is the single run a gate should re-execute. Fresh `pg_restore` of `prod13.dump`
+(md5 `6ccd2dbb07a9a4d9bbae4421eb3265e0`), then every `20260913*.sql` in filename order, md5
+verified host-vs-container on each, `--single-transaction -v ON_ERROR_STOP=1`.
+
+```
+RESTORE exit=1 errors=21
+681 rows, top=20260912150000
+
+================ PASS 1 ================                    ================ PASS 2 ================
+526 md5=fa1bb671 exit=0     533 md5=578a8fe2 exit=0          every file, same md5, exit=0
+527 md5=1183f084 exit=0     534 md5=6b30be2e exit=0
+528 md5=b806a1fd exit=0     535 md5=5a8d8835 exit=0
+530 md5=618a0873 exit=0     536 md5=3a1e4b5d exit=0
+531 md5=47a8b2d1 exit=0     537 md5=7f8d50ac exit=0
+532 md5=e012d60e exit=0     538 md5=7ecf77bd exit=0
+                            539 md5=36619e8e exit=0
+
+================ END STATE ================
+ http_installed | seven_open_to_anon | seven_svc_ok | ledger_rows
+              0 |                  0 |            7 |         681
+```
+
+- `http_installed = 0` — item 2's guard held; the extension is not created on a database that is
+  not named `postgres`.
+- `seven_open_to_anon = 0` — item 1's objective.
+- `seven_svc_ok = 7` — item 1's anti-over-reach assertion; nothing lost a credentialed path.
+- `ledger_rows = 681`, unchanged from the restore — **no migration wrote its own
+  `schema_migrations` row.** The operator's step will still get `INSERT 0 1`.
+
+## md5s the release block must re-record
+
+| file | before | after |
+|---|---|---|
+| `…_533_pg_cron_http_scheduler.sql` | `610c55e02d9480d7082f50950b0e1bfd` | `578a8fe284db579be13ff326b6f599d4` |
+| `…_537_revoke_truncate_from_authenticated.sql` | `cf4e1d0907001a07de2e474d87a0a752` | `7f8d50ac04d4d2270f4a8f73e17464f2` |
+| `…_539_explicit_revoke_on_526_535_definers.sql` | (new) | `36619e8eb84a675b7b3b3417f1512814` |
+
+The other ten are byte-unchanged.
+
+# Commits
+
+| commit | item |
+|---|---|
+| `523ebb5e` | report scaffold — restore identity pinned before any fix |
+| `f82b6aa8` | **item 1** — migration 539 |
+| `86d67c27` | **item 2** — migration 533 http guard + REVOKE + OWNER DECISION |
+| `8b6d2c3f` | **item 3** — migration 537 gate hardening |
+| `22611452` | **item 4** — Latin-digit sweep (43 files) — carries `Release-note-fa` |
+| `a8062f6a` | **item 5** — sale-list RPC kept, error surfaced |
+
+Only item 4 carries a `Release-note-fa` trailer; the other four are internal (migrations, gates,
+a comment-and-logging change) and are correctly unpublished.
+
+# Another agent committed into this shared tree mid-run
+
+Recorded because the branch history will look odd otherwise. Between my scaffold commit and my
+item-1 commit, HEAD moved by a commit that is not mine:
+
+```
+f82b6aa8  feat(db): 539 ...                                    <- mine
+9dd237f5  tooling: widen the schema snapshot to twelve ...      <- NOT mine
+523ebb5e  docs(convergence): record the rehearsal identity ...  <- mine
+f802a1d6  Wave C: the adversary's report ...                    <- the base I started from
+```
+
+`9dd237f5` touches `docs/missions/BACKLOG.md`, `docs/missions/convergence/STATE.md`,
+`docs/missions/convergence/snapshot-full-coverage-pass1.txt` and `scripts/schema-snapshot.sh` —
+no overlap with anything I edited. I did not touch, revert or rebase it.
+
+Every one of my six commits was staged and committed in a single shell invocation with the
+pathspec repeated on the `commit`, and each contains only its own files — verified with
+`git show --stat` on all six. Nothing of theirs was swept into mine. **The push at the end will
+also push their commit**, because it is on this branch ahead of mine; that is a consequence of
+the shared tree, not a decision of mine.
+
+# What a gate should look at hardest
+
+1. **Item 1's refusal.** I did not revoke `authenticated` on the seven, against an explicit
+   instruction. The evidence is in the report and in 539's header. If the gate disagrees, the
+   thing to check is og61's `CLOSED_TO_AUTHENTICATED` criterion and the seven call sites — not my
+   summary of them.
+2. **Item 2's `check_function_bodies` suspension.** It is scoped to one statement and only where
+   the type is absent, but it does mean `run_issabel_import`'s body is unvalidated at apply time
+   on non-`postgres` databases. The alternative was worse (see the section), but it is a real
+   trade.
+3. **Item 2's rehearsal loss.** The `http` install and the revoke of its 19 functions are now
+   unexercisable on this host. The probe simulating them is a rolled-back transaction, which is
+   weaker than a real apply.
+4. **Item 4's untested rendering.** No browser was opened. Build + typecheck + helper semantics
+   are all the evidence there is that those screens look right.
+
+# Not done, anywhere in this run
+
+- No `git push` until the end; no merge, no rebase, no branch created, no force, no reset.
+- No deploy; the web container and the browser were never touched.
+- `afrakala` was read once, read-only (a ledger `SELECT`). `postgres` and every other
+  `prod_rehearsal_*` were untouched. The production laptop was never contacted.
+- **No test runner was invoked.** `e2e/security/og61-…`, `og81-…` and the rest were read as
+  evidence; none was executed. Any claim here about a spec is a claim about its text.
+- No secret file was read, moved, copied or printed.
