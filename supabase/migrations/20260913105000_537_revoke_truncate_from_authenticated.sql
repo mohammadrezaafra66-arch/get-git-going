@@ -137,7 +137,8 @@ END $$;
 -- --------------------------------------------------------------------------------------------
 -- 3. Gate. Both halves, because either one alone is a false pass:
 --    a) no existing table still grants TRUNCATE to `authenticated`;
---    b) no remaining pg_default_acl entry for TABLES in public would re-grant it.
+--    b) no remaining pg_default_acl entry for TABLES in public would re-grant it BY ANY PATH --
+--       named directly, via PUBLIC, or via a group role -- see the note on the check itself.
 --    Plus the third side that 395/405 taught this project to check: `service_role` must NOT
 --    have lost anything, or a revoke that looks clean takes a credentialed path down.
 -- --------------------------------------------------------------------------------------------
@@ -161,12 +162,48 @@ BEGIN
     RAISE EXCEPTION '537: % table(s) in public still grant TRUNCATE to authenticated', v_left;
   END IF;
 
+  -- WAS: array_to_string(d.defaclacl, ' ') ~ 'authenticated=[a-zA-Z]*D'
+  --
+  -- That asked "does some ACL entry spell the word authenticated followed by a D", which is a
+  -- question about the TEXT OF ONE ENTRY, not about what `authenticated` would receive. It has
+  -- a blind spot big enough to drive the whole migration through: a default granted to PUBLIC
+  -- renders with an EMPTY grantee, e.g. `=arwdDxt/postgres`. Measured:
+  --
+  --   SELECT '=arwdDxt/postgres' ~ 'authenticated=[a-zA-Z]*D';   -->  f
+  --
+  -- PUBLIC includes `authenticated`, so such a default re-grants TRUNCATE to every signed-in
+  -- user and the old gate reports success. It cannot bite on the shape this release ships
+  -- against -- measured on prod_rehearsal_fix, ZERO tables in `public` carry any PUBLIC grant
+  -- at all, and the two live default entries name their grantees explicitly:
+  --   supabase_admin | postgres=arwdDxt/... | authenticated=arwdxt/... | service_role=arwdDxt/...
+  --   postgres       | postgres=arwdDxt/... | authenticated=arwdxt/... | service_role=arwdDxt/...
+  -- (note `authenticated` carries no D in either, i.e. section 2 above did its job) -- but a
+  -- gate that is correct only because of a fact it does not itself check is not a gate.
+  --
+  -- NOW: aclexplode() expands each default ACL into (grantor, grantee, privilege_type) rows, so
+  -- the question becomes "is TRUNCATE granted to anything that would deliver it to
+  -- authenticated". Three arms, each a different delivery path:
+  --   1. grantee = 0             -- PUBLIC, the case the regex missed
+  --   2. grantee = authenticated -- named directly, the only case the regex caught
+  --   3. grantee is a role authenticated can reach -- granted to a group role instead
+  --
+  -- Arm 3 uses 'MEMBER', not 'USAGE', deliberately. Migration 405 exists because 395's gate
+  -- enumerated only `authenticated` and `service_role` and was therefore blind to
+  -- `products_api_readonly`; 385's repair recorded the general rule -- "pg_has_role USAGE tests
+  -- INHERIT, MEMBER tests SET ROLE". USAGE alone would miss a NOINHERIT role that
+  -- `authenticated` can still SET ROLE into. MEMBER is the broader test and subsumes USAGE.
   SELECT count(*) INTO v_defaults
     FROM pg_default_acl d
     JOIN pg_namespace n ON n.oid = d.defaclnamespace
+    CROSS JOIN LATERAL aclexplode(d.defaclacl) AS a
    WHERE n.nspname = 'public'
      AND d.defaclobjtype = 'r'
-     AND array_to_string(d.defaclacl, ' ') ~ 'authenticated=[a-zA-Z]*D';
+     AND a.privilege_type = 'TRUNCATE'
+     AND (
+           a.grantee = 0
+        OR a.grantee = to_regrole('authenticated')::oid
+        OR (a.grantee <> 0 AND pg_has_role('authenticated', a.grantee, 'MEMBER'))
+     );
 
   IF v_defaults <> 0 THEN
     RAISE EXCEPTION '537: % default-privilege entr(y/ies) would still re-grant TRUNCATE to authenticated', v_defaults;

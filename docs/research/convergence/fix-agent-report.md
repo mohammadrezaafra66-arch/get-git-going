@@ -407,3 +407,112 @@ is the right trade, but it *is* a trade, and the owner should see it as one.
   outbound HTTP plus a leaked service key is a worse combination than either alone. Worth a
   decision, not taken here.
 - Nothing was run against the `postgres` database or the production laptop.
+
+---
+
+# Item 3 · Migration 537 — its own gate was weaker than the migration
+
+**Status: done.** `537`'s md5 changed: `cf4e1d0907001a07de2e474d87a0a752` ->
+`7f8d50ac04d4d2270f4a8f73e17464f2`. The release block must re-record it.
+
+## The weakness, confirmed
+
+Line 169 was:
+
+```sql
+AND array_to_string(d.defaclacl, ' ') ~ 'authenticated=[a-zA-Z]*D'
+```
+
+That asks *"does some ACL entry spell the word `authenticated` followed by a D"* — a question
+about the text of one entry, not about what `authenticated` would actually receive. A default
+granted to PUBLIC renders with an **empty grantee**:
+
+```
+SELECT '=arwdDxt/postgres' ~ 'authenticated=[a-zA-Z]*D';   -->  f
+```
+
+## The shipping shape is safe — verified, not believed
+
+```
+--- [A] tables in schema public carrying ANY PUBLIC grant
+ tables_with_any_public_grant | 0
+
+--- [B] every pg_default_acl entry for TABLES in public
+ supabase_admin | postgres=arwdDxt/... | authenticated=arwdxt/... | service_role=arwdDxt/...
+ postgres       | postgres=arwdDxt/... | authenticated=arwdxt/... | service_role=arwdDxt/...
+
+--- [D] tables where authenticated holds TRUNCATE
+ authd_truncate_tables | 0
+```
+
+Zero PUBLIC grants, and `authenticated` carries no `D` in either default entry. So the old gate
+could not bite on this release. But a gate that is correct only because of a fact it does not
+itself check is not a gate.
+
+## The hardened check
+
+`aclexplode()` expands each default ACL into `(grantor, grantee, privilege_type)` rows, so the
+question becomes *"is TRUNCATE granted to anything that would deliver it to `authenticated`"*:
+
+```sql
+CROSS JOIN LATERAL aclexplode(d.defaclacl) AS a
+ WHERE n.nspname = 'public' AND d.defaclobjtype = 'r'
+   AND a.privilege_type = 'TRUNCATE'
+   AND (   a.grantee = 0                                                    -- 1. PUBLIC
+        OR a.grantee = to_regrole('authenticated')::oid                     -- 2. named
+        OR (a.grantee <> 0 AND pg_has_role('authenticated', a.grantee, 'MEMBER')))  -- 3. group
+```
+
+Arm 3 uses **`MEMBER`, not `USAGE`**, deliberately. Migration 405 exists because 395's gate
+enumerated only `authenticated` and `service_role` and was blind to `products_api_readonly`;
+385's repair recorded the rule — *"pg_has_role USAGE tests INHERIT, MEMBER tests SET ROLE"*.
+`USAGE` alone would miss a NOINHERIT role `authenticated` can still SET ROLE into.
+
+## Proof that the new gate fails where the old one passed (E4)
+
+Adversarial case constructed inside `BEGIN; … ROLLBACK;`:
+
+```
+--- [1] ALTER DEFAULT PRIVILEGES FOR ROLE supabase_admin IN SCHEMA public
+        GRANT TRUNCATE ON TABLES TO PUBLIC;
+ supabase_admin | =D/supabase_admin | postgres=arwdDxt/... | authenticated=arwdxt/... | ...
+
+--- [2] THE OLD CHECK (regex)
+ old_check_hits | 0            <-- BLIND
+
+--- [3] THE HARDENED CHECK
+ new_check_hits | 1            <-- SEES IT
+
+--- [4] is the hole real, or only a catalogue curiosity?
+ CREATE TABLE public._probe537_victim (id int);
+ authd_can_truncate | t
+ relacl | =D/supabase_admin | postgres=arwdDxt/... | authenticated=arwdxt/... | ...
+
+--- [5] the hardened gate raising as it would inside the migration
+ERROR:  537: 1 default-privilege entr(y/ies) would still re-grant TRUNCATE to authenticated
+ROLLBACK
+```
+
+Step [4] is the part that matters: under that default a newly created table really does give
+`authenticated` TRUNCATE (`t`). So the old gate would have reported success while every table
+created afterwards was truncatable by any signed-in user. Nothing persisted.
+
+## Passes on the real shape, and is idempotent (E3)
+
+```
+PASS 1
+NOTICE:  537: TRUNCATE revoked from authenticated on 0 table(s); 228 already closed.
+NOTICE:  537: default TRUNCATE privilege revoked for grantor(s): supabase_admin, postgres
+NOTICE:  537 OK: authenticated holds TRUNCATE on 0 of 228 tables; service_role still holds it on all 228.
+exit=0
+
+PASS 2  -- byte-identical output, exit=0
+```
+
+The `service_role` half (228 of 228) is unchanged, so the hardening did not over-reach.
+
+## Not done
+
+- The gate's **first** half (`has_table_privilege` over existing tables) was left alone — it
+  already folds in PUBLIC and inherited roles correctly, so it has no equivalent blind spot.
+- No change to what 537 revokes; only to what it verifies.
