@@ -485,3 +485,140 @@ and is the only thing the gate is entitled to conclude: **the eleven migrations 
 not their cause, and applying this branch does not make any of them worse.** Every number moved by
 the ten moved toward closed.
 
+---
+
+## Step 5 — scoped e2e, and `validate-role-sessions` from the same hour · DONE
+
+### `validate-role-sessions` — 5 passed, 0 failed, 0 did-not-run, at 22:24
+
+```
+✓ all required storageState files exist
+✓ accountant: authenticated, role label, route access
+✓ salesperson-a: authenticated, role label, route access
+✓ salesperson-b: authenticated, role label, route access
+✓ salesperson-a and salesperson-b are distinct users
+```
+
+Getting there cost two things that must be recorded rather than smoothed over.
+
+**🔴 I destroyed the existing session artifacts.** `generate-role-sessions.spec.ts` begins by
+`unlinkSync`-ing all six `e2e/auth/*.storage.json` files and only then tries to rebuild them.
+Its first run failed after the delete, so the six were gone from both worktrees — I had copied
+them into the integration worktree earlier and then ran the generator there too, destroying the
+copy as well as the original. They are gitignored, regenerable session artifacts and all six were
+rebuilt, so nothing is lost; but "take a copy first" is not a safeguard if the copy lives where
+the destructive step will also run.
+
+**🟠 Kong's published port 9000 was dead from the host, and `docker restart afrakala-lan-kong`
+fixed it.** The generator could not reach the Auth Admin API:
+
+```
+before:  curl http://192.168.170.8:9000/auth/v1/health   ->  http=000
+inside:  wget http://kong:8000/auth/v1/health            ->  {"name":"GoTrue",...}
+after docker restart afrakala-lan-kong:
+         curl http://192.168.170.8:9000/auth/v1/health   ->  http=200
+```
+
+Healthy inside the Docker network, unreachable through the published port — **the same stale
+port-proxy failure as `:3100` earlier in this mission, on a different container, with the same
+one-line fix.** Twice now on this host. It belongs in HANDOFF as a recurring Docker Desktop fault,
+not as a one-off. (`http=000` on `/` is not the same thing and is not a fault: Kong has no route
+for `/` and closes the connection.)
+
+The generator also needs `E2E_AUTH_BASE_URL=http://192.168.170.8:9000`, because
+`deploy/lan/.env.lan` points `VITE_SUPABASE_URL` at `https://api.test.myafrakala.ir`, whose TLS
+handshake fails (OG-82). The spec's own header documents that override; it is not a workaround I
+invented.
+
+### Scoping — which specs can actually measure the gate database
+
+Not every e2e spec is parameterised, and running one against a database it does not read would
+have produced a number that looks like evidence and is not. The three helpers differ:
+
+| helper | reads `E2E_DB_NAME` | what it actually touches |
+|---|---|---|
+| `e2e/helpers/db.ts` | **yes** | the named database, read-only (`assertReadOnlySql`) |
+| `e2e/helpers/tx.ts` | **yes** | the named database, inside `BEGIN … ROLLBACK` |
+| `e2e/helpers/pgrest.ts` | **no** | mints a JWT and goes through Kong to **`afrakala`**, always |
+
+So the scoped set is the **16** spec files that use `db.ts` and/or `tx.ts` and no browser page.
+Specs importing `pgrest.ts` were excluded from the gate comparison **because their result would
+describe the live test stack, not the shape under test** — they are picked up after the deploy in
+Step 6 instead.
+
+### The result: 6 fixed, 0 regressed
+
+Same two-database technique as Step 4 — `prod_rehearsal_base` (production shape, none of the ten)
+against `prod_rehearsal_gate` (all ten):
+
+```
+baseline : 27 failed · 63 passed · 1 skipped · 0 did-not-run
+after    : 21 failed · 69 passed · 1 skipped · 0 did-not-run
+```
+
+Six titles move from red to green, and **nothing moves the other way**:
+
+| spec | test | migration that fixes it |
+|---|---|---|
+| `og64-tehran-today-bucketing` | no function, view or policy in the converted set still asks UTC | **526** |
+| `og64-tehran-today-bucketing` | the RLS policy moved WITH the function it guards | **526** |
+| `e2-signup-audit-and-actor-delete` | `auth.users` carries exactly one signup trigger after 532 | **532** |
+| `e2-signup-audit-and-actor-delete` | a signup writes exactly one `user_registered` audit row | **532** |
+| `e2-signup-audit-and-actor-delete` | deleting a user with audit history succeeds after 531 | **531** |
+| `e2-signup-audit-and-actor-delete` | the audit row survives the delete with `actor_id` nulled | **531** |
+
+E-2's spec on its own is the cleanest single result in this stage: **4 failed on production shape,
+4 passed after the ten.** It fails without the migrations and passes with them, which is the
+property a regression test is supposed to have and is not automatic — a spec that passes on both
+shapes proves nothing.
+
+**A privilege artifact had to be cleared first, and it was masking that result.** On the first run
+all four E-2 tests failed with `ERROR: permission denied for table users` on *both* databases. The
+cause is the restore, not the migrations:
+
+```
+afrakala             auth.users owned by supabase_auth_admin   customers owned by postgres
+prod_rehearsal_gate  auth.users owned by supabase_admin        customers owned by supabase_admin
+```
+
+`pg_restore --no-owner` run as `supabase_admin` makes `supabase_admin` own everything, so the
+`postgres` role the helpers connect as cannot read `auth.users`. Cleared with per-database
+`GRANT ALL ON ALL TABLES IN SCHEMA auth, public TO postgres` **on the two scratch databases only** —
+object grants, not role membership, so `afrakala` and `postgres` are untouched. Worth knowing for
+the release line: **any rehearsal restored this way needs that grant before the e2e helpers can
+read it**, and without it a spec fails for a reason that has nothing to do with the migration
+under test.
+
+### The 21 that stay red, each attributed
+
+None is caused by this branch; all 21 are red on production's own shape.
+
+| spec | n | what it is |
+|---|---|---|
+| `og72-receipt-ocr-runs-locally` | 4 | *"`receipt_ocr.vision` is pinned to a provider that does NOT declare the vision capability"* — **this is migration 522's deliberate choice**, taken during the 09-12 run because production's ollama declares only `{chat, embeddings}`. The real fact underneath is the known one: **OCR is dark on production**, because neither compose tree defines `OLLAMA_*`. Already a HANDOFF item. |
+| `og85-ocr-amount-arithmetic` | 2 | same root cause — no vision provider resolves. |
+| `rule12-no-gate-creates-posted-documents` | 3 | pins specific receipt rows (*"OG-76's receipt is no longer marked reversed"*, *"a known-stuck receipt disappeared"*) that exist in the test database's data and not in production's. Data-shape, not schema. |
+| `og78-default-privilege-restores-are-derived` | 3 | production's `pg_default_acl` differs across `auth`, `extensions`, `graphql_public`. |
+| `og100-purchase-term-is-mandatory` | 3 | its FORCED-DISTURBANCE half must drop a constraint: `ERROR: must be owner of table` — the same restore-ownership artifact, which the schema-level GRANT cannot fix. |
+| `h9-manual-credit-floor-guard` | 1 | same (`must be owner of table customers`, disabling a trigger). |
+| `og77-view-callers-can-execute-what-views-call` | 2 | *"anon regained EXECUTE — 395's closure was undone"* and *"supabase_read_only_user should still be blocked on the OG-45 views; found 10"*. **Real production findings**, same family as og102's 38 functions. |
+| `og81-migration-ledger-matches-disk` | 2 | the nine-migration convergence gap. |
+
+Two of those groups are genuine production security findings (og77's two, alongside og102's 38);
+two are artifacts of how a rehearsal database is restored; the rest are the known OCR and
+ledger-gap items.
+
+### What did NOT run in this step, stated plainly
+
+- **Every UI/browser spec.** The test app was still serving `9c113aac` (built 2026-09-08) against
+  the unmigrated `afrakala` database, so a UI run here would have measured pre-change code. Step 6
+  deploys and runs them.
+- **Every spec importing `pgrest.ts`** — `454-overdue-gate-reads-live-receivables`,
+  `a4-person-delete-only-without-history`, `og23-posted-documents-lock-amount-and-party`,
+  `persons-rls-ownership`, `public-price-exposure`, `viewer-restrictions`,
+  `wave1-a1-sales-today-semantics`. Not parameterised; they read `afrakala` no matter what
+  `E2E_DB_NAME` says. An earlier run that included them reported **39 did-not-run** — serial
+  blocks abandoned after an early failure — which is exactly why they are called out here instead
+  of being folded into a pass count.
+- **`og91-receivables-real-due-date`** — uses a browser page; deferred to Step 6 with the rest.
+
