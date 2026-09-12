@@ -356,3 +356,132 @@ Two consequences, both acted on later in this stage:
    production from the tree, four of them (373, 449, 450, 452) with no decision recorded anywhere.
    That list belongs in Stage 3, and it is written here so it cannot be forgotten again.
 
+---
+
+## Step 4 — og81 / og102 / og103 and the view census · DONE, and the result is 8 red
+
+Run twice, against two databases restored from the same dump, so that every failure could be
+attributed rather than argued about:
+
+| run | database | migrations applied |
+|---|---|---|
+| baseline | `prod_rehearsal_base` | **none** — production's shape exactly |
+| after | `prod_rehearsal_gate` | **all ten** |
+
+```
+E2E_DB_CONTAINER=afrakala-lan-db  E2E_DB_USER=postgres  E2E_DB_NAME=<db> \
+npx playwright test --project=chromium-admin \
+  e2e/security/og81-migration-ledger-matches-disk.spec.ts \
+  e2e/security/og102-pre393-anon-execute-grants-stay-closed.spec.ts \
+  e2e/security/og103-anon-table-grants-stay-closed.spec.ts
+```
+
+```
+baseline : 8 failed, 11 passed  (19 of 19 ran, 0 skipped, 0 did-not-run)
+after    : 8 failed, 11 passed  (19 of 19 ran, 0 skipped, 0 did-not-run)
+```
+
+**The same eight titles fail in both runs.** The ten migrations do not turn any of these gates red;
+every one was already red against production's own shape. That is stated on the strength of a
+line-by-line diff of the two run logs, not on the strength of the counts matching — and the diff
+shows the ten moving **three** numbers, all in the safe direction:
+
+| gate | baseline | after | cause |
+|---|---|---|---|
+| og102 — functions anon may execute outside the 17 exclusions | 41 | **38** | `asan_list_bank_deposit_export` revoked by 535; `expire_stale_credit_holds` dropped by 526; `post_receipt_journal` dropped by 527 |
+| og81 — applied-but-unrecorded | 19 | **9** | the ten got their ledger rows |
+| og81 — disk vs ledger | 700 vs 681 | 700 vs **691** | same |
+
+Nothing else in either log differs. The ten only close things; they open nothing.
+
+> Worth naming plainly, because the mission's own memory records the opposite lesson from og61:
+> "prior state unmeasured" is what made those eight failures unarguable for a whole day. Here the
+> prior state was measured first, on a database restored from the same dump minutes earlier, and
+> the attribution took one diff.
+
+### View census
+
+`relkind IN ('v','m')` in `public`: **24 before, 24 after.** No view added, none dropped. Two view
+*bodies* were rewritten — `v_promotion_suggestions` and `vw_account_balances`, both by 526
+restoring the `uid() IS NOT NULL` guard — caught by comparing `md5(pg_get_viewdef())`, which the
+first version of the snapshot tool did not do (see Step 3).
+
+### The eight failures, each attributed
+
+**og81 (2) — the convergence gap, already itemised in Step 3.**
+`disk 700 vs ledger 691`; the nine unrecorded are 336, 343, 373, 411, 412, 413, 449, 450, 452.
+Not a defect in this branch. It is the remaining distance between production and the tree, and it
+is a Stage 3 decision.
+
+**og102 (2) — production never received migration 476's effect, and this is the largest single
+security finding of the gate.**
+
+1. *"no NEW function in public is born anon-executable"* — **38 application functions in `public`
+   are executable by `anon` on production** and are not among the 17 documented exclusions. The
+   list includes `create_payment`, `create_receipt`, `create_dual_document`, `get_customer_credit`,
+   `get_receivable_detail`, `bot_authenticate_key`, `refresh_sale_list_prices` and 31 others. 476
+   revoked 142 such functions — but 476 was derived from the **test** database's catalogue in
+   September, and production's catalogue is not the same catalogue. This is the identical failure
+   mode as 477, which aborted on production on 09-12 and had to be re-issued as 523/524: a static
+   list, generated on one shape, applied to another.
+
+   **This wants a 524-shaped successor** — catalogue-driven, revoking `anon` EXECUTE from every
+   `public` function that is not an extension function, not a trigger function, and not one of the
+   17 exclusions, with the `MUST_STAY_OPEN` set derived at run time rather than listed. It is not
+   in this mission's reserved range and it is not written. Recorded here as the gate's
+   recommendation, for the owner to schedule.
+
+2. *"the 17 deliberate exclusions stay reachable by anon"* — one exclusion,
+   `dyn_table_role_can_view(uuid, text, jsonb)`, is **not** anon-executable on production. The
+   spec's warning is that closing an exclusion makes the RLS policy referencing it raise 42501 and
+   takes the public sale-list page and product feed down. **Measured, it does not:**
+
+   ```
+   policies referencing dyn_table_role_can_view :
+       dynamic_tables        dyn_tables_view_by_access_level
+       dynamic_table_rows    dyn_rows_view_by_access_level
+       dynamic_table_columns dyn_cols_view_by_access_level
+       dynamic_table_cells   dyn_cells_view_by_access_level
+   of those, readable by anon on production        : none
+   ```
+
+   All four live on `dynamic_table*`, and none of the four is among the twenty relations `anon` can
+   read. No anonymous query will ever evaluate those policies, so the missing EXECUTE cannot raise
+   42501 for an anonymous caller. **Not a live outage.** Checked rather than assumed, because the
+   spec's own header says this is the failure that took a credentialed API down once before.
+
+**og103 (4) — production's anon table grants are close to the design but not equal to it.**
+
+The twenty relations `anon` can read on production are 13 tables + 7 views:
+
+```
+r: academy_quiz_questions, brands, categories, currencies, league_settings, payment_terms,
+   presence_logs, pricing_recompute_queue, product_images, products, profile_field_definitions,
+   purchase_prices, sale_price_types
+v: academy_quiz_questions_public, effective_currencies_view, employee_monthly_hours,
+   v_latest_active_purchase_prices, v_league_tiers_public, v_pricing_recompute_queue_summary,
+   vw_purchase_float
+```
+
+1. *"anon reads exactly the eleven and nothing else"* — thirteen, not eleven. The two extra are
+   **`products` and `categories`**, and both hold a **table-level** SELECT grant. og103's design
+   is that the public product feed reaches them through **column-level** grants only, so that
+   adding a column does not silently publish it.
+2. *"the column-level SELECT grants that keep the public product feed alive are intact"* — fails
+   for the same reason, from the other side.
+3. *"the baseline is still exactly the two known pairs"* — same root cause.
+4. *"the target lists still resolve to real tables"* — the gate names tables that **do not exist
+   under that name on production**. That is 450 and 452, two of the nine unapplied migrations:
+   they retire and rename tables on test that production still carries under their original names.
+   This failure will clear itself the moment the nine are resolved.
+
+None of the four is caused by this branch, and all four are identical in the baseline run.
+
+### What this step does and does not license
+
+It does **not** say the eight failures are acceptable. Three of them (og103 1-3) describe a real
+over-grant on production, and og102's 38 functions describe a larger one. What it says is narrower
+and is the only thing the gate is entitled to conclude: **the eleven migrations in this branch are
+not their cause, and applying this branch does not make any of them worse.** Every number moved by
+the ten moved toward closed.
+
