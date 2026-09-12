@@ -433,3 +433,45 @@ BLOCKED on a fix E-4 may not write.** Plan progress stands at 6 of 22.
 Write forward migrations for 449 and 450 that derive their assertions from the catalogue instead
 of asserting literals, exactly as 527/528 did for 336/343 and as 523/524/537 do for grants. Then
 re-run the three phases against a fresh `-Date e4c`.
+
+
+---
+
+## Checkpoint 5 - E4-7: the runbook and the proof document exist (2026-09-13)
+
+- `docs/runbooks/release-line/README.md` - written, Persian/RTL. Covers catalogue-over-ledger with
+  the migration-477 reason stated (not just the behaviour); why the rehearsal is phased and why the
+  batch width IS the checkpoint interval; shape tolerance and the 531/b77622f6 reference pattern;
+  the full five-step pipeline; why no `Expect:` number is typed, using the 537-vs-534 worked
+  example; the single rollback-tag convention; the SMB channel and the stdin+md5 delivery rule.
+- `docs/research/convergence/E-4-proof.md` - written. It did not exist, even though
+  `release/config/known-ledger-lies.txt` already cited it. A citation is not evidence the cited
+  file exists.
+
+### The four autostart-tree items - honest status
+All four blocks exist in `release/emit-blocks.ps1` under `# Phase 3 - autostart tree`, each with
+its own `Expect:` line. Item 1 **cannot be closed from this machine**:
+```
+$ ls -d "/c/AfraKalaServer/get-git-going01lan"
+ls: cannot access '/c/AfraKalaServer/get-git-going01lan': No such file or directory
+$ find /c/afrakala /d/AfraKalaTest -iname "start-afrakala-lan.ps1" -o -iname "*AutoBackup*"
+(no matches)
+```
+The five operational scripts live only in the production laptop's separate checkout, and reaching
+that machine is forbidden. **They still exist in no repository; that item is NOT recorded as
+closed.** Items 2-4 are likewise HANDOFF. Item 4's key names were verified real in this repo
+(`deploy/lan/docker-compose.yml:53` OCR_ENABLED, `:56-60` OLLAMA_*, `:76-84` ISSABEL_*). No secret
+value was read, printed or committed; `deploy/lan/.env.lan` was never opened.
+
+### Rollback-tag standardisation (E2/E3)
+One convention: `afrakala-app:lan-rollback`. The emitted prune matched the literal
+`lan-rollback-`, which misses a tag measured on this host:
+```
+$ docker images afrakala-app --format "{{.Repository}}:{{.Tag}}"
+afrakala-app:lan
+afrakala-app:local
+afrakala-app:rollback-9c113aac      <-- 'lan-rollback-' does NOT match this
+```
+So the Expect: line claimed exactly one rollback tag remained while a second survived - a check
+that passes without being true. The prune now matches any tag containing `rollback` that is not
+the agreed name.
