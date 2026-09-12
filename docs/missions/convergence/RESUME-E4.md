@@ -93,3 +93,75 @@ and a sourceable function in a new `release/lib/shape-tolerance.sh`, then wire i
 A standalone bash invocation that sources `release/lib/shape-tolerance.sh` and shows the function
 returns 0 (tolerate) for a declared version+substring pair and 1 (do not tolerate) for an
 undeclared one — pasted output, both cases.
+
+## Checkpoint 1 — shape-tolerance mechanism + autostart-tree blocks built (2026-09-13)
+
+### Shape-tolerance mechanism (E3/E4 evidence, re-runnable)
+`release/lib/shape-tolerance.sh` created (`is_tolerated_shape_mismatch VERSION OUTPUT SHAPE_FILE`).
+Unit-tested directly (no docker needed) with:
+```
+printf '# test file\n20260913095000|constraint "audit_logs_actor_id_fkey" of relation "audit_logs" does not exist\n' > /tmp/shape-test.txt
+bash -c 'source release/lib/shape-tolerance.sh
+is_tolerated_shape_mismatch "20260913095000" "...does not exist..." /tmp/shape-test.txt   # case A
+is_tolerated_shape_mismatch "20260913095000" "ERROR: totally different problem" /tmp/shape-test.txt  # case B
+is_tolerated_shape_mismatch "99999999999999" "ERROR: constraint does not exist" /tmp/shape-test.txt  # case C
+is_tolerated_shape_mismatch "20260913095000" "ERROR: anything" ""   # case D, no file'
+```
+Result: Case A (declared+matching) -> tolerated (rc 0). Case B (declared+non-matching) -> not
+tolerated (rc 1). Case C (undeclared version) -> not tolerated (rc 1). Case D (no file, safe
+default) -> not tolerated (rc 1). All four as designed.
+
+Wired into `release/lib/rehearse-engine.sh`: replay loop now captures `mig_apply` output to
+`$TMP/apply_out_<ver>.txt`, and on a non-zero exit for an APPLY-kind candidate, calls
+`is_tolerated_shape_mismatch` against `--shape-tolerant <file>` (new CLI flag, plumbed through
+`release/rehearse.ps1 -ShapeTolerant <path>`) before deciding to STOP. A tolerated version is
+recorded in a new "## Shape-mismatch findings" report section and a "## Machine-readable
+classification (FINAL, post-replay overrides)" block that downgrades it from APPLY to
+SHAPE_TOLERATED — `release/emit-blocks.ps1` now prefers that FINAL block (falls back to the
+original pre-replay block for an older report) and, for any SHAPE_TOLERATED entry, emits a
+"HUMAN REVIEW REQUIRED" block instead of an automatic `mig_apply` block.
+`release/config/known-shape-tolerant-migrations.txt` shipped EMPTY (no entries) — migration 531
+(the worked example) is not in this branch's `supabase/migrations` yet (ceiling 525; 531 lives on
+`feature/conv-db-fixes` @ `b77622f6`, unmerged), so there is no real occurrence to declare. This is
+recorded honestly in the file's own header, not hidden.
+
+Evidence commands re-run just now:
+```
+bash -n release/lib/rehearse-engine.sh   # exit 0
+bash -n release/lib/shape-tolerance.sh   # exit 0
+```
+Both exit 0 (E3).
+
+### Autostart-tree blocks (a)-(d)
+`release/emit-blocks.ps1` now emits a "# Phase 3 - autostart tree (HANDOFF...)" section with four
+blocks, sourced from facts given directly in the launch brief plus `grep -n` evidence from THIS
+repo (`deploy/lan/docker-compose.yml:53-84` for the exact ISSABEL_*/OLLAMA_*/OCR_ENABLED key
+names — not fabricated names). All four are HANDOFF blocks for a human on the production laptop;
+this worktree has no access to `C:\AfraKalaServer\get-git-going01lan` or the scheduled task to
+verify them live. Block (b)'s "canonical tree = C:\afrakala" is this agent's recommendation with
+its reasoning stated inline, flagged for owner confirmation, not asserted as already decided.
+
+Evidence command re-run just now:
+```
+[System.Management.Automation.Language.Parser]::ParseFile(...emit-blocks.ps1..., [ref]$tokens, [ref]$errors)
+```
+0 parse errors (E3).
+
+## WHAT IS UNFINISHED (updated)
+1. ~~Shape-tolerance mechanism~~ DONE (Checkpoint 1).
+2. ~~Autostart-tree blocks~~ DONE (Checkpoint 1).
+3. Re-run `rehearse.ps1 -KnownLedgerLies release\config\known-ledger-lies.txt` to reach a real PASS
+   — NOT YET RUN with the updated engine.
+4. Run `emit-blocks.ps1` -> `validate-blocks.ps1` -> `apply-release.ps1` against `prod_rehearsal_e4`.
+5. Write `docs/runbooks/release-line/README.md` (Persian) and `docs/research/convergence/E-4-proof.md`.
+6. Commit, push once, open PR to `staging` (do not merge).
+
+## EXACT NEXT COMMAND (updated)
+```
+.\release\rehearse.ps1 -Dump D:\AfraKalaTest\dumps\prod-20260913.dump -Date e4b `
+  -KnownLedgerLies release\config\known-ledger-lies.txt
+```
+
+## WHAT WOULD PROVE THAT STEP DONE
+`release/out/rehearsal-e4b.md` ending in `## VERDICT: PASS`, with a `prod_rehearsal_e4b` database
+that no longer exists afterward (dropped by the engine's own cleanup trap either way).

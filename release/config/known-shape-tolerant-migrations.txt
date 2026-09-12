@@ -1,0 +1,38 @@
+# known-shape-tolerant-migrations.txt — versions pre-declared as safe to survive a "missing
+# object" error during rehearsal replay, without aborting the whole run.
+#
+# Format: <14-digit version>|<substring that must appear in the captured mig_apply output>
+# Comment lines start with #. Consumed by release/lib/shape-tolerance.sh via
+# release/rehearse.ps1 -ShapeTolerant <this file>.
+#
+# WHAT THIS FILE IS FOR
+#   release/lib/rehearse-engine.sh's replay loop normally treats ANY non-zero mig_apply exit as
+#   fatal (mig_apply's own --single-transaction guarantee already rolled the migration back, so
+#   nothing is left half-applied -- but by default the whole rehearsal still stops, because most
+#   replay failures ARE real bugs). Naming a version here, with the EXACT error substring it is
+#   expected to raise on a shape lacking the object it alters, tells the engine "this specific
+#   failure is understood and explained -- record it as a finding, write no ledger row for it,
+#   and continue" instead of aborting.
+#
+# NOTHING IS TOLERATED BY DEFAULT. An empty file (as shipped) changes no behaviour at all: every
+# mig_apply failure still stops the rehearsal, exactly as before this file existed. A version only
+# becomes tolerated when a human adds a line here AND the live error text matches it exactly --
+# see release/lib/shape-tolerance.sh's own header for why both conditions are required.
+#
+# CLAUDE.md rule 6 still applies: nothing here authorizes editing an old migration file. If a
+# version below turns out to fail this way on production's ACTUAL shape (not just some rehearsal
+# restore), the fix is a NEW forward migration that hardens the old one's logic (catalogue-driven,
+# same pattern as migrations 523/524/525 and E-2's hardened 531,
+# supabase/migrations/20260913095000_531_*.sql on branch feature/conv-db-fixes commit b77622f6) --
+# never editing the file this list points at.
+#
+# HOW THIS LIST WAS BUILT (E-4, 2026-09-13)
+#   Empty as shipped. No migration in THIS branch's supabase/migrations (ceiling 525 at the time
+#   this file was written) has been observed to raise the "missing object" error class this
+#   mechanism exists to tolerate -- migration 531, the worked example in the mission brief, lives
+#   on branch feature/conv-db-fixes and is not yet merged into feature/conv-release-line's lineage.
+#   The mechanism (release/lib/shape-tolerance.sh) was unit-tested directly instead (four cases:
+#   declared+matching, declared+non-matching, undeclared, no-file — see
+#   docs/research/convergence/E-4-proof.md). Add a line here, with its real error substring
+#   captured from an actual rehearsal run, the first time a genuine occurrence is observed --
+#   never speculatively.

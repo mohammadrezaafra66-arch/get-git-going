@@ -44,6 +44,8 @@ export MSYS_NO_PATHCONV=1
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./mig-apply.sh
 source "$SELF_DIR/mig-apply.sh"
+# shellcheck source=./shape-tolerance.sh
+source "$SELF_DIR/shape-tolerance.sh"
 
 # ---------- tolerated pg_restore error substrings ----------------------------------------------
 # Measured on the real 2026-09-12 production dump against a scratch database
@@ -73,7 +75,7 @@ is_tolerated_error() {
 # ---------- arg parsing ------------------------------------------------------------------------
 DUMP="" CONTAINER="afrakala-lan-db" DBUSER="supabase_admin" PREFIX="prod_rehearsal_"
 RUNDATE="$(date +%Y%m%d)" MIGDIR="supabase/migrations" REPO_ROOT="." CEILING=""
-KNOWN_LIES="" OUT=""
+KNOWN_LIES="" OUT="" SHAPE_TOLERANT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -86,6 +88,7 @@ while [ $# -gt 0 ]; do
     --repo-root) REPO_ROOT="$2"; shift 2;;
     --ceiling) CEILING="$2"; shift 2;;
     --known-ledger-lies) KNOWN_LIES="$2"; shift 2;;
+    --shape-tolerant) SHAPE_TOLERANT="$2"; shift 2;;
     --out) OUT="$2"; shift 2;;
     *) echo "unknown arg: $1"; exit 2;;
   esac
@@ -383,32 +386,100 @@ sort "$TMP/apply_plan.txt" -o "$TMP/apply_plan.txt"
 
 echo "## Replay ($(wc -l < "$TMP/apply_plan.txt") versions)" | tee -a "$REPORT"
 FAILED=0
+: > "$TMP/shape_tolerated.txt"
 while IFS='|' read -r ver kind; do
   [ -n "$ver" ] || continue
   file=$(ls "$MIGDIR"/${ver}_*.sql 2>/dev/null | head -1)
+  APPLY_OUT="$TMP/apply_out_${ver}.txt"
   if [ "$kind" = "APPLY" ]; then
     if [ -z "$file" ]; then
       echo "FATAL: no file on disk for candidate $ver" | tee -a "$REPORT"
       FAILED=1; break
     fi
-    mig_apply "$CONTAINER" "$DBUSER" "$DB" "$ver" "$file" 2>&1 | tee -a "$REPORT"
+    mig_apply "$CONTAINER" "$DBUSER" "$DB" "$ver" "$file" 2>&1 | tee -a "$REPORT" | tee "$APPLY_OUT" >/dev/null
     rc="${PIPESTATUS[0]}"
   else
-    ledger_insert_only "$CONTAINER" "$DBUSER" "$DB" "$ver" 2>&1 | tee -a "$REPORT"
+    ledger_insert_only "$CONTAINER" "$DBUSER" "$DB" "$ver" 2>&1 | tee -a "$REPORT" | tee "$APPLY_OUT" >/dev/null
     rc="${PIPESTATUS[0]}"
   fi
   if [ "$rc" != "0" ]; then
+    # "TOLERATE A MISSING OBJECT" (owner directive): before treating this as fatal, check whether
+    # this exact version was pre-declared shape-tolerant (release/lib/shape-tolerance.sh) AND the
+    # captured output matches its declared substring. Only an APPLY-kind failure is eligible --
+    # ledger_insert_only failing is never a shape mismatch, it is a real ledger-write problem.
+    if [ "$kind" = "APPLY" ] && is_tolerated_shape_mismatch "$ver" "$(cat "$APPLY_OUT" 2>/dev/null)" "$SHAPE_TOLERANT"; then
+      echo "TOLERATED (shape mismatch): $ver ($file) failed replay but matches a pre-declared" | tee -a "$REPORT"
+      echo "  shape-tolerant entry in $SHAPE_TOLERANT -- not applied on this shape, no ledger row" | tee -a "$REPORT"
+      echo "  written, replay CONTINUES. See release/lib/shape-tolerance.sh for why this is safe." | tee -a "$REPORT"
+      echo "$ver|$file" >> "$TMP/shape_tolerated.txt"
+      continue
+    fi
     echo "STOPPING at first failure: $ver ($kind)" | tee -a "$REPORT"
     FAILED=1
     break
   fi
 done < "$TMP/apply_plan.txt"
 
+{
+  echo
+  echo "## Shape-mismatch findings (replay-time, see release/lib/shape-tolerance.sh)"
+  echo
+  if [ -s "$TMP/shape_tolerated.txt" ]; then
+    echo "$(wc -l < "$TMP/shape_tolerated.txt") version(s) failed replay on this shape but matched a"
+    echo "pre-declared tolerance and were SKIPPED, not applied, no ledger row written. A human must"
+    echo "confirm the real target (production or otherwise) actually has the object before treating"
+    echo "these as done:"
+    echo '```'
+    cat "$TMP/shape_tolerated.txt"
+    echo '```'
+  else
+    echo "none — every replayed migration either applied cleanly or was not attempted."
+  fi
+} | tee -a "$REPORT"
+
 if [ "$FAILED" = "1" ]; then
   echo "## VERDICT: FAIL (replay stopped early)" | tee -a "$REPORT"
   cp "$REPORT" "$OUT"
   exit 1
 fi
+
+# ---------- FINAL machine-readable classification (post-replay overrides) -----------------------
+# release/emit-blocks.ps1 prefers this block over the pre-replay one above: any version that hit a
+# tolerated shape mismatch during replay is downgraded from APPLY to SHAPE_TOLERATED here so the
+# generated RELEASE-<date>.md never turns a skipped migration into an ordinary mig_apply block.
+{
+  echo
+  echo "## Machine-readable classification (FINAL, post-replay overrides, for release/emit-blocks.ps1)"
+  echo
+  echo '```'
+  while read -r ver; do
+    [ -n "$ver" ] || continue
+    f=$(ls "$MIGDIR"/${ver}_*.sql 2>/dev/null | head -1); f=$(basename "${f:-unknown}")
+    if grep -qx "$ver|$f" "$TMP/shape_tolerated.txt" 2>/dev/null || grep -q "^$ver|" "$TMP/shape_tolerated.txt" 2>/dev/null; then
+      echo "$ver|SHAPE_TOLERATED|$f"
+    else
+      echo "$ver|APPLY|$f"
+    fi
+  done < "$TMP/to_apply.txt"
+  while read -r ver; do
+    [ -n "$ver" ] || continue
+    f=$(ls "$MIGDIR"/${ver}_*.sql 2>/dev/null | head -1); f=$(basename "${f:-unknown}")
+    echo "$ver|LEDGER_ONLY|$f"
+  done < "$TMP/to_ledger_only.txt"
+  while read -r ver; do
+    [ -n "$ver" ] || continue
+    echo "$ver|OK|"
+  done < "$TMP/ok.txt"
+  while read -r ver; do
+    [ -n "$ver" ] || continue
+    echo "$ver|LEDGER_LIES|"
+  done < "$TMP/ledger_lies.txt"
+  while read -r ver; do
+    [ -n "$ver" ] || continue
+    echo "$ver|UNVERIFIABLE|"
+  done < "$TMP/unverifiable.txt"
+  echo '```'
+} | tee -a "$REPORT"
 
 # ---------- gates: og81 / og102 / og103 -----------------------------------------------------------
 echo "## Gates og81 / og102 / og103 against $DB" | tee -a "$REPORT"

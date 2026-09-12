@@ -19,7 +19,15 @@
 # USAGE
 #   .\release\rehearse.ps1 -Dump <path> [-Container afrakala-lan-db] [-DbUser supabase_admin]
 #                           [-Prefix prod_rehearsal_] [-Date yyyyMMdd] [-Ceiling <14-digit>]
-#                           [-KnownLedgerLies <path>]
+#                           [-KnownLedgerLies <path>] [-ShapeTolerant <path>]
+#
+# -ShapeTolerant <path> ("TOLERATE A MISSING OBJECT", owner directive): pre-declares specific
+#   migration versions, with their exact expected error substring, as safe to survive a replay
+#   failure caused by the restored shape lacking an object the migration alters (e.g. an old-style
+#   `DROP CONSTRAINT` without `IF EXISTS` on a shape that never had the constraint). See
+#   release/lib/shape-tolerance.sh and release/config/known-shape-tolerant-migrations.txt for the
+#   file format and full rationale. Omitting this flag changes nothing — the pre-existing hard-stop
+#   behaviour on any replay failure is unchanged.
 #
 # OUTPUT
 #   release/out/rehearsal-<date>.md — full report: restore source + md5, ledger state BEFORE
@@ -39,7 +47,8 @@ param(
     [string]$Prefix = "prod_rehearsal_",
     [string]$Date = (Get-Date -Format "yyyyMMdd"),
     [string]$Ceiling = "",
-    [string]$KnownLedgerLies = ""
+    [string]$KnownLedgerLies = "",
+    [string]$ShapeTolerant = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -92,6 +101,10 @@ if ($Ceiling -ne "") { $bashArgs += @("--ceiling", $Ceiling) }
 if ($KnownLedgerLies -ne "") {
     $klResolved = Resolve-Path $KnownLedgerLies
     $bashArgs += @("--known-ledger-lies", $klResolved.Path.Replace('\', '/'))
+}
+if ($ShapeTolerant -ne "") {
+    $stResolved = Resolve-Path $ShapeTolerant
+    $bashArgs += @("--shape-tolerant", $stResolved.Path.Replace('\', '/'))
 }
 
 Write-Host "Running rehearsal engine (bash) ..." -ForegroundColor Cyan

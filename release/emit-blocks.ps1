@@ -56,7 +56,16 @@ $ledgerBefore = Get-ValueAfter -Lines $reportLines -Marker "ledger_rows|ledger_m
 $preflight = Get-ValueAfter -Lines $reportLines -Marker "is_replica|db_size|anon_default_acl_count"
 
 # --- parse the machine-readable classification block --------------------------------------------
-$startIdx = ($reportLines | Select-String -Pattern '## Machine-readable classification' | Select-Object -First 1).LineNumber
+# Prefer the FINAL (post-replay overrides) block if the rehearsal report has one -- it downgrades
+# any version that failed replay under a declared shape tolerance from APPLY to SHAPE_TOLERATED
+# (see release/lib/shape-tolerance.sh). Falls back to the original pre-replay block for an older
+# report that predates this mechanism.
+$finalMatch = $reportLines | Select-String -Pattern '## Machine-readable classification \(FINAL' | Select-Object -Last 1
+if ($finalMatch) {
+    $startIdx = $finalMatch.LineNumber
+} else {
+    $startIdx = ($reportLines | Select-String -Pattern '## Machine-readable classification' | Select-Object -First 1).LineNumber
+}
 if (-not $startIdx) {
     Write-Host "FATAL: rehearsal report has no machine-readable classification section." -ForegroundColor Red
     exit 1
@@ -80,8 +89,9 @@ foreach ($l in $fenceLines) {
 
 $applyList = $classified | Where-Object { $_.Bucket -eq 'APPLY' } | Sort-Object Version
 $ledgerOnlyList = $classified | Where-Object { $_.Bucket -eq 'LEDGER_ONLY' } | Sort-Object Version
+$shapeTolerantList = $classified | Where-Object { $_.Bucket -eq 'SHAPE_TOLERATED' } | Sort-Object Version
 
-Write-Host "Parsed rehearsal: $($applyList.Count) APPLY, $($ledgerOnlyList.Count) LEDGER_ONLY" -ForegroundColor Cyan
+Write-Host "Parsed rehearsal: $($applyList.Count) APPLY, $($ledgerOnlyList.Count) LEDGER_ONLY, $($shapeTolerantList.Count) SHAPE_TOLERATED" -ForegroundColor Cyan
 
 $outDir = Join-Path $PSScriptRoot "out"
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
@@ -126,11 +136,149 @@ and re-run release/rehearse.ps1 against a fresher dump before proceeding)
 
 ---
 
-# Phase 4 - migrations
+# Phase 3 - autostart tree (HANDOFF: run on the production laptop, not this test computer)
+'@)
+Add-Line ""
+[void]$sb.AppendLine(@'
+Production does NOT deploy from C:\afrakala. A scheduled task named "AfraKala LAN Auto Start"
+independently runs C:\AfraKalaServer\get-git-going01lan\deploy\lan\start-afrakala-lan.ps1 on boot,
+which as of 2026-09-12 is a SEPARATE checkout on branch fix/auth-user-profile-trigger @ 69d78c68
+(2026-05-30) with 38 uncommitted paths, missing migrations 522-525, and its compose line has NO
+--no-deps. These four blocks are HANDOFF -- an E-4 tooling agent has no access to the production
+laptop or that host tree from this worktree. Each block is written for a human to run there, in
+order, and each carries its own Expect: line so release/validate-blocks.ps1 still checks it.
 '@)
 Add-Line ""
 
 $blockN = 2
+
+Add-Line "### Block $blockN - (a) commit the five operational scripts into this repo"
+Add-Line ""
+[void]$sb.AppendLine(@'
+No repository holds these today -- a fresh clone of main reproduces neither autostart nor
+backups. Confirmed by their absence under deploy/lan/scripts/ in this repo as of this release.
+On the production laptop, in C:\AfraKalaServer\get-git-going01lan\deploy\lan (NOT C:\afrakala):
+
+    Get-ChildItem 'C:\AfraKalaServer\get-git-going01lan' -Recurse -Include *.ps1 |
+      Where-Object { $_.Name -match 'start-afrakala-lan|backup|AutoBackup' } |
+      Select-Object FullName
+
+Review the result and copy exactly five files -- start-afrakala-lan.ps1, AfraKala-AutoBackup.ps1,
+and the three backup scripts the command above finds alongside them -- into
+C:\afrakala\deploy\lan\scripts\, matching this repo's own deploy/lan/scripts/ layout. Do NOT copy
+any of the untracked production-secret files or auth-API JSON payloads that command may also list
+in that tree -- those are explicitly out of scope (owner cleanup, see HANDOFF item below). Then:
+
+    cd C:\afrakala
+    git add deploy/lan/scripts/start-afrakala-lan.ps1 deploy/lan/scripts/AfraKala-AutoBackup.ps1 `
+      deploy/lan/scripts/<the three backup scripts found above>
+    git commit -m "ops(deploy): commit the five scripts the autostart task actually runs"
+    git push origin HEAD
+
+Expect: `git status --porcelain deploy/lan/scripts` empty after the commit (nothing left uncommitted)
+Expect: exactly 5 files added, none of them a secret/credential file
+'@)
+Add-Line ""
+$blockN++
+
+Add-Line "### Block $blockN - (b) repoint the scheduled task at one canonical tree"
+Add-Line ""
+[void]$sb.AppendLine(@'
+Two trees currently run production code from two different places on boot; this makes "what is
+running" ambiguous by construction. The canonical tree is C:\afrakala (deploy/lan/README.md and
+CLAUDE.md both already document it as the tree main deploys from) -- repoint the task at it
+instead of C:\AfraKalaServer\get-git-going01lan. This is the release line's recommendation, not a
+unilateral change: confirm with the owner before running it if C:\AfraKalaServer\get-git-going01lan
+was kept as canonical for a reason this document does not know about.
+
+    Get-ScheduledTask -TaskName "AfraKala LAN Auto Start" | Select-Object TaskName, State
+    (Get-ScheduledTask -TaskName "AfraKala LAN Auto Start").Actions
+
+    $action = New-ScheduledTaskAction -Execute "powershell.exe" `
+      -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\afrakala\deploy\lan\scripts\start-afrakala-lan.ps1" `
+      -WorkingDirectory "C:\afrakala\deploy\lan"
+    Set-ScheduledTask -TaskName "AfraKala LAN Auto Start" -Action $action
+
+    (Get-ScheduledTask -TaskName "AfraKala LAN Auto Start").Actions
+
+Expect: Actions[0].Execute contains "C:\afrakala\deploy\lan\scripts\start-afrakala-lan.ps1"
+Expect: Actions[0].WorkingDirectory = C:\afrakala\deploy\lan
+'@)
+Add-Line ""
+$blockN++
+
+Add-Line "### Block $blockN - (c) add --no-deps to the autostart compose line"
+Add-Line ""
+[void]$sb.AppendLine(@'
+Without --no-deps, `docker compose ... up -d` on this host pulls the one-shot db-role-fix
+container into the start-up graph; it cannot start here (broken Docker Desktop mount layer, see
+CLAUDE.md OG-68), and the whole app goes down -- and this command runs on EVERY boot, not just a
+manual deploy. Edit the copy of start-afrakala-lan.ps1 committed in Block (a) above
+(C:\afrakala\deploy\lan\scripts\start-afrakala-lan.ps1), changing:
+
+    docker compose --env-file .env.lan up -d
+
+to:
+
+    docker compose --env-file .env.lan up -d --no-deps
+
+then commit that one-line change and push:
+
+    cd C:\afrakala
+    git add deploy/lan/scripts/start-afrakala-lan.ps1
+    git commit -m "ops(deploy): --no-deps on the autostart compose line (CLAUDE.md OG-68)"
+    git push origin HEAD
+
+    Select-String -Path deploy\lan\scripts\start-afrakala-lan.ps1 -Pattern "docker compose"
+
+Expect: the matched line contains --no-deps
+'@)
+Add-Line ""
+$blockN++
+
+Add-Line "### Block $blockN - (d) add the missing ISSABEL_*/OLLAMA_* keys, unify OCR_ENABLED"
+Add-Line ""
+[void]$sb.AppendLine(@'
+Neither tree's .env.lan defines the ISSABEL_*/OLLAMA_* keys at all today (deploy/lan/docker-
+compose.yml:53-84 already reads them with empty defaults -- ${ISSABEL_CDR_HOST:-} etc. -- so the
+service starts, but silently: this is documented as why OCR is dark and call_logs /
+call_log_extensions sit at 0 rows). OCR_ENABLED itself also disagrees between the two trees (true
+vs false). NEVER print or commit a real secret value -- this block only names the keys; the
+values are the owner's to supply, on the machine that holds them:
+
+    # on the production laptop, C:\afrakala\deploy\lan\.env.lan (gitignored, never committed):
+    #   OCR_ENABLED=true                  <- pick ONE value and make both trees agree
+    #   ISSABEL_CDR_HOST=<real host>
+    #   ISSABEL_CDR_PORT=3306
+    #   ISSABEL_CDR_USER=<real user>
+    #   ISSABEL_CDR_PASSWORD=<real password>
+    #   ISSABEL_CDR_DB=<real db name>
+    #   ISSABEL_IMPORT_WORKER_TOKEN=<real token>
+    #   OLLAMA_API_URL=http://192.168.170.8:11434
+    #   OLLAMA_API_KEY=<real key, if the endpoint requires one>
+    #   OLLAMA_MODEL=<real model name>
+    #   OLLAMA_EMBED_MODEL=<real embed model name>
+    #   OLLAMA_VISION_MODEL=<real vision model name>
+
+Apply the SAME keys, same values, to whichever tree Block (b) above left as canonical (both, if
+Block (b) was skipped and two trees still run). Then restart only the app service to pick them up:
+
+    docker compose --env-file deploy\lan\.env.lan -f deploy\lan\docker-compose.yml up -d --no-deps web
+    docker exec afrakala-lan-web printenv | Select-String "OCR_ENABLED|ISSABEL_|OLLAMA_"
+
+Expect: OCR_ENABLED identical on both trees (if both still run)
+Expect: every ISSABEL_* and OLLAMA_* key above present with a non-empty value (except
+Expect: OLLAMA_API_KEY, which may legitimately be empty if the endpoint needs none)
+'@)
+Add-Line ""
+$blockN++
+
+Add-Line "---"
+Add-Line ""
+[void]$sb.AppendLine(@'
+# Phase 4 - migrations
+'@)
+Add-Line ""
 foreach ($m in $applyList) {
     Add-Line "### Block $blockN - migration $($m.Version) . $($m.File)"
     Add-Line ""
@@ -155,6 +303,29 @@ re-run. Only the ledger row is written.
     Add-Line ""
     Add-Line "Expect: INSERT 0 1"
     Add-Line "Expect: OK ledger-row-only $($m.Version)"
+    Add-Line ""
+    $blockN++
+}
+
+foreach ($m in $shapeTolerantList) {
+    Add-Line "### Block $blockN - SHAPE MISMATCH, HUMAN REVIEW REQUIRED - $($m.Version) . $($m.File)"
+    Add-Line ""
+    [void]$sb.AppendLine(@'
+This migration failed replay during rehearsal because the restored shape lacked an object it
+alters, and the failure matched a pre-declared entry in
+release/config/known-shape-tolerant-migrations.txt (release/lib/shape-tolerance.sh). It was
+NOT applied to the rehearsal database and NO ledger row was written for it. This is not an
+automatic block -- do not run mig_apply for this version from this document as written.
+'@)
+    Add-Line ""
+    Add-Line "    # DO NOT RUN AUTOMATICALLY. First confirm on the real target:"
+    Add-Line "    docker exec afrakala-lan-db psql -U supabase_admin -d postgres -tAc \"
+    [void]$sb.AppendLine("      ""SELECT version FROM supabase_migrations.schema_migrations WHERE version = '$($m.Version)';""")
+    Add-Line ""
+    Add-Line "Expect: HUMAN REVIEW REQUIRED before this version is applied anywhere -- confirm"
+    Add-Line "Expect: whether the target already has the object this migration alters, then either"
+    Add-Line "Expect: run mig_apply by hand or, if the target genuinely lacks it too, treat this as"
+    Add-Line "Expect: a real gap and escalate (CLAUDE.md rule 6: fix forward, never edit the old file)"
     Add-Line ""
     $blockN++
 }
