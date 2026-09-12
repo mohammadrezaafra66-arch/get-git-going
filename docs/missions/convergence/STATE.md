@@ -915,3 +915,73 @@ creates `cron_run_log` first. A hard-coded 214 turns a correct run into a stop c
 
 This is the same defect class as migration 477's static REVOKE list — a number generated against one
 shape and asserted against another. Derive at run time, or do not print it.
+---
+
+## 🔴 HANDOFF — the 507 rule is scoped to CRON-ONLY writers, not to every SECURITY DEFINER
+
+**Migration 507 does not say "every `SECURITY DEFINER` function must revoke `authenticated`".** Its
+own title is *"the two wave-6 **cron** writers stop being callable by every authenticated user"*,
+and its body explains why the scope is narrow: those two functions have **no human call path**, so
+`auth.uid()` is NULL for their only caller and an in-body role check would break the very path they
+exist for. Revoking `authenticated` was correct **because nothing in `src/` called them.**
+
+`e2e/security/og61-anon-cannot-reach-definer-writers.spec.ts` encodes the same scope, twice:
+
+```
+:134  "the 26 minus the twenty-one closed are STILL reachable by authenticated"
+:633  "⛔ DERIVED: no SECURITY DEFINER writer WITHOUT A CALLER CHECK is reachable by authenticated"
+```
+
+So the rule is: **a definer writer with no caller check and no human call path gets the revoke; one
+with an in-body guard and real callers keeps `authenticated`.**
+
+### How this was nearly shipped wrong
+
+**The orchestrator's brief for migration 539 over-generalised 507** into a blanket
+`REVOKE EXECUTE … FROM PUBLIC, anon, authenticated` for all seven objects it covered. The fix agent
+**refused that instruction** and shipped the anon/PUBLIC closure only. It was right, and the
+evidence is counted rather than argued:
+
+```
+asan_list_bank_deposit_export          authenticated=t   src callers = 2
+create_purchase                        authenticated=t   src callers = 4
+get_payables_list                      authenticated=t   src callers = 3
+upsert_staff_daily_performance_metric  authenticated=t   src callers = 1
+delete_bot_api_key_secure              authenticated=t   src callers = 1
+admin_upsert_ai_provider               authenticated=t   src callers = 1
+admin_delete_ai_provider               authenticated=t   src callers = 1
+```
+
+Thirteen live call sites. The blanket revoke would have returned `42501` from purchase creation,
+the payables screen, the ASAN export, manual performance metrics, bot-key deletion and both
+AI-provider screens — **migration 395's failure repeated seven times**, and 395 is the incident the
+brief itself cited as the thing to avoid. It would also have failed `og61:134`, i.e. the release
+would have broken a gate this repository already ships.
+
+One trap for whoever re-derives that list: **`delete_bot_api_key_secure` guards through a
+`user_roles` membership test**, so grepping for `has_any_role` reports it unguarded when it is not.
+Read the body; do not grep for one helper's name.
+
+### The mechanism worth keeping
+
+**Measure the callers before revoking.** A privilege question is not answered by the catalogue
+alone — the catalogue says who *may* call a function, and the repository says who *does*. Migration
+538 got this right by accident of scope and wrong in method: its preserve set was derived from
+`pg_proc.proacl`, which structurally cannot see an application call site. A reviewer found the one
+that mattered by grepping `src/`.
+
+**This was the third correct refusal of the night**, and the pattern in all three is the same: an
+agent was handed an instruction that sounded authoritative, checked it against measurable reality,
+and declined. The two earlier ones were a mid-run "standing rule" that contradicted `CLAUDE.md`, and
+a "dead" RPC call that a gate in this repository names by path as its reason for staying open.
+
+**An agent that cannot refuse its brief is an agent that ships its author's mistakes.** The three
+things that made these refusals possible are worth protecting: the brief is trusted only at launch,
+the producer is never the gate, and the agent is asked for evidence rather than for compliance.
+
+### Two decisions attached to this, both settled
+
+- **`viewer` on those seven is handled by the in-body guards, not by the grant** (C-4). A
+  grant-level block is the 395 trap. Goes to Security-3 via `BACKLOG.md` §7, not to a migration.
+- **The REVOKE on `http`'s 19 functions is the allowlist for now.** A host allowlist is a
+  network-policy item — `BACKLOG.md` §7 — not a migration.
