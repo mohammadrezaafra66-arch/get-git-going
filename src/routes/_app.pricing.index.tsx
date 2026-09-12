@@ -262,11 +262,9 @@ function PricingHubPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {tiles.map((t) => {
-          const inner = (
-            <Card
-              className={`h-full transition-colors ${t.enabled ? "hover:border-primary/40 hover:bg-muted/30" : "opacity-60"}`}
-            >
+        {tiles.map((t) => (
+          <Link key={t.to} to={t.to} className="group">
+            <Card className="h-full transition-colors hover:border-primary/40 hover:bg-muted/30">
               <CardContent className="flex items-start gap-3 p-4">
                 <div className="rounded-md bg-primary/10 p-2 text-primary">
                   <t.icon className="h-5 w-5" />
@@ -274,29 +272,14 @@ function PricingHubPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-semibold text-foreground">{t.label}</span>
-                    {t.enabled ? (
-                      <ArrowLeft className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-x-0.5" />
-                    ) : (
-                      <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                        به‌زودی
-                      </span>
-                    )}
+                    <ArrowLeft className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-x-0.5" />
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">{t.desc}</p>
                 </div>
               </CardContent>
             </Card>
-          );
-          return t.enabled ? (
-            <Link key={t.to} to={t.to} className="group">
-              {inner}
-            </Link>
-          ) : (
-            <div key={t.to} className="cursor-not-allowed">
-              {inner}
-            </div>
-          );
-        })}
+          </Link>
+        ))}
       </div>
     </div>
   );
