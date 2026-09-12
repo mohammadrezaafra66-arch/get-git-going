@@ -38,6 +38,32 @@
 # handled by a FORWARD migration (CLAUDE.md rule 6: never edit an old migration) — in that case the
 # version is reported, left completely untouched (no SQL run, no ledger write), and the run
 # continues.
+#
+# WHY THIS ENGINE IS PHASED (--phase), AND WHY THAT IS NOT A STYLE CHOICE
+#   Two earlier attempts at this rehearsal stalled, both the same way: restore, classify, replay
+#   ~690 migrations and run three Playwright gates were ONE long-running invocation. When it died
+#   there was nothing to resume from, because `trap cleanup EXIT` had already dropped the
+#   database -- so every attempt restarted at pg_restore and never got further than the last one.
+#
+#   The work is now three phases that each finish in minutes and each leave provable state on
+#   disk under --state-dir (default release/runs/<date>):
+#     --phase restore   create + restore + classify + LEDGER-LIES gate, build the apply plan.
+#                       KEEPS the database.
+#     --phase replay    apply ONE CONTIGUOUS BATCH of that plan (--from/--to, or --batch-size),
+#                       recording the last completed plan index in progress.txt so the next batch
+#                       resumes exactly where this one stopped. KEEPS the database.
+#     --phase gates     og81/og102/og103 + anon census + final verdict, and concatenates every
+#                       phase fragment into the single --out report.
+#     --phase all       the original single-shot behaviour, unchanged, database DROPPED at exit.
+#
+#   `all` remains the default, so every existing caller behaves exactly as before. In a phased run
+#   the database is deliberately NOT dropped: a phase that destroys its own state cannot be
+#   resumed, which is the defect being fixed. Pass --drop-when-done to the gates phase to drop it.
+#
+#   BATCHES MUST BE CONTIGUOUS. The replay phase refuses a --from that is not last-completed + 1.
+#   Migrations are ordered and many are NOT idempotent (CLAUDE.md rule 2b names 402's DROP COLUMN,
+#   404's DROP+CREATE FUNCTION, 409's dropped signature); skipping or repeating a range is exactly
+#   how one of those runs twice. The refusal is the safety property, not an inconvenience.
 set -u
 export MSYS_NO_PATHCONV=1
 
@@ -76,6 +102,8 @@ is_tolerated_error() {
 DUMP="" CONTAINER="afrakala-lan-db" DBUSER="supabase_admin" PREFIX="prod_rehearsal_"
 RUNDATE="$(date +%Y%m%d)" MIGDIR="supabase/migrations" REPO_ROOT="." CEILING=""
 KNOWN_LIES="" OUT="" SHAPE_TOLERANT=""
+PHASE="all" STATE_DIR="" FROM=0 TO=0 BATCH=0 DROP_WHEN_DONE=0
+FAILED=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -89,13 +117,33 @@ while [ $# -gt 0 ]; do
     --ceiling) CEILING="$2"; shift 2;;
     --known-ledger-lies) KNOWN_LIES="$2"; shift 2;;
     --shape-tolerant) SHAPE_TOLERANT="$2"; shift 2;;
+    --phase) PHASE="$2"; shift 2;;
+    --state-dir) STATE_DIR="$2"; shift 2;;
+    --from) FROM="$2"; shift 2;;
+    --to) TO="$2"; shift 2;;
+    --batch-size) BATCH="$2"; shift 2;;
+    --drop-when-done) DROP_WHEN_DONE=1; shift;;
     --out) OUT="$2"; shift 2;;
     *) echo "unknown arg: $1"; exit 2;;
   esac
 done
 
-[ -n "$DUMP" ] || { echo "FATAL: --dump is required"; exit 2; }
-[ -f "$DUMP" ] || { echo "FATAL: dump not found: $DUMP"; exit 2; }
+case "$PHASE" in
+  all|restore|replay|gates) : ;;
+  *) echo "FATAL: --phase must be one of: all restore replay gates (got '$PHASE')"; exit 2;;
+esac
+
+want_restore() { case "$PHASE" in all|restore) return 0;; *) return 1;; esac; }
+want_replay()  { case "$PHASE" in all|replay)  return 0;; *) return 1;; esac; }
+want_gates()   { case "$PHASE" in all|gates)   return 0;; *) return 1;; esac; }
+
+# --dump is only meaningful to the phase that actually restores it. Demanding it in the replay and
+# gates phases would force the operator to keep passing a path nothing reads, and would make a
+# resumed run fail for a reason unrelated to what that phase is doing.
+if want_restore; then
+  [ -n "$DUMP" ] || { echo "FATAL: --dump is required for --phase $PHASE"; exit 2; }
+  [ -f "$DUMP" ] || { echo "FATAL: dump not found: $DUMP"; exit 2; }
+fi
 [ -n "$OUT" ] || { echo "FATAL: --out is required"; exit 2; }
 
 cd "$REPO_ROOT" || { echo "FATAL: cannot cd to repo root $REPO_ROOT"; exit 2; }
@@ -113,22 +161,66 @@ if [ -z "$CEILING" ]; then
   CEILING=$(ls "$MIGDIR"/*.sql | xargs -n1 basename | sed 's/_.*//' | sort -u | tail -1)
 fi
 
-TMP="$(mktemp -d)"
-REPORT="$TMP/report.md"
+# State lives in a real directory for a phased run (so the NEXT phase can read it) and in a
+# throwaway mktemp for --phase all (so the single-shot run leaves nothing behind, exactly as
+# before this engine was phased).
+if [ "$PHASE" = "all" ]; then
+  TMP="$(mktemp -d)"
+  KEEP_DB=0
+else
+  [ -n "$STATE_DIR" ] || STATE_DIR="$REPO_ROOT/release/runs/$RUNDATE"
+  mkdir -p "$STATE_DIR" || { echo "FATAL: cannot create state dir $STATE_DIR"; exit 2; }
+  TMP="$STATE_DIR"
+  KEEP_DB=1
+fi
+if [ "$PHASE" = "gates" ] && [ "$DROP_WHEN_DONE" = "1" ]; then KEEP_DB=0; fi
+
+case "$PHASE" in
+  all)     REPORT="$TMP/report.md" ;;
+  restore) REPORT="$STATE_DIR/01-restore.md" ;;
+  gates)   REPORT="$STATE_DIR/03-gates.md" ;;
+  replay)  REPORT="" ;;   # depends on the batch bounds; set once those are resolved
+esac
+if [ -n "$REPORT" ]; then : > "$REPORT"; fi
+
 DB_CREATED=0
 
 cleanup() {
-  if [ "$DB_CREATED" = "1" ]; then
+  local rc=$?
+  if [ "$DB_CREATED" = "1" ] && [ "$KEEP_DB" = "0" ]; then
     echo "--- teardown: DROP DATABASE $DB ---"
     local pw
     pw=$(docker exec "$CONTAINER" printenv POSTGRES_PASSWORD | tr -d '\r')
     docker exec -e PGPASSWORD="$pw" "$CONTAINER" sh -c \
       "psql -U '$DBUSER' -d postgres --no-psqlrc -v ON_ERROR_STOP=1 -c \"DROP DATABASE IF EXISTS \\\"$DB\\\";\""
     echo "teardown rc=$?"
+  elif [ "$KEEP_DB" = "1" ]; then
+    echo "--- phased run: database '$DB' RETAINED deliberately; state in $STATE_DIR ---"
   fi
-  rm -rf "$TMP"
+  if [ "$KEEP_DB" = "0" ] && [ "$PHASE" = "all" ]; then
+    rm -rf "$TMP"
+  fi
+  return $rc
 }
 trap cleanup EXIT
+
+# The single --out report is the concatenation of every phase fragment that exists so far, so a
+# partially-completed phased run still produces a readable, honest report instead of the last
+# fragment masquerading as the whole rehearsal.
+assemble_report() {
+  if [ "$PHASE" = "all" ]; then
+    cp "$REPORT" "$OUT"
+    return 0
+  fi
+  {
+    if [ -f "$STATE_DIR/01-restore.md" ]; then cat "$STATE_DIR/01-restore.md"; fi
+    for _f in $(ls "$STATE_DIR"/02-replay-*.md 2>/dev/null | sort); do cat "$_f"; done
+    if [ -f "$STATE_DIR/03-gates.md" ]; then cat "$STATE_DIR/03-gates.md"; fi
+  } > "$OUT"
+  return 0
+}
+
+if want_restore; then
 
 {
 echo "# Rehearsal report — $DB"
@@ -373,21 +465,90 @@ if [ -s "$TMP/ledger_lies.txt" ]; then
       echo
       echo "## VERDICT: FAIL"
     } | tee -a "$REPORT"
-    cp "$REPORT" "$OUT"
+    assemble_report
     exit 1
   fi
 fi
 
-# ---------- apply NOT-APPLIED + UNRECORDED, in timestamp order -----------------------------------
+# ---------- build the apply plan --------------------------------------------------------------
+# The plan is STATE, not a transient: the replay phase indexes into it by line number, and
+# progress.txt records how far that indexing got. Both belong to the restore phase because both
+# describe the shape that was restored.
 : > "$TMP/apply_plan.txt"
 cat "$TMP/to_apply.txt" | sed 's/$/|APPLY/' >> "$TMP/apply_plan.txt"
 cat "$TMP/to_ledger_only.txt" | sed 's/$/|LEDGER_ONLY/' >> "$TMP/apply_plan.txt"
 sort "$TMP/apply_plan.txt" -o "$TMP/apply_plan.txt"
-
-echo "## Replay ($(wc -l < "$TMP/apply_plan.txt") versions)" | tee -a "$REPORT"
-FAILED=0
+echo "## Apply plan: $(wc -l < "$TMP/apply_plan.txt") versions, in timestamp order" | tee -a "$REPORT"
 : > "$TMP/shape_tolerated.txt"
+: > "$TMP/notices.txt"
+echo 0 > "$TMP/progress.txt"
+
+fi   # ================= end of restore phase =================
+
+if [ "$PHASE" = "restore" ]; then
+  {
+    echo
+    echo "## RESTORE PHASE COMPLETE — database '$DB' RETAINED for the replay phase"
+    echo
+    echo "apply plan : $(wc -l < "$TMP/apply_plan.txt") versions"
+    echo "state dir  : $STATE_DIR"
+    echo "next       : --phase replay --batch-size <n>, repeated until progress.txt reaches the total"
+  } | tee -a "$REPORT"
+  assemble_report
+  exit 0
+fi
+
+# ---------- replay: ONE CONTIGUOUS BATCH --------------------------------------------------------
+if want_replay; then
+
+PLAN="$TMP/apply_plan.txt"
+[ -f "$PLAN" ] || { echo "FATAL: $PLAN missing -- run --phase restore first"; exit 2; }
+PLAN_TOTAL=$(wc -l < "$PLAN" | tr -d ' ')
+[ -f "$TMP/shape_tolerated.txt" ] || : > "$TMP/shape_tolerated.txt"
+
+DONE_IDX=0
+if [ -f "$TMP/progress.txt" ]; then DONE_IDX=$(tr -dc '0-9' < "$TMP/progress.txt"); fi
+[ -n "$DONE_IDX" ] || DONE_IDX=0
+
+if [ "$PHASE" = "all" ]; then
+  BFROM=1; BTO=$PLAN_TOTAL
+else
+  BFROM=$FROM
+  if [ "$BFROM" = "0" ]; then BFROM=$((DONE_IDX+1)); fi
+  BTO=$TO
+  if [ "$BTO" = "0" ]; then
+    if [ "$BATCH" != "0" ]; then BTO=$((BFROM+BATCH-1)); else BTO=$PLAN_TOTAL; fi
+  fi
+  if [ "$BTO" -gt "$PLAN_TOTAL" ]; then BTO=$PLAN_TOTAL; fi
+
+  if [ "$BFROM" -ne $((DONE_IDX+1)) ]; then
+    echo "REFUSED: --from $BFROM is not contiguous with the last completed plan index ($DONE_IDX)."
+    echo "The next batch must start at $((DONE_IDX+1)). Migrations are ordered and many are NOT"
+    echo "idempotent (CLAUDE.md rule 2b names 402 dropping a column, 404 dropping and recreating a"
+    echo "function, 409 dropping a signature) -- skipping or repeating a range is exactly how one"
+    echo "of those runs twice. This refusal is the safety property, not an inconvenience."
+    exit 3
+  fi
+  if [ "$BFROM" -gt "$PLAN_TOTAL" ]; then
+    echo "Nothing to do: all $PLAN_TOTAL plan entries are already completed."
+    exit 0
+  fi
+
+  REPORT=$(printf '%s/02-replay-%04d-%04d.md' "$STATE_DIR" "$BFROM" "$BTO")
+  : > "$REPORT"
+fi
+
+LEDGER_BATCH_BEFORE=$(psql_scalar "$CONTAINER" "$DBUSER" "$DB"   "SELECT count(*) FROM supabase_migrations.schema_migrations;")
+{
+  echo
+  echo "## Replay batch $BFROM-$BTO of $PLAN_TOTAL"
+  echo
+  echo "ledger rows BEFORE this batch: $LEDGER_BATCH_BEFORE"
+} | tee -a "$REPORT"
+
+IDX=$((BFROM-1))
 while IFS='|' read -r ver kind; do
+  IDX=$((IDX+1))
   [ -n "$ver" ] || continue
   file=$(ls "$MIGDIR"/${ver}_*.sql 2>/dev/null | head -1)
   APPLY_OUT="$TMP/apply_out_${ver}.txt"
@@ -412,13 +573,22 @@ while IFS='|' read -r ver kind; do
       echo "  shape-tolerant entry in $SHAPE_TOLERANT -- not applied on this shape, no ledger row" | tee -a "$REPORT"
       echo "  written, replay CONTINUES. See release/lib/shape-tolerance.sh for why this is safe." | tee -a "$REPORT"
       echo "$ver|$file" >> "$TMP/shape_tolerated.txt"
+      echo "$IDX" > "$TMP/progress.txt"
       continue
     fi
-    echo "STOPPING at first failure: $ver ($kind)" | tee -a "$REPORT"
+    echo "STOPPING at first failure: $ver ($kind) at plan index $IDX" | tee -a "$REPORT"
     FAILED=1
     break
   fi
-done < "$TMP/apply_plan.txt"
+  # Capture whatever the migration itself RAISE NOTICEd, tagged with its version. These are the
+  # only honest source for a per-migration "Expect:" line: they are what the file printed while
+  # running in the REAL release sequence, on the real restored shape. See the "Sequenced
+  # expectations" section the gates phase emits for why a typed number is a defect.
+  if [ "$kind" = "APPLY" ] && [ -s "$APPLY_OUT" ]; then
+    awk -v v="$ver" '/NOTICE:/ { sub(/^.*NOTICE:/, "NOTICE:"); print v "|" $0 }' "$APPLY_OUT"       >> "$TMP/notices.txt"
+  fi
+  echo "$IDX" > "$TMP/progress.txt"
+done < <(sed -n "${BFROM},${BTO}p" "$PLAN")
 
 {
   echo
@@ -437,10 +607,61 @@ done < "$TMP/apply_plan.txt"
   fi
 } | tee -a "$REPORT"
 
+# Ledger delta is printed BEFORE the failure check on purpose: a batch that stopped early still
+# has to account for what it did write, otherwise a failed batch reports nothing measurable.
+LEDGER_BATCH_AFTER=$(psql_scalar "$CONTAINER" "$DBUSER" "$DB"   "SELECT count(*) FROM supabase_migrations.schema_migrations;")
+{
+  echo
+  echo "ledger rows AFTER  this batch : $LEDGER_BATCH_AFTER"
+  echo "ledger DELTA       this batch : $((LEDGER_BATCH_AFTER-LEDGER_BATCH_BEFORE))"
+  echo "plan progress                 : $(cat "$TMP/progress.txt" 2>/dev/null) of $PLAN_TOTAL"
+} | tee -a "$REPORT"
+
 if [ "$FAILED" = "1" ]; then
   echo "## VERDICT: FAIL (replay stopped early)" | tee -a "$REPORT"
-  cp "$REPORT" "$OUT"
+  assemble_report
   exit 1
+fi
+
+fi   # ================= end of replay phase =================
+
+if [ "$PHASE" = "replay" ]; then
+  {
+    echo
+    if [ "$(cat "$TMP/progress.txt" 2>/dev/null)" -ge "$PLAN_TOTAL" ] 2>/dev/null; then
+      echo "## REPLAY COMPLETE — all $PLAN_TOTAL plan entries applied. Next: --phase gates"
+    else
+      echo "## BATCH $BFROM-$BTO COMPLETE — resume with --phase replay (it continues from"
+      echo "   plan index $(( $(cat "$TMP/progress.txt") + 1 )) automatically)"
+    fi
+  } | tee -a "$REPORT"
+  assemble_report
+  exit 0
+fi
+
+# ---------- gates phase =========================================================================
+if want_gates; then
+
+if [ "$PHASE" = "gates" ]; then
+  PLAN="$TMP/apply_plan.txt"
+  [ -f "$PLAN" ] || { echo "FATAL: $PLAN missing -- run --phase restore first"; exit 2; }
+  PLAN_TOTAL=$(wc -l < "$PLAN" | tr -d ' ')
+  DONE_IDX=0
+  if [ -f "$TMP/progress.txt" ]; then DONE_IDX=$(tr -dc '0-9' < "$TMP/progress.txt"); fi
+  [ -n "$DONE_IDX" ] || DONE_IDX=0
+  if [ "$DONE_IDX" -lt "$PLAN_TOTAL" ]; then
+    echo "REFUSED: replay is incomplete -- $DONE_IDX of $PLAN_TOTAL plan entries done."
+    echo "Gates run against a half-migrated shape would produce a verdict about a database that"
+    echo "will never exist anywhere. Finish the batches first."
+    exit 3
+  fi
+  [ -f "$TMP/shape_tolerated.txt" ] || : > "$TMP/shape_tolerated.txt"
+  GATE_DB_EXISTS=$(docker exec -e PGPASSWORD="$(docker exec "$CONTAINER" printenv POSTGRES_PASSWORD | tr -d '')"     "$CONTAINER" sh -c "psql -U '$DBUSER' -d postgres --no-psqlrc -A -t -c \"SELECT 1 FROM pg_database WHERE datname='$DB';\"")
+  if [ "$GATE_DB_EXISTS" != "1" ]; then
+    echo "FATAL: database '$DB' does not exist. The restore phase's database was dropped or never"
+    echo "created; gates cannot run against nothing."
+    exit 2
+  fi
 fi
 
 # ---------- FINAL machine-readable classification (post-replay overrides) -----------------------
@@ -478,6 +699,34 @@ fi
     [ -n "$ver" ] || continue
     echo "$ver|UNVERIFIABLE|"
   done < "$TMP/unverifiable.txt"
+  echo '```'
+} | tee -a "$REPORT"
+
+# ---------- sequenced expectations (measured, never typed) ---------------------------------------
+{
+  echo
+  echo "## Sequenced expectations (MEASURED during this replay, in release order)"
+  echo
+  echo "Every line below was printed by the migration itself while running in the REAL RELEASE"
+  echo "SEQUENCE on the restored production shape -- not typed by an author, and not measured by"
+  echo "running that migration on its own."
+  echo
+  echo "That distinction is the entire point. Migration 537 revokes TRUNCATE from authenticated on"
+  echo "214 tables when applied by itself -- its own header says exactly that -- but on MORE than"
+  echo "214 in this sequence, because migration 534 creates cron_run_log three steps earlier and"
+  echo "the new table inherits the schema default that still includes TRUNCATE. An operator"
+  echo "reading a hard-coded 214 would see the larger number, conclude the run had gone wrong,"
+  echo "and stop a CORRECT release."
+  echo
+  echo "A hard-coded count is the same defect class as migration 477 static REVOKE list: a number"
+  echo "generated against one shape and asserted against another. Derive it, or do not print it."
+  echo
+  echo '```'
+  if [ -s "$TMP/notices.txt" ]; then
+    cat "$TMP/notices.txt"
+  else
+    echo "(no NOTICE output was captured during replay)"
+  fi
   echo '```'
 } | tee -a "$REPORT"
 
@@ -519,10 +768,12 @@ fi
 # ---------- final verdict ---------------------------------------------------------------------
 if [ "$GATE_RC" != "0" ]; then
   echo "## VERDICT: FAIL (og81/og102/og103 did not all pass)" | tee -a "$REPORT"
-  cp "$REPORT" "$OUT"
+  assemble_report
   exit 1
 fi
 
 echo "## VERDICT: PASS" | tee -a "$REPORT"
-cp "$REPORT" "$OUT"
+assemble_report
 exit 0
+
+fi   # ================= end of gates phase =================

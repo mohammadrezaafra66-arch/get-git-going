@@ -20,6 +20,26 @@
 #   .\release\rehearse.ps1 -Dump <path> [-Container afrakala-lan-db] [-DbUser supabase_admin]
 #                           [-Prefix prod_rehearsal_] [-Date yyyyMMdd] [-Ceiling <14-digit>]
 #                           [-KnownLedgerLies <path>] [-ShapeTolerant <path>]
+#                           [-RestoreOnly] [-Replay [-From n] [-To n] [-BatchSize n]]
+#                           [-GatesOnly [-DropWhenDone]] [-StateDir <path>]
+#
+# PHASES -- WHY THEY EXIST (read this before "simplifying" it back to one call)
+#   Two earlier attempts at this rehearsal stalled because restore + classify + ~690 migration
+#   replays + three Playwright gates were ONE long-running invocation with no checkpoint. When it
+#   died, the engine's own `trap cleanup EXIT` had already dropped the database, so there was
+#   nothing to resume from and the next attempt started again at pg_restore.
+#
+#   -RestoreOnly   restore + classify + build the apply plan, then STOP, KEEPING the database.
+#   -Replay        apply ONE CONTIGUOUS BATCH of that plan and stop. With no -From it resumes
+#                  automatically from the last completed plan index; -BatchSize sets the width.
+#                  Repeat until it prints "REPLAY COMPLETE".
+#   -GatesOnly     og81/og102/og103 + anon census + the final verdict over the whole report.
+#
+#   Passing none of the three keeps the original single-shot behaviour (--phase all), database
+#   dropped at exit, exactly as before.
+#
+#   NEVER set -BatchSize wide enough to cover the whole plan in one go. That is the thing that
+#   stalled this twice; the batch width IS the checkpoint interval.
 #
 # -ShapeTolerant <path> ("TOLERATE A MISSING OBJECT", owner directive): pre-declares specific
 #   migration versions, with their exact expected error substring, as safe to survive a replay
@@ -41,14 +61,25 @@
 #   pass or fail -- a rehearsal that leaves state behind defeats its own repeatability.
 
 param(
-    [Parameter(Mandatory = $true)][string]$Dump,
+    # NOT Mandatory any more: -Replay and -GatesOnly never read the dump, and a mandatory
+    # parameter would prompt for a path those phases discard. Phase-aware validation below
+    # enforces it for exactly the phases that do restore.
+    [string]$Dump = "",
     [string]$Container = "afrakala-lan-db",
     [string]$DbUser = "supabase_admin",
     [string]$Prefix = "prod_rehearsal_",
     [string]$Date = (Get-Date -Format "yyyyMMdd"),
     [string]$Ceiling = "",
     [string]$KnownLedgerLies = "",
-    [string]$ShapeTolerant = ""
+    [string]$ShapeTolerant = "",
+    [switch]$RestoreOnly,
+    [switch]$Replay,
+    [switch]$GatesOnly,
+    [switch]$DropWhenDone,
+    [int]$From = 0,
+    [int]$To = 0,
+    [int]$BatchSize = 0,
+    [string]$StateDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,17 +109,34 @@ if (-not $bashPath) {
     exit 2
 }
 
-$dumpResolved = (Resolve-Path $Dump -ErrorAction SilentlyContinue)
-if (-not $dumpResolved) {
-    Write-Host "Dump not found: $Dump" -ForegroundColor Red
+# Exactly one phase switch, or none. Two at once is always a mistake about what the run does.
+$phaseSwitchCount = @($RestoreOnly, $Replay, $GatesOnly | Where-Object { $_ }).Count
+if ($phaseSwitchCount -gt 1) {
+    Write-Host "Pass at most ONE of -RestoreOnly / -Replay / -GatesOnly." -ForegroundColor Red
     exit 2
+}
+$phase = "all"
+if ($RestoreOnly)   { $phase = "restore" }
+elseif ($Replay)    { $phase = "replay" }
+elseif ($GatesOnly) { $phase = "gates" }
+
+$dumpResolved = $null
+if ($phase -eq "all" -or $phase -eq "restore") {
+    if ($Dump -eq "") {
+        Write-Host "-Dump is required for phase '$phase'." -ForegroundColor Red
+        exit 2
+    }
+    $dumpResolved = (Resolve-Path $Dump -ErrorAction SilentlyContinue)
+    if (-not $dumpResolved) {
+        Write-Host "Dump not found: $Dump" -ForegroundColor Red
+        exit 2
+    }
 }
 
 $engine = Join-Path $PSScriptRoot "lib\rehearse-engine.sh"
 
 $bashArgs = @(
     $engine.Replace('\', '/'),
-    "--dump", $dumpResolved.Path.Replace('\', '/'),
     "--container", $Container,
     "--db-user", $DbUser,
     "--prefix", $Prefix,
@@ -97,6 +145,18 @@ $bashArgs = @(
     "--repo-root", $repoRoot.Path.Replace('\', '/'),
     "--out", $outFile.Replace('\', '/')
 )
+# The dump path is appended only when a dump was actually resolved, i.e. only for the phases
+# that restore one.
+if ($dumpResolved) { $bashArgs += @("--dump", $dumpResolved.Path.Replace('\', '/')) }
+$bashArgs += @("--phase", $phase)
+if ($StateDir -ne "") {
+    if (-not (Test-Path $StateDir)) { New-Item -ItemType Directory -Path $StateDir -Force | Out-Null }
+    $bashArgs += @("--state-dir", (Resolve-Path $StateDir).Path.Replace('\', '/'))
+}
+if ($From -gt 0)      { $bashArgs += @("--from", "$From") }
+if ($To -gt 0)        { $bashArgs += @("--to", "$To") }
+if ($BatchSize -gt 0) { $bashArgs += @("--batch-size", "$BatchSize") }
+if ($DropWhenDone)    { $bashArgs += @("--drop-when-done") }
 if ($Ceiling -ne "") { $bashArgs += @("--ceiling", $Ceiling) }
 if ($KnownLedgerLies -ne "") {
     $klResolved = Resolve-Path $KnownLedgerLies
@@ -115,7 +175,11 @@ $code = $LASTEXITCODE
 
 Write-Host ""
 if ($code -eq 0) {
-    Write-Host "REHEARSAL PASSED. Report: $outFile" -ForegroundColor Green
+    if ($phase -eq "all" -or $phase -eq "gates") {
+        Write-Host "REHEARSAL PASSED. Report: $outFile" -ForegroundColor Green
+    } else {
+        Write-Host "PHASE '$phase' COMPLETE (this is not a verdict). Report so far: $outFile" -ForegroundColor Green
+    }
 } else {
     Write-Host "REHEARSAL FAILED (exit $code). Report: $outFile" -ForegroundColor Red
 }

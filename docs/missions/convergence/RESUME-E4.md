@@ -248,3 +248,87 @@ prod_rehearsal_v2|352 MB         <- FORBIDDEN
 ## EXACT NEXT COMMAND (E4-1)
 Add `-RestoreOnly` to `release/rehearse.ps1` (it does not exist today — `param()` block at
 `release/rehearse.ps1:43-52` has no such switch), phase the engine, and run restore only.
+
+
+---
+
+## Checkpoint 3 — E4-1: `-RestoreOnly` built, restore phase PROVEN (2026-09-13)
+
+### What was built, and why it is not a style change
+`-RestoreOnly` did not exist. Neither did any way to stop between steps: the engine was ONE
+invocation (restore + classify + replay ~690 migrations + three Playwright gates) whose
+`trap cleanup EXIT` dropped the database on the way out. That is why two attempts stalled — there
+was never anything to resume from, so each retry restarted at `pg_restore`.
+
+`release/lib/rehearse-engine.sh` now takes `--phase all|restore|replay|gates` (default `all`, so
+every prior caller is unaffected), `--state-dir`, `--from/--to/--batch-size`, `--drop-when-done`.
+A phased run keeps its database and writes real state under `release/runs/<date>/`.
+`release/rehearse.ps1` exposes `-RestoreOnly`, `-Replay`, `-GatesOnly`, `-From`, `-To`,
+`-BatchSize`, `-StateDir`, `-DropWhenDone`, and `-Dump` is no longer `Mandatory` (the replay and
+gates phases never read it).
+
+### E3 — the command and its output
+```
+$ .eleaseehearse.ps1 -Dump D:\AfraKalaTest\dumps\prod-20260913.dump -Date e4b `
+    -RestoreOnly -KnownLedgerLies release\config\known-ledger-lies.txt
+exit code = 0
+```
+Report fragment `release/runs/e4b/01-restore.md`:
+```
+dump file : D:/AfraKalaTest/dumps/prod-20260913.dump
+size bytes: 35424962
+md5 (host): 6ccd2dbb07a9a4d9bbae4421eb3265e0
+delivered ... -> afrakala-lan-db:/tmp/rehearsal_e4b.dump (md5 6ccd2dbb07a9a4d9bbae4421eb3265e0,
+                                                         identical both sides)
+pg_restore exit code = 1
+restore errors: tolerated=21 untolerated=0
+tables|views|functions|policies|persons|audit_logs = 251|24|859|645|4857|112696
+ledger_rows|ledger_min|ledger_max = 681|20260424144837|20260912150000
+is_replica|db_size|anon_default_acl_count = false|351 MB|0
+## Candidates: 703 files at or below ceiling 20260913111000
+```
+**`681 | top 20260912150000` is exactly the value the launch brief settled for a fresh restore.**
+The restore is the right dump, restored correctly. `pg_restore` exit 1 with `tolerated=21
+untolerated=0` is the documented-normal shape (cron/pg_cron/vault objects), not a failure.
+
+### The scratch database exists and is RETAINED (the whole point of the phase)
+```
+$ psql -d postgres -tAc "SELECT datname||' | '||pg_size_pretty(pg_database_size(datname))
+                           FROM pg_database WHERE datname='prod_rehearsal_e4b';"
+prod_rehearsal_e4b | 351 MB
+$ psql -d prod_rehearsal_e4b -tAc "SELECT 'ledger_rows='||count(*)||' top='||max(version)
+                                     FROM supabase_migrations.schema_migrations;"
+ledger_rows=681 top=20260912150000
+```
+
+### Classification — and it SUMS to the candidate count
+```
+$ for f in ok to_apply to_ledger_only ledger_lies unverifiable; do wc -l release/runs/e4b/$f.txt; done
+ok               242
+to_apply          21
+to_ledger_only     1
+ledger_lies       36
+unverifiable     403
+TOTAL            703
+CANDIDATES       703
+```
+242 + 21 + 1 + 36 + 403 = **703**, equal to the candidate count. All 36 LEDGER-LIES were
+pre-declared in `release/config/known-ledger-lies.txt`, so the gate reported each one and
+continued instead of aborting.
+
+Apply plan: **22 entries** (21 APPLY + 1 LEDGER_ONLY), `release/runs/e4b/apply_plan.txt`. It
+contains all thirteen migrations the staging merge brought in; note `20260913090000` (526)
+classified LEDGER_ONLY — its effect is already PRESENT in the restored catalogue, so the SQL is
+NOT re-run and only the ledger row is written.
+
+### Also applied in this commit (needed before replay runs, not after)
+The engine now captures every `RAISE NOTICE` a migration prints during replay, tagged with its
+version, and the gates phase emits them as a "Sequenced expectations" section. This has to be in
+place BEFORE the replay phase runs, because it measures during replay. It is the E4-4 derivation
+input — see Checkpoint 5.
+
+## EXACT NEXT COMMAND (E4-2)
+```
+.eleaseehearse.ps1 -Date e4b -Replay -BatchSize 8 -ShapeTolerant release\config\known-shape-tolerant-migrations.txt
+```
+repeated until it prints `REPLAY COMPLETE`. Never one batch of 22.
