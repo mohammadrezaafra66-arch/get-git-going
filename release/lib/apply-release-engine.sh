@@ -108,22 +108,43 @@ process_block() {
   return 0
 }
 
+# ---------- how many directives does the document actually contain? -----------------------------
+# COUNTED FIRST, BEFORE ANYTHING RUNS, and compared against what was executed at the end.
+#
+# WHY: on 2026-09-13 this engine's FIRST real run reported "VERDICT: PASSED" having executed 2 of
+# 17 blocks. The mig_apply pattern used `\S+\.sql`; `\S` is a GNU regex extension that this
+# bash's ERE does not honour, so `[[ =~ ]]` returned "no match" for EVERY mig_apply line in the
+# document and the loop simply walked past all fifteen of them. Nothing failed, so nothing was
+# reported -- the run log said PASSED because no block had failed, not because every block had run.
+#
+# Fixing the pattern is the small half. The large half is this counter: a mechanical executor that
+# can silently do nothing and still say PASSED is worse than no executor, because a human reads the
+# word PASSED and stops checking. The counts must agree or the verdict is STOP.
+DOC_APPLY_COUNT=$(awk '/^# Phase 5/{exit} /^ *mig_apply +[0-9]{14} +[^ ]+\.sql/{n++} END{print n+0}' "$RELEASE_MD")
+DOC_LEDGER_COUNT=$(awk '/^# Phase 5/{exit} /^ *ledger_insert_only +[0-9]{14}/{n++} END{print n+0}' "$RELEASE_MD")
+RAN_APPLY=0
+RAN_LEDGER=0
+log "document declares: $DOC_APPLY_COUNT mig_apply block(s), $DOC_LEDGER_COUNT ledger-row-only block(s) before Phase 5"
+
 while IFS= read -r line; do
+  line=$(printf %s "$line" | tr -d '\r')   # generated on Windows: a trailing CR must never reach the regex
   if [[ "$line" == "# Phase 5"* ]]; then
     STOPPED_BEFORE_DEPLOY=1
     log "--- reached Phase 5 (image transfer). Stopping cleanly -- deploy is a human step. ---"
     break
   fi
-  if [[ "$line" =~ ^\ *mig_apply\ +([0-9]{14})\ +(\S+\.sql) ]]; then
+  if [[ "$line" =~ ^[[:space:]]*mig_apply[[:space:]]+([0-9]{14})[[:space:]]+([^[:space:]]+\.sql) ]]; then
     CURRENT_VER="${BASH_REMATCH[1]}"; CURRENT_FILE="${BASH_REMATCH[2]}"; CURRENT_KIND="APPLY"
+    RAN_APPLY=$((RAN_APPLY+1))
     process_block "$CURRENT_KIND" "$CURRENT_VER" "$CURRENT_FILE"
     if [ $? -ne 0 ]; then
       log "FATAL: block for $CURRENT_VER ($CURRENT_FILE) did not match its Expect: line. STOP."
       BLOCK_FAILED=1
       break
     fi
-  elif [[ "$line" =~ ^\ *ledger_insert_only\ +([0-9]{14}) ]]; then
+  elif [[ "$line" =~ ^[[:space:]]*ledger_insert_only[[:space:]]+([0-9]{14}) ]]; then
     CURRENT_VER="${BASH_REMATCH[1]}"; CURRENT_KIND="LEDGER_ONLY"
+    RAN_LEDGER=$((RAN_LEDGER+1))
     process_block "$CURRENT_KIND" "$CURRENT_VER" ""
     if [ $? -ne 0 ]; then
       log "FATAL: ledger-row-only block for $CURRENT_VER failed. STOP."
@@ -134,8 +155,18 @@ while IFS= read -r line; do
 done < "$RELEASE_MD"
 
 log ""
+log "executed: $RAN_APPLY of $DOC_APPLY_COUNT mig_apply block(s), $RAN_LEDGER of $DOC_LEDGER_COUNT ledger-row-only block(s)"
 if [ "$BLOCK_FAILED" = "1" ]; then
   log "=== VERDICT: STOP (a migration block failed its Expect:) ==="
+  exit 1
+fi
+
+# A run that walked past blocks it was told to execute must NEVER report PASSED. See the counter's
+# own comment above for the 2-of-17 false pass this check exists to make impossible.
+if [ "$RAN_APPLY" != "$DOC_APPLY_COUNT" ] || [ "$RAN_LEDGER" != "$DOC_LEDGER_COUNT" ]; then
+  log "=== VERDICT: STOP (the document declares $DOC_APPLY_COUNT mig_apply + $DOC_LEDGER_COUNT"
+  log "    ledger-row-only blocks, but only $RAN_APPLY + $RAN_LEDGER were executed. Blocks were"
+  log "    silently skipped -- this is never a pass, whatever the individual results were.) ==="
   exit 1
 fi
 

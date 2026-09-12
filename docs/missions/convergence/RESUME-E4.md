@@ -745,3 +745,76 @@ substitution is always explicit.
 A run log under `release/runs/` ending `PASSED`, showing the 15 mig_apply blocks and the one
 decided ledger-row-only block executed against `prod_rehearsal_e4c`, and stopping cleanly at
 `# Phase 5`.
+
+
+---
+
+## Checkpoint 10 — E4-6: `apply-release.ps1` runs the document, and its FIRST run was a FALSE PASS
+
+### The finding, which is the important part of this step
+The first real invocation reported `VERDICT: PASSED` having executed **2 of 17** blocks:
+```
+$ .\release\apply-release.ps1 -ReleaseMd release\out\RELEASE-e4b.md -TargetDb prod_rehearsal_e4c `
+    -Decided release\config\decided-migrations.txt
+PASSED. Log: release\runs\20260913-024603.log
+
+$ grep -E "^(Block:|=== VERDICT)" release/runs/20260913-024603.log
+Block: ledger_insert_only 20260913090000
+Block: ledger_insert_only 20260822210000
+=== VERDICT: PASSED (all preflight + migration blocks matched their Expect: lines;
+```
+Fifteen `mig_apply` blocks were walked straight past. Root cause, reproduced in isolation rather
+than guessed:
+```
+$ bash -c 'line="    mig_apply 20260913105000 20260913105000_537_x.sql"
+  if [[ "$line" =~ ^\ *mig_apply\ +([0-9]{14})\ +(\S+\.sql) ]]; then echo MATCH; else echo "NO MATCH (rc=$?)"; fi'
+NO MATCH (rc=1)
+```
+`\S` is a GNU regex extension this bash's ERE does not honour, so the pattern never matched ANY
+mig_apply line — on LF or CRLF input alike. The `ledger_insert_only` branch had no `\S` and worked,
+which is why exactly two blocks ran. **This engine's core branch had been broken since it was
+written and no run had ever exposed it, because no run had ever happened.**
+
+### Both halves were fixed, and the second half matters more
+1. `[[:space:]]` / `[^[:space:]]` POSIX classes instead of `\ ` and `\S`, plus a CR strip.
+2. **A completeness assertion.** The engine now counts the directives in the document BEFORE
+   running anything and compares that to what it executed. A mechanical executor that can silently
+   do nothing and still print PASSED is worse than no executor, because a human reads PASSED and
+   stops checking. Counts disagreeing is now `VERDICT: STOP`, whatever each block returned.
+
+### E3 — the proving run, against a PRISTINE target
+`prod_rehearsal_e4c` was no longer pristine (the false-pass run had written two ledger rows into
+it), so a fresh `prod_rehearsal_e4d` was restored from the same dump — same md5, ledger 681, top
+`20260912150000`, plan 22 — and the document was executed against it. `-TargetDb` is how
+production's database name is substituted; it has no default precisely so the substitution is
+always explicit.
+```
+$ .\release\apply-release.ps1 -ReleaseMd release\out\RELEASE-e4b.md -TargetDb prod_rehearsal_e4d `
+    -Decided release\config\decided-migrations.txt
+document declares: 15 mig_apply block(s), 2 ledger-row-only block(s) before Phase 5
+...
+DECISION GUARD OG-C for 20260822210000: got [0], expected [0]
+Block: ledger_insert_only 20260822210000
+INSERT 0 1
+--- reached Phase 5 (image transfer). Stopping cleanly -- deploy is a human step. ---
+executed: 15 of 15 mig_apply block(s), 2 of 2 ledger-row-only block(s)
+=== VERDICT: PASSED ===                      exit code 0
+Log: release\runs\20260913-025450.log
+```
+
+### Two independent routes, one end state
+```
+prod_rehearsal_e4b : ledger_rows=698 top=20260913111000    (rehearsal replay, batched)
+prod_rehearsal_e4d : ledger_rows=698 top=20260913111000    (RELEASE-e4b.md, executed mechanically)
+```
+And 537 printed `on 215 table(s)` again on e4d — the same number the `Expect:` line carries, now
+confirmed on a database that had no part in producing it.
+
+### The OG-C guard was exercised for real
+`DECISION GUARD OG-C for 20260822210000: got [0], expected [0]` — the guard ran against the live
+target and had to hold before the ledger row was written. On `prod_rehearsal_e4b` this path could
+not be exercised (373 had been applied at plan index 3 before the decision file existed); it was
+exercised here.
+
+## EXACT NEXT COMMAND
+Verification (`npx tsc --noEmit`), then append the E-4 proof section, then ONE push.
