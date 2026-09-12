@@ -1054,3 +1054,87 @@ cannot be applied to the other.** Derive at run time, or do not ship it.
 This is recorded in the schema-diff section as **ACCEPTED**, with that reason, so that the next
 reader of the nine-migration gap does not try to close it.
 
+---
+
+# WAVE B — the browser pass
+
+One deployed build (`APP_GIT_SHA=c0804142`), cold contexts only — a fresh browser context carrying
+nothing but the role's `storageState`. Role sessions revalidated **5 passed** immediately before the
+run. Screenshots in `docs/verification/convergence/o5/`.
+
+Every page was checked on four things, not one: HTTP status, `content-type`, **absence of a
+`Server:` header**, and where the URL actually landed. That set is what would have caught the
+2026-09-12 incident, where `:3100` answered `200` from PostgREST behind a container reporting
+`Up (healthy)`.
+
+## 1 · The three pages no human had ever opened
+
+| page | as `accountant` | as `sales` |
+|---|---|---|
+| `/sales/credit-requests` | 200 · renders **fully** | 200 · renders **fully** |
+| `/admin/person-fields` | 200 · **denied in-page** | 200 · **denied in-page** |
+| `/admin/call-extensions` | 200 · **denied in-page** | 200 · **denied in-page** |
+
+All six loads: `content-type: text/html; charset=utf-8`, **no `Server:` header**, **zero uncaught
+page errors**.
+
+**`/sales/credit-requests` is a real, working feature, and this is the first time anyone has seen
+it.** It renders «درخواست‌های افزایش اعتبار» with a complete new-request form — customer search
+(«جست‌وجوی مشتری» / «نام مشتری»), customer select («انتخاب مشتری»), requested amount labelled
+«مبلغ درخواستی (ریال)» with a Persian «۰» placeholder, a reason field («دلیل درخواست افزایش
+اعتبار»), and a «ثبت درخواست» submit — above a populated requests table with columns
+«مشتری · مبلغ درخواستی · وضعیت · تاریخ ثبت · تاریخ بررسی». Nothing is stubbed, nothing is empty,
+and the digits and layout are correct RTL.
+
+**The two admin pages deny correctly, with identical verbatim Persian:**
+
+> «دسترسی ندارید. این بخش فقط برای مدیر کل، مدیر است.»
+
+The right-hand rail on every page carries the standard empty state «موردی برای نمایش وجود ندارد».
+
+## 2 · 🔴 The cold-gate check — and it is a finding, not a pass
+
+A user logged in as `test.sales@afrakala.local`, role **«فروشنده»**, typed `/admin/automation`
+into the address bar.
+
+**The admin automation centre rendered in full.** No redirect, no denial: «مرکز اتوماسیون و
+ربات‌ها», the Torob route status panel (`Queue enqueue`, `Local tests passed 115`,
+`Guarded readiness`, `Skeleton`), the active-guards list, and the **«ثبت job کنترل‌شده ترب در صف»
+enqueue form**. The management gear in the sidebar is highlighted for this user.
+
+**Recorded, not fixed** — S-1 belongs to the Security-3 mission, as instructed.
+
+What makes it worth more than one line is the **inconsistency it exposes**: on the same build, with
+the same cold session, `/admin/person-fields` and `/admin/call-extensions` both refuse and
+`/admin/automation` does not. So this is not "admin routes are ungated" — it is **per-page
+component checks with no common enforcement**, which is precisely the shape that makes a route
+inventory necessary rather than a spot fix. Two of three pages happen to carry a check; the third
+happens not to.
+
+## 3 · G-4 rendered
+
+Scanning the live DOM of `/dashboard` for a Latin digit adjacent to «تأیید» / «در انتظار» /
+«فاکتور صادرشده»:
+
+```
+accountant  Latin-digit Persian KPI subtitles found: none
+sales       Latin-digit Persian KPI subtitles found: none
+```
+
+The salesperson subtitle that read `0 تأیید · 0 در انتظار` before now reads «۰ تأیید · ۰ در انتظار».
+
+## 4 · Console
+
+Nothing thrown. Every console line falls into exactly two classes:
+
+- `[auth-diagnostic][session.onAuthStateChange]` traces — `SIGNED_IN`, `INITIAL_SESSION`,
+  `TOKEN_REFRESHED` — logged at error level though they are informational. Worth demoting: logging
+  routine session events as errors is why a real error is hard to spot here.
+- The Realtime websocket 404, on every page load, for every user (already a HANDOFF item).
+
+## 5 · One small thing, recorded because nobody will otherwise
+
+`/admin/person-fields`'s denial page shows the breadcrumb **«صفحه»** — a literal placeholder
+meaning "page". `/admin/call-extensions` shows its real title «داخلی‌های تلفن» in the same state.
+The page's title is missing in its denied state; a user who lands there is told only "page".
+
