@@ -2,7 +2,18 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Eye, EyeOff, Loader2, Plug, Save, Download, Info, Link2, Users, Trophy } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Loader2,
+  Plug,
+  Save,
+  Download,
+  Info,
+  Link2,
+  Users,
+  Trophy,
+} from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,6 +51,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/operations/didar")({
   // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
@@ -226,7 +238,9 @@ function OperationsDidarPage() {
     try {
       const body = await callDidar(url.trim(), apiKey.trim(), "/contacts?page=1&size=1");
       const total = extractTotal(body);
-      toast.success(total != null ? `اتصال موفق — تعداد مخاطبین: ${total}` : "اتصال موفق");
+      toast.success(
+        total != null ? `اتصال موفق — تعداد مخاطبین: ${toFaDigits(total)}` : "اتصال موفق",
+      );
     } catch (e) {
       toast.error(`اتصال ناموفق: ${(e as Error).message}`);
     } finally {
@@ -244,13 +258,13 @@ function OperationsDidarPage() {
     try {
       // Preflight
       const first = await callDidar(url.trim(), apiKey.trim(), "/contacts?page=1&size=1");
-      let total = extractTotal(first);
+      const total = extractTotal(first);
       setProgress({ done: 0, total: typeof total === "number" ? total : null });
 
       const pageSize = 100;
       let page = 1;
       let done = 0;
-      // eslint-disable-next-line no-constant-condition
+
       while (true) {
         const body = await callDidar(
           url.trim(),
@@ -655,9 +669,7 @@ function ContactLinkSection() {
                       <TableCell>
                         <Select
                           value={selection[didarId] ?? ""}
-                          onValueChange={(v) =>
-                            setSelection((s) => ({ ...s, [didarId]: v }))
-                          }
+                          onValueChange={(v) => setSelection((s) => ({ ...s, [didarId]: v }))}
                           disabled={isPending}
                         >
                           <SelectTrigger className="w-64">
@@ -754,7 +766,7 @@ function GamificationEnrichmentSection() {
       {
         const pageSize = 1000;
         let from = 0;
-        // eslint-disable-next-line no-constant-condition
+
         while (true) {
           const { data, error } = await supabase
             .from("employee_score_events")
@@ -783,7 +795,7 @@ function GamificationEnrichmentSection() {
       {
         const pageSize = 1000;
         let from = 0;
-        // eslint-disable-next-line no-constant-condition
+
         while (true) {
           const { data, error } = await supabase
             .from("didar_activities")
@@ -851,12 +863,12 @@ function GamificationEnrichmentSection() {
           };
         })
         .filter(Boolean) as Array<{
-          employee_id: string;
-          event_type: string;
-          source_id: string;
-          source_table: string;
-          payload: any;
-        }>;
+        employee_id: string;
+        event_type: string;
+        source_id: string;
+        source_table: string;
+        payload: any;
+      }>;
 
       // 5) insert in batches with progress
       let inserted = 0;
@@ -872,7 +884,9 @@ function GamificationEnrichmentSection() {
       const skipped = pending.length - rows.length;
       toast.success(
         `${inserted.toLocaleString("fa-IR")} فعالیت ثبت شد` +
-          (skipped > 0 ? ` — ${skipped.toLocaleString("fa-IR")} مورد بدون کارشناس مسئول رد شد` : ""),
+          (skipped > 0
+            ? ` — ${skipped.toLocaleString("fa-IR")} مورد بدون کارشناس مسئول رد شد`
+            : ""),
       );
       qc.invalidateQueries({ queryKey: ["didar", "gamification-stats"] });
     } catch (e) {

@@ -16,6 +16,7 @@ import { RECEIPT_OCR_PROMPT } from "@/lib/accounting/receipt-ocr-prompt";
 import { tryStructuredExtraction } from "@/lib/accounting/receipt-ocr-structured";
 import type { ReceiptExtractionResult } from "@/lib/accounting/receipt-extraction";
 import { aiVision } from "@/lib/ai/client.server";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export type OcrBytesMethod = "text" | "image_ocr" | "pdf_text" | "unsupported";
 
@@ -112,7 +113,8 @@ export const extractReceiptFromBytes = createServerFn({ method: "POST" })
           return {
             raw_text: raw,
             method: "pdf_text" as const,
-            warnings: result.totalPages > 2 ? [`PDF شامل ${result.totalPages} صفحه است.`] : [],
+            warnings:
+              result.totalPages > 2 ? [`PDF شامل ${toFaDigits(result.totalPages)} صفحه است.`] : [],
           } satisfies OcrBytesResult;
         }
         return {

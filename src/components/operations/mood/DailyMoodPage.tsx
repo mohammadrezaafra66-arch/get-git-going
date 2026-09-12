@@ -18,6 +18,7 @@ import { MoodEmojiSelector } from "./MoodEmojiSelector";
 import { MoodReasonSelector } from "./MoodReasonSelector";
 import { MoodScenarioFlow } from "./MoodScenarioFlow";
 import { HafezCard } from "./HafezCard";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 const STEPS = [
   "حال امروز",
@@ -128,7 +129,7 @@ export function DailyMoodPage() {
       />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
-          گام {step + 1} از {STEPS.length} — {STEPS[step]}
+          گام {toFaDigits(step + 1)} از {toFaDigits(STEPS.length)} — {STEPS[step]}
         </span>
         <div className="flex gap-1">
           {STEPS.map((_, i) => (
@@ -175,7 +176,9 @@ export function DailyMoodPage() {
                 className="w-full rounded-lg border bg-card p-3 text-sm min-h-32"
                 placeholder="همین که گفتی، ارزشمنده."
               />
-              <p className="text-xs text-muted-foreground text-left">{freeText.length}/2000</p>
+              <p className="text-xs text-muted-foreground text-left">
+                {toFaDigits(freeText.length)}/۲۰۰۰
+              </p>
             </div>
           )}
           {step === 4 && (

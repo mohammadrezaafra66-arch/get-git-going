@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 
 import { ChoiceButton } from "./ChoiceButton";
-import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
 import { MissingAsanMessage } from "./MissingAsanMessage";
 import { ProformaList } from "./ProformaList";
 import { lookupParty, selectPartyFile } from "./lookup";
@@ -958,13 +958,16 @@ function AmountSuggestion({
         <span>
           مبلغ پیشنهادی از روی فیش:{" "}
           <b className="font-mono" data-testid="amount-suggestion-value">
-            {amount.toLocaleString("en-US")}
+            {formatNumber(amount)}
           </b>{" "}
           تومان — با فیش مقایسه و تأیید کنید.
         </span>
       </div>
       {warning ? (
-        <p className="mt-2 text-amber-800 dark:text-amber-300" data-testid="amount-suggestion-warning">
+        <p
+          className="mt-2 text-amber-800 dark:text-amber-300"
+          data-testid="amount-suggestion-warning"
+        >
           {warning}
         </p>
       ) : null}

@@ -35,7 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { requireAdmin } from "@/lib/rbac/route-guards";
 import { ROLE_LABELS, ALL_ROLES, type AppRole } from "@/lib/rbac/roles";
-import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
 import { useDebounce } from "@/hooks/use-debounce";
 import { toast } from "sonner";
 import { fetchProfileFieldValues, fetchActiveProfileFields } from "@/lib/profile-fields/queries";
@@ -276,7 +276,9 @@ function UsersManagementPage() {
                 </Select>
               </div>
             </div>
-            <div className="text-xs text-muted-foreground">{data ? `${data.count} کاربر` : ""}</div>
+            <div className="text-xs text-muted-foreground">
+              {data ? `${toFaDigits(data.count)} کاربر` : ""}
+            </div>
           </div>
 
           {isLoading ? (

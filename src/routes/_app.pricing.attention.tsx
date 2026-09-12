@@ -25,7 +25,7 @@ import {
   PURCHASE_PRICE_STALE_DAYS,
   USD_DRIFT_THRESHOLD_PCT,
 } from "@/lib/popups/config";
-import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { requirePermission } from "@/lib/rbac/route-guards";
 
 export const Route = createFileRoute("/_app/pricing/attention")({
@@ -95,7 +95,7 @@ function AttentionPage() {
             ناموجود بیش از {STOCK_STALE_DAYS} روز
             {staleStockQ.data && (
               <Badge variant="destructive" className="ms-2">
-                {staleStockQ.data.length}
+                {toFaDigits(staleStockQ.data.length)}
               </Badge>
             )}
           </TabsTrigger>
@@ -103,7 +103,7 @@ function AttentionPage() {
             قیمت خرید کهنه / drift دلاری
             {stalePriceQ.data && (
               <Badge variant="destructive" className="ms-2">
-                {stalePriceQ.data.length}
+                {toFaDigits(stalePriceQ.data.length)}
               </Badge>
             )}
           </TabsTrigger>
@@ -264,7 +264,7 @@ function StalePriceTable({
                         ) : (
                           <TrendingDown className="h-3 w-3" />
                         )}
-                        {drift.toFixed(1)}٪
+                        {toFaDigits(drift.toFixed(1))}٪
                       </span>
                     )}
                   </TableCell>

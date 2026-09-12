@@ -21,6 +21,7 @@ import { RECEIPT_OCR_PROMPT } from "@/lib/accounting/receipt-ocr-prompt";
 import { tryStructuredExtraction } from "@/lib/accounting/receipt-ocr-structured";
 import type { ReceiptExtractionResult } from "@/lib/accounting/receipt-extraction";
 import { aiVision } from "@/lib/ai/client.server";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export type OcrMethod = "text" | "image_ocr" | "pdf_text" | "pdf_image_ocr" | "unsupported";
 
@@ -144,7 +145,9 @@ export const extractReceiptDocumentOcr = createServerFn({ method: "POST" })
             raw_text: raw,
             method: "pdf_text" as const,
             warnings:
-              totalPages > 2 ? [`PDF شامل ${totalPages} صفحه است؛ متن همه صفحات استخراج شد.`] : [],
+              totalPages > 2
+                ? [`PDF شامل ${toFaDigits(totalPages)} صفحه است؛ متن همه صفحات استخراج شد.`]
+                : [],
             engine_confidence: null,
           } satisfies OcrResult;
         }

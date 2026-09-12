@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 const BUCKET = "feedback-attachments";
 const MAX_SIZE = 25 * 1024 * 1024; // 25 MB
@@ -242,7 +243,7 @@ export function FeedbackAttachmentUploader({ userId, value, onChange, disabled }
                     {a.name}
                   </div>
                   <div className="text-[10px] text-muted-foreground">
-                    {(a.size / 1024 / 1024).toFixed(2)} MB · {a.mime_type}
+                    {toFaDigits((a.size / 1024 / 1024).toFixed(2))} MB · {a.mime_type}
                   </div>
                   {a.previewUrl && k === "image" && (
                     <img

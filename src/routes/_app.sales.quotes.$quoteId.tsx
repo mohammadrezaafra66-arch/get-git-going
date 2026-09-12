@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
-import { formatNumber, formatDateTimeFa, formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatDateTimeFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { toPersianAmountWords } from "@/lib/i18n/number-to-words";
 import { QuoteStatusBadge } from "@/components/sales/quotes/QuoteStatusBadge";
 import {
@@ -639,7 +639,7 @@ function QuoteActionButtons({
         day: "2-digit",
       }).format(new Date(quote.created_at));
       const rows = await downloadSingleQuoteExport(quote.id, quote.quote_number, dateIso);
-      toast.success(`فایل آسان ساخته شد: ${rows} سطر (مبلغ‌ها به ریال)`);
+      toast.success(`فایل آسان ساخته شد: ${toFaDigits(rows)} سطر (مبلغ‌ها به ریال)`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "خطا در ساخت خروجی آسان");
     } finally {

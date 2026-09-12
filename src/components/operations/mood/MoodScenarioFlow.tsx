@@ -3,6 +3,7 @@ import { useScenarioQuestions } from "@/hooks/operations/useDailyMood";
 import type { Question } from "@/lib/operations/daily-mood";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 type Answer = { question_key: string; question_text: string; value: unknown };
 
@@ -39,7 +40,7 @@ export function MoodScenarioFlow({
     <div dir="rtl" className="space-y-4">
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>
-          سؤال {step + 1} از {questions.length}
+          سؤال {toFaDigits(step + 1)} از {toFaDigits(questions.length)}
         </span>
         <div className="flex gap-1">
           {questions.map((_, i) => (

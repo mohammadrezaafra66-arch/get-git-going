@@ -28,7 +28,7 @@ import {
   type OwnerAttentionIssue,
   type OwnerAttentionGroup,
 } from "@/lib/pricing/owner-attention";
-import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatDateTimeFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/owner-attention")({
   beforeLoad: async () => {
@@ -154,7 +154,7 @@ function OwnerAttentionPage() {
               tone="danger"
             />
             <SummaryCard
-              label={`بیش از ${report.stale_threshold_days} روز آپدیت‌نشده`}
+              label={`بیش از ${toFaDigits(report.stale_threshold_days)} روز آپدیت‌نشده`}
               value={formatNumber(report.total_stale)}
               tone="warn"
             />

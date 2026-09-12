@@ -73,7 +73,7 @@ import type { WorkbenchScope } from "@/components/pricing/workbench/WorkbenchFil
 import { HealthReportTab } from "@/components/pricing/workbench/HealthReportTab";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
-import { formatNumber } from "@/lib/i18n/formatters";
+import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { publishProductPrices } from "@/lib/pricing/publish-prices";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
 import { ProductLabelsQuickDialog } from "@/components/products/ProductLabelsQuickDialog";
@@ -972,7 +972,7 @@ function MobileCard({
                   <TrendingDown className="h-3 w-3" />
                 )}
                 {priceDelta > 0 ? "+" : ""}
-                {priceDelta.toFixed(1)}٪
+                {toFaDigits(priceDelta.toFixed(1))}٪
               </span>
             )}
           </Label>

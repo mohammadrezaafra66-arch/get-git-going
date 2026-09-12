@@ -215,7 +215,9 @@ function PurchaseGamificationSettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-amber-500">{previewScore} امتیاز</div>
+              <div className="text-2xl font-bold text-amber-500">
+                {toFaDigits(previewScore)} امتیاز
+              </div>
               <Separator className="my-3" />
               <ul className="list-disc space-y-1 pr-5 text-xs text-muted-foreground">
                 <li>هزینه‌ی ضمنی روزانه‌ی این خرید = (۱۲۰٬۰۰۰ − ۱۰۰٬۰۰۰) ÷ ۱۰۰٬۰۰۰ ÷ ۳۰</li>

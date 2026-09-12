@@ -23,7 +23,7 @@ import {
   type PriceAlertRule,
   type PriceAlertNotification,
 } from "@/lib/pricing/price-alerts";
-import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatDateTimeFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/pricing/price-alerts")({
   beforeLoad: async () => {
@@ -159,7 +159,7 @@ function PriceAlertsPage() {
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        فعال‌شدن: {r.triggered_count}×{" "}
+                        فعال‌شدن: {toFaDigits(r.triggered_count)}×{" "}
                         {r.last_triggered_at && (
                           <>· آخرین: {formatDateTimeFa(r.last_triggered_at)}</>
                         )}

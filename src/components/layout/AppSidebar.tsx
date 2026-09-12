@@ -39,6 +39,7 @@ import { useNavigationFavorites } from "@/hooks/navigation/useNavigationFavorite
 import { useNavigationRecent } from "@/hooks/navigation/useNavigationRecent";
 import { FloatingReactionBurst } from "@/components/common/FloatingReactionBurst";
 import { BRANDING } from "@/config/branding";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -305,8 +306,8 @@ export function AppSidebar() {
               }`}
               title={
                 pricingAlertVariant === "alert"
-                  ? `${failedCount} مورد ناموفق در صف قیمت`
-                  : `${pendingPricing} مورد در انتظار در صف قیمت`
+                  ? `${toFaDigits(failedCount)} مورد ناموفق در صف قیمت`
+                  : `${toFaDigits(pendingPricing)} مورد در انتظار در صف قیمت`
               }
             >
               {pricingAlertVariant === "alert" ? failedCount : pendingPricing}

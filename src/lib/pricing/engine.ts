@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchLatestCurrencyRate, fetchLatestPurchasePrice, fetchProductLite } from "./queries";
 import { roundSalePrice, type CurrencyCode } from "./constants";
+import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 
 type SbClient = typeof supabase;
 
@@ -56,7 +57,13 @@ export class PricingError extends Error {
   }
 }
 
-const fmt = (n: number) => n.toLocaleString("en-US");
+/**
+ * Persian digits, en-US grouping -- delegates to the canonical helper in lib/i18n/formatters.
+ * These strings are Persian sentences shown verbatim in the breakdown panel, so Latin digits
+ * read as a foreign island inside an RTL run. `formatNumber` is what every other number on the
+ * same two screens already goes through; grouping and decimals are unchanged, only the glyphs.
+ */
+const fmt = (n: number) => formatNumber(n);
 
 /**
  * موتور قیمت‌گذاری افراکالا.
@@ -278,8 +285,8 @@ export async function calculateSalePrice(
     m.margin_type === "fixed"
       ? `سود (مبلغ ثابت): ${fmt(margin_amount)} تومان`
       : m.margin_type === "percent"
-        ? `سود (%${margin_value}): ${fmt(margin_amount)} تومان`
-        : `سود (ترکیبی %${margin_value} + ${fmt(fixed_margin_value ?? 0)}): ${fmt(margin_amount)} تومان`,
+        ? `سود (%${toFaDigits(margin_value)}): ${fmt(margin_amount)} تومان`
+        : `سود (ترکیبی %${toFaDigits(margin_value)} + ${fmt(fixed_margin_value ?? 0)}): ${fmt(margin_amount)} تومان`,
     `قیمت نهایی: ${fmt(final_sale_price)} → گرد شده: ${fmt(rounded_sale_price)} تومان`,
   ];
 

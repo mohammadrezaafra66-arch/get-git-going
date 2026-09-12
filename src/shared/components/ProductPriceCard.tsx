@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchSalePriceTypes } from "@/lib/pricing/queries";
-import { formatNumber, formatDateTimeFa, formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatDateTimeFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx } from "@/lib/rbac/roles";
 import { ProductRecommendationsCard } from "@/components/products/recommendations/ProductRecommendationsCard";
@@ -350,7 +350,7 @@ function PriceRow({ title, history }: { title: string; history: HistoryRow | und
         {history.old_sale_price != null && Number(history.old_sale_price) > 0 && (
           <span className={`inline-flex items-center gap-0.5 text-[11px] ${colorCls}`}>
             <Icon className="h-3 w-3" />
-            {Math.abs(change).toFixed(1)}٪
+            {toFaDigits(Math.abs(change).toFixed(1))}٪
           </span>
         )}
       </div>
