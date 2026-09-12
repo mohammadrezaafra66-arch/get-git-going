@@ -1,0 +1,28 @@
+
+Running 1 test using 1 worker
+
+[1/1] [chromium-o5] › test-results\o5\o5-gate-model.spec.ts:36:1 › cold sales session against gated and ungated admin routes
+[chromium-o5] › test-results\o5\o5-gate-model.spec.ts:36:1 › cold sales session against gated and ungated admin routes
+  /admin/automation              source=beforeLoad only            HTTP=200  landed=/admin/automation            *** RENDERED ***
+
+  /admin/gamification            source=beforeLoad only            HTTP=200  landed=/gamification/admin          REDIRECTED
+
+  /admin/gamification/achievements source=beforeLoad only            HTTP=200  landed=/gamification/admin          REDIRECTED
+
+  /admin/purchase                source=beforeLoad only            HTTP=200  landed=/admin/purchase              *** RENDERED ***
+
+  /admin/sales-reminders         source=beforeLoad only            HTTP=200  landed=/admin/sales-reminders       *** RENDERED ***
+
+  /admin/validation-rules        source=beforeLoad only            HTTP=200  landed=/admin/validation-rules      *** RENDERED ***
+
+  /admin/visitors                source=beforeLoad only            HTTP=200  landed=/admin/visitors              *** RENDERED ***
+
+  /admin/workflow-settings       source=beforeLoad only            HTTP=200  landed=/admin/workflow-settings     *** RENDERED ***
+
+  /admin/marketing-channels      source=nothing at all             HTTP=200  landed=/admin/marketing-channels    *** RENDERED ***
+
+  /admin/marketing-task-templates source=nothing at all             HTTP=200  landed=/admin/marketing-task-templates *** RENDERED ***
+
+  /admin/workflow-stages         source=nothing at all             HTTP=200  landed=/admin/workflow-stages       *** RENDERED ***
+
+  1 passed (20.7s)

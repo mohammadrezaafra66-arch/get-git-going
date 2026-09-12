@@ -1138,3 +1138,106 @@ Nothing thrown. Every console line falls into exactly two classes:
 meaning "page". `/admin/call-extensions` shows its real title «داخلی‌های تلفن» in the same state.
 The page's title is missing in its denied state; a user who lands there is told only "page".
 
+---
+
+# WAVE C · the `/admin` route gate inventory — measure only
+
+Thirty route files under `src/routes/_app.admin.*`. Every claim below is **live behaviour**, a cold
+browser context carrying only `salesperson-a`'s `storageState`, against `APP_GIT_SHA=c0804142`.
+Source reading alone was not trusted — and was wrong twice, which is the point of the section.
+
+## The mechanism, because the counts mean nothing without it
+
+There are **three** ways a route is protected in this codebase, and only two of them work.
+
+| mechanism | works? | how it presents |
+|---|---|---|
+| `staticData: { gate: … }` | **yes** | `RouteRoleGate` in `_app` denies in-page: «دسترسی ندارید…» |
+| `<Navigate to="/unauthorized">` driven by `useAuth` in the component | **yes** | browser redirects to `/unauthorized` |
+| `beforeLoad: requireAnyRole([...])` / `requireAdmin()` | **NO** | the page renders in full |
+
+**Why the third one fails, exactly** — `src/lib/rbac/route-guards.ts:183-185`:
+
+```ts
+export async function requireAnyRole(allowed: readonly AppRole[]) {
+  const resolved = await resolveAuthWithRetry();
+  if (!resolved) return { user: null, roles: [] as AppRole[] };   // <-- fail-open
+```
+
+When auth cannot be resolved the guard **returns success with no roles** instead of denying. On a
+cold URL entry — a user typing an address, which is precisely the case an authorization guard
+exists for — SSR is the only pass that runs `beforeLoad`, and the Supabase session lives in browser
+storage where SSR cannot see it. So `resolved` is falsy, the guard returns, and the route renders.
+
+The codebase already knows this. `src/routes/_app.admin.roles.tsx:46-49` says so in a comment:
+*"The shared guard cannot decide during SSR, and on a direct navigation SSR is the only pass that
+runs, so RouteRoleGate in `_app` enforces this on the client. This is the role-assignment screen: a
+cold `sales` session rendered it with 9 rows on 2026-09-06 before this line existed."*
+
+**That is the finding in one sentence: `beforeLoad` is not an authorization control on this stack,
+and eight admin routes are relying on it as if it were.**
+
+## The inventory
+
+**ENFORCED — 19 of 30** (verified by live denial or redirect where sampled)
+
+```
+staticData.gate admin        ai-providers · payment-terms · platform-releases · profile-fields
+                             recent-purchase-settings · roles · settings · system-health
+staticData.gate anyRole      asan-export · asan-import · audit · call-extensions
+                             delivery-receipts · documents · penalties · person-fields
+                             persons-cleanup · phone-collisions
+<Navigate>/useAuth           receipt-fields
+```
+
+**🔴 RENDERS IN FULL for a cold `sales` session — 9 of 30**
+
+| route | what it has | what it exposes |
+|---|---|---|
+| `/admin/automation` | `beforeLoad` only | automation centre incl. the Torob **job-enqueue form** |
+| `/admin/purchase` | `beforeLoad` only | purchase administration |
+| `/admin/sales-reminders` | `beforeLoad` only | sales reminder configuration |
+| `/admin/validation-rules` | `beforeLoad` only | validation rule configuration |
+| `/admin/visitors` | `beforeLoad` only | visitor records |
+| `/admin/workflow-settings` | `beforeLoad` only | workflow configuration |
+| `/admin/marketing-channels` | **nothing at all** | marketing channel configuration |
+| `/admin/marketing-task-templates` | **nothing at all** | marketing task templates |
+| `/admin/workflow-stages` | **nothing at all** | workflow stage configuration |
+
+**NOT ASSESSED — 2 of 30.** `/admin/gamification` and `/admin/gamification/achievements` both
+redirect to `/gamification/admin`. That is a route reorganisation, not an authorization outcome:
+whether a salesperson may see that destination is a separate question this inventory did not ask.
+
+## Two things this section got wrong before it got them right
+
+Both are recorded because they are the reason a source-only inventory is not good enough.
+
+**1. A fixed wait mislabelled a protected route as open.** The first run used
+`waitForTimeout(2500)` and reported `/admin/roles` — the role-assignment screen — as `RENDERED`
+for a salesperson. The screenshot showed «در حال بررسی جلسه کاربری…» — *checking user session* —
+a loading state. The page had not rendered; the probe was impatient. Replaced with an explicit
+wait for that text to disappear, and `/admin/roles` then correctly reports **DENIED**. A probe that
+cannot tell "still resolving" from "rendered" will manufacture a security finding, and this one
+briefly did.
+
+**2. A source scan missed an entire enforcement mechanism.** `/admin/receipt-fields` has no
+`staticData.gate` and no `beforeLoad`, so the first inventory classified it as unprotected. Live,
+it **redirects to `/unauthorized`** — it guards with `<Navigate>` and `useAuth` inside the
+component. One grep does not find all three mechanisms, which is itself the argument for the
+route inventory being live rather than static.
+
+## What this hands Security-3
+
+Not a slogan but a work list, in priority order:
+
+1. **Fix the fail-open at `route-guards.ts:185`.** Denying instead of returning on unresolved auth
+   converts eight routes from open to closed in one line — but it must be measured, not assumed,
+   because on a cold SSR pass *every* route would then deny, which is a different bug. The correct
+   shape is probably "defer to the client gate", not "throw".
+2. **Give the nine a `staticData.gate`.** That is the mechanism proven to work here.
+3. **Decide the three with nothing at all** — they never had any intent expressed, so someone has
+   to say who may see them.
+4. **Then pin it**: a spec asserting every `_app.admin.*` route carries a gate would have caught
+   all nine, and would catch the tenth.
+
+**Measured, not fixed** — S-1 belongs to Security-3, per instruction.
