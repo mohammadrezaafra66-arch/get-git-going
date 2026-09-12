@@ -1,0 +1,84 @@
+# known-ledger-lies.txt — versions pre-declared as understood ledger/catalogue disagreements.
+#
+# Format: one 14-digit version per line. Comment lines start with #. Consumed by
+# release/rehearse.ps1 -KnownLedgerLies <this file>.
+#
+# WHAT THIS FILE IS FOR
+#   release/lib/rehearse-engine.sh classifies a candidate as LEDGER-LIES when the ledger has a row
+#   for it but the live catalogue's evidence (docs/missions/prodprep/ledger-evidence.sh) shows the
+#   effect ABSENT. By default this ABORTS the whole rehearsal (the R-1 / migration-477 danger
+#   case). Naming a version here tells the engine "this specific disagreement is already
+#   understood and explained -- report it, touch nothing, continue" instead of aborting blind.
+#
+# CLAUDE.md rule 6 still applies: nothing here authorizes editing an old migration file or
+# re-running it against a database that no longer matches its assumptions. If a version below
+# turns out to be a REAL gap (not the supersession/regex-artifact explanation given), the fix is a
+# NEW forward migration, exactly as migrations 523/524 re-issued 477 for production's real table
+# shape -- never touching the file this list points at.
+#
+# HOW THIS LIST WAS BUILT (E-4, 2026-09-12/13, dry run against prod-20260913.dump into
+# prod_rehearsal_e4/prod_rehearsal_dbg -- see docs/research/convergence/E-4-proof.md)
+#   docs/missions/prodprep/ledger-evidence.sh was run directly (not through rehearse.ps1) against
+#   each of these 36 versions, and every ABSENT line it printed was read by hand. Every single one
+#   falls into one of two explainable buckets -- none looks like a genuine unapplied migration:
+#
+#   (a) SUPERSESSION (ledger-evidence.sh's own documented blind spot: "a migration whose object was
+#       later DROPPED by a still-later migration reads ABSENT even though it did run"). The large
+#       majority: `invoices`/`invoice_items` (renamed to `dual_documents` + `document_*`, see
+#       CLAUDE.md's Phase 2 unified-persons note and the preflight check for `public.dual_documents`
+#       in docs/runbooks/production-migration-20260908-BLOCKS.md:307), `waybills`/`waybill_items`
+#       (superseded by the document/attachment model), `capital_allocation_ledger` (explicitly
+#       retired -- commit 22eb65d7 "retire capital_allocation_ledger with its lock preserved"),
+#       `customer_capital_allocations`/`salesperson_capital_allocations` (consolidated into
+#       `customer_capital_allocations_dynamic`, the table CLAUDE.md rule 10 discusses), and several
+#       columns/indexes on those same superseded tables.
+#   (b) EXTRACTION-REGEX FALSE POSITIVE in ledger-evidence.sh itself (out of this partition's scope
+#       to fix -- the file belongs to the prodprep mission): its CREATE VIEW/INDEX regex matched
+#       bare SQL keywords as if they were object names -- "on", "IF", "DROPS", "drops", "would",
+#       "valid", "refuses", "accepts" are not real objects, they were pulled out of comments or
+#       DROP/CREATE-adjacent SQL text inside the migration body. `_og25_gate_probe` / `_og25_g378`
+#       / `_og25_g379` / `_og25_g380` are scratch probe views a migration creates AND DROPS again
+#       within its own body -- textbook same-file supersession, not a missing effect.
+#
+#   This is a SPOT-CHECKED, EXPLAINED judgment call for a dry-run proof, not a per-migration audit
+#   signed off for production. Before this file is trusted for an actual production release,
+#   Stage 2 (or whichever mission owns supabase/migrations at that time) should confirm each entry
+#   against the specific migration that superseded it, and ideally tighten ledger-evidence.sh's
+#   extraction regex to stop matching bare keywords (see docs/research/convergence/E-4-proof.md,
+#   "recommendations outside this partition's scope").
+20260424144837
+20260424162922
+20260427133517
+20260429112517
+20260429140006
+20260429150032
+20260430114832
+20260430201059
+20260506171839
+20260506195804
+20260506205326
+20260506211411
+20260506214117
+20260506230647
+20260517112723
+20260517160721
+20260616102000
+20260625014207
+20260626083132
+20260704181332
+20260715091854
+20260716162900
+20260722150000
+20260722170000
+20260724110000
+20260801230000
+20260802000000
+20260818156000
+20260822212000
+20260822234000
+20260823001000
+20260823010000
+20260824210000
+20260824234500
+20260906160000
+20260906201000
