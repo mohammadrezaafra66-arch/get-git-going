@@ -286,6 +286,9 @@ BEGIN
   END IF;
 END $$;
 
-INSERT INTO supabase_migrations.schema_migrations (version)
-VALUES ('20260913103000')
-ON CONFLICT (version) DO NOTHING;
+-- Ledger: this migration does NOT record its own row. The operator's `mig_apply` writes
+-- supabase_migrations.schema_migrations and expects `INSERT 0 1` as the proof that the row
+-- is new (CLAUDE.md rule 2b). A self-insert here made that step report a duplicate-key
+-- ERROR on a clean gate restore, which on the owner-typed production run is a stop
+-- condition. Removed 2026-09-12 by the Stage 2 gate; see docs/missions/convergence/
+-- INTEGRATION-LOG.md, "Step 3 - gate finding G-1".
