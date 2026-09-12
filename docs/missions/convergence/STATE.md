@@ -667,3 +667,128 @@ production answers `200` on the same path. Stage 2 needs that app for the deploy
 checks (O-5), so it is diagnosed before Stage 2, not now. Also: `e2e/auth/*.storage.json` are dated
 **2026-09-07** — five days stale — and §11 rule 2 requires a same-hour validity check
 (`e2e/auth/validate-role-sessions.spec.ts`) alongside any e2e count.
+
+---
+
+# STAGE 2 — integration and gate
+
+Branch `feature/conv-integration`, worktree `D:\AfraKalaTest\wt-conv-int`.
+**The full evidence trail is `docs/missions/convergence/INTEGRATION-LOG.md`, step by step.** This
+section is the summary and the verdict table; the log is the record.
+
+## What is in the release
+
+Six branches merged clean, zero conflicts, zero shared files:
+`feature/conv-migrations` (E-1, #444) · `conv-db-fixes` (E-2, #441) · `conv-ops` (E-5, #445) ·
+`conv-security` (E-6, #442) · `conv-frontend` (E-3, #443) · `conv-orchestrator-state` (docs).
+
+**Twelve migrations**, 526-528 · 530-536 · **537** · **538**. 529 reserved and unused — the gap is
+intentional.
+
+## Gate findings
+
+| id | severity | what | disposition |
+|---|---|---|---|
+| **G-1** | 🔴 | 535 and 536 each ended with `INSERT INTO supabase_migrations.schema_migrations … ON CONFLICT DO NOTHING`, making the operator's ledger step report a duplicate-key **ERROR** on a clean restore — a stop condition on the owner-typed run, on a migration that had succeeded | **fixed in the gate.** Swept all twelve afterwards: **zero executable ledger writes anywhere.** 526's header *claimed* it inserted its own row — prose, not SQL, and corrected because it reads as an instruction to re-add the defect |
+| **G-2** | 🟠 | 533's production branch (`current_database() = 'postgres'`) cannot be exercised on this host — no rehearsal DB may take that name | not a defect. Stage 3 must run a pg_cron pre-flight **on production** before the 533 block |
+| **G-3** | 🟠 | `authenticated` held `TRUNCATE` on **214 of 227** tables; TRUNCATE is not filtered by RLS, so the privilege was the entire protection | escalated by the owner from HANDOFF to **migration 537** |
+| **G-4** | 🔴 | F-9 localised the KPI subtitle in `AdminKpis()` and missed the byte-identical string in `SalesKpis()`; the salesperson dashboard rendered `0 تأیید · 0 در انتظار` in Latin digits | **fixed in the gate** (`c0804142`), re-proved by redeploy + screenshot |
+| **G-5** | 🔴 | Production never received migration 476's effect: **36** `public` functions are `anon`-executable outside the 17 documented exclusions, two of them SECURITY DEFINER writers with no caller check | **migration 538** |
+
+## 🔴 The orchestrator was PRODUCER and GATE on four artifacts
+
+**526's idempotency proof · G-4's fix · migration 537 · migration 538.**
+
+That is the weakest evidence in this stage and it is named here rather than buried. All four lead
+V-1's brief **with the requirement only** — no proof of mine, no header text of mine — and two of
+them carry an independent re-count that fails the artifact outright:
+
+- **537 RED** unless V-1's own restore counts `214 → 0` tables granting `TRUNCATE` to `authenticated`.
+- **538 RED** unless V-1's own restore counts **36** anon-executable functions with og102's predicate.
+
+A RED row leaves the release. That includes mine.
+
+## Numbers that the chain's falsification checks depend on
+
+| measure | production shape | after the twelve |
+|---|---|---|
+| ledger rows / top | **681 / `20260912150000`** | 693 / `20260913110000` |
+| tables (`relkind='r'`) | 227 | 228 |
+| views + matviews (`relkind IN ('v','m')`) | **24** | **24** |
+| anon-readable relations | **20** | **20** |
+| anon-executable `public` functions | 544 | **505** |
+| anon-exec outside og102's 17 exclusions | **39** | **36 → 0** after 538 |
+| `authenticated` holding TRUNCATE | **214** | **0** |
+| `SECURITY DEFINER` functions | 446 | 444 |
+| `persons` / `audit_logs` rows | 4,857 / 112,696 | **unchanged** |
+
+Dump: `/tmp/prod13.dump`, md5 **`6ccd2dbb07a9a4d9bbae4421eb3265e0`**, 35,424,962 bytes.
+`pg_restore` exits 1 with **exactly 21** errors, all pg_cron/vault, zero data-load errors.
+
+**Idempotency: all twelve re-applied to the already-migrated database produce a state identical
+across 15,422 snapshot lines** (relations, view definitions, columns, defaults, function bodies,
+policy `qual`/`with_check`, constraints, triggers, grants, per-function EXECUTE, indexes).
+
+## Test results, with attribution
+
+| suite | production shape | after the twelve |
+|---|---|---|
+| og81 / og102 / og103 | 8 failed · 11 passed | **7 failed · 12 passed** |
+| scoped DB suite (16 specs) | 27 failed · 63 passed · 1 skipped | **19 failed · 71 passed · 1 skipped** |
+| `validate-role-sessions` | — | **5 passed**, same hour |
+| O-5 cold sessions | — | **2 passed** |
+| typecheck | — | **70 errors / 6 files — the baseline exactly** |
+| build · deploy | — | pass · `APP_GIT_SHA=c0804142` = HEAD |
+
+**Eight tests moved red → green. Nothing moved green → red, at any of the three steps** (ten, +537,
++538). Every residual failure is red on production's own shape, measured on a restore taken minutes
+earlier — which is the discipline og61 went a whole day without.
+
+## Accepted divergence and decisions
+
+- **OG-C** — 373: ledger row only, never re-run, and only after `anon_default_acl = 0` checks out.
+- **OG-J** — 449/450/452: permanently skipped, **no ledger row**, because nothing did their work.
+  Consequence: **six `zz_retired_*` names, plus `payment_receipts_backup_20260722`, differ between
+  test and production forever.** That divergence is exactly what made 477 abort. The rule it leaves:
+  **a migration whose target set is a list of names generated on one database cannot be applied to
+  the other.**
+- **OG-A** — 411/412/413 ship as-is in their own release block.
+
+## 🔴 HANDOFF — Docker Desktop loses published ports, twice in one mission
+
+A container reports `Up (healthy)`, is reachable **inside** the Docker network, and answers nothing
+on its published host port. It has now happened to two different containers on this machine:
+
+```
+afrakala-lan-web   :3100 answered from PostgREST (Server: postgrest/12.2.0) behind a healthy container
+afrakala-lan-kong  :9000/auth/v1/health -> http=000 from the host
+                   wget http://kong:8000/auth/v1/health from inside -> {"name":"GoTrue",...}
+```
+
+**The remedy is one line, and it is the same both times: `docker restart <container>`.** Restarting
+Docker Desktop is **not** needed and, on 2026-08-26, did not actually execute.
+
+Two corollaries worth more than the fix:
+- **`Up (healthy)` is not evidence the app is reachable.** The healthcheck probed a path PostgREST
+  also answers. A deploy check must assert `content-type: text/html` **and the absence of a
+  `Server:` header**, not just `200`.
+- It silently breaks the auth harness: `generate-role-sessions` cannot reach the Auth Admin API, and
+  a five-day-old session set then produces a suite-wide red that looks like a regression. That cost
+  189 false failures on 2026-08-27.
+
+Also for HANDOFF, found in Wave B:
+
+- **The app opens a Realtime websocket that nothing serves.** `ws://…:9000/realtime/v1/websocket`
+  returns **404** — the LAN compose file declares **no `realtime` service** and no container exists.
+  Every user sees a permanent red «اتصال زنده قطع است» badge on every page. Production runs the same
+  compose family. A permanently-red status indicator trains people to ignore status indicators.
+- **`node_modules` on this machine was last installed 2026-07-29** and was missing `mysql2`, which
+  `package.json` has declared since PR #434. Any local typecheck read **72/7** instead of 70/6 until
+  `npm install` was run. The release line must install before it trusts a typecheck number.
+- **A rehearsal restored with `pg_restore --no-owner` as `supabase_admin` gives `supabase_admin`
+  ownership of everything**, so the e2e helpers' `postgres` role cannot read `auth.users`. Specs
+  then fail for a reason unrelated to the migration under test. `GRANT ALL ON ALL TABLES IN SCHEMA
+  auth, public TO postgres` on the scratch database clears it.
+- **`generate-role-sessions.spec.ts` deletes all six `storageState` files before rebuilding them.**
+  If it then fails, there are none. A copy taken into another worktree is not a safeguard if the
+  generator will also run there.
