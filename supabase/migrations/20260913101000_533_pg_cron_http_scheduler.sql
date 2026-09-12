@@ -3,6 +3,45 @@ SET client_encoding='UTF8';
 -- ============================================================================================
 -- 533 · the scheduler (E-5 / mission Convergence)
 --
+-- ╔══════════════════════════════════════════════════════════════════════════════════════════╗
+-- ║ OWNER DECISION — this migration installs the `http` extension on the `postgres` database ║
+-- ╚══════════════════════════════════════════════════════════════════════════════════════════╝
+--
+-- Approved by the owner. Recorded here in plain terms so the release block can quote it, and so
+-- that nobody has to infer the consequence from a one-line CREATE EXTENSION.
+--
+-- WHAT IT GRANTS. `http` (pgsql-http 1.6) gives the DATABASE ITSELF the ability to make
+-- outbound network requests — GET, POST, PUT, PATCH, DELETE, HEAD to any URL reachable from the
+-- database container, with arbitrary headers and bodies. Until now this database could only be
+-- talked TO; afterwards it can also talk OUT. Concretely this means:
+--
+--   * Any code that can execute an http_* function can reach anything the DB container's
+--     network can reach, INCLUDING hosts the application server cannot — other machines on the
+--     LAN, and cloud metadata endpoints. The database becomes a potential pivot point.
+--   * Requests leave as the database container, not as a named user. An outbound call is not
+--     attributable to an end user by anything outside this database's own logging.
+--   * Data exfiltration becomes a single statement: a SELECT can be sent to an external URL by
+--     anyone able to run http_post. That is why §1b below closes all 19 functions explicitly
+--     rather than relying on an inherited default privilege.
+--   * A slow or hanging remote host holds a database session (and, under pg_cron, a worker)
+--     open for the duration.
+--
+-- WHY IT IS WANTED. It is the transport for the Issabel CDR importer: `run_issabel_import()`
+-- (§2) calls the importer endpoint on a schedule. There is no in-database alternative that does
+-- not add a sidecar container and a manual deploy step — the alternative C-2 measured and
+-- rejected.
+--
+-- WHAT BOUNDS IT. (a) It is created ONLY on a database literally named `postgres` (§1), so the
+-- test host's `afrakala` and every rehearsal copy never get it. (b) All 19 of its functions are
+-- revoked from PUBLIC, anon and authenticated in this same migration, with a gate that fails
+-- the migration if any is still reachable (§1b) — so the capability is available to
+-- `supabase_admin`/`postgres` and to nothing a browser can reach.
+--
+-- WHAT IS NOT BOUNDED, and the owner should know it: nothing here restricts WHICH hosts the
+-- database may call. `http` has no allowlist. A superuser, or anything running as one, can call
+-- any URL. If that is not acceptable, the control has to be a network policy on the DB
+-- container, which is outside this migration.
+--
 -- Verdict this migration implements: docs/missions/prodprep/C2-cron-verdict.md — pg_cron, in
 -- database `postgres`, driving the Issabel importer through the `http` extension. C-2 measured
 -- that pg_cron 1.6 is already loaded and already running five `afrakala-*` jobs on this host's
@@ -122,11 +161,125 @@ SET client_encoding='UTF8';
 -- ============================================================================================
 
 -- ────────────────────────────────────────────────────────────────────────────────────────────
--- 1) http extension — NOT restricted to database `postgres`. Measured tonight: creating it on
---    prod_rehearsal_e5 (a copy of afrakala) succeeds (`extversion 1.6`) while pg_cron on the
---    same database refuses outright. Safe to create unconditionally.
+-- 1) http extension — GUARDED to database `postgres`, exactly like the pg_cron half in §5.
+--
+--    This line used to read `CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;` with
+--    no guard at all, on the reasoning recorded here before: "creating it on prod_rehearsal_e5
+--    (a copy of afrakala) succeeds (extversion 1.6) while pg_cron on the same database refuses
+--    outright. Safe to create unconditionally."
+--
+--    That reasoning confused CAN with SHOULD. `http` succeeding on any database is precisely
+--    what makes the unguarded form dangerous: every scratch, rehearsal and app database this
+--    migration is ever applied to silently gains the ability to make outbound network calls,
+--    even though only the `postgres` database has a scheduler to use it. Measured: `http` is
+--    absent from the production dump's TOC (`pg_restore -l /tmp/prod13.dump | grep EXTENSION`
+--    lists pg_cron, pgsodium, btree_gist, pg_graphql, pg_stat_statements, pg_trgm, pgcrypto,
+--    pgjwt, supabase_vault — and no http) and absent from `afrakala`. It was present on the
+--    rehearsal databases for one reason only: this line had already run there.
+--
+--    Same `current_database() = 'postgres'` condition and same dynamic-SQL (`EXECUTE`) shape as
+--    §5, for the same reason given there — when the branch is not taken, PL/pgSQL never has to
+--    resolve the statement against a catalogue that may not contain the objects.
 -- ────────────────────────────────────────────────────────────────────────────────────────────
-CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
+DO $$
+BEGIN
+  IF current_database() = 'postgres' THEN
+    EXECUTE 'CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions';
+  ELSE
+    RAISE NOTICE '533: current_database() = %, not "postgres" -- the http extension is SKIPPED '
+      'on purpose, exactly like pg_cron and the eight job rows in section 5. Everything else '
+      'this migration creates (the wrapper functions, their REVOKEs, and 534''s cron_run_log) '
+      'is still created. See this migration''s header comment.', current_database();
+  END IF;
+END $$;
+
+-- ────────────────────────────────────────────────────────────────────────────────────────────
+-- 1b) Close every function `http` installs — the 507 rule, applied to the one capability in
+--     this release that reaches outside the database.
+--
+--     DELIBERATELY NOT INSIDE THE GUARD ABOVE. The list is derived from the catalogue, so on a
+--     database without `http` the loop simply finds nothing and this is a no-op; whereas on a
+--     database that DOES have `http` — including any rehearsal copy where the previous
+--     unguarded version of this very line already installed it — the REVOKEs still run and
+--     close it. Guarding this half too would leave exactly those databases open.
+--
+--     Derived from `pg_depend`, never typed: the extension installs 19 functions at version 1.6
+--     (http, http_get ×2, http_post ×2, http_put, http_patch, http_delete ×2, http_head,
+--     http_header, http_set_curlopt, http_reset_curlopt, http_list_curlopt, urlencode ×3,
+--     text_to_bytea, bytea_to_text) and a different version would install a different set.
+--
+--     Measured before this block was written: all 19 already read closed to anon, authenticated
+--     and service_role — `proacl` is `supabase_admin=X/supabase_admin` alone. That closure came
+--     entirely from migration 393's global FUNCTIONS default revoke, which this file never
+--     mentions and which no reader of this file would know to check. The statements below make
+--     the protection explicit rather than inherited; they change nothing today and are here so
+--     that a future `ALTER DEFAULT PRIVILEGES`, or an `http` installed on a database 393 never
+--     touched, cannot quietly open them.
+-- ────────────────────────────────────────────────────────────────────────────────────────────
+DO $$
+DECLARE
+  r     record;
+  v_n   int := 0;
+BEGIN
+  FOR r IN
+    SELECT p.oid::regprocedure AS sig,
+           CASE WHEN p.prokind = 'p' THEN 'PROCEDURE' ELSE 'FUNCTION' END AS kind
+      FROM pg_depend d
+      JOIN pg_extension e ON e.oid = d.refobjid
+      JOIN pg_proc     p ON p.oid  = d.objid
+     WHERE d.refclassid = 'pg_extension'::regclass
+       AND d.classid    = 'pg_proc'::regclass
+       AND e.extname    = 'http'
+  LOOP
+    EXECUTE format('REVOKE EXECUTE ON %s %s FROM PUBLIC', r.kind, r.sig);
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+      EXECUTE format('REVOKE EXECUTE ON %s %s FROM anon', r.kind, r.sig);
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+      EXECUTE format('REVOKE EXECUTE ON %s %s FROM authenticated', r.kind, r.sig);
+    END IF;
+    v_n := v_n + 1;
+  END LOOP;
+
+  IF v_n = 0 THEN
+    RAISE NOTICE '533: the http extension is not installed on this database -- nothing to '
+      'revoke (documented no-op).';
+  ELSE
+    RAISE NOTICE '533: % http function(s) explicitly closed to PUBLIC, anon and authenticated.',
+      v_n;
+  END IF;
+END $$;
+
+-- GATE: if `http` is installed here, not one of its functions may be reachable by anon,
+-- authenticated or PUBLIC. A database that can make outbound HTTP requests is a new capability
+-- and this is the assertion that it did not arrive open.
+DO $$
+DECLARE
+  v_open text[];
+BEGIN
+  SELECT array_agg((p.oid::regprocedure)::text ORDER BY (p.oid::regprocedure)::text)
+    INTO v_open
+    FROM pg_depend d
+    JOIN pg_extension e ON e.oid = d.refobjid
+    JOIN pg_proc     p ON p.oid  = d.objid
+   WHERE d.refclassid = 'pg_extension'::regclass
+     AND d.classid    = 'pg_proc'::regclass
+     AND e.extname    = 'http'
+     AND (
+          (EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+           AND has_function_privilege('anon', p.oid, 'EXECUTE'))
+       OR (EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated')
+           AND has_function_privilege('authenticated', p.oid, 'EXECUTE'))
+       OR EXISTS (SELECT 1 FROM unnest(COALESCE(p.proacl, '{}'::aclitem[])) AS a
+                   WHERE a::text ~ '^=[a-zA-Z]*X')
+     );
+
+  IF v_open IS NOT NULL THEN
+    RAISE EXCEPTION '533 HTTP GATE: outbound-HTTP function(s) reachable by anon, authenticated '
+      'or PUBLIC: %', array_to_string(v_open, ', ');
+  END IF;
+  RAISE NOTICE '533 HTTP GATE OK: no http function is reachable by anon, authenticated or PUBLIC.';
+END $$;
 
 -- ────────────────────────────────────────────────────────────────────────────────────────────
 -- 2) run_issabel_import() — C-2 / D-39. Lives in whichever database this migration is applied
@@ -169,6 +322,31 @@ CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
 -- and the SECURITY DEFINER/SET one above) were caught by actually CALLing this procedure against
 -- prod_rehearsal_e5, not by reasoning about PL/pgSQL from memory -- see the proof doc for the
 -- exact error text each produced before the fix and the successful run after it.
+-- ── CONSEQUENCE OF GUARDING THE http INSTALL IN §1, HANDLED HERE ────────────────────────────
+-- This procedure DECLAREs `v_resp extensions.http_response` and calls extensions.http*(). With
+-- `check_function_bodies = on` (the default) PL/pgSQL resolves declared types at CREATE time,
+-- not at call time. So the moment §1 stopped installing `http` on every database, this CREATE
+-- began to fail on any database not named `postgres`. Measured, on a fresh restore of
+-- prod13.dump with the guard in place and this mitigation absent:
+--
+--   psql:/tmp/f533.sql:388: ERROR:  type "extensions.http_response" does not exist
+--   533 exit=3
+--
+-- The procedure is deliberately still created everywhere rather than being guarded away too,
+-- because three things downstream name it unconditionally: the COMMENT and the four
+-- REVOKE/GRANT statements immediately below (a REVOKE on an absent procedure is an ERROR, which
+-- would abort the migration), and docs/research/convergence/E-5-proof.md:235, which CALLs it on
+-- a rehearsal database as part of the existing verification.
+--
+-- So body validation is suspended for this one statement, and ONLY on a database where the type
+-- genuinely does not exist. Where `http` IS installed -- production's `postgres` database, the
+-- one that actually runs this job -- validation stays ON and the body is checked exactly as
+-- before. This uses the same psql \gset idiom migration 526 uses rather than a DO block,
+-- because SET cannot be scoped this way from inside PL/pgSQL.
+SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'http')
+            THEN 'on' ELSE 'off' END AS m533_cfb \gset
+SET check_function_bodies = :'m533_cfb';
+
 CREATE OR REPLACE PROCEDURE public.run_issabel_import()
 LANGUAGE plpgsql
 AS $fn$
@@ -233,6 +411,9 @@ BEGIN
   END IF;
 END;
 $fn$;
+
+-- Restore body validation immediately: every later CREATE in this file must still be checked.
+RESET check_function_bodies;
 
 COMMENT ON PROCEDURE public.run_issabel_import() IS
   'C-2 / D-39. Called by pg_cron jobs "afrakala-issabel-import-h30" and '

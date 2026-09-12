@@ -229,3 +229,181 @@ class is a gate in CI, not a migration.
   release block already recorded.
 - `e2e/security/og61-...spec.ts` was **not** run (no test runner invoked in this session); its
   text was read as evidence, not executed.
+
+---
+
+# Item 2 · Migration 533 — guard `CREATE EXTENSION http`, and close what it creates
+
+**Status: done. One consequence was NOT anticipated by the brief and had to be fixed inside the
+same migration — read "The guard broke the procedure" below.**
+
+`533`'s md5 changed: `610c55e02d9480d7082f50950b0e1bfd` -> `578a8fe284db579be13ff326b6f599d4`.
+The release block must re-record it.
+
+## What was there
+
+Line 129, outside every guard:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS http WITH SCHEMA extensions;
+```
+
+with a comment justifying it: *"NOT restricted to database `postgres`. … creating it on
+prod_rehearsal_e5 (a copy of afrakala) succeeds (`extversion 1.6`) while pg_cron on the same
+database refuses outright. **Safe to create unconditionally.**"*
+
+That confused *can* with *should*. `http` succeeding everywhere is what makes the unguarded form
+dangerous. Measured:
+
+```
+$ pg_restore -l /tmp/prod13.dump | grep EXTENSION
+  pg_cron, pgsodium, btree_gist, pg_graphql, pg_stat_statements, pg_trgm,
+  pgcrypto, pgjwt, supabase_vault        <- no http
+
+$ psql -d afrakala -c "SELECT extname FROM pg_extension WHERE extname='http'"
+(empty)
+
+$ psql -d prod_rehearsal_fix (fresh restore, before any migration)
+ http extension rows: 0
+```
+
+So `http` is in neither production nor `afrakala`. It was on the rehearsal databases for exactly
+one reason: this line had already run there.
+
+## The three conditions
+
+1. **Guarded, same shape as the pg_cron half** — `IF current_database() = 'postgres' THEN
+   EXECUTE '…' ELSE RAISE NOTICE … END IF`, dynamic SQL so an unreached branch never resolves
+   against a catalogue that lacks the objects.
+2. **All 19 functions revoked from PUBLIC, anon, authenticated**, derived from `pg_depend`
+   against the extension, never typed. Plus a gate that fails the migration if any remains
+   reachable.
+3. **`OWNER DECISION` block** added to the file header, stating in plain terms what installing
+   `http` grants the database — outbound GET/POST/PUT/PATCH/DELETE/HEAD to any reachable URL,
+   the database as a network pivot, requests unattributable to an end user, exfiltration in a
+   single statement, sessions held open by a slow remote — what bounds it, and what does **not**:
+   *`http` has no host allowlist; restricting which hosts the DB may call is a network policy on
+   the container, outside this migration.*
+
+**§1b is deliberately NOT inside the guard.** It is catalogue-driven, so on a database without
+`http` the loop finds nothing and no-ops; on a database that *does* have it — including every
+rehearsal copy where the previous unguarded line already installed it — the REVOKEs still run.
+Guarding this half too would have left exactly those databases open.
+
+## The guard broke the procedure (E4, both halves)
+
+The brief asked what guarding `http` means for the other objects 533 creates. It means one of
+them stops being creatable, and this was found by applying the file, not by reading it.
+
+`run_issabel_import()` declares `v_resp extensions.http_response`. With
+`check_function_bodies = on` (the default) PL/pgSQL resolves **declared types at CREATE time**.
+On a fresh restore, guard in place, mitigation absent:
+
+```
+psql:/tmp/f533.sql:388: ERROR:  type "extensions.http_response" does not exist
+533 exit=3
+```
+
+The procedure could not simply be guarded away too, because three things name it
+unconditionally: the `COMMENT`, the four `REVOKE`/`GRANT` statements right after it (a REVOKE on
+an absent procedure is an ERROR that would abort the migration), and
+`docs/research/convergence/E-5-proof.md:235`, which CALLs it on a rehearsal database as part of
+the existing verification.
+
+Fix, using migration 526's own `\gset` idiom — validation suspended for this one statement and
+**only where the type genuinely does not exist**:
+
+```sql
+SELECT CASE WHEN EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'http')
+            THEN 'on' ELSE 'off' END AS m533_cfb \gset
+SET check_function_bodies = :'m533_cfb';
+CREATE OR REPLACE PROCEDURE public.run_issabel_import() …
+RESET check_function_bodies;
+```
+
+On production's `postgres` database — the one that actually runs this job — `http` is present,
+so validation stays **on** and the body is checked exactly as before.
+
+After the fix, same fresh restore:
+
+```
+NOTICE:  533: current_database() = prod_rehearsal_fix, not "postgres" -- the http extension is
+         SKIPPED on purpose, exactly like pg_cron and the eight job rows in section 5.
+NOTICE:  533: the http extension is not installed on this database -- nothing to revoke
+         (documented no-op).
+NOTICE:  533 HTTP GATE OK: no http function is reachable by anon, authenticated or PUBLIC.
+NOTICE:  533: current_database() = prod_rehearsal_fix, not "postgres" -- pg_cron extension and
+         all eight job rows are SKIPPED on purpose.
+533 exit=0
+```
+
+## Full release still applies on a fresh production-shape restore (E3)
+
+Fresh restore (681 rows, top `20260912150000`, 21 pg_restore errors, http absent), then all
+thirteen in filename order, md5 verified both sides on each:
+
+```
+526 exit=0   527 exit=0   528 exit=0   530 exit=0   531 exit=0   532 exit=0
+533 exit=0 (md5 578a8fe284db579be13ff326b6f599d4)
+534 exit=0   535 exit=0   536 exit=0   537 exit=0   538 exit=0   539 exit=0
+```
+
+End state:
+
+```
+ http_extension_rows | 0                       <- guard held
+ run_issabel_import()| prokind=p | anon=f | authenticated=f | service_role=t
+```
+
+The procedure still exists and is still closed to browsers — i.e. the guard cost nothing that
+533 was relying on.
+
+## Second pass changes nothing (E3)
+
+```
+PASS2: no errors      PASS2 exit=0
+http rows after pass 2: 0
+```
+
+## The REVOKE path and its gate are not dead code (E4)
+
+Since the guard means `http` is never installed here, the §1b loop would otherwise be untested.
+Probed inside `BEGIN; … ROLLBACK;` by simulating the postgres branch:
+
+```
+--- [1] CREATE EXTENSION http   ->  http_functions = 19
+--- [2] GRANT EXECUTE ON extensions.http_post(...) TO authenticated  ->  authd_can_post = t
+--- [3] 533 HTTP GATE re-run in that state:
+ERROR:  533 HTTP GATE: outbound-HTTP function(s) reachable by anon, authenticated or PUBLIC:
+        http_post(character varying,character varying,character varying)
+ROLLBACK
+```
+
+The loop does find all 19, and the gate **fails** when a hole exists. Nothing persisted.
+
+## The honest cost — this is a real reduction, not a pure win
+
+On this host **no rehearsal database can be named `postgres`** (that name is the live cluster's
+own database, which is out of bounds). So after this change:
+
+- The `http` install is **unexercisable here**, exactly like the pg_cron half. Nobody can
+  rehearse it before it runs on production.
+- The §1b REVOKE of the 19 functions, and the HTTP GATE's passing path, are likewise never
+  exercised on a real apply here — only the no-op branch is. The probe above simulates them in a
+  rolled-back transaction, which is weaker evidence than an actual apply.
+- `docs/research/convergence/E-5-proof.md`'s successful `CALL public.run_issabel_import()` on a
+  rehearsal database is **no longer reproducible**, because that database will no longer have
+  `http`. That proof was only obtainable because the unguarded line ran.
+
+What was traded away is rehearsal coverage of the `http` path; what was bought is that no
+database except the one that needs it silently gains outbound network capability. I think that
+is the right trade, but it *is* a trade, and the owner should see it as one.
+
+## Not done
+
+- `service_role` was **not** revoked from the http functions. The brief specified PUBLIC, anon
+  and authenticated, and `service_role` is the server-side identity; narrowing it is a separate
+  decision. Flagging it anyway: `service_role` is a real credential, and a database with
+  outbound HTTP plus a leaked service key is a worse combination than either alone. Worth a
+  decision, not taken here.
+- Nothing was run against the `postgres` database or the production laptop.
