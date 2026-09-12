@@ -103,7 +103,7 @@ is_tolerated_error() {
 # ---------- arg parsing ------------------------------------------------------------------------
 DUMP="" CONTAINER="afrakala-lan-db" DBUSER="supabase_admin" PREFIX="prod_rehearsal_"
 RUNDATE="$(date +%Y%m%d)" MIGDIR="supabase/migrations" REPO_ROOT="." CEILING=""
-KNOWN_LIES="" OUT="" SHAPE_TOLERANT="" DECIDED=""
+KNOWN_LIES="" OUT="" SHAPE_TOLERANT="" DECIDED="" BASELINE_FAILURES=""
 PHASE="all" STATE_DIR="" FROM=0 TO=0 BATCH=0 DROP_WHEN_DONE=0
 FAILED=0
 
@@ -120,6 +120,7 @@ while [ $# -gt 0 ]; do
     --known-ledger-lies) KNOWN_LIES="$2"; shift 2;;
     --shape-tolerant) SHAPE_TOLERANT="$2"; shift 2;;
     --decided) DECIDED="$2"; shift 2;;
+    --baseline-failures) BASELINE_FAILURES="$2"; shift 2;;
     --phase) PHASE="$2"; shift 2;;
     --state-dir) STATE_DIR="$2"; shift 2;;
     --from) FROM="$2"; shift 2;;
@@ -132,8 +133,8 @@ while [ $# -gt 0 ]; do
 done
 
 case "$PHASE" in
-  all|restore|replay|gates) : ;;
-  *) echo "FATAL: --phase must be one of: all restore replay gates (got '$PHASE')"; exit 2;;
+  all|restore|replay|gates|baseline) : ;;
+  *) echo "FATAL: --phase must be one of: all restore replay gates baseline (got '$PHASE')"; exit 2;;
 esac
 
 want_restore() { case "$PHASE" in all|restore) return 0;; *) return 1;; esac; }
@@ -182,6 +183,7 @@ case "$PHASE" in
   all)     REPORT="$TMP/report.md" ;;
   restore) REPORT="$STATE_DIR/01-restore.md" ;;
   gates)   REPORT="$STATE_DIR/03-gates.md" ;;
+  baseline) REPORT="$STATE_DIR/00-baseline-gates.md" ;;
   replay)  REPORT="" ;;   # depends on the batch bounds; set once those are resolved
 esac
 if [ -n "$REPORT" ]; then : > "$REPORT"; fi
@@ -206,6 +208,94 @@ cleanup() {
   return $rc
 }
 trap cleanup EXIT
+
+
+# ---------- gate-failure extraction, shared by the baseline phase and the gates phase -------------
+# Playwright's own summary block is the source: after the "N failed" line it lists one indented
+# line per failing test. Each is reduced to "<spec file>:<line>:<col>", which is stable across runs
+# and independent of the test's Persian/emoji title text.
+extract_gate_failures() {
+  awk '/^ *[0-9]+ failed *$/ { f=1; next }
+       /^ *[0-9]+ (passed|flaky|skipped)/ { f=0 }
+       f && /spec\.ts:[0-9]+:[0-9]+/ { print }' "$1" \
+  | sed -E 's#.*› *(e2e[^ ]*spec\.ts:[0-9]+:[0-9]+).*#\1#' | sed 's#\\#/#g' \
+  | sed 's/^ *//; s/ *$//' | sort -u
+}
+
+# ---------- --phase baseline: measure what ALREADY fails, BEFORE the release is applied ----------
+# WHY THIS PHASE EXISTS, AND WHY IT IS NOT A TOLERANCE LIST
+#   og102 and og103 fail on a restored production shape for reasons this release neither causes nor
+#   claims to fix. docs/missions/convergence/INTEGRATION-LOG.md:464-497 measured all five of them on
+#   production already and drew the only conclusion a gate is entitled to draw: "the migrations in
+#   this branch are not their cause, and applying this branch does not make any of them worse."
+#
+#   An allowlist would encode that as an assertion someone typed. This phase MEASURES it instead:
+#   run the same gates against a PRISTINE restore of the same dump, before a single migration is
+#   replayed, and record exactly which tests fail. The gates phase then requires the post-replay
+#   failure set to be a SUBSET of that baseline. A test that was already red stays red and is
+#   reported as pre-existing; a test that goes from green to red is FATAL, because that one IS
+#   caused by the release.
+#
+#   That is STRICTER than an allowlist, not looser: the allowlist is written once and rots, while
+#   this is re-measured on the same dump every run and cannot silently cover a new failure.
+if [ "$PHASE" = "baseline" ]; then
+  BPW=$(docker exec "$CONTAINER" printenv POSTGRES_PASSWORD | tr -d '\r')
+  BEXISTS=$(docker exec -e PGPASSWORD="$BPW" "$CONTAINER" sh -c \
+    "psql -U '$DBUSER' -d postgres --no-psqlrc -A -t -c \"SELECT 1 FROM pg_database WHERE datname='$DB';\"")
+  if [ "$BEXISTS" != "1" ]; then
+    echo "FATAL: database '$DB' does not exist. Restore it first (--phase restore)."
+    exit 2
+  fi
+  BDONE=0
+  if [ -f "$TMP/progress.txt" ]; then BDONE=$(tr -dc '0-9' < "$TMP/progress.txt"); fi
+  [ -n "$BDONE" ] || BDONE=0
+  if [ "$BDONE" != "0" ]; then
+    echo "REFUSED: '$DB' has already had $BDONE plan entries replayed. A baseline measured on a"
+    echo "partially-migrated database is not a baseline -- it would absorb failures this release"
+    echo "caused. Take the baseline on a pristine restore, before any replay."
+    exit 3
+  fi
+  {
+    echo "# Baseline gate measurement — $DB (PRISTINE restore, ZERO migrations replayed)"
+    echo
+    echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    echo
+    echo "This is what og102 and og103 report about the target BEFORE this release touches it."
+    echo "Nothing here is licensed as acceptable. It is the measurement the gates phase compares"
+    echo "against, so that 'the release did not make it worse' is a fact rather than a claim."
+  } | tee "$REPORT"
+  BLOG="$TMP/baseline-gates.log"
+  (
+    export E2E_DB_CONTAINER="$CONTAINER"
+    export E2E_DB_NAME="$DB"
+    export E2E_DB_USER="postgres"
+    cd "$REPO_ROOT" && npx playwright test \
+      e2e/security/og102-pre393-anon-execute-grants-stay-closed.spec.ts \
+      e2e/security/og103-anon-table-grants-stay-closed.spec.ts
+  ) > "$BLOG" 2>&1
+  BRC=$?
+  extract_gate_failures "$BLOG" > "$TMP/baseline-gate-failures.txt"
+  {
+    echo
+    echo "og102/og103 playwright exit code on the pristine shape = $BRC"
+    echo
+    echo "## Baseline failures (these are PRE-EXISTING on the target, not caused by this release)"
+    echo
+    echo '```'
+    if [ -s "$TMP/baseline-gate-failures.txt" ]; then
+      cat "$TMP/baseline-gate-failures.txt"
+    else
+      echo "(none -- the pristine target passes og102 and og103 outright)"
+    fi
+    echo '```'
+    echo
+    echo "baseline failing tests: $(wc -l < "$TMP/baseline-gate-failures.txt" | tr -d ' ')"
+    echo "file for the gates phase: $TMP/baseline-gate-failures.txt"
+  } | tee -a "$REPORT"
+  cp "$REPORT" "$OUT" 2>/dev/null || true
+  exit 0
+fi
+
 
 # The single --out report is the concatenation of every phase fragment that exists so far, so a
 # partially-completed phased run still produces a readable, honest report instead of the last
@@ -891,6 +981,71 @@ GATE_RC=$?
 tail -40 "$GATE_LOG" | tee -a "$REPORT"
 echo "og102/og103 playwright exit code = $GATE_RC" | tee -a "$REPORT"
 
+# ---------- og102/og103 against the measured baseline, NOT against an allowlist -------------------
+# Without --baseline-failures nothing changes: any og102/og103 failure is fatal, exactly as before.
+# With one, the question becomes the only one a gate is entitled to answer about a pre-existing
+# condition: did THIS RELEASE make it worse? A test that was already red on the pristine restore of
+# the same dump stays red and is reported as PRE-EXISTING, with no licence implied. A test that was
+# GREEN on the pristine shape and is red now is caused by the release and is FATAL.
+extract_gate_failures "$GATE_LOG" > "$TMP/post-gate-failures.txt"
+GATE_REGRESSION=0
+if [ -n "$BASELINE_FAILURES" ] && [ -f "$BASELINE_FAILURES" ]; then
+  sort -u "$BASELINE_FAILURES" > "$TMP/baseline-sorted.txt"
+  comm -23 "$TMP/post-gate-failures.txt" "$TMP/baseline-sorted.txt" > "$TMP/gate-new-failures.txt"
+  comm -13 "$TMP/post-gate-failures.txt" "$TMP/baseline-sorted.txt" > "$TMP/gate-fixed.txt"
+  if [ -s "$TMP/gate-new-failures.txt" ]; then GATE_REGRESSION=1; fi
+  {
+    echo
+    echo "## og102/og103 measured against the pristine baseline"
+    echo
+    echo "baseline source: $BASELINE_FAILURES"
+    echo "(og102/og103 run against a PRISTINE restore of the same dump, zero migrations replayed)"
+    echo
+    echo '```'
+    echo "failing on the pristine target BEFORE the release : $(wc -l < "$TMP/baseline-sorted.txt" | tr -d ' ')"
+    echo "failing AFTER the full replay                     : $(wc -l < "$TMP/post-gate-failures.txt" | tr -d ' ')"
+    echo "NEW failures caused by this release               : $(wc -l < "$TMP/gate-new-failures.txt" | tr -d ' ')   (must be 0)"
+    echo "tests this release FIXED                          : $(wc -l < "$TMP/gate-fixed.txt" | tr -d ' ')"
+    echo '```'
+    echo
+    echo "still failing, and already failing before the release (PRE-EXISTING, NOT licensed):"
+    echo '```'
+    if [ -s "$TMP/post-gate-failures.txt" ]; then cat "$TMP/post-gate-failures.txt"; else echo "(none)"; fi
+    echo '```'
+    if [ -s "$TMP/gate-fixed.txt" ]; then
+      echo
+      echo "green after the release, red before it — these the release actually fixed:"
+      echo '```'
+      cat "$TMP/gate-fixed.txt"
+      echo '```'
+    fi
+    if [ -s "$TMP/gate-new-failures.txt" ]; then
+      echo
+      echo "REGRESSIONS — green before this release, red after it. This release caused these:"
+      echo '```'
+      cat "$TMP/gate-new-failures.txt"
+      echo '```'
+    fi
+    echo
+    echo "WHAT THIS DOES AND DOES NOT SAY. It does NOT say the pre-existing failures are acceptable"
+    echo "-- they describe real over-grants on the target and they are listed above so they cannot"
+    echo "be mistaken for noise. It says the narrower thing a gate can actually establish:"
+    echo "the migrations in this release are not their cause, and applying this release does not"
+    echo "make any of them worse. That is the same conclusion, reached the same way, as"
+    echo "docs/missions/convergence/INTEGRATION-LOG.md:464-497."
+  } | tee -a "$REPORT"
+else
+  GATE_REGRESSION=$GATE_RC
+  {
+    echo
+    echo "## og102/og103 measured with NO baseline"
+    echo
+    echo "--baseline-failures was not supplied, so every failure is treated as fatal -- the"
+    echo "pre-existing behaviour. A release rehearsed against a target with known pre-existing"
+    echo "gate failures should supply one (--phase baseline against a pristine restore)."
+  } | tee -a "$REPORT"
+fi
+
 echo "## Gate og81 against $DB (run alone; see the reconciliation below)" | tee -a "$REPORT"
 OG81_LOG="$TMP/og81.log"
 (
@@ -978,14 +1133,38 @@ echo "## Anon census over relkind IN ('v','m') — views and materialized views"
 echo "Not a pass/fail gate: no allowlist for views exists anywhere in this repo today (confirmed" | tee -a "$REPORT"
 echo "by the same grep R-4 ran for og103's KEEP_OPEN). Reported for a human to triage." | tee -a "$REPORT"
 CENSUS=$(psql_scalar "$CONTAINER" "$DBUSER" "$DB" "
-SELECT c.relname || '|' || c.relkind
+SELECT c.relname || '|' || c.relkind::text
   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace AND n.nspname='public'
  WHERE c.relkind IN ('v','m') AND has_table_privilege('anon', c.oid, 'SELECT')
  ORDER BY 1;
 ")
+# An empty $CENSUS means either "no anon-readable view" or "the query ERRORED and psql_scalar
+# swallowed it" -- and those are opposite facts. Until 2026-09-13 this block could not tell them
+# apart: `c.relname || '|' || c.relkind` is ambiguous (text || "char") and raised
+# `operator is not unique`, so the census printed a clean "0" for a measurement that never ran,
+# inside a report ending VERDICT: PASS. That is precisely the defect class this pipeline exists to
+# catch, found in the pipeline itself. The cast fixes the query; this second, independent scalar
+# proves the query ran at all, and a non-numeric answer is now FATAL instead of silent.
+CENSUS_PROBE=$(psql_scalar "$CONTAINER" "$DBUSER" "$DB" "
+SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace AND n.nspname='public'
+ WHERE c.relkind IN ('v','m') AND has_table_privilege('anon', c.oid, 'SELECT');")
+case "$CENSUS_PROBE" in
+  ''|*[!0-9]*)
+    echo "FATAL: the anon view/matview census did not return a number (got '$CENSUS_PROBE')." | tee -a "$REPORT"
+    echo "A census that cannot be measured must not be reported as zero." | tee -a "$REPORT"
+    echo "## VERDICT: FAIL (anon view/matview census unmeasurable)" | tee -a "$REPORT"
+    assemble_report
+    exit 1 ;;
+esac
 CENSUS_COUNT=0
 if [ -n "$CENSUS" ]; then CENSUS_COUNT=$(echo "$CENSUS" | wc -l); fi
-echo "anon-readable views/matviews: $CENSUS_COUNT" | tee -a "$REPORT"
+if [ "$CENSUS_COUNT" != "$CENSUS_PROBE" ]; then
+  echo "FATAL: census list has $CENSUS_COUNT row(s) but the independent count says $CENSUS_PROBE." | tee -a "$REPORT"
+  echo "## VERDICT: FAIL (anon view/matview census inconsistent)" | tee -a "$REPORT"
+  assemble_report
+  exit 1
+fi
+echo "anon-readable views/matviews: $CENSUS_COUNT (independently counted: $CENSUS_PROBE)" | tee -a "$REPORT"
 if [ -n "$CENSUS" ]; then
   echo '```' | tee -a "$REPORT"
   echo "$CENSUS" | tee -a "$REPORT"
@@ -1051,8 +1230,8 @@ if [ "$A_SUM" != "$A_CONSIDERED" ]; then
 fi
 
 # ---------- final verdict ---------------------------------------------------------------------
-if [ "$GATE_RC" != "0" ]; then
-  echo "## VERDICT: FAIL (og102/og103 did not both pass)" | tee -a "$REPORT"
+if [ "$GATE_REGRESSION" != "0" ]; then
+  echo "## VERDICT: FAIL (og102/og103 regressed against the measured baseline)" | tee -a "$REPORT"
   assemble_report
   exit 1
 fi

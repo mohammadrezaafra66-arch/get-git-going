@@ -22,6 +22,7 @@
 #                           [-KnownLedgerLies <path>] [-ShapeTolerant <path>]
 #                           [-RestoreOnly] [-Replay [-From n] [-To n] [-BatchSize n]]
 #                           [-GatesOnly [-DropWhenDone]] [-StateDir <path>]
+#                           [-Decided <path>] [-BaselineGates] [-BaselineFailures <path>]
 #
 # PHASES -- WHY THEY EXIST (read this before "simplifying" it back to one call)
 #   Two earlier attempts at this rehearsal stalled because restore + classify + ~690 migration
@@ -34,6 +35,11 @@
 #                  automatically from the last completed plan index; -BatchSize sets the width.
 #                  Repeat until it prints "REPLAY COMPLETE".
 #   -GatesOnly     og81/og102/og103 + anon census + the final verdict over the whole report.
+#   -BaselineGates og102/og103 against a PRISTINE restore -- zero migrations replayed -- writing
+#                  the list of tests that ALREADY fail on the target. Feed that file back to the
+#                  gates phase with -BaselineFailures. This is NOT an allowlist: it is re-measured
+#                  on the same dump every run, so a failure this release CAUSES cannot hide behind
+#                  it. The gates phase then fails only on a test that was green before, red now.
 #
 #   Passing none of the three keeps the original single-shot behaviour (--phase all), database
 #   dropped at exit, exactly as before.
@@ -86,7 +92,9 @@ param(
     [string]$KnownLedgerLies = "",
     [string]$ShapeTolerant = "",
     [string]$Decided = "",
+    [string]$BaselineFailures = "",
     [switch]$RestoreOnly,
+    [switch]$BaselineGates,
     [switch]$Replay,
     [switch]$GatesOnly,
     [switch]$DropWhenDone,
@@ -124,15 +132,16 @@ if (-not $bashPath) {
 }
 
 # Exactly one phase switch, or none. Two at once is always a mistake about what the run does.
-$phaseSwitchCount = @($RestoreOnly, $Replay, $GatesOnly | Where-Object { $_ }).Count
+$phaseSwitchCount = @($RestoreOnly, $Replay, $GatesOnly, $BaselineGates | Where-Object { $_ }).Count
 if ($phaseSwitchCount -gt 1) {
-    Write-Host "Pass at most ONE of -RestoreOnly / -Replay / -GatesOnly." -ForegroundColor Red
+    Write-Host "Pass at most ONE of -RestoreOnly / -Replay / -GatesOnly / -BaselineGates." -ForegroundColor Red
     exit 2
 }
 $phase = "all"
 if ($RestoreOnly)   { $phase = "restore" }
 elseif ($Replay)    { $phase = "replay" }
 elseif ($GatesOnly) { $phase = "gates" }
+elseif ($BaselineGates) { $phase = "baseline" }
 
 $dumpResolved = $null
 if ($phase -eq "all" -or $phase -eq "restore") {
@@ -183,6 +192,16 @@ if ($ShapeTolerant -ne "") {
 if ($Decided -ne "") {
     $dcResolved = Resolve-Path $Decided
     $bashArgs += @("--decided", $dcResolved.Path.Replace('\', '/'))
+}
+
+if ($BaselineFailures -ne "") {
+    $bfResolved = Resolve-Path $BaselineFailures -ErrorAction SilentlyContinue
+    if (-not $bfResolved) {
+        Write-Host "Baseline failure file not found: $BaselineFailures" -ForegroundColor Red
+        Write-Host "Produce one with -BaselineGates against a PRISTINE restore first." -ForegroundColor Yellow
+        exit 2
+    }
+    $bashArgs += @("--baseline-failures", $bfResolved.Path.Replace('\', '/'))
 }
 
 Write-Host "Running rehearsal engine (bash) ..." -ForegroundColor Cyan

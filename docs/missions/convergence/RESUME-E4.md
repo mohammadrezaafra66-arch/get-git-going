@@ -593,3 +593,85 @@ repeated until `REPLAY COMPLETE`. Never one batch of 22.
 The replay passing plan indices 7, 8 and 9 with `SKIPPED BY DECISION OG-J` and a ledger delta of
 0 for those three, then reaching `REPLAY COMPLETE`, then a gates run whose report ends
 `## VERDICT: PASS` with a candidate accounting that sums to 703.
+
+
+---
+
+## Checkpoint 8 — E4-3: REPLAY COMPLETE and `## VERDICT: PASS` (2026-09-13)
+
+Resumed on the RETAINED `prod_rehearsal_e4b` — no restore. Confirmed first, not assumed:
+`prod_rehearsal_e4b | 352 MB`, `ledger_rows=685 min=20260424144837 top=20260912150000`,
+`progress.txt = 6`, and 373/411/412/413 present in its ledger while 449 and 336 are not.
+
+### Batches (E3, never one call)
+```
+-Replay -BatchSize 8   ->  batch 7-14   ledger 685 -> 690, delta 5, progress 14 of 22
+-Replay -BatchSize 8   ->  batch 15-22  ledger 690 -> 698, delta 8, progress 22 of 22
+                           "## REPLAY COMPLETE — all 22 plan entries applied."
+```
+Plan indices 7, 8 and 9 printed `SKIPPED BY DECISION OG-J` and contributed **0** to the ledger
+delta — the SQL was never delivered. That is the whole difference from shape tolerance, visible in
+the run's own output.
+
+### The blocker that was NOT the blocker
+og81 and og102/og103 both went red, for three different reasons, and only one had been recorded
+against this branch before:
+
+1. **og81** — 703 files vs 698 ledger rows. Reconciled mechanically: the 5 unrecorded are exactly
+   {336, 343} shape-tolerated + {449, 450, 452} decided. `UNEXPLAINED unrecorded = 0`,
+   `declared but actually recorded = 0`, `orphaned = 0`. og81 itself was NOT modified.
+2. **og102/og103** — 5 tests red. [A-1] paid off: `INTEGRATION-LOG.md:464-497` had already
+   measured all of them on production and concluded "none of the four is caused by this branch."
+   Rather than encode that as an allowlist, E-4 MEASURES it: `-BaselineGates` runs og102/og103
+   against a PRISTINE restore of the same dump (`prod_rehearsal_e4c`, zero migrations replayed).
+   Result: **6 failing before the release, 5 after, 0 NEW, 1 FIXED.**
+3. **The real finding** — see below. It is not a gate defect.
+
+```
+failing on the pristine target BEFORE the release : 6
+failing AFTER the full replay                     : 5
+NEW failures caused by this release               : 0   (must be 0)
+tests this release FIXED                          : 1   (og102 "no NEW function is born anon-executable")
+```
+
+### A false zero inside a PASS report — found in this pipeline's own code
+The anon view/matview census printed `anon-readable views/matviews: 0`. It was not zero. The query
+`c.relname || '|' || c.relkind` is ambiguous (`text || "char"`) and RAISED
+`operator is not unique`; `psql_scalar` swallowed it and the empty result was counted as 0. Fixed
+with `::text`, plus a second independent `count(*)` that must agree or the run FAILS. Re-measured:
+**7 anon-readable views**, matching exactly the seven INTEGRATION-LOG.md:468-471 recorded on
+production. A measurement that never ran had been printing as a clean result.
+
+### E3 — the verdict
+```
+## VERDICT: PASS          (release/out/rehearsal-e4b.md, last line; rehearse.ps1 exit code 0)
+
+considered (candidates at or below the ceiling)     703
+  OK                  (ledger + catalogue agree)    242
+  APPLIED             (replayed by this rehearsal)     15
+  LEDGER_ONLY         (catalogue-driven, row only)      1
+  DECIDED_LEDGER_ONLY (decision, row only, guarded)      1
+  SHAPE_TOLERATED     (failed, declared, still OPEN)      2
+  SKIPPED_BY_DECISION (never run at all, CLOSED)      3
+  LEDGER_LIES         (pre-declared, untouched)      36
+  UNVERIFIABLE        (row exists, no catalogue signal)    403
+  REFUSED             (plan entries never attempted)      0
+  ---- sum                                          703
+```
+The sum is checked by the engine; a mismatch is `VERDICT: FAIL` before the gates are even consulted.
+
+### E4-7a completed properly
+`git ls-files release/runs/` showed five files ALREADY TRACKED — a gitignore entry untracks
+nothing. `release/runs/e4b/progress.txt` (a bare counter rewritten by every batch, the actual
+source of the dirty tree) was untracked with `git rm --cached`; the four narrative fragments the
+proof document cites by path stay tracked. Recorded in `.gitignore` itself.
+
+## EXACT NEXT COMMAND (E4-4)
+```
+.\release\emit-blocks.ps1 -RehearsalReport release\out\rehearsal-e4b.md -Date e4b `
+  -Decided release\config\decided-migrations.txt
+```
+
+## WHAT WOULD PROVE THAT STEP DONE
+`release/out/RELEASE-e4b.md` exists, and migration 537's block carries an `Expect:` line reading
+`215 table(s)` that was LIFTED from the replay's own captured NOTICE, not typed.

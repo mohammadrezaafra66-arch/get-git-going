@@ -154,3 +154,10 @@ docs/verification/P0.*-*-backup.sql
 # rule unreadable. The DELIVERABLE is release/out/ (rehearsal-<date>.md and
 # RELEASE-<date>.md), which stays tracked.
 release/runs/
+#
+# NOTE, measured 2026-09-13: five files under release/runs/e4b/ were already TRACKED when this
+# rule was added, and a gitignore entry does not untrack anything. Four of them are stable
+# narrative evidence the E-4 proof document cites by path, so they stay. The fifth,
+# release/runs/e4b/progress.txt, is a bare counter rewritten by EVERY replay batch -- it is the
+# single file that made the tree dirty after each checkpoint, which is the noise this rule exists
+# to remove -- so it was untracked with `git rm --cached` (the file itself is untouched on disk).
