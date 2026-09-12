@@ -985,3 +985,70 @@ the producer is never the gate, and the agent is asked for evidence rather than 
   grant-level block is the 395 trap. Goes to Security-3 via `BACKLOG.md` §7, not to a migration.
 - **The REVOKE on `http`'s 19 functions is the allowlist for now.** A host allowlist is a
   network-policy item — `BACKLOG.md` §7 — not a migration.
+
+---
+
+## 🔴 OG-K — `anon` reads 19 columns of `products` that migration 388 revoked, and the ledger says 388 ran
+
+**Found by the release-line rehearsal (E-4 continuation), from a gate rather than from the
+classifier.** Confirmed by the orchestrator **against the production dump itself**, not against a
+restore:
+
+```
+pg_restore -f - /tmp/prod13.dump | grep '^GRANT SELECT ON TABLE public\..* TO anon;'
+  852923: GRANT SELECT ON TABLE public.products TO anon;
+  859785: GRANT SELECT ON TABLE public.academy_quiz_questions TO anon;
+  859936: GRANT SELECT ON TABLE public.categories TO anon;
+```
+
+Two migrations exist solely to remove exactly those grants, and **both carry ledger rows on
+production**:
+
+```
+20260825020000_388_narrow_anon_product_columns.sql:137   REVOKE SELECT ON public.products FROM anon;
+20260825120000_390_narrow_anon_category_columns...:64    REVOKE SELECT ON public.categories FROM anon;
+ledger: 20260825020000 RECORDED · 20260825043000 RECORDED · 20260825120000 RECORDED
+```
+
+**So these are two more lying ledger rows** — the same class migration 526 was written to repair for
+five other migrations, in a pair nobody had looked at. The rehearsal classified both
+**UNVERIFIABLE**, trusted the ledger, and did nothing. That is the 403-strong UNVERIFIABLE bucket
+failing in practice, not in theory.
+
+### The measured exposure
+
+388 narrows `anon` to **nine** columns of `products`:
+`id, name, model, capacity, stock_status, is_active, brand_id, category_id, description`.
+
+Production grants all **28**. The nineteen `anon` can read and was never meant to:
+
+```
+sku, unit, category, created_by, created_at, updated_at, product_type, base_currency, status,
+technical_notes, updated_by, color, primary_spec, dedup_key, barcode, received_at,
+promotion_weight, accounting_code, torob_url
+```
+
+Behaviourally, as a real `anon` session on production shape:
+
+```
+SET LOCAL ROLE anon;
+SELECT count(*) FROM public.products;                              ->  381 rows
+SELECT count(*) FROM public.products WHERE technical_notes IS NOT NULL;  ->  1
+```
+
+RLS is enabled on `products` with 7 policies and it still returns 381 rows to `anon` — **RLS does
+not filter columns**, so the policies are not a mitigation here. `created_by` / `updated_by` leak
+internal user UUIDs; `accounting_code` is the ASAN code; `torob_url`, `promotion_weight` and
+`dedup_key` are commercial internals.
+
+`categories` (11 columns) and `academy_quiz_questions` (6) are exposed the same way.
+
+### Disposition
+
+**Not fixed in the 2026-09-13 release** — it was found after the gate closed and after `main` was
+tagged. The fix is the already-proven 523/524 pattern: a catalogue-driven migration that re-issues
+388's and 390's REVOKE plus the narrow column GRANT, no-ops where already correct, and gates on
+`has_column_privilege` (the effect) rather than on `attacl` (the claim) — which is what 388's own
+header says five previous gates got wrong.
+
+**This is a live production data exposure and it should be decided before the transfer, not after.**
