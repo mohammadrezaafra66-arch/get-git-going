@@ -6,6 +6,13 @@
 از `/tmp/prod13.dump`) هر دو جهت (اعمال و — برای 532 — idempotency) اجرا و با کوئری قبل/بعد اثبات
 شدند. هیچ عملیاتی روی `afrakala` یا `postgres` اجرا نشد. کپی در پایان کار حذف شد.
 
+**HARDENING (بعد از پذیرش PR #441)** — orchestrator نشان داد بدنه‌ی اولیه‌ی 531
+(`DROP CONSTRAINT audit_logs_actor_id_fkey` بدون `IF EXISTS`) روی شکلی از دیتابیس که این constraint
+از قبل غایب است **abort** می‌کند — دقیقاً همان کلاس خطایی که migration 477 را در 2026-09-12 متوقف
+کرد. 531 با الگوی catalogue-driven همان 523/524/525 (`pg_constraint` را قبل از عمل می‌خواند، نه یک
+DROP کور) بازنویسی شد. 530 و 532 و e2e spec دست‌نخورده ماندند. چهار سناریو (A/B/C/D) روی یک بازیابی
+**تازه** (نه از حافظه) دوباره اثبات شدند — نتیجه‌ی کامل در بخش Task 2 پایین‌تر، زیربخش «HARDENING».
+
 ---
 
 ## اثبات بازیابی (Step 0)
@@ -248,6 +255,120 @@ ROLLBACK
 `supabase/migrations/` انجام نشد به‌صورت جداگانه (کد برنامه هرگز مستقیماً constraint را با نام صدا
 نمی‌زند)؛ تنها اثر رفتاری، اجازه دادن به حذف کاربر با سابقه‌ی audit است — یک رفتار جدید که قبلاً
 غیرممکن بود، نه تغییر در رفتار موجود.
+
+### HARDENING — 531 اکنون catalogue-driven است (skip/create-if-absent، نه DROP کور)
+
+**چرا.** orchestrator چهار حالت را روی یک shape شبیه production تست کرد. نسخه‌ی اولیه‌ی 531
+(`DROP CONSTRAINT audit_logs_actor_id_fkey` بدون `IF EXISTS`، سپس `ADD CONSTRAINT ... ON DELETE
+SET NULL`) روی production امروز امن است چون constraint وجود دارد، اما روی هر shape که constraint
+از قبل غایب باشد **abort** می‌کند:
+```
+ERROR: constraint "audit_logs_actor_id_fkey" of relation "audit_logs" does not exist
+```
+این دقیقاً همان کلاس خطایی است که migration 477 را در 2026-09-12 متوقف کرد و ده ساعت هزینه داشت، و
+دقیقاً همان‌جایی است که `rehearse.ps1` (مأموریت E-4) migrationها را روی shapeهای دلخواه بازپخش
+می‌کند. رفع: 531 اکنون قبل از هر عملی `pg_constraint` را می‌خواند (همان الگوی `to_regclass`/
+check-before-acting که 523/524/525 استفاده می‌کنند) و بسته به آنچه می‌بیند یکی از سه مسیر را
+می‌رود — constraint غایب → می‌سازدش تازه با `ON DELETE SET NULL`؛ موجود ولی delete action غلط →
+DROP و دوباره ADD با `ON DELETE SET NULL`؛ موجود و از قبل درست → no-op. در هر سه حالت state نهایی
+یکسان است: `audit_logs_actor_id_fkey` با `ON DELETE SET NULL`. **530، 532 و e2e spec دست‌نخورده
+ماندند.**
+
+**بازیابی تازه** (نه از حافظه؛ طبق دستور orchestrator):
+```
+$ docker exec afrakala-lan-db md5sum /tmp/prod13.dump
+6ccd2dbb07a9a4d9bbae4421eb3265e0  /tmp/prod13.dump                          ✅ مطابق
+
+$ ... CREATE DATABASE prod_rehearsal_e2 ...
+CREATE DATABASE
+$ ... pg_restore ... --no-owner --disable-triggers /tmp/prod13.dump
+... 21 خطای بی‌ضرر (schema "cron" does not exist) ...
+pg_restore: warning: errors ignored on restore: 21
+$ ... SELECT count(*), max(version) FROM supabase_migrations.schema_migrations;
+681|20260912150000                                                          ✅ مطابق
+```
+
+**Case A — constraint روی production shape موجود است، confdeltype='a':**
+```sql
+SELECT c.conname, c.confdeltype FROM pg_constraint c
+JOIN pg_class t ON t.oid=c.conrelid JOIN pg_namespace n ON n.oid=t.relnamespace
+WHERE n.nspname='public' AND t.relname='audit_logs' AND c.conname='audit_logs_actor_id_fkey';
+```
+```
+         conname          | confdeltype
+--------------------------+-------------
+ audit_logs_actor_id_fkey | a
+```
+
+**Case B — اجرای اول (md5 محلی و داخل کانتینر هر دو `47a8b2d183040f4b793ecedd9802973d`، مطابق):**
+```
+$ docker exec ... psql ... --single-transaction -f /tmp/mig531v2.sql
+SET
+NOTICE:  531: audit_logs_actor_id_fkey delete action was a — replacing with ON DELETE SET NULL
+DO
+DO
+NOTICE:  531 VERIFY: audit_logs_actor_id_fkey is ON DELETE SET NULL
+EXIT=0
+```
+تأیید مستقیم از catalogue: `confdeltype` اکنون `n`.
+
+**Case C — اجرای دوم، همان فایل، بدون تغییر بین دو اجرا (idempotency):**
+```
+$ docker exec ... psql ... --single-transaction -f /tmp/mig531v2.sql
+SET
+DO
+NOTICE:  531: audit_logs_actor_id_fkey is already ON DELETE SET NULL — no change
+NOTICE:  531 VERIFY: audit_logs_actor_id_fkey is ON DELETE SET NULL
+DO
+EXIT=0
+```
+بدون تغییر نسبت به رفتار نسخه‌ی قبلی — همان‌طور که orchestrator هم گزارش داده بود، نسخه‌ی قبلی هم
+در این حالت re-runnable بود؛ اینجا فقط دیگر پیام «no change» صریح گزارش می‌شود.
+
+**Case D — شبیه‌سازی shape با constraint غایب، سپس اجرای migration:**
+```sql
+-- شبیه‌سازی: constraint را مستقیماً (خارج از migration) حذف می‌کنیم
+ALTER TABLE public.audit_logs DROP CONSTRAINT audit_logs_actor_id_fkey;
+-- تأیید غیبت:
+SELECT count(*) FROM pg_constraint ... WHERE conname='audit_logs_actor_id_fkey';
+-- 0
+```
+```
+$ docker exec ... psql ... --single-transaction -f /tmp/mig531v2.sql
+SET
+NOTICE:  531: audit_logs_actor_id_fkey is absent — creating it fresh with ON DELETE SET NULL
+DO
+DO
+NOTICE:  531 VERIFY: audit_logs_actor_id_fkey is ON DELETE SET NULL
+EXIT=0                                                                      ✅ دیگر abort نمی‌کند
+```
+تأیید نهایی از catalogue:
+```sql
+SELECT conname, pg_get_constraintdef(oid), confdeltype FROM pg_constraint
+ WHERE conname = 'audit_logs_actor_id_fkey';
+```
+```
+         conname          |                      pg_get_constraintdef                      | confdeltype
+--------------------------+------------------------------------------------------------------+-------------
+ audit_logs_actor_id_fkey | FOREIGN KEY (actor_id) REFERENCES users(id) ON DELETE SET NULL | n
+```
+
+**بازتأیید رفتار (E4، همان probe قبلی، روی state نهایی بعد از Case D):** actor واقعی + ردیف audit
+واقعی + DELETE، داخل `BEGIN…ROLLBACK`:
+```
+INSERT 0 1
+INSERT 0 1
+DELETE 1
+   id   | actor_id |  entity_type   |    entity_id    |     action
+--------+----------+----------------+------------------+----------------
+ 113827 |          | e2_test_entity | e2-reverify-531 | e2_test_action
+ROLLBACK
+```
+حذف موفق، `actor_id` تهی، ردیف باقی مانده — رفتار نهایی عیناً با نسخه‌ی قبلی یکسان است؛ فقط مسیر
+رسیدن به آن اکنون در برابر shapeهای غیرمنتظره مقاوم است.
+
+`prod_rehearsal_e2` در پایان این هاردنینگ نیز DROP و غیبتش با یک SELECT خالی از `pg_database`
+تأیید شد.
 
 ---
 
