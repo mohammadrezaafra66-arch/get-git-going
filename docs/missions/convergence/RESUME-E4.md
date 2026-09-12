@@ -475,3 +475,51 @@ afrakala-app:rollback-9c113aac      <-- 'lan-rollback-' does NOT match this
 So the Expect: line claimed exactly one rollback tag remained while a second survived - a check
 that passes without being true. The prune now matches any tag containing `rollback` that is not
 the agreed name.
+
+
+---
+
+## Checkpoint 6 - E4-8: verification measured, ready to push (2026-09-13)
+
+### Typecheck: baseline matched, per file (E3)
+```
+$ npm ci                    # 662 packages
+$ npx tsc --noEmit
+TOTAL=70   FILES=6
+
+file                                        baseline  mine
+src/lib/accounting/functions.ts                 13    13   MATCH
+src/lib/audit/index.ts                           6     6   MATCH
+src/lib/invoices/functions.ts                   13    13   MATCH
+src/routes/_app.admin.automation.tsx             5     5   MATCH
+src/routes/_app.admin.sales-reminders.tsx       15    15   MATCH
+src/routes/_app.products.index.tsx              18    18   MATCH
+```
+`npm run build` skipped and said so: `git diff --name-only 6ff4b48c HEAD` contains no `src/`,
+no `.ts`, no `.tsx`.
+
+**The first measurement was 1985 errors across ~300 files** and was environmental, not the code:
+this worktree's `node_modules/class-variance-authority/dist/` was missing `index.d.ts`, so
+`VariantProps<typeof badgeVariants>` resolved to nothing and every `variant=` prop in the codebase
+errored. Reinstalling that single package took it to 505; `npm ci` took it to 70. `npm install`
+had reported "up to date in 1s" against the broken tree - it checks the package tree, not the
+files inside it.
+
+### Final state left behind
+```
+prod_rehearsal_e4b   ledger_rows=685  top=20260912150000   (RETAINED on purpose)
+migrations E-4 applied: 20260822210000, 20260828000000, 20260828010000, 20260829000000
+shape-tolerated:        20260818150000 (336), 20260818157000 (343)
+plan progress:          6 of 22, blocked at index 7 (migration 449)
+```
+Every other `prod_rehearsal_*` database, plus `afrakala` and `postgres`, untouched.
+
+### Gitignored files E-4 changed ([E-2])
+`node_modules/` in this worktree only - rebuilt by `npm ci` (662 packages). `package.json` and
+`package-lock.json` unchanged (`git status --porcelain` on both: empty).
+
+## STATE AT HANDOFF
+- E4-0, E4-1, E4-2 (partial), E4-7, E4-8: done with evidence.
+- E4-3, E4-4 (emit half), E4-5, E4-6: BLOCKED behind migrations 449 and 450.
+- The next agent can resume from plan index 7 without a fresh restore - the database is still
+  there and `release/runs/e4b/progress.txt` says 6.

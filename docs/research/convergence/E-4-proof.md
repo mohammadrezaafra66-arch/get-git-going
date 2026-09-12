@@ -444,23 +444,53 @@ One push, at the end. PR opened against `staging`, **not merged**.
 
 | check | result |
 |---|---|
-| `npx tsc --noEmit` | see below — E-4 touched no `.ts`/`.tsx` file at all |
-| `npm run build` | **skipped, and saying so.** E-4's own diff (`git diff --name-only 6ff4b48c HEAD`) is entirely under `release/` and `docs/`. No `src/`. |
+| `npx tsc --noEmit` | **70 errors across exactly 6 files — baseline matched, per file** |
+| `npm run build` | **skipped, and saying so.** E-4's own diff is entirely under `release/` and `docs/`; no `src/`, no `.ts`, no `.tsx`. |
 | e2e suite | not run — not this wave's, per the brief |
 
 ```
-$ git diff --stat 6ff4b48c HEAD
- docs/missions/convergence/RESUME-E4.md              | 268 +++++
- docs/runbooks/release-line/README.md                | new
- docs/research/convergence/E-4-proof.md              | new
- release/config/known-shape-tolerant-migrations.txt  |  57 +-
- release/emit-blocks.ps1                             |  67 +-
- release/lib/rehearse-engine.sh                      | 283 ++++-
- release/rehearse.ps1                                |  78 +-
- release/out/, release/runs/e4b/                     | evidence artifacts
+$ git diff --name-only 6ff4b48c HEAD | grep -E '^src/|\.tsx?$'
+(no matches - config, docs and release tooling only)
 ```
 
----
+Per-file comparison against the committed baseline
+(`docs/verification/convergence/typecheck-integration-70-6.txt`):
+
+```
+file                                        baseline  mine
+src/lib/accounting/functions.ts                 13    13   MATCH
+src/lib/audit/index.ts                           6     6   MATCH
+src/lib/invoices/functions.ts                   13    13   MATCH
+src/routes/_app.admin.automation.tsx             5     5   MATCH
+src/routes/_app.admin.sales-reminders.tsx       15    15   MATCH
+src/routes/_app.products.index.tsx              18    18   MATCH
+                                            ------  ----
+                                                70    70
+```
+
+### Getting that number took a repair, and the repair is worth recording
+
+The first run of `npx tsc --noEmit` in this worktree reported **1985 errors across ~300 files** —
+28x the baseline, with nonsense like `Property 'variant' does not exist on type 'BadgeProps'`
+against a `badge.tsx` that plainly declares it. E-4 had changed no `.ts` file, so the cause had to
+be environmental.
+
+It was: this worktree's `node_modules` contained **truncated packages**. Measured directly —
+
+```
+$ ls node_modules/class-variance-authority/dist/
+index.js
+index.js.map                 <-- index.d.ts and index.mjs simply absent
+```
+
+Without `index.d.ts`, `VariantProps<typeof badgeVariants>` resolves to nothing and every
+`variant=` prop in the codebase becomes an error. Deleting that one package and reinstalling took
+the count from **1985 to 505**; a full `npm ci` took it to **70**.
+
+The trap worth carrying forward: **`npm install` reported "up to date in 1s" against this broken
+tree.** It verifies the package tree, not the files inside it, so a partially-written package is
+invisible to it. If a typecheck in a git worktree reports an implausible number, run `npm ci`
+before believing it — and before concluding anything about the code.
 
 ## What I did NOT do
 
@@ -488,6 +518,10 @@ $ git diff --stat 6ff4b48c HEAD
 - The four autostart-tree items — all require the production laptop.
 
 ## Files E-4 produced that are NOT committed
+
+**`node_modules/` (gitignored) was rebuilt by `npm ci` in this worktree** — 662 packages,
+replacing a partially-written tree. No `package.json` or `package-lock.json` change was made or
+committed; `git status` shows neither as modified.
 
 Under `release/runs/e4b/` (left on disk as working evidence, deliberately not committed because
 they are large or derived): `candidates.txt`, `ledger.txt`, `evidence.raw`, `evidence.txt`,
