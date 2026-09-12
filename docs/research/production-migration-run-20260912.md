@@ -1966,3 +1966,77 @@ Reported by the owner; recorded verbatim by the executor, who ran none of it.
 **Blocks 72 and 72a:** the cold-gate test (`viewer` cannot reach `/admin/automation`) was **not
 performed**. The only `viewer` account on production also holds `sales`, and the attempt to create a
 clean throwaway account was aborted — see Block 72a. The gate remains unverified on production.
+
+## Phase 7 — **PASSED**
+
+Six verdicts, after the owner's research:
+
+| # | check | verdict |
+|---|---|---|
+| 1 | Receivables | **OK** |
+| 2 | Payables | **OK** — Latin `toman` label, cosmetic, handed forward |
+| 3 | Allocation workbench | **OK** — loads with data, 0 allocation rows, expected: 481 created the table tonight |
+| 4 | `/operations/receipts` 404 | **Not a fault** — deliberate retirement in PR #408. OCR lives at `/accounting/receipts/create` |
+| 5 | Dashboard `فروش امروز = 0` | **Pre-existing** — the widget reads the dropped `invoices` table. Not tonight's work |
+| 6 | Quote credit gate | **No drift** — proven below |
+
+### The quote-gate drift check
+
+The overdue / no-credit branches of `create_sales_quote_with_items` were asserted byte-identical to
+`469fe0a9` in the migration files. That leaves one gap: the file is not necessarily what the
+database holds. Closed by comparing production's catalogue against the newest migration that
+defines the function.
+
+Production carries **exactly one overload**, so there is no ambiguity:
+
+```
+create_sales_quote_with_items(text,text,text,timestamp with time zone,numeric,numeric,numeric,
+  jsonb,uuid,uuid,boolean,numeric,boolean,uuid,uuid,text,integer,numeric,text)
+```
+
+Newest definer on disk: `20260903140000_421_guest_refusal_message_tells_the_truth.sql`
+(13 migrations mention the function; only 5 define it — 476 merely REVOKEs, and a filename sort
+alone would have picked the wrong one).
+
+```
+whole text, trailing whitespace stripped:
+  FILE md5 : b67f0a372dedf6f1efe84d91870ad291
+  PROD md5 : fc6162fe1772af4df623efbbd270f13e
+  diff     : 339c339   —  one line, and only one
+             FILE line 339: [;]
+             PROD line 339: []
+
+the function itself, lines 1-338:
+  FILE md5 : 2cd11b81bfab0c6ba795e405ee539098
+  PROD md5 : 2cd11b81bfab0c6ba795e405ee539098      <- identical
+  credit/overdue matches: 34 in each
+```
+
+**The only difference is the SQL statement terminator**, which `pg_get_functiondef` never emits
+because it renders a definition, not a script. 338 of 339 lines are byte-identical. **Production's
+function is exactly migration 421's definition, credit branches included. The drift caveat is
+closed.**
+
+> A raw md5 of `pg_get_functiondef` against raw file text is not a valid equality test on its own —
+> the catalogue form canonicalises types, spacing and clause order. It happened to be decisive here
+> only because 421 was written in the canonical shape. The diff, not the hash, is what settles it.
+
+### Two gaps that remain open, recorded rather than glossed
+
+1. **Receipt OCR was never exercised in the UI.** The owner tested `/operations/receipts`, which is
+   retired; the live path is `/accounting/receipts/create`. The forecast — OCR degrades to manual
+   entry because the pinned provider declares `{chat,embeddings}`, not `vision` — is still verified
+   only at the data layer, by migration 522's NOTICE.
+2. **Block 72's cold gate was never run.** The only `viewer` account also holds `sales`, and Block
+   72a was aborted. `viewer` cannot reach `/admin/automation` remains unproven on production.
+
+### Handed forward from Phase 7
+
+- Latin `toman` label on the payables page (cosmetic).
+- Dashboard `فروش امروز` reads the dropped `invoices` table (pre-existing).
+- The quote credit gate still deserves a live draft-quote test; the code is proven identical, the
+  runtime path is not.
+
+**Owner's verdict: no regression attributable to tonight.**
+
+**STAFF RETURNED TO THE SYSTEM AT THIS POINT.**
