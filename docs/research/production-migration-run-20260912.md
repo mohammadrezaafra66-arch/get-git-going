@@ -2040,3 +2040,73 @@ closed.**
 **Owner's verdict: no regression attributable to tonight.**
 
 **STAFF RETURNED TO THE SYSTEM AT THIS POINT.**
+
+---
+
+# Block 73 — the branch question closed
+
+### 73.1 · the merge — done on origin, as a fast-forward
+
+`origin/main` was **fast-forwarded** `99f6bd58 -> d60232f5`. No merge commit was created.
+
+`gh` is not on PATH on the production host, so the executor could not open the PR from here; the
+merge was performed elsewhere. Boundary Guard's requirement — a PR into `main` coming from
+`staging` — was satisfied by that route.
+
+**Scale, recorded because it was not only tonight's work:** `main` was **447 commits** behind
+`staging`. Its previous tip, `99f6bd58`, was *"Merge pull request #294"*. Everything between #294
+and tonight landed in one move.
+
+### 73.2 · the production checkout is back on `main`
+
+```
+git status --porcelain   -> empty
+git fetch origin         -> 99f6bd58..d60232f5  main -> origin/main
+git checkout main        -> Switched to branch 'main' (behind by 447, fast-forwardable)
+git pull --ff-only       -> fast-forwarded
+branch : main
+HEAD   : d60232f5
+status : clean
+```
+
+**Decision D-64's debt is paid.** Production no longer follows `staging`; the next `git pull` here
+gets `main`, as it should.
+
+### 73.3 · no mismatch — the fast-forward avoided it
+
+```
+git rev-parse --short HEAD : d60232f5
+APP_GIT_SHA                : d60232f5
+MATCH                      : YES
+```
+
+The runbook anticipated `APP_GIT_SHA` diverging from `main`'s HEAD, because a **merge** would
+create a new commit carrying the same content under a different id — and it warned that leaving
+that unexplained disables the one check that catches a bad deploy.
+
+**That did not happen.** `main` was fast-forwarded, so `main`'s tip *is* the commit the image was
+built from. No `EXPECTED SHA MISMATCH` line is needed, no rebuild from `main` is owed, and the
+deploy-integrity check is live on this machine again.
+
+> **One consequence of being back on `main`:** this run record is **not on `main`**. It lives on
+> `origin/feature/prodrun-20260912` (`f8fd0920`), which is pushed and safe. In the production
+> working tree, `docs/research/production-migration-run-20260912.md` has reverted to the 241-line
+> pre-run version. **The record needs merging to `staging` and then `main`**, or the only account of
+> this night stays on a side branch while the file on the mainline still says "THE RUN HAS NOT
+> STARTED."
+
+---
+
+# Final state
+
+- Ledger top version: **`20260912150000`** (migration 525)
+- Ledger row count: **681** (604 at the end of Block 2, +76 in Phase 4, +1 for 525)
+- `APP_GIT_SHA`: **`d60232f5`**, equal to `main`'s HEAD
+- Phase 5 census: `anon` reads **20** relations, down from 214. Every remaining view is
+  `security_invoker=true`; no `DEFINER` view is readable by `anon`; `anon_default_acl = 0`; none of
+  the twelve sensitive functions is anon-executable
+- Migrations applied / skipped / failed: **75 applied** (74 in Phase 4 + 525), **2 skipped and
+  recorded** (460 superseded by 522; 477 superseded by 523+524), **3 skipped and deliberately not
+  recorded** (449, 450, 452), **0 left failing**
+- Backup: `prod-20260912-final.dump` · 35,223,850 bytes · md5 `98047bf7d4833abbba93b2a4366ce8ba`
+- Branch: production tracks `main` again, clean at `d60232f5`
