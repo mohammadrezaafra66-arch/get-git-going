@@ -792,3 +792,81 @@ Also for HANDOFF, found in Wave B:
 - **`generate-role-sessions.spec.ts` deletes all six `storageState` files before rebuilding them.**
   If it then fails, there are none. A copy taken into another worktree is not a safeguard if the
   generator will also run there.
+---
+
+# WAVE C · the verdict table
+
+Three independent passes: **V-1** (`dev-code-critic`, own restore, psql + source only), **V-2**
+(`dev-security-critic`, own restore, owns the e2e harness), **DA** (`dev-devils-advocate`, own
+restore, read-only adversary). No two shared a database. None was given the orchestrator's proofs.
+
+| # | artifact | verdict | whose evidence |
+|---|---|---|---|
+| 1 | **526** catalogue repair | **GREEN** | V-1: pass-1-vs-pass-2 catalogue diff **empty**; first-pass no-op on test shape; zero `DELETE` against the ledger. DA re-derived every headline number |
+| 2 | **527** / **528** guard re-issue | **GREEN** | V-1, first check either has ever had: applies on production shape, no-ops on pass 2, **no-ops rather than aborts** on test shape, no database-name guard in either direction |
+| 3 | **530 / 531 / 532** | **GREEN** | V-2: E-2's spec fails 4/4 without them and passes 4/4 with them. V-1 re-measured #441's Persian card text byte-identical, md5 `a503ff5346952b15d1981b3addf6a6a8` both sides |
+| 4 | **533 / 534** | **GREEN with a deploy-note condition** | V-2 proved 534's RLS deny behaviourally (`42501` on authenticated INSERT, on anon SELECT). 533's `http` line is unguarded — see the conditions below |
+| 5 | **535 / 536** | **GREEN** | V-2: zero new `SECURITY DEFINER` routines; all eight replaced objects carry quoted caller checks |
+| 6 | **537** TRUNCATE | **GREEN** | **V-1's own restore: `214 → 0`**, both `pg_default_acl` grantors closed, a table created afterwards proven not to inherit, every other privilege for `authenticated`/`service_role`/`anon` unchanged. DA confirmed the scope is complete and every factual claim in the header verbatim |
+| 7 | **538** anon EXECUTE | **GREEN** | **V-1's own restore: 39 bare, 36 after the other eleven, → 0.** V-2 proved closure **by calling as `anon`**: `42501` after, no error at all before. DA swept all 39 across the whole repo plus five indirect SQL vectors for other callers — **zero** |
+| 8 | **G-4** dashboard | **GREEN** | V-1 on the file; orchestrator on the render, both roles, live DOM scan for Latin digits adjacent to the Persian labels — **none** |
+| 9 | **the merge itself** | **GREEN** | six branches, zero shared files, zero conflicts, `routeTree.gen.ts` untouched by construction |
+
+**No artifact is RED. Nothing found in three passes stops the merge.**
+
+## What the adversary actually changed
+
+It refuted two of its three attacks with evidence, which is worth more than a confirmation would
+have been, and it converted the third from "defect" to "evidence gap".
+
+**🔻 F-1 is downgraded from functional regression to NO-OP — and the real finding is bigger.**
+V-2 reported that after 538 the public sale-list loader silently gets `42501`. True, and irrelevant:
+**`anon` cannot read `sale_lists` at all**, so that loader fails at its *first* query, before it
+ever reaches the RPC. Verified independently by the orchestrator, behaviourally, on production
+shape **with none of the twelve applied**:
+
+```
+SET LOCAL ROLE anon; SELECT count(*) FROM public.sale_lists;
+ERROR:  permission denied for table sale_lists
+
+has_table_privilege('anon', 'sale_lists',      'SELECT')  ->  f
+has_table_privilege('anon', 'sale_list_items', 'SELECT')  ->  f
+```
+
+So 538 changes nothing about that page. But that means something nobody had noticed:
+**the public sale-list feature is already dead for anonymous visitors on production.** `anon`'s
+SELECT on `sale_lists`/`sale_list_items` went when 477/523/524 closed the table grants to eleven
+keepers, and these two are not among the eleven. It went unnoticed because there are **19 sale
+lists and all 19 are `draft`**.
+
+**The blocking note therefore changes, and it gets stronger rather than weaker.** It is not "no
+sale list may be published until a one-line app fix lands". It is: **publishing a sale list will
+not produce a working public page at all** until either `anon` is granted SELECT on those two
+tables, or the public route is served server-side with a trusted key. That is a design decision,
+not a one-liner, and it now has an owner.
+
+**🟡 537's gate regex is weaker than 537 itself.** DA showed the gate's
+`authenticated=[a-zA-Z]*D` test returns false against a PUBLIC-granted default such as
+`=arwdDxt/postgres` — so a PUBLIC-granted TRUNCATE default would pass the gate silently. On the
+shipping shape it cannot bite: **zero PUBLIC grants exist on any table in `public`**, which DA
+measured. Latent, real, and it goes to the fix agent rather than to me.
+
+**🟡 The idempotency snapshot omitted exactly the dimensions 537 and 538 write.** It captured only
+`anon`/`authenticated` EXECUTE and **no `pg_default_acl` at all** — the two axes the two
+producer-is-gate migrations move. The defect is refuted and the evidence gap is real: DA
+snapshotted **nine omitted dimensions (2,877 lines)**, re-applied all twelve, and got a
+**byte-identical** result with the same md5. So the conclusion held; the proof that was offered for
+it did not cover it. That is the correct way for this to be caught, and it is recorded rather than
+quietly fixed.
+
+**One unit correction that reaches the owner's keyboard.** "214" means *tables in schema `public`*.
+At apply time the operator will see **215**, because 534 creates `cron_run_log` before 537 runs.
+The release block's `Expect:` line must say **215**, not 214 — a mismatch there is a stop condition
+on a run that is actually correct.
+
+**On 533's `http`, the adversary went further than either verifier.** It probed for SSRF and found
+all 19 `http` functions come out `supabase_admin=X` only, with `anon` and `authenticated` both
+getting `42501`. **But the closure comes from migration 393's global FUNCTIONS default revoke,
+which 533 never mentions** — so the protection is inherited, not stated, and nothing in this
+repository asserts the installed extension set. That is precisely why the extension ships guarded
+and with its own REVOKEs rather than relying on an inheritance nobody wrote down.
