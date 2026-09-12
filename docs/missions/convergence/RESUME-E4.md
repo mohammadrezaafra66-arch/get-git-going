@@ -675,3 +675,73 @@ proof document cites by path stay tracked. Recorded in `.gitignore` itself.
 ## WHAT WOULD PROVE THAT STEP DONE
 `release/out/RELEASE-e4b.md` exists, and migration 537's block carries an `Expect:` line reading
 `215 table(s)` that was LIFTED from the replay's own captured NOTICE, not typed.
+
+
+---
+
+## Checkpoint 9 — E4-4 and E4-5: the release document exists and validates (2026-09-13)
+
+### E4-4 — `release/out/RELEASE-e4b.md`, and 537's count is DERIVED
+```
+$ .\release\emit-blocks.ps1 -RehearsalReport release\out\rehearsal-e4b.md -Date e4b `
+    -Decided release\config\decided-migrations.txt
+Sequenced expectations parsed for 11 migration(s)
+Decision file parsed: 4 declared version(s)
+Parsed rehearsal: 15 APPLY, 1 LEDGER_ONLY, 2 SHAPE_TOLERATED, 3 DECISION_SKIPPED, 1 DECIDED_LEDGER_ONLY
+Written: release\out\RELEASE-e4b.md          exit code 0
+```
+
+Block 18, verbatim from the generated document:
+```
+Expect: NOTICE:  537: TRUNCATE revoked from authenticated on 215 table(s); 13 already closed.
+         (measured in the release sequence by the rehearsal, not typed by hand)
+```
+
+**215, and it was measured.** 537's own header says 214 — that is what it revokes applied ALONE.
+In this sequence migration 534 creates `cron_run_log` three steps earlier and the new table
+inherits the schema default that still carries TRUNCATE, so 537 closes one more. The line came out
+of `release/runs/e4b/apply_out_20260913105000.txt`, which is 537's real psql output during the real
+replay, not a prediction:
+```
+psql:/tmp/mig_20260913105000.sql:105: NOTICE:  537: TRUNCATE revoked from authenticated on 215 table(s); 13 already closed.
+```
+`grep -n "214" release/out/RELEASE-e4b.md` returns nothing — no typed count survives anywhere.
+
+### E4-5 — `validate-blocks.ps1`, and its FIRST real run found a real defect
+```
+$ .\release\validate-blocks.ps1 -Path release\out\RELEASE-e4b.md     # BEFORE
+  mig_apply lines found : 15   unique versions : 15   blocks found : 33   blocks missing Expect : 1
+FAILED — 1 problem(s):
+  - NO Expect: LINE in block: ### Block 33 - sign-off                  exit code 1
+```
+The sign-off block wrote `- [ ] og81 (ledger matches disk)   Expect: PASSED`, with `Expect:` buried
+mid-line, so no line matched the validator's `^\s*Expect:`. **The generator was fixed; the
+validator was left strict** — a check loose enough to accept "Expect:" anywhere in a sentence would
+accept prose that merely mentions it, and rule 4 exists so no block is signed off without stating
+what must be seen.
+
+The og81 line could not honestly say `PASSED` either: on a target carrying OG-J, og81 fails
+permanently by design. The sign-off now says what must actually hold — the reconciliation — and
+adds that a raw og81 PASS would mean someone inserted a ledger row that must not exist.
+
+```
+$ .\release\validate-blocks.ps1 -Path release\out\RELEASE-e4b.md     # AFTER
+  mig_apply lines found : 15   unique versions : 15   blocks found : 33   blocks missing Expect : 0
+PASSED — no problems found.                                            exit code 0
+```
+Same probe, same document, opposite outcome, with the fix in between.
+
+## EXACT NEXT COMMAND (E4-6)
+```
+.\release\apply-release.ps1 -ReleaseMd release\out\RELEASE-e4b.md -TargetDb prod_rehearsal_e4c `
+  -Decided release\config\decided-migrations.txt
+```
+`prod_rehearsal_e4c` is the PRISTINE restore taken for the gate baseline (ledger 681, top
+20260912150000, zero migrations replayed). It stands in for production's `postgres` — that is the
+production database name being substituted, and `-TargetDb` has no default precisely so the
+substitution is always explicit.
+
+## WHAT WOULD PROVE THAT STEP DONE
+A run log under `release/runs/` ending `PASSED`, showing the 15 mig_apply blocks and the one
+decided ledger-row-only block executed against `prod_rehearsal_e4c`, and stopping cleanly at
+`# Phase 5`.

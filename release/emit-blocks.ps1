@@ -599,16 +599,37 @@ Add-Line "# Sign-off"
 Add-Line ""
 Add-Line "### Block $blockN - sign-off"
 Add-Line ""
+# CORRECTED by E-4, 2026-09-13, by release/validate-blocks.ps1's FIRST run against a real
+# document. The three gate lines used to read "- [ ] og81 ... Expect: PASSED", with Expect: buried
+# mid-line, so the block contained no line the validator's `^\s*Expect:` rule could see and it was
+# reported as having no Expect: at all. That was a true finding, not a false positive: the check
+# exists so that no block can be signed off without stating what must be seen, and a validator
+# loose enough to accept "Expect:" anywhere in a sentence would accept prose that merely mentions
+# it. The generator was fixed; the validator was left strict.
+#
+# The og81 line ALSO could not honestly say PASSED any more. og81 fails on a target carrying the
+# OG-J decision, by design and permanently -- see the SKIPPED BY DECISION blocks above. What the
+# operator must check is the reconciliation, not the raw exit code.
 [void]$sb.AppendLine(@'
-- [ ] og81  (ledger matches disk)              Expect: PASSED
-- [ ] og102 (anon execute grants stay closed)   Expect: PASSED
-- [ ] og103 (anon table grants stay closed)     Expect: PASSED
+- [ ] og81  (ledger matches disk)
+- [ ] og102 (anon execute grants stay closed)
+- [ ] og103 (anon table grants stay closed)
 - [ ] smoke: receivables page loads
 - [ ] smoke: payables page loads
 - [ ] smoke: allocation workbench opens
 - [ ] cold gate: viewer cannot reach /admin/automation
 
 Executor: ______________     Date/time: ______________
+
+Expect: og102 and og103 show NO test that was green before this release and is red after it.
+Expect: Any pre-existing red listed in the rehearsal's baseline section stays red and is NOT
+Expect: signed off as fixed -- it is a separate, still-open finding about the target.
+Expect: og81's raw result is FAIL on a target carrying the OG-J decision, permanently and by
+Expect: design. What must hold instead is its reconciliation: the set of migration files with no
+Expect: ledger row equals exactly the SKIPPED BY DECISION and SHAPE MISMATCH blocks above, with
+Expect: zero unexplained and zero orphaned. A raw og81 PASS here would mean someone inserted a
+Expect: ledger row that must not exist -- that is a STOP, not a success.
+Expect: every smoke and cold-gate line above ticked by the executor, by hand, on the real target.
 '@)
 Add-Line ""
 Add-Line "Overall: PASSED / STOP  (circle one; STOP means Block $($blockN - 1)'s rollback was used)"
