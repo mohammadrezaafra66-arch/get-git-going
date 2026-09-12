@@ -1,5 +1,15 @@
 # The 74 migrations production is missing — apply order
 
+> ## 🔴 SUPERSEDED 2026-09-12 — this list is incomplete. Do not run from it.
+>
+> PR #435 merged to `staging` on 2026-09-08 and carried **three more** migrations production
+> does not have: **520**, **521**, **522**. The real gap is **77**, not 74.
+>
+> **The authoritative apply list is the Phase 4 table in
+> `docs/runbooks/production-migration-20260908-BLOCKS.md`**, which is validated mechanically
+> against the tree. This file is kept for its ordering rationale and its rehearsal results,
+> which remain correct for the 74 rows it does contain.
+
 Generated 2026-09-07T20:42:13Z from `staging` @ `9c113aac` by the orchestrator.
 
 ## The audit says 62. The real number is 74.

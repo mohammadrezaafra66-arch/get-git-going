@@ -11,6 +11,23 @@
 > Where the rehearsal is used as a proxy for production it says so, and the block that confirms
 > it on the night is named.
 
+> ## ⚠️ Addendum, 2026-09-12 — three things in this document have moved
+>
+> 1. **The backup is `prod-20260912.dump`.** The 2026-09-08 dump named below is four days
+>    stale and **is not the restore target**. Keep the file; do not restore from it.
+> 2. **The gap is 77, not 74.** PR #435 merged on 2026-09-08 and carried 520, 521 and 522
+>    onto `staging` — all three absent from production. `MIGRATIONS-74.md` is stale; the
+>    authoritative list is the Phase 4 table in `production-migration-20260908-BLOCKS.md`.
+>    `staging` has not moved otherwise (`a6b6c629` = `9c113aac` + #435), and **PR #436 does
+>    not exist.**
+> 3. **520 and 521 were rehearsed on 2026-09-12**, since they were never in the rehearsed 74.
+>    Both applied to `prod_rehearsal_20260908` with md5 matched on both sides and **`EXIT=0`**.
+>    520 asserts no absolute row counts — its comparisons are relational (`= 0`) — and 521 is
+>    three `REVOKE`s. Both carry their own `BEGIN;`/`COMMIT;`, so the harmless-warning list is
+>    now eight: 466, 512, 513, 514, 516, 517, 520, 521.
+>
+> Everything else below stands as measured on 2026-09-08.
+
 ---
 
 ## 0 · The three preflight answers, applied
