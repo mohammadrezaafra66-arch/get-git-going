@@ -287,7 +287,7 @@ function SalesKpis() {
           value={purchases.data?.total ?? null}
           subtitle={
             purchases.data
-              ? `${purchases.data.approved} تأیید · ${purchases.data.pending} در انتظار`
+              ? `${toPersianDigits(purchases.data.approved)} تأیید · ${toPersianDigits(purchases.data.pending)} در انتظار`
               : undefined
           }
           loading={purchases.isLoading}
