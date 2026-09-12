@@ -542,3 +542,684 @@ from plan index 7 without a fresh restore.
 4. 403 of 703 candidates are `UNVERIFIABLE` — the catalogue has no signal for function-only,
    grant-only and data-only migrations. That is a large blind spot in "catalogue over ledger" and
    deserves its own mission.
+
+---
+---
+
+# E-4 continuation — steps E4-3 … E4-6 and E4-7a
+
+**Verdict: COMPLETE for the steps in scope.** The rehearsal reaches `## VERDICT: PASS`, the release
+document exists and validates, and it was executed mechanically against a pristine production-shaped
+database to `PASSED`. Three separate defects were found on the way, two of them in this pipeline's
+own code, and each is reported with the before/after that proves it.
+
+Everything above this line is the previous run's report and is **unchanged**. Where this run
+contradicts it, it says so explicitly.
+
+## Restore identity, and whether this run restored or resumed
+
+**RESUMED. No restore for the main line.** The previous run's retained database was verified to
+still exist before anything relied on it — measured, not assumed:
+
+```
+$ docker exec ... psql -U supabase_admin -d postgres -tAc "SELECT datname||' | '||pg_size_pretty(...)
+    FROM pg_database WHERE datname LIKE 'prod_rehearsal%' OR datname IN ('afrakala','postgres')"
+afrakala | 367 MB          postgres | 138 MB          prod_rehearsal_20260908 | 295 MB
+prod_rehearsal_base | 352 MB   prod_rehearsal_da | 352 MB
+prod_rehearsal_e4b  | 352 MB     <-- the retained database, still there
+prod_rehearsal_fix  | 352 MB   prod_rehearsal_gate | 352 MB
+prod_rehearsal_v1   | 352 MB   prod_rehearsal_v2 | 352 MB
+
+$ ... -d prod_rehearsal_e4b -tAc "SELECT 'ledger_rows='||count(*)||' min='||min(version)||' top='||max(version) ..."
+ledger_rows=685 min=20260424144837 top=20260912150000
+
+$ cat release/runs/e4b/progress.txt
+6
+```
+
+685 rows and progress 6 is exactly the state the previous run recorded. Resumed at plan index 7.
+
+**Two further restores were taken**, both of the same dump, both with identity printed first:
+
+```
+dump file : D:/AfraKalaTest/dumps/prod-20260913.dump
+size bytes: 35424962
+md5 (host): 6ccd2dbb07a9a4d9bbae4421eb3265e0
+delivered ... -> afrakala-lan-db:/tmp/rehearsal_e4c.dump (md5 6ccd2dbb07a9a4d9bbae4421eb3265e0, identical both sides)
+pg_restore exit code = 1 ; restore errors: tolerated=21 untolerated=0
+tables|views|functions|policies|persons|audit_logs = 251|24|859|645|4857|112696
+ledger_rows|ledger_min|ledger_max = 681|20260424144837|20260912150000
+## Candidates: 703 files at or below ceiling 20260913111000
+```
+
+`prod_rehearsal_e4c` — the gate baseline. `prod_rehearsal_e4d` — the apply-release target, restored
+identically. Both reproduced the previous run's restore numbers exactly (681 / `20260912150000` /
+703 candidates / 22-entry plan), which independently confirms the E4-1 restore was what it claimed.
+
+---
+
+## E4-3 — the third category, the batches, and the verdict
+
+### The decision the previous run was missing, built as a real category
+
+`release/lib/decided-migrations.sh` + `release/config/decided-migrations.txt` + `--decided`.
+Two dispositions: `SKIP` (no SQL, **no ledger row**) and `LEDGER_ONLY` (no SQL, ledger row only
+after a declared guard holds). 449/450/452 are `SKIP` under OG-J; 373 is `LEDGER_ONLY` under OG-C
+with the guard `SELECT count(*) FROM pg_default_acl WHERE defaclacl::text LIKE '%anon%'` = `0`.
+
+**It is mechanically different from shape tolerance, not just labelled differently.** Shape
+tolerance is consulted only *after* `mig_apply` returns non-zero — the SQL is delivered, runs, and
+raises. A decided version is checked *before* the attempt: the replay loop tests the decision
+immediately after resolving the file path and `continue`s, so no file is ever delivered to the
+container and no error is ever produced. That is why the two are counted and rendered separately
+everywhere downstream, and why `release/emit-blocks.ps1` gives a `DECISION_SKIPPED` block **no
+executable directive at all** — there is nothing for `apply-release-engine.sh` to match, so nothing
+can be run from it by accident.
+
+Unit evidence, re-runnable without docker (E3):
+```
+$ bash -n release/lib/decided-migrations.sh                  exit=0
+$ source release/lib/decided-migrations.sh; F=release/config/decided-migrations.txt
+A declared SKIP        : disp=[SKIP]        id=[OG-J] rc=0
+B declared LEDGER_ONLY : disp=[LEDGER_ONLY] guard=[SELECT count(*) FROM pg_default_acl WHERE defaclacl::text LIKE '%anon%'] expect=[0]
+C undeclared version   : rc=1
+D no file at all       : rc=1      <- safe default: nothing is decided unless declared
+```
+
+### The batches (E3) — never one call
+
+```
+$ .\release\rehearse.ps1 -Date e4b -Replay -BatchSize 8 -ShapeTolerant ... -Decided ...
+## Replay batch 7-14 of 22
+ledger rows BEFORE this batch: 685
+SKIPPED BY DECISION OG-J: 20260905171000 (20260905171000_449_retire_daily_capital_functions.sql)
+  reason: 449 retire daily capital functions. Nothing performed this work on production; a ledger
+          row would be false. ACCEPTED DIVERGENCE, not a gap.
+  the SQL was NOT delivered and NOT executed, and NO ledger row is written -- that
+  absence is the decision, not an omission.
+SKIPPED BY DECISION OG-J: 20260905171500 (...450...)
+SKIPPED BY DECISION OG-J: 20260905180000 (...452...)
+ledger rows AFTER  this batch : 690
+ledger DELTA       this batch : 5
+plan progress                 : 14 of 22          exit code 0
+
+$ .\release\rehearse.ps1 -Date e4b -Replay -BatchSize 8 ...
+## Replay batch 15-22 of 22
+ledger rows AFTER  this batch : 698
+ledger DELTA       this batch : 8
+plan progress                 : 22 of 22
+## REPLAY COMPLETE — all 22 plan entries applied. Next: --phase gates      exit code 0
+```
+
+Plan indices 7, 8 and 9 contributed **0** to the ledger delta. The previous run stopped dead at
+index 7; the same probe now walks past it without running it. That is the E4 before/after, on the
+same database.
+
+### og81 — run unmodified, then reconciled
+
+og81 cannot pass on a target carrying OG-J, and must not be made to. So the engine runs it alone,
+records its real failure, and separately measures the disk/ledger difference, requiring it to equal
+the declared exception set exactly in both directions:
+
+```
+  2 failed
+    og81-migration-ledger-matches-disk.spec.ts:44:1 › every migration file on disk has a ledger row
+    og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous
+  2 passed
+og81 playwright exit code = 1
+
+## og81 reconciliation (measured directly from disk and the live ledger)
+migration files on disk           : 703
+ledger rows in prod_rehearsal_e4b : 698
+files with NO ledger row          : 5
+ledger rows with NO file          : 0   (must be 0 -- a deleted migration file)
+declared exception set            : 5   (decided SKIP + shape-tolerated)
+UNEXPLAINED unrecorded            : 0   (must be 0)
+declared but actually recorded    : 0   (must be 0 -- a stale declaration)
+
+20260818150000  shape-tolerated -- not applied on this shape, OPEN question for a human
+20260818157000  shape-tolerated -- not applied on this shape, OPEN question for a human
+20260905171000  skipped by decision OG-J -- no row on purpose, permanently
+20260905171500  skipped by decision OG-J -- no row on purpose, permanently
+20260905180000  skipped by decision OG-J -- no row on purpose, permanently
+```
+
+This is stricter than og81 alone, not looser: og81 asks "is the difference empty"; this asks "is the
+difference precisely the set a human signed for". **No ledger row was added for 449, 450 or 452.**
+
+### og102/og103 — five red tests, and the reason [A-1] exists
+
+The gates went red on five tests. Before deciding anything I looked for a record — and found one.
+`docs/missions/convergence/INTEGRATION-LOG.md:464-497` had already measured **all five on
+production**, listed them individually, and concluded:
+
+> "None of the four is caused by this branch, and all four are identical in the baseline run. …It
+> does **not** say the eight failures are acceptable. …What it says is narrower and is the only
+> thing the gate is entitled to conclude: the eleven migrations in this branch are not their cause,
+> and applying this branch does not make any of them worse."
+
+Encoding that as an allowlist would turn a measurement into an assertion someone typed — the defect
+class this pipeline exists to stop. So E-4 **measures** it instead: a new `--phase baseline`
+(`-BaselineGates`) runs og102/og103 against a **pristine restore of the same dump**
+(`prod_rehearsal_e4c`, zero migrations replayed), and the phase **refuses** to run on a database
+whose `progress.txt` is not 0 — a baseline taken on a partly-migrated database would absorb the very
+failures the release caused.
+
+```
+## Baseline failures (PRE-EXISTING on the target, not caused by this release)
+e2e/security/og102-pre393-anon-execute-grants-stay-closed.spec.ts:284:1
+e2e/security/og102-pre393-anon-execute-grants-stay-closed.spec.ts:299:1
+e2e/security/og103-anon-table-grants-stay-closed.spec.ts:523:1
+e2e/security/og103-anon-table-grants-stay-closed.spec.ts:589:1
+e2e/security/og103-anon-table-grants-stay-closed.spec.ts:651:1
+e2e/security/og103-anon-table-grants-stay-closed.spec.ts:682:1
+baseline failing tests: 6
+```
+
+and after the full replay on `prod_rehearsal_e4b`:
+
+```
+failing on the pristine target BEFORE the release : 6
+failing AFTER the full replay                     : 5
+NEW failures caused by this release               : 0   (must be 0)
+tests this release FIXED                          : 1
+
+green after the release, red before it:
+e2e/security/og102-pre393-anon-execute-grants-stay-closed.spec.ts:299:1
+```
+
+The release fixes one and breaks none. **The five that stay red are listed in the report, by test,
+and are explicitly not licensed.** A test that was green before and is red after is `VERDICT: FAIL`.
+
+### A false zero inside a PASS report — found in this pipeline's own code (E4)
+
+The anon view/matview census printed `anon-readable views/matviews: 0`. It was not zero:
+
+```
+ERROR:  operator is not unique: text || "char"
+LINE 2: SELECT c.relname || '|' || c.relkind
+HINT:  Could not choose a best candidate operator...
+anon-readable views/matviews: 0
+```
+
+`relkind` is `pg_catalog."char"`; the concatenation is ambiguous and **raised**. `psql_scalar`
+swallowed it, the empty result was counted as zero, and a measurement that never ran was printed as
+a clean result inside a report ending `VERDICT: PASS`. Fixed with `::text`, plus a second
+independent `count(*)` that must agree with the list length or the run FAILS.
+
+```
+before:  anon-readable views/matviews: 0
+after :  anon-readable views/matviews: 7 (independently counted: 7)
+         academy_quiz_questions_public|v   effective_currencies_view|v   employee_monthly_hours|v
+         v_latest_active_purchase_prices|v  v_league_tiers_public|v
+         v_pricing_recompute_queue_summary|v  vw_purchase_float|v
+```
+
+Seven, matching exactly the seven views `INTEGRATION-LOG.md:468-471` recorded as anon-readable on
+production. The number was always seven; the pipeline had been reporting zero.
+
+### The verdict (E3)
+
+```
+$ .\release\rehearse.ps1 -Date e4b -GatesOnly -ShapeTolerant ... -Decided ... `
+    -BaselineFailures release\runs\e4c\baseline-gate-failures.txt
+REHEARSAL PASSED. Report: release\out\rehearsal-e4b.md            EXITCODE=0
+
+## Candidate accounting — every candidate in exactly one bucket, and they must SUM
+considered (candidates at or below the ceiling)     703
+  OK                  (ledger + catalogue agree)    242
+  APPLIED             (replayed by this rehearsal)     15
+  LEDGER_ONLY         (catalogue-driven, row only)      1
+  DECIDED_LEDGER_ONLY (decision, row only, guarded)      1
+  SHAPE_TOLERATED     (failed, declared, still OPEN)      2
+  SKIPPED_BY_DECISION (never run at all, CLOSED)        3
+  LEDGER_LIES         (pre-declared, untouched)         36
+  UNVERIFIABLE        (row exists, no catalogue signal) 403
+  REFUSED             (plan entries never attempted)     0
+  ---- sum                                             703
+
+## VERDICT: PASS
+```
+
+242 + 15 + 1 + 1 + 2 + 3 + 36 + 403 + 0 = **703**, equal to the candidate count. The engine checks
+that arithmetic itself and emits `VERDICT: FAIL` on a mismatch before the gates are even consulted.
+
+---
+
+## THE SECURITY FINDING — two ledger lies hiding inside UNVERIFIABLE
+
+This is the most important thing this run produced and it was not on the task list. og103 found it;
+the rehearsal could not have.
+
+`anon` holds **table-level SELECT** on `public.products`, `public.categories` and
+`public.academy_quiz_questions` on production. Verified in the dump itself — a second tool, not the
+restored database:
+
+```
+$ docker exec afrakala-lan-db sh -c "pg_restore --schema-only -f - /tmp/rehearsal_e4b.dump \
+    | grep -nE 'TO anon' | grep -E 'products|categories|academy_quiz_questions'"
+62137:GRANT SELECT ON TABLE public.products TO anon;
+68999:GRANT SELECT ON TABLE public.academy_quiz_questions TO anon;
+69150:GRANT SELECT ON TABLE public.categories TO anon;
+```
+
+The test database does not:
+
+```
+                                  prod_rehearsal_e4b (production)   afrakala (test)
+anon SELECT columns on products                 28                        9
+anon SELECT columns on categories               11                        6
+```
+
+Two migrations exist whose entire purpose is to remove exactly that table-level grant, and **both
+carry ledger rows on production**:
+
+```
+supabase/migrations/20260825020000_388_narrow_anon_product_columns.sql:137
+  REVOKE SELECT ON public.products FROM anon;
+supabase/migrations/20260825120000_390_narrow_anon_category_columns_and_close_price_definer.sql:64
+  REVOKE SELECT ON public.categories FROM anon;
+
+20260825020000 : ledger=1  evidence=20260825020000|NO-EVIDENCE  bucket=unverifiable
+20260825120000 : ledger=1  evidence=20260825120000|NO-EVIDENCE  bucket=unverifiable
+```
+
+**Stated precisely, without over-claiming:** the ledger says both are applied; the column-level
+GRANT half of 388 *is* present on production (eleven product columns in the dump); the table-level
+REVOKE that defines both migrations is *not*. Whether it never ran or was undone afterwards is not
+established here. What is established is that the ledger and the catalogue disagree about these two
+migrations — the R-1 / migration-477 failure mode — and that **the rehearsal classified them
+UNVERIFIABLE, therefore trusted the ledger, and did nothing.**
+
+So the 403 `UNVERIFIABLE` candidates are not a theoretical blind spot in "catalogue over ledger".
+Two of them were caught lying in this very run, by a gate rather than by the classifier, and both
+are anon-exposure migrations. `docs/missions/prodprep/ledger-evidence.sh` has no probe for
+grant-only migrations, so it returns `NO-EVIDENCE`, and `NO-EVIDENCE` + a ledger row resolves to
+"trust the ledger". **That is the weakest joint in the whole design and it belongs in the runbook,
+stated plainly, not buried.** This release does not close the exposure and does not claim to.
+
+---
+
+## E4-4 — `RELEASE-e4b.md`, with 537's count DERIVED
+
+```
+$ .\release\emit-blocks.ps1 -RehearsalReport release\out\rehearsal-e4b.md -Date e4b `
+    -Decided release\config\decided-migrations.txt
+Sequenced expectations parsed for 11 migration(s)
+Decision file parsed: 4 declared version(s)
+Parsed rehearsal: 15 APPLY, 1 LEDGER_ONLY, 2 SHAPE_TOLERATED, 3 DECISION_SKIPPED, 1 DECIDED_LEDGER_ONLY
+Written: release\out\RELEASE-e4b.md          exit code 0
+```
+
+Block 18 of the generated document, verbatim:
+
+```
+### Block 18 - migration 20260913105000 . 20260913105000_537_revoke_truncate_from_authenticated.sql
+
+    mig_apply 20260913105000 20260913105000_537_revoke_truncate_from_authenticated.sql
+
+Expect: OK 20260913105000_537_revoke_truncate_from_authenticated.sql
+Expect: INSERT 0 1
+Expect: NOTICE:  537: TRUNCATE revoked from authenticated on 215 table(s); 13 already closed.
+Expect: NOTICE:  537: default TRUNCATE privilege revoked for grantor(s): supabase_admin, postgres
+Expect: NOTICE:  537 OK: authenticated holds TRUNCATE on 0 of 228 tables; service_role still holds it on all 228.
+         (measured in the release sequence by the rehearsal, not typed by hand)
+```
+
+**215 — and it is measured, not asserted.** The previous run correctly refused to print it. Here is
+where it came from: 537's own psql output during the real replay, in the real sequence.
+
+```
+$ cat release/runs/e4b/apply_out_20260913105000.txt
+=== apply 20260913105000_537_revoke_truncate_from_authenticated.sql (version 20260913105000) ===
+psql:/tmp/mig_20260913105000.sql:105: NOTICE:  537: TRUNCATE revoked from authenticated on 215 table(s); 13 already closed.
+```
+
+537's own header says **214**, which is what it revokes applied alone. Migration 534 creates
+`cron_run_log` three steps earlier and the new table inherits the schema default that still carries
+TRUNCATE, so in sequence it closes one more. An operator reading a typed 214 would see 215, conclude
+the run had gone wrong, and stop a correct release.
+
+```
+$ grep -n "214" release/out/RELEASE-e4b.md
+(no output — no typed count survives anywhere in the document)
+```
+
+The document also renders the third category distinctly:
+
+```
+Block 22, 23   - SHAPE MISMATCH, HUMAN REVIEW REQUIRED - 336 / 343
+Block 24       - ledger-row-only BY DECISION OG-C - 373  (guard first, then ledger_insert_only)
+Block 25,26,27 - SKIPPED BY DECISION OG-J - DO NOT RUN - 449 / 450 / 452
+```
+
+Blocks 25-27 contain **no runnable directive** — only a read-only check that the row is *absent*,
+with `Expect: a value of 1 here means someone recorded it anyway -- STOP and escalate`.
+
+---
+
+## E4-5 — `validate-blocks.ps1`, whose first real run found a real defect (E4)
+
+```
+$ .\release\validate-blocks.ps1 -Path release\out\RELEASE-e4b.md        # BEFORE
+  mig_apply lines found : 15   unique versions : 15   blocks found : 33   blocks missing Expect : 1
+FAILED — 1 problem(s):
+  - NO Expect: LINE in block: ### Block 33 - sign-off                    EXITCODE=1
+```
+
+Not a false positive. The sign-off block wrote `- [ ] og81 (ledger matches disk)   Expect: PASSED`,
+with `Expect:` buried mid-line, so the block contained no line the `^\s*Expect:` rule could see.
+**The generator was fixed and the validator left strict** — a check loose enough to accept
+"Expect:" anywhere in a sentence would accept prose that merely mentions it, and rule 4 exists so
+that no block is signed off without stating what must be seen.
+
+The og81 line also could not honestly say `PASSED`: on a target carrying OG-J it fails permanently,
+by design. It now states what must actually hold, including
+`Expect: A raw og81 PASS here would mean someone inserted a ledger row that must not exist -- that
+is a STOP, not a success.`
+
+```
+$ .\release\validate-blocks.ps1 -Path release\out\RELEASE-e4b.md        # AFTER
+  mig_apply lines found : 15   unique versions : 15   blocks found : 33   blocks missing Expect : 0
+PASSED — no problems found.                                              EXITCODE=0
+```
+
+---
+
+## E4-6 — `apply-release.ps1`, and a FALSE PASS (E4)
+
+### The first run executed 2 blocks of 17 and reported PASSED
+
+```
+$ .\release\apply-release.ps1 -ReleaseMd release\out\RELEASE-e4b.md -TargetDb prod_rehearsal_e4c `
+    -Decided release\config\decided-migrations.txt
+PASSED. Log: release\runs\20260913-024603.log
+
+$ grep -E "^(Block:|=== VERDICT)" release/runs/20260913-024603.log
+Block: ledger_insert_only 20260913090000
+Block: ledger_insert_only 20260822210000
+=== VERDICT: PASSED (all preflight + migration blocks matched their Expect: lines;
+```
+
+Fifteen `mig_apply` blocks were walked straight past. Root cause, reproduced in isolation rather
+than inferred:
+
+```
+$ bash -c 'line="    mig_apply 20260913105000 20260913105000_537_x.sql"
+  if [[ "$line" =~ ^\ *mig_apply\ +([0-9]{14})\ +(\S+\.sql) ]]; then echo MATCH; else echo "NO MATCH (rc=$?)"; fi'
+NO MATCH (rc=1)
+```
+
+`\S` is a GNU regex extension this bash's ERE does not honour, so
+`release/lib/apply-release-engine.sh`'s mig_apply branch had **never** been able to match — on LF or
+CRLF input alike. The `ledger_insert_only` branch carries no `\S`, which is exactly why those two
+blocks, and only those two, ran. The engine's core branch was broken from the day it was written and
+no run had exposed it, because until now no run had happened.
+
+### Both halves were fixed, and the second is the one that matters
+
+1. POSIX `[[:space:]]` / `[^[:space:]]` classes, plus a CR strip for the Windows-generated document.
+2. **A completeness assertion.** The engine counts the directives in the document *before* running
+   anything and compares that against what it executed. A mechanical executor that can silently do
+   nothing and still print PASSED is worse than no executor, because a human reads PASSED and stops
+   checking. Disagreeing counts are now `VERDICT: STOP`, whatever the individual blocks returned.
+
+### The proving run, against a pristine target (E3)
+
+`prod_rehearsal_e4c` was no longer pristine — the false-pass run had written two ledger rows into it
+— so `prod_rehearsal_e4d` was restored from the same dump (identity above) and the document executed
+against it. **`-TargetDb` is how production's database name is substituted**; it has no default
+precisely so that substitution is always explicit and never guessed.
+
+```
+$ .\release\apply-release.ps1 -ReleaseMd release\out\RELEASE-e4b.md -TargetDb prod_rehearsal_e4d `
+    -Decided release\config\decided-migrations.txt
+Running apply-release engine (bash) against prod_rehearsal_e4d@afrakala-lan-db ...
+document declares: 15 mig_apply block(s), 2 ledger-row-only block(s) before Phase 5
+--- Preflight ---
+pg_is_in_recovery() = f (Expect: f)
+...
+=== apply 20260913105000_537_revoke_truncate_from_authenticated.sql (version 20260913105000) ===
+psql:/tmp/mig_20260913105000.sql:105: NOTICE:  537: TRUNCATE revoked from authenticated on 215 table(s); 13 already closed.
+INSERT 0 1
+OK 20260913105000_537_revoke_truncate_from_authenticated.sql
+...
+Block: ledger_insert_only 20260913090000
+INSERT 0 1
+DECISION GUARD OG-C for 20260822210000: got [0], expected [0]
+Block: ledger_insert_only 20260822210000
+INSERT 0 1
+OK ledger-row-only 20260822210000
+--- reached Phase 5 (image transfer). Stopping cleanly -- deploy is a human step. ---
+
+executed: 15 of 15 mig_apply block(s), 2 of 2 ledger-row-only block(s)
+=== VERDICT: PASSED (all preflight + migration blocks matched their Expect: lines;
+    deploy phase was NOT executed -- run it by hand, this script never touches
+    the running afrakala-lan-web container) ===
+EXITCODE=0
+Log: release\runs\20260913-025450.log
+```
+
+### Two independent routes reach one end state
+
+```
+prod_rehearsal_e4b : ledger_rows=698 top=20260913111000   (the rehearsal's batched replay)
+prod_rehearsal_e4d : ledger_rows=698 top=20260913111000   (RELEASE-e4b.md executed mechanically)
+```
+
+And 537 printed `on 215 table(s)` on `e4d` as well — the same number the `Expect:` line carries, now
+confirmed on a database that played no part in producing it. That is as close to independent
+confirmation of the derived expectation as this host allows.
+
+**The OG-C guard was exercised for real here, and only here.** On `e4b` migration 373 had already
+been applied at plan index 3 by the previous run, before the decision file existed, so that path
+could not fire; the FINAL classification still reports it as `DECIDED_LEDGER_ONLY` because the
+decision file — not what one replay happened to do — is what the release document must instruct, and
+the report's own `## Decision exercise record` section says plainly which dispositions this run
+exercised and which it inherited. On `e4d` the guard did fire (`got [0], expected [0]`) and the
+ledger row was written only after it held.
+
+---
+
+## E4-7a — `release/runs/` gitignored, and what a gitignore cannot do
+
+Nineteen run artefacts were showing as untracked work. They are ignored now. But `.gitignore`
+untracks nothing that is already tracked, and five files were:
+
+```
+$ git ls-files release/runs/
+release/runs/e4b/00-first-attempt-336-guard-failure.md
+release/runs/e4b/01-restore.md
+release/runs/e4b/02-replay-0001-0008.md
+release/runs/e4b/apply_plan.txt
+release/runs/e4b/progress.txt
+```
+
+Four are stable narrative evidence this document cites by path and they stay. `progress.txt` is a
+bare counter rewritten by **every** replay batch — the one file that made the tree dirty after each
+checkpoint, which is the noise the rule exists to remove — so it was untracked with
+`git rm --cached` (untouched on disk, still read by the replay and gates phases). Recorded in
+`.gitignore` itself so the next reader is not surprised.
+
+---
+
+## Pinned versions
+
+Nothing was installed, upgraded or pinned by this run. `package.json` and `package-lock.json` are
+unchanged. The only version-like values this work pins live in configuration, and every one is
+measured rather than chosen:
+
+| pinned value | where | how it was obtained |
+|---|---|---|
+| dump md5 `6ccd2dbb07a9a4d9bbae4421eb3265e0` | every report's restore identity | `md5sum` on host and in container, every run |
+| ceiling `20260913111000` | derived, not typed | `ls supabase/migrations` + `sed` + `sort` + `tail -1` |
+| 537's `215` | `RELEASE-e4b.md` Block 18 | lifted from the replay's own NOTICE |
+| OG-C guard `0` | `release/config/decided-migrations.txt` | the same query the Preflight snapshot runs |
+| the 5-version og81 exception set | reconciliation, recomputed every run | decided SKIPs plus shape-tolerated, never typed |
+| the 6-test gate baseline | `release/runs/e4c/baseline-gate-failures.txt` | re-measured on a pristine restore each run |
+
+---
+
+## Verification owed
+
+| check | result |
+|---|---|
+| `npx tsc --noEmit` | **70 errors across exactly 6 files — baseline matched, per file** |
+| `npm run build` | **skipped, and saying so** — see below |
+| e2e suite | not run, per the brief. og81/og102/og103 ran only as the rehearsal's own gates. |
+
+```
+$ npx tsc --noEmit          (counted per file)
+src/lib/accounting/functions.ts               13      baseline 13   MATCH
+src/lib/audit/index.ts                         6      baseline  6   MATCH
+src/lib/invoices/functions.ts                 13      baseline 13   MATCH
+src/routes/_app.admin.automation.tsx           5      baseline  5   MATCH
+src/routes/_app.admin.sales-reminders.tsx     15      baseline 15   MATCH
+src/routes/_app.products.index.tsx            18      baseline 18   MATCH
+                                              --                --
+TOTAL                                         70      baseline 70
+
+$ grep -cE "error TS" docs/verification/convergence/typecheck-integration-70-6.txt
+70
+```
+
+`npm run build` was skipped because this run's diff contains no application code at all:
+
+```
+$ git diff --name-only 0065d54e HEAD | grep -E '^src/|\.tsx?$'
+(no matches - release tooling and docs only)
+
+$ git diff --name-only 0065d54e HEAD
+.gitignore
+docs/missions/convergence/RESUME-E4.md
+docs/research/convergence/E-4-proof.md
+release/apply-release.ps1
+release/config/decided-migrations.txt
+release/emit-blocks.ps1
+release/lib/apply-release-engine.sh
+release/lib/decided-migrations.sh
+release/lib/rehearse-engine.sh
+release/out/RELEASE-e4b.md
+release/out/rehearsal-e4b.md
+release/out/rehearsal-e4c.md
+release/out/rehearsal-e4d.md
+release/rehearse.ps1
+release/runs/e4b/progress.txt
+```
+
+The `node_modules` trap the previous run documented did **not** recur — the first `npx tsc` of this
+run returned 70, not 1985, because that run's `npm ci` left the tree intact. No install was needed
+and none was run.
+
+---
+
+## What is UNVERIFIABLE, and what is unexercisable on this host
+
+**Unverifiable — the blind spot, stated plainly.** 403 of 703 candidates (57%) are `UNVERIFIABLE`:
+they carry a ledger row and `docs/missions/prodprep/ledger-evidence.sh` returns `NO-EVIDENCE`, so
+the catalogue cannot say whether their effect is present and the rehearsal falls back to trusting
+the ledger. Function-only, grant-only and data-only migrations all land here. **This is not
+hypothetical — migrations 388 and 390 are two of the 403 and both were caught lying in this run**,
+by og103 and not by the classifier. "Catalogue over ledger" is only as strong as the catalogue
+probes, and for more than half the candidate set there are none.
+
+**Unexercisable on this host:**
+- Anything requiring the production laptop. Not one packet was sent to `192.168.170.10`.
+- The `SHAPE_TOLERATED` disposition for 336/343 against the real target. The rehearsal proves only
+  that their guard aborts on a database not named `afrakala`. Whether production carries the objects
+  527/528 re-issue is a human check — which is why those blocks say HUMAN REVIEW REQUIRED.
+- A raw og81 PASS. Impossible by design on a target carrying OG-J; the reconciliation is the check.
+- The release document's Phase 5 and Phase 6 (image, deploy, rollback, verify). `apply-release.ps1`
+  stops cleanly at Phase 5 and this role never runs a deploy command.
+- Migration 537 against production's actual table set. 215 is the count on a restore of the
+  2026-09-13 dump; if production has gained a table since, the number moves — which is exactly why
+  the block carries a derived expectation and a note rather than a hard assertion.
+
+---
+
+## What I did NOT do
+
+- **Did not deploy anything.** No compose command, no image built or pushed, no container started,
+  stopped or rebuilt, no browser.
+- **Never contacted the production laptop** at `192.168.170.10`.
+- **Never wrote to** `afrakala` (read-only measurement only), `postgres`, `prod_rehearsal_base`,
+  `_gate`, `_v1`, `_v2`, `_da`, `_fix`, or `prod_rehearsal_20260908`. Only `prod_rehearsal_e4b`,
+  `_e4c` and `_e4d`, all three created by E-4.
+- **Did not add a ledger row for 449, 450 or 452** — measured above: they are three of the five
+  files with no ledger row, and `UNEXPLAINED unrecorded = 0`.
+- **Did not edit any migration file, or write a new one.** CLAUDE.md rule 6 holds; the 449/450 fix
+  remains a database-role task.
+- **Did not modify og81, og102 or og103.** Every gate ran unmodified and its real result is in the
+  report.
+- **Did not green anything by disabling a step.** Both mechanisms added — decision skips and the
+  gate baseline — make the run stricter: an unexplained unrecorded migration and a newly-red test
+  are each a hard FAIL that did not exist before, as is a candidate accounting that does not sum,
+  an unmeasurable anon census, and an apply-release run that skipped a block.
+- **Never read or printed a secret.** `deploy/lan/.env.lan` was never opened. The Issabel token
+  appears nowhere. Database passwords come from the container's own environment, never echoed.
+- Did not run the e2e suite, did not merge PR #448, and pushed exactly once.
+
+---
+
+## OUT OF SCOPE — still open, and NOT recorded as closed
+
+**The five operational scripts cannot be committed from this machine.** They live in
+`C:\AfraKalaServer\get-git-going01lan`, which exists only on the production laptop, and that laptop
+is untouchable. The previous run verified their absence here and correctly declined to close the
+item; **this run declines as well.** It is an owner task, and blocks (a)-(d) of `RELEASE-e4b.md`
+are written for a human to run there.
+
+---
+
+## Gitignored files this run produced or changed ([E-2])
+
+Nothing under `deploy/`. Under `release/runs/` (now gitignored):
+
+- `release/runs/e4b/` — `02-replay-0007-0014.md`, `02-replay-0015-0022.md`, `apply_out_*.txt` (one
+  per applied migration), `notices.txt`, `gates.log`, `og81.log`, `og81_*.txt`,
+  `post-gate-failures.txt`, `gate-new-failures.txt`, `gate-fixed.txt`, `decision_skipped.txt`,
+  `decision_ledger_only.txt`, and `progress.txt` (now untracked, still on disk).
+- `release/runs/e4c/` — a full restore state dir plus `baseline-gates.log`,
+  **`baseline-gate-failures.txt`** (the file `-BaselineFailures` consumes: the gates phase needs it
+  and it is NOT committed) and `00-baseline-gates.md`.
+- `release/runs/e4d/` — a full restore state dir; no replay was run against it.
+- `release/runs/20260913-024603.log` — the FALSE PASS apply-release log, quoted above.
+- `release/runs/20260913-025450.log` — the proving apply-release log.
+- `release/runs/tsc-e4.txt` — raw `npx tsc --noEmit` output.
+- `node_modules/` — **not touched.** No install of any kind was run.
+
+Three scratch databases are left on the server on purpose: `prod_rehearsal_e4b` (fully replayed,
+ledger 698), `prod_rehearsal_e4c` (baseline source; **no longer pristine** — the false-pass run
+wrote ledger rows `20260913090000` and `20260822210000` into it) and `prod_rehearsal_e4d` (the
+apply-release target, ledger 698).
+
+---
+
+## Recommendations, out of scope — recorded, not acted on
+
+1. **Catalogue probes for grant-only migrations in `docs/missions/prodprep/ledger-evidence.sh`.**
+   This is now the highest-value item in the release line. 388 and 390 were caught by a gate, by
+   luck of coverage; there are 401 other `UNVERIFIABLE` candidates and nothing is watching them.
+2. **Close the anon table-level SELECT on `products`, `categories` and `academy_quiz_questions` on
+   production** — a new forward migration, catalogue-driven, in the 523/524 pattern. This release
+   does not fix it.
+3. Forward migrations for **449** and **450** that derive their assertions from the catalogue. OG-J
+   makes this optional rather than blocking, but the files remain unrunnable anywhere.
+4. A pre-merge gate that greps new migrations for literal row-count and database-name assertions:
+   336, 343, 449, 450 and 477 are five instances of one recurring defect, and og103's own static
+   table list is a sixth.
+5. `ledger-evidence.sh` hardcodes `supabase_admin`; it needs a user argument if `--db-user` ever
+   changes.
+6. og102's 17-item exclusion list and og103's `REVOKED_SELECT` / `REVOKED_WRITE` lists are static
+   lists generated on the test computer. Six names in og103's lists do not exist on production
+   (`keep=11 sel=190 wr=204` expected, `keep=11 sel=184 wr=198` measured) — the OG-J divergence,
+   permanent by decision. These gates will fail on production forever until they derive their
+   targets at run time.
+7. `release/lib/apply-release-engine.sh` shipped with a branch that could never match, and nobody
+   noticed because nobody had run it. Every script in this pipeline that has not been exercised
+   end-to-end at least once should be assumed to contain one of these.
+
+## Verdict: COMPLETE (for E4-3, E4-4, E4-5, E4-6 and E4-7a)
+
+Every step in scope has a command and its output. The two items deliberately left open — the five
+operational scripts, and the fix for 449/450 — are recorded above as open, not as done.

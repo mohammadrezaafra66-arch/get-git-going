@@ -818,3 +818,43 @@ exercised here.
 
 ## EXACT NEXT COMMAND
 Verification (`npx tsc --noEmit`), then append the E-4 proof section, then ONE push.
+
+
+---
+
+## Checkpoint 11 — verification and the proof document (2026-09-13) — FINAL
+
+### `npx tsc --noEmit` — baseline matched, per file (E3)
+```
+TOTAL=70
+src/lib/accounting/functions.ts               13   baseline 13   MATCH
+src/lib/audit/index.ts                         6   baseline  6   MATCH
+src/lib/invoices/functions.ts                 13   baseline 13   MATCH
+src/routes/_app.admin.automation.tsx           5   baseline  5   MATCH
+src/routes/_app.admin.sales-reminders.tsx     15   baseline 15   MATCH
+src/routes/_app.products.index.tsx            18   baseline 18   MATCH
+$ grep -cE "error TS" docs/verification/convergence/typecheck-integration-70-6.txt
+70
+```
+The 1985-error `node_modules` trap did NOT recur; no install of any kind was run.
+
+`npm run build` skipped and saying so — `git diff --name-only 0065d54e HEAD | grep -E '^src/|\.tsx?$'`
+returns nothing. The diff is `.gitignore`, `release/` and `docs/` only.
+
+### `docs/research/convergence/E-4-proof.md` — APPENDED, not rewritten
+The previous run's report is untouched above the `# E-4 continuation` heading. The new section
+covers, one per step, with commands and outputs: the resume identity; the third category; the
+batched replay; og81's reconciliation; the measured gate baseline; the false-zero census; the
+`VERDICT: PASS` and its 703-sum; **the security finding (388/390 lying inside UNVERIFIABLE)**; the
+derived 215; validate-blocks' first-run defect; apply-release's false PASS and the proving run;
+E4-7a; pinned values; verification; what is unverifiable and unexercisable; what was not done; the
+five operational scripts left OPEN; the gitignored files [E-2]; and seven out-of-scope
+recommendations.
+
+## STATE AT HANDOFF
+- E4-3, E4-4, E4-5, E4-6, E4-7a: **DONE**, each with a command and its output.
+- Still OPEN and deliberately not closed: the five operational scripts (owner task, production
+  laptop only) and forward migrations for 449/450 (database role).
+- PR #448 stays open and unmerged. One push, at the end.
+- Databases left behind: `prod_rehearsal_e4b` (698), `prod_rehearsal_e4c` (baseline source, NOT
+  pristine any more), `prod_rehearsal_e4d` (698). Nothing else was touched.
