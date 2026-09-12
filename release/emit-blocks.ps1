@@ -87,6 +87,42 @@ foreach ($l in $fenceLines) {
     }
 }
 
+# --- sequenced expectations: the NOTICEs each migration actually printed, IN SEQUENCE ---------
+# WHY THIS IS PARSED RATHER THAN TYPED
+#   A migration's own header records what it does when applied ALONE. The operator runs it in a
+#   SEQUENCE, and the sequence changes the numbers. Migration 537's header says it revokes
+#   TRUNCATE from `authenticated` on 214 tables; in this release migration 534 creates
+#   `cron_run_log` three steps earlier, that new table inherits the schema default that still
+#   includes TRUNCATE, and 537 therefore reports one more. An Expect: line carrying a typed 214
+#   would turn a CORRECT run into a stop condition.
+#
+#   That is the same defect class as migration 477's static REVOKE list -- a number generated
+#   against one shape and asserted against another -- which is the failure this whole pipeline
+#   exists to stop reproducing. So these Expect: lines are lifted verbatim from what the
+#   migrations printed during the rehearsal's own replay, in order. Derive it, or do not print it.
+$noticesByVersion = @{}
+$seqIdx = ($reportLines | Select-String -Pattern '## Sequenced expectations' | Select-Object -Last 1)
+if ($seqIdx) {
+    $seqLines = $reportLines[($seqIdx.LineNumber)..($reportLines.Count - 1)]
+    $inSeq = $false
+    foreach ($l in $seqLines) {
+        if ($l.Trim() -eq '```') {
+            if ($inSeq) { break } else { $inSeq = $true; continue }
+        }
+        if ($inSeq -and $l.Trim() -ne '') {
+            $bits = $l -split '\|', 2
+            if ($bits.Count -eq 2) {
+                $v = $bits[0].Trim()
+                if (-not $noticesByVersion.ContainsKey($v)) {
+                    $noticesByVersion[$v] = New-Object System.Collections.Generic.List[string]
+                }
+                $noticesByVersion[$v].Add($bits[1].Trim())
+            }
+        }
+    }
+}
+Write-Host "Sequenced expectations parsed for $($noticesByVersion.Keys.Count) migration(s)" -ForegroundColor Cyan
+
 $applyList = $classified | Where-Object { $_.Bucket -eq 'APPLY' } | Sort-Object Version
 $ledgerOnlyList = $classified | Where-Object { $_.Bucket -eq 'LEDGER_ONLY' } | Sort-Object Version
 $shapeTolerantList = $classified | Where-Object { $_.Bucket -eq 'SHAPE_TOLERATED' } | Sort-Object Version
@@ -286,6 +322,14 @@ foreach ($m in $applyList) {
     Add-Line ""
     Add-Line "Expect: OK $($m.File)"
     Add-Line "Expect: INSERT 0 1"
+    # Any NOTICE this migration printed during the rehearsal's replay, in sequence. Derived, never
+    # typed -- see the $noticesByVersion block above for why a hard-coded count is a defect.
+    if ($noticesByVersion.ContainsKey($m.Version)) {
+        foreach ($n in $noticesByVersion[$m.Version]) {
+            Add-Line "Expect: $n"
+        }
+        Add-Line "         (measured in the release sequence by the rehearsal, not typed by hand)"
+    }
     Add-Line ""
     $blockN++
 }
@@ -372,14 +416,29 @@ Add-Line ""
 ONE convention, always: 'afrakala-app:lan-rollback'. Five differently-named stale tags existed
 before this pipeline (lan-rollback-before-pv-remediation, lan-rollback-before-revert,
 lan-rollback-settlement-price, lan-rollback-before-quote-autofill, and an unnamed one) and were
-deleted by the orchestrator because none of them was the agreed name. This block also prunes
-any OTHER tag matching 'afrakala-app:lan-rollback-*' so exactly one rollback tag ever exists.
+deleted by the orchestrator because none of them was the agreed name.
+
+CORRECTED by E-4, 2026-09-13. The prune used to match the literal 'lan-rollback-', which assumes
+every stale tag carries the 'lan-' prefix. It does not. Measured on the test computer:
+
+    docker images afrakala-app --format "{{.Repository}}:{{.Tag}}"
+    afrakala-app:lan
+    afrakala-app:local
+    afrakala-app:rollback-9c113aac      <-- a rollback tag; 'lan-rollback-' does NOT match it
+
+So the old line left that tag in place while its Expect: claimed exactly one rollback tag
+remained -- a check that passes without being true, which is the defect this pipeline exists to
+stop. The prune below matches any tag containing 'rollback' EXCEPT the one agreed name, which
+covers every convention observed (lan-rollback-<reason>, rollback-<sha>, and the unnamed one).
 
     docker tag afrakala-app:lan afrakala-app:lan-rollback
-    docker images afrakala-app --format "{{.Repository}}:{{.Tag}}" | Select-String 'lan-rollback-' | ForEach-Object { docker rmi $_.Line }
+    docker images afrakala-app --format "{{.Repository}}:{{.Tag}}" |
+      Where-Object { $_ -match 'rollback' -and $_ -ne 'afrakala-app:lan-rollback' } |
+      ForEach-Object { docker rmi $_ }
     docker images afrakala-app --format "{{.Repository}}:{{.Tag}}`t{{.CreatedAt}}"
 
-Expect: afrakala-app:lan-rollback present; no afrakala-app:lan-rollback-* tag remains
+Expect: afrakala-app:lan-rollback present
+Expect: no OTHER tag whose name contains 'rollback' remains (any convention, not just lan-*)
 '@)
 Add-Line ""
 $blockN++

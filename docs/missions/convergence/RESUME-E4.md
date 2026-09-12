@@ -332,3 +332,104 @@ input — see Checkpoint 5.
 .eleaseehearse.ps1 -Date e4b -Replay -BatchSize 8 -ShapeTolerant release\config\known-shape-tolerant-migrations.txt
 ```
 repeated until it prints `REPLAY COMPLETE`. Never one batch of 22.
+
+
+---
+
+## Checkpoint 4 - E4-2: batched replay built and run; TWO findings, one of them a BLOCKER
+
+### The batching works, and it is resumable (E3)
+`-BatchSize 8` against a 22-entry plan. Batch 1 ran as entries 1-8 and recorded its stopping
+point in `release/runs/e4b/progress.txt`; a later `-Replay` with no `-From` resumes from there.
+A non-contiguous `--from` is refused by design (migrations are ordered, many are not idempotent).
+
+### Finding 1 - the shape-tolerance mechanism fired on a REAL occurrence (E4)
+First attempt at batch 1 stopped dead at plan index 1
+(`release/runs/e4b/00-first-attempt-336-guard-failure.md`):
+```
+=== apply 20260818150000_336_drop_dead_receipt_posting_path.sql (version 20260818150000) ===
+SET
+psql:/tmp/mig_20260818150000.sql:35: ERROR:  wrong database: prod_rehearsal_e4b (expected afrakala)
+CONTEXT:  PL/pgSQL function inline_code_block line 4 at RAISE
+*** APPLY FAILED: ... (exit 3) -- transaction rolled back, ledger NOT written ***
+STOPPING at first failure: 20260818150000 (APPLY) at plan index 1
+ledger DELTA this batch : 0
+```
+Migrations **336 and 343** each open with a literal
+`IF current_database() <> 'afrakala' THEN RAISE EXCEPTION 'wrong database: ...'`.
+**Production's database is named `postgres`**, so these two abort on production as well - they
+always did, and 527's and 528's own headers record it. Their work is already re-issued without
+the guard by forward migrations **527 (for 336)** and **528 (for 343)**, both in this same plan,
+so tolerating them loses no work.
+
+Declared in `release/config/known-shape-tolerant-migrations.txt` - **after** the run raised the
+error, with the substring copied from the run's own output, never predicted:
+```
+20260818150000|(expected afrakala)
+20260818157000|(expected afrakala)
+```
+Re-run of batch 1 then behaved exactly as designed (this is the E4 before/after):
+```
+2 version(s) failed replay on this shape but matched a pre-declared tolerance and were SKIPPED,
+not applied, no ledger row written:
+20260818150000|supabase/migrations/20260818150000_336_drop_dead_receipt_posting_path.sql
+20260818157000|supabase/migrations/20260818157000_343_posted_entry_immutability.sql
+
+ledger rows BEFORE this batch: 681
+ledger rows AFTER  this batch : 685
+ledger DELTA       this batch : 4
+plan progress                 : 6 of 22
+```
+Before the declaration the run stopped at index 1 with delta 0; after it, four migrations applied
+and the replay continued to index 6. Same probe, same database, opposite outcome.
+
+### Finding 2 - BLOCKER: migrations 449 and 450 hardcode the TEST computer's row counts
+Batch 1 then stopped at plan index 7:
+```
+psql:/tmp/mig_20260905171000.sql:39: ERROR:  449: daily_capital_snapshots expected 10 rows, found 0
+STOPPING at first failure: 20260905171000 (APPLY) at plan index 7
+```
+Migration 449 asserts, as literals:
+```
+IF n <> 10 THEN RAISE EXCEPTION '449: daily_capital_snapshots expected 10 rows, found %', n;
+IF n <>  2 THEN RAISE EXCEPTION '449: daily_capital_inputs expected 2 rows, found %', n;
+```
+Measured on both shapes:
+```
+prod_rehearsal_e4b (restored PRODUCTION)  daily_capital_snapshots=0   daily_capital_inputs=0
+afrakala           (the TEST database)    daily_capital_snapshots=10  daily_capital_inputs=2
+the three functions 449 drops             PRESENT on the production shape (count = 3)
+```
+The hardcoded 10 and 2 are **the test computer's numbers**. Following it to root rather than
+stopping at the first message, migration **450** has the identical defect:
+```
+IF n <> 18 THEN RAISE EXCEPTION '450: backup_142 expected 18 rows, found %', n;
+IF n <> 18 THEN RAISE EXCEPTION '450: backup_20260722 expected 18 rows, found %', n;
+IF n <>  1 THEN RAISE EXCEPTION '450: knowledge_documents expected 1 row, found %', n;
+```
+measured on the production shape:
+```
+prod_rehearsal_e4b  dpw_backup_142=16  dpw_backup_20260722=16  knowledge_documents=0
+450 asserts         18                 18                      1
+```
+**This is the same defect class as migration 477's static REVOKE list, and as the hardcoded 214
+the mission brief warned about for 537: a number generated against one shape and asserted against
+another.** The rehearsal exists to catch exactly this, and it did.
+
+### Why E-4 did NOT make this go away
+- **Not fixed.** The correct fix is a NEW forward migration doing 449's and 450's work with
+  catalogue-driven guards (the 527/528 pattern). Writing migrations is a product/database change,
+  outside this role's permissions, which cover configuration files only. "Never green the build by
+  disabling a step" applies directly.
+- **Not tolerated.** Declaring them shape-tolerant would be defensible only if their work landed
+  some other way, as 527/528 do for 336/343. Nothing in this release re-issues 449 or 450, and the
+  three RPCs 449 retires are still PRESENT on the production shape. Tolerating would silently drop
+  real work, and would be E-4 asserting a product decision it has no authority or evidence for.
+
+**Consequence: the rehearsal cannot reach `## VERDICT: PASS`, so E4-3, E4-4, E4-5 and E4-6 are
+BLOCKED on a fix E-4 may not write.** Plan progress stands at 6 of 22.
+
+## EXACT NEXT COMMAND (for whoever holds the database role)
+Write forward migrations for 449 and 450 that derive their assertions from the catalogue instead
+of asserting literals, exactly as 527/528 did for 336/343 and as 523/524/537 do for grants. Then
+re-run the three phases against a fresh `-Date e4c`.

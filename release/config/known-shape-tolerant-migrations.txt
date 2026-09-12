@@ -26,13 +26,50 @@
 # supabase/migrations/20260913095000_531_*.sql on branch feature/conv-db-fixes commit b77622f6) --
 # never editing the file this list points at.
 #
-# HOW THIS LIST WAS BUILT (E-4, 2026-09-13)
-#   Empty as shipped. No migration in THIS branch's supabase/migrations (ceiling 525 at the time
-#   this file was written) has been observed to raise the "missing object" error class this
-#   mechanism exists to tolerate -- migration 531, the worked example in the mission brief, lives
-#   on branch feature/conv-db-fixes and is not yet merged into feature/conv-release-line's lineage.
-#   The mechanism (release/lib/shape-tolerance.sh) was unit-tested directly instead (four cases:
-#   declared+matching, declared+non-matching, undeclared, no-file — see
-#   docs/research/convergence/E-4-proof.md). Add a line here, with its real error substring
-#   captured from an actual rehearsal run, the first time a genuine occurrence is observed --
-#   never speculatively.
+# HOW THIS LIST WAS BUILT (E-4, 2026-09-13) -- MEASURED, NEVER SPECULATIVE
+#   This file shipped EMPTY. Both entries below were added only after a real rehearsal replay
+#   against prod_rehearsal_e4b raised the error, and the exact text was copied from that run's
+#   own captured output -- not predicted from reading the files.
+#
+#   The occurrence (release/runs/e4b/02-replay-0001-0008.md, first attempt):
+#
+#     === apply 20260818150000_336_drop_dead_receipt_posting_path.sql (version 20260818150000) ===
+#     SET
+#     psql:/tmp/mig_20260818150000.sql:35: ERROR:  wrong database: prod_rehearsal_e4b (expected afrakala)
+#     CONTEXT:  PL/pgSQL function inline_code_block line 4 at RAISE
+#     *** APPLY FAILED: ... exit 3 -- transaction rolled back, ledger NOT written ***
+#
+#   Migrations 336 and 343 each open with, verbatim:
+#
+#       DO $guard$
+#       BEGIN
+#         IF current_database() <> 'afrakala' THEN
+#           RAISE EXCEPTION 'wrong database: % (expected afrakala)', current_database();
+#         END IF;
+#       END
+#       $guard$;
+#
+#   This is NOT a rehearsal artefact. **Production's database is named `postgres`**, not
+#   `afrakala` (CLAUDE.md's working-environments table). So these two files abort on production
+#   too, and always did -- 527's and 528's own headers record that they already did, and that
+#   NONE of 343's objects were ever created there as a result. It is the same defect class as
+#   migration 477: logic written against one shape and asserted against another.
+#
+#   They are tolerated here rather than applied because their work is already re-issued, guard
+#   removed, by FORWARD migrations in this very release:
+#       336 -> 527  (20260913091000_527_drop_dead_receipt_posting_path_no_guard.sql)
+#       343 -> 528  (20260913092000_528_posted_entry_immutability_no_guard.sql)
+#   Both 527 and 528 are in the same apply plan and DO run. So tolerating 336/343 loses no work:
+#   the effect still lands, via the file that can actually execute. Neither old file is edited
+#   (CLAUDE.md rule 6), and neither gets a ledger row from this rehearsal.
+#
+#   The substring is '(expected afrakala)' rather than the whole line on purpose: the full text
+#   embeds the scratch database's name, which differs on every run and on production. Matching
+#   the guard's own expectation is stable and still pins the match to this exact guard.
+#
+#   CONSEQUENCE FOR THE RELEASE DOCUMENT: both versions are reported SHAPE_TOLERATED, and
+#   release/emit-blocks.ps1 emits a "HUMAN REVIEW REQUIRED" block for each -- never an automatic
+#   mig_apply. A human confirms on the real target before anything is done with them.
+
+20260818150000|(expected afrakala)
+20260818157000|(expected afrakala)
