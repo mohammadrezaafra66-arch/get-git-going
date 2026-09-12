@@ -91,19 +91,84 @@ C:\afrakala\run-20260912.log
 
 ---
 
-## بلوک ۰ — پشتیبانِ امروز
+## بلوک ۰ — شاخهٔ checkout، سپس پشتیبانِ صبح
+
+### ۰.۱ · 🔴 اول شاخه — وگرنه اجرا در اولین `mig_apply` می‌ایستد
+
+**مشکل، صریح:** `C:\afrakala` شاخهٔ `main` را دنبال می‌کند و روی `469fe0a9` است. **هر فایلی
+که مجری می‌خواند روی `staging` است** — ۷۷ مهاجرت، همین سند، و ۵۲۲. تا وقتی checkout روی
+`main` بماند، اولین `mig_apply` در بلوک ۵ پیام `MISSING FILE` می‌دهد و اجرا همان‌جا تمام
+می‌شود.
+
+> ### تصمیم — **(الف): همین حالا `staging` را checkout کنید؛ ادغام `staging → main` بعد از فاز ۷.**
+>
+> **چرا (الف) و نه (ب):** عوض کردن checkout یک کار **محلی و در چند ثانیه برگشت‌پذیر** است،
+> ولی ادغام در `main` تغییرِ تاریخچهٔ مشترک است — پس تصمیمِ برگشت‌ناپذیر بعد از امن شدن
+> داده گرفته می‌شود، نه قبل از آن.
+>
+> **قیمتش را بدانید:** تا آن ادغام، لپ‌تاپ پروداکشن روی `main` **نیست**. این باید بعد از
+> فاز ۷ برگردد، وگرنه پروداکشن بی‌سروصدا برای همیشه `staging` را دنبال می‌کند. بلوک ۷۳
+> همین کار را می‌کند و جا انداختنش یک بدهی واقعی است.
+
+**paste کن:**
+
+```powershell
+cd C:\afrakala
+git status --porcelain
+git rev-parse --abbrev-ref HEAD
+git rev-parse --short HEAD
+```
+
+**باید ببینی:** `git status --porcelain` **هیچ خروجی ندهد**، شاخه `main`، و SHA
+`469fe0a9`.
+
+> **🔴 اگر `git status --porcelain` حتی یک خط داد، بایست.** یعنی کسی در `C:\afrakala`
+> چیزی نوشته که هیچ‌جای دیگر وجود ندارد (`CLAUDE.md`: «a commit made in `C:\afrakala`
+> exists nowhere else»). `git checkout` یا آن را نابود می‌کند یا conflict می‌دهد.
+> **خودتان stash یا discard نکنید** — خروجی را paste کنید.
+
+**اگر تمیز بود، این را paste کن:**
+
+```powershell
+cd C:\afrakala
+git fetch origin
+git checkout staging
+git pull --ff-only origin staging
+git rev-parse --abbrev-ref HEAD
+git rev-parse --short HEAD
+git log --oneline -1
+Test-Path supabase\migrations\20260908120000_522_pin_receipt_ocr_by_name_supersedes_460.sql
+(Get-ChildItem supabase\migrations\*.sql).Count
+```
+
+**باید ببینی:** شاخه `staging`؛ SHA برابر **`a6b6c629`** یا بالاتر اگر #436 ادغام شده
+باشد؛ `Test-Path` برابر **`True`**؛ و تعداد فایل مهاجرت **۶۸۷** (۶۸۶ + ۵۲۲).
+
+**اگر `Test-Path` برابر `False` بود:** بایست — یعنی pull کامل نشده و هیچ بلوکی از فاز ۴
+اجرا نشود.
+
+---
+
+### ۰.۲ · پشتیبانِ صبح
 
 **چه می‌کند:** وجود، اندازه و سلامتِ فهرستِ dumpِ **امروز صبح** را بررسی می‌کند.
 **فقط خواندنی.**
 
-> 🔴 **فایل هدف عوض شده.** dumpِ ۲۰۲۶-۰۹-۰۸ **چهار روز دادهٔ واقعی عقب است و هدفِ
-> بازگردانی نیست.** هر ارجاع به پشتیبان در این سند از امروز به این فایل است:
+> **این dump، هدفِ نهاییِ بازگردانی نیست.** فقط برای drill بلوک ۰-ب است. هدفِ واقعی،
+> dumpِ بلوک ۳٫۵ است که **بعد از خروج همهٔ کاربران** گرفته می‌شود.
+
+> 🔴 **سه فایل در کارند؛ اشتباه گرفتنشان گران است:**
 >
+> | فایل | نقش |
+> |---|---|
+> | `prod-20260908.dump` | **چهار روز کهنه. هیچ نقشی ندارد.** پاک نکنید، استفاده هم نکنید |
+> | `prod-20260912.dump` (صبح) | **فقط ورودیِ drill بلوک ۰-ب.** کارِ امروزِ کارکنان را ندارد |
+> | `prod-20260912-final.dump` (بلوک ۳٫۵) | **هدفِ واقعیِ بازگردانی، از بلوک ۳٫۵ به بعد** |
+>
+> مسیر فایلِ این بلوک:
 > ```
 > C:\Users\AfRa KaLa\Desktop\prod-20260912.dump
 > ```
->
-> فایل ۲۰۲۶-۰۹-۰۸ را پاک نکنید — فقط دیگر هدف نیست.
 
 **paste کن:**
 
@@ -141,17 +206,51 @@ docker exec afrakala-lan-db sh -c 'pg_restore --list /tmp/p12.dump | wc -l'
 `dbname: postgres` در سرآیند؛ و تعداد خط **نزدیک ۵٬۰۷۳**. اگر `TOC Entries` خیلی کمتر از
 ۵۰۰۰ بود، dump ناقص است.
 
-> ### 🔴 تصمیم — drill واقعی کجا زده شود
->
-> - **(الف) روی ماشین تست — توصیهٔ من.** صفر ریسک برای پروداکشن. *مبادله:* یک فایل ۳۴
->   مگابایتی حاوی دادهٔ واقعی مشتریان به ماشین دیگر منتقل می‌شود.
-> - **(ب) روی خود لپ‌تاپ پروداکشن، در یک پایگاهِ scratch.** *مبادله:* داده جابه‌جا نمی‌شود،
->   ولی یک `CREATE DATABASE` روی کلاستر پروداکشن می‌زنید.
-> - **(ج) نزنید.** *مبادله:* امشب بدون پشتیبانِ اثبات‌شده جلو می‌روید.
->
-> بلوک drill بعد از انتخاب شما داده می‌شود. انتظارِ خروجی: `pg_restore` با **exit 1 و حدود
-> ۲۱ خطا** تمام می‌شود و **این طبیعی است** (۱۹ تا `pg_cron` و ۲ تا vault)؛ شرط موفقیت
-> `persons` حدود **۴٬۸۵۱ یا بیشتر** است. **اگر `persons` صفر بود، dump داده ندارد.**
+### سطح ۲ — بازگردانی واقعی · **تصمیم گرفته شده: روی پروداکشن، پایگاهِ scratch، بعد drop**
+
+**چه می‌کند:** یک پایگاهِ تازه و خالی می‌سازد، dump را داخلش بازمی‌گرداند، می‌شمارد، و
+**پایگاه را حذف می‌کند**. `postgres` — پایگاهِ واقعی — **اصلاً لمس نمی‌شود**.
+
+> **آنچه می‌پذیرید:** یک `CREATE DATABASE` و یک `DROP DATABASE` روی کلاستر پروداکشن.
+> دادهٔ واقعی خوانده می‌شود، نوشته نمی‌شود. **هیچ دستوری در این بلوک به `-d postgres`
+> وصل نمی‌شود جز برای ساخت و حذفِ همان پایگاهِ scratch.**
+
+```bash
+export MSYS_NO_PATHCONV=1
+docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U supabase_admin -d postgres \
+  -c "CREATE DATABASE restore_drill_20260912;"'
+docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_restore -U supabase_admin \
+  -d restore_drill_20260912 --no-owner --disable-triggers /tmp/p12.dump'
+echo "PG_RESTORE_EXIT=$?"
+docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U supabase_admin -d restore_drill_20260912 -tAc "
+SELECT (SELECT count(*) FROM information_schema.tables WHERE table_schema=''public'') AS tables,
+       (SELECT count(*) FROM information_schema.views  WHERE table_schema=''public'') AS views,
+       (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+         WHERE n.nspname=''public'') AS functions,
+       (SELECT count(*) FROM pg_policies WHERE schemaname=''public'') AS policies,
+       (SELECT count(*) FROM public.persons)     AS persons,
+       (SELECT count(*) FROM public.audit_logs)  AS audit_logs;"'
+```
+
+**باید ببینی:** `pg_restore` با **exit 1 و حدود ۲۱ خطا** تمام می‌شود و **این طبیعی است**
+(۱۹ تا `pg_cron` — این extension فقط در پایگاهی به نام `postgres` زندگی می‌کند — و ۲ تا
+اشیای vault که از قبل در کانتینر هستند). **هیچ خطای بارگذاری داده نباید باشد.**
+شمارش‌ها نزدیک `221 | 20 | 823 | 622`، و **`persons` حدود ۴٬۸۵۱ یا بیشتر**،
+`audit_logs` حدود ۱۰۷٬۷۱۳ یا بیشتر.
+
+**🔴 اگر `persons` صفر یا خیلی کمتر بود، dump داده ندارد. متوقف شوید.**
+
+**بعد از تأیید، پایگاه scratch را حذف کنید — این را جا نیندازید:**
+
+```bash
+docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U supabase_admin -d postgres \
+  -c "DROP DATABASE restore_drill_20260912;"'
+docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -U supabase_admin -d postgres -tAc \
+  "SELECT count(*) FROM pg_database WHERE datname = ''restore_drill_20260912'';"'
+docker exec afrakala-lan-db rm -f /tmp/p12.dump
+```
+
+**باید ببینی:** `DROP DATABASE`، و بعد **`0`**.
 
 ---
 
@@ -386,12 +485,106 @@ docker exec -e PGPASSWORD=$pw afrakala-lan-db psql -U supabase_admin -d postgres
 
 ---
 
+## بلوک ۳٫۵ — 🔴 پشتیبانِ نهایی · **هدفِ واقعیِ بازگردانی از اینجا به بعد**
+
+**چه می‌کند:** بعد از اینکه **شما تأیید کردید همهٔ کاربران خارج شده‌اند**، یک `pg_dump`
+تازه می‌گیرد، آن را از کانتینر بیرون می‌آورد، و اندازه و md5 را در دفتر ثبت می‌کند.
+
+> ### چرا این بلوک وجود دارد
+>
+> **dumpِ صبح کارِ امروزِ کارکنان را ندارد.** کارکنان امروز روی پروداکشن کار کرده‌اند، و
+> بازگرداندنِ dumpِ صبح یعنی **از دست دادنِ هر معامله‌ای که از صبح تا این لحظه ثبت شده**.
+>
+> **دو چیز دیگر هم فقط در این dump هستند و در dumpِ صبح نیستند:**
+> ۱) آشتیِ لجر از بلوک ۲، و ۲) بستنِ default ACL از بلوک ۳.
+> یعنی بازگرداندن این فایل، آن دو کار را **باطل نمی‌کند** — ولی بازگرداندن dumpِ صبح
+> هر دو را باطل می‌کند. **به همین دلیل ترتیبِ این بلوک بعد از بلوک ۳ است، نه قبلش.**
+>
+> **از این نقطه به بعد، هر ارجاع به «بازگردانی» یعنی همین فایل:**
+> ```
+> C:\Users\AfRa KaLa\Desktop\prod-20260912-final.dump
+> ```
+> dumpِ صبح (`prod-20260912.dump`) و dumpِ ۰۹-۰۸ هر دو نگه داشته می‌شوند، ولی **هیچ‌کدام
+> دیگر هدفِ بازگردانی نیستند.**
+
+### ۳٫۵.۱ · اول تأیید کنید کسی کار نمی‌کند
+
+**شما تأیید می‌کنید که همهٔ کاربران خارج شده‌اند.** این کوئری آن را **راستی‌آزمایی**
+می‌کند، جایگزینش نمی‌شود — نوشتنِ کاربر از راه PostgREST می‌آید، پس در
+`pg_stat_activity` به‌عنوان کاربرِ اپ دیده نمی‌شود؛ چیزی که دیده می‌شود، **ردِ نوشتن**
+است.
+
+```powershell
+$pw = (docker exec afrakala-lan-db printenv POSTGRES_PASSWORD).Trim()
+docker exec -e PGPASSWORD=$pw afrakala-lan-db psql -U supabase_admin -d postgres -c `
+"SELECT max(created_at) AS last_audit_write,
+        now() - max(created_at) AS idle_for,
+        count(*) FILTER (WHERE created_at > now() - interval '10 minutes') AS writes_last_10min
+   FROM public.audit_logs;"
+```
+
+**باید ببینی:** `writes_last_10min` برابر **`0`**، و `idle_for` **بیشتر از ده دقیقه**.
+
+**اگر `writes_last_10min` غیرصفر بود:** یعنی کسی هنوز کار می‌کند. **بایست**، خروجی را
+paste کن، و تا خالی شدن صبر کنیم. **پشتیبان را وسطِ کارِ کسی نگیرید.**
+
+### ۳٫۵.۲ · dump بگیرید و بیرون بیاورید
+
+**از Git Bash، نه PowerShell** — `>` در PowerShell خروجی را UTF-16 می‌کند و فایل باینری
+را خراب می‌کند (`CLAUDE.md`).
+
+```bash
+export MSYS_NO_PATHCONV=1
+DEST="/c/Users/AfRa KaLa/Desktop/prod-20260912-final.dump"
+docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -U supabase_admin \
+  -d postgres -Fc -f /tmp/prod-final.dump'
+echo "PG_DUMP_EXIT=$?"
+docker exec afrakala-lan-db ls -l /tmp/prod-final.dump
+docker exec afrakala-lan-db md5sum /tmp/prod-final.dump
+docker exec afrakala-lan-db cat /tmp/prod-final.dump > "$DEST"
+ls -l "$DEST"
+md5sum "$DEST"
+```
+
+**باید ببینی:**
+- سه خط `warning`/`hint` دربارهٔ `circular foreign-key constraints` — **طبیعی‌اند، شکست
+  نیستند**، ولی جدی‌شان بگیرید: یعنی هنگام بازگردانی **`--disable-triggers` لازم است**.
+- `PG_DUMP_EXIT=0`.
+- اندازه **بزرگ‌تر از dumpِ صبح** (صبح ≈ ۳۴ MB). کوچک‌تر بودن یک توقف است.
+- **دو md5 — داخل کانتینر و روی Desktop — باید حرف‌به‌حرف یکی باشند.**
+  **این تنها اثبات تحویل است.** پیام موفقیتِ کپی اثبات نیست.
+
+### ۳٫۵.۳ · سلامتِ فایل، و ثبت در دفتر
+
+```bash
+docker exec afrakala-lan-db pg_restore --list /tmp/prod-final.dump | head -12
+docker exec afrakala-lan-db sh -c 'pg_restore --list /tmp/prod-final.dump | wc -l'
+docker exec afrakala-lan-db rm -f /tmp/prod-final.dump
+```
+
+**باید ببینی:** `dbname: postgres` در سرآیند، و تعداد خط **نزدیک یا بیشتر از ۵٬۰۷۳**.
+
+> **یک شکافِ صادقانه که باید بدانید:** drill سطح ۲ در بلوک ۰-ب روی **dumpِ صبح** زده شد،
+> نه روی این فایل. آن drill **خطِ لوله** را اثبات کرد — همین کلاستر، همین شکل داده، همین
+> `pg_restore`. این فایل چند دقیقه بعد با همان خطِ لوله ساخته شده، پس ریسکِ باقی‌مانده کم
+> است ولی **صفر نیست**.
+>
+> **اگر می‌خواهید صفر شود، بگویید** — همان drill را روی این فایل هم می‌زنیم
+> (`CREATE DATABASE restore_drill_final` … `DROP DATABASE`). هزینه‌اش چند دقیقه خاموشیِ
+> بیشتر است، در حالی که همه از سیستم بیرون‌اند. **پیش‌فرض: نمی‌زنیم و شکاف ثبت می‌شود.**
+
+**بعد از تأیید، اندازه و md5 در دفتر ثبت می‌شوند** و خط `BLOCK 3.5 OK` اضافه می‌شود —
+دستورش را من می‌دهم، نه خودتان.
+
+---
+
 # فاز ۴ · ۷۶ مهاجرت
 
 ## بلوک ۴ — 🔴 دروازه + مقدمه
 
-**چه می‌کند:** اول بررسی می‌کند بلوک‌های ۰ تا ۳ همه تأیید شده باشند و **اگر نه، امتناع
-می‌کند**. بعد تابعِ `mig_apply` را تعریف می‌کند که هر بلوکِ بعدیِ فاز ۴ از آن استفاده می‌کند.
+**چه می‌کند:** اول بررسی می‌کند بلوک‌های **۰، ۱، ۲، ۳ و ۳٫۵** همه تأیید شده باشند **و
+پشتیبانِ نهایی در دفتر ثبت شده باشد**، و **اگر نه، امتناع می‌کند**. بعد تابعِ `mig_apply`
+را تعریف می‌کند که هر بلوکِ بعدیِ فاز ۴ از آن استفاده می‌کند.
 
 > **این تابع فقط در همین پنجرهٔ Git Bash زندگی می‌کند.** اگر ترمینال را بستید یا پنجرهٔ
 > تازه باز کردید، **این بلوک را دوباره paste کنید**، وگرنه بلوک بعدی
@@ -406,15 +599,22 @@ cd /c/afrakala
 # ---------- دروازه ----------
 LOG=/c/afrakala/run-20260912.log
 gate_ok=1
-for b in 0 1 2 3; do
+for b in 0 1 2 3 3.5; do
   if grep -qx "BLOCK $b OK" "$LOG" 2>/dev/null; then
     echo "gate: BLOCK $b OK"
   else
     echo "gate: BLOCK $b  ***MISSING***"; gate_ok=0
   fi
 done
+# the final backup must also be named in the log, or there is no restore target
+if grep -q "FINAL DUMP prod-20260912-final.dump md5=" "$LOG" 2>/dev/null; then
+  echo "gate: FINAL DUMP recorded"
+else
+  echo "gate: FINAL DUMP  ***NOT RECORDED***"; gate_ok=0
+fi
 if [ "$gate_ok" -ne 1 ]; then
-  echo; echo "GATE REFUSES. Blocks 0-3 are not all confirmed in $LOG."
+  echo; echo "GATE REFUSES. Blocks 0, 1, 2, 3, 3.5 are not all confirmed in $LOG,"
+  echo "or the final dump is not recorded there."
   echo "STOP. Do not run any Phase 4 block."
 else
   echo; echo "GATE PASSED - Phase 4 may begin."
@@ -443,9 +643,11 @@ mig_apply() {
 }
 ```
 
-**باید ببینی:** چهار خط `gate: BLOCK n OK` و بعد `GATE PASSED - Phase 4 may begin.`
+**باید ببینی:** پنج خط `gate: BLOCK n OK` (برای ۰، ۱، ۲، ۳، ۳٫۵)، بعد
+`gate: FINAL DUMP recorded`، و بعد `GATE PASSED - Phase 4 may begin.`
 
-**اگر `GATE REFUSES` دیدی:** بایست. یعنی یکی از بلوک‌های ۰ تا ۳ تأیید نشده.
+**اگر `GATE REFUSES` دیدی:** بایست. یعنی یکی از پنج بلوک تأیید نشده، یا پشتیبانِ نهایی
+در دفتر ثبت نشده — و بدون پشتیبانِ نهایی، **هدفی برای بازگردانی وجود ندارد.**
 
 > **خروجی هر `mig_apply` موفق با `INSERT 0 1` تمام می‌شود و بعد `OK <file>`.**
 > **`INSERT 0 1` اثباتِ ثبت است** — چون `ON CONFLICT` نداریم، برخورد خطا می‌دهد.
@@ -1022,15 +1224,25 @@ docker ps --filter name=afrakala-lan-rest --format "{{.Names}}`t{{.Status}}"
 
 # فاز ۶ · دیپلوی
 
-### بلوک ۶۹ — تگ رول‌بک، سپس بیلد
+### بلوک ۶۹ — تگ رول‌بک، و تأیید اینکه از کجا بیلد می‌شود
 
 ```powershell
 cd C:\afrakala
 docker tag afrakala-app:lan afrakala-app:lan-rollback
-git fetch origin; git status -sb
+docker images afrakala-app --format "{{.Repository}}:{{.Tag}}`t{{.CreatedAt}}"
+git status -sb
+git rev-parse --abbrev-ref HEAD
+git rev-parse --short HEAD
 ```
-**باید ببینی:** تگ بدون خطا، و شاخه `main` بدون تغییرِ محلی. **مالک باید #435 را قبلاً در
-`main` ادغام کرده باشد و اینجا `git pull` شود** — بلوکش جدا داده می‌شود.
+
+**باید ببینی:** تگ `afrakala-app:lan-rollback` ساخته شده؛ working tree **تمیز**؛ و شاخه
+**`staging`** با همان SHAیی که در بلوک ۰٫۱ دیدید.
+
+> **بله، از `staging` بیلد می‌شود، نه از `main` — و این عمدی است** (تصمیم بلوک ۰٫۱).
+> کدی که بیلد می‌شود دقیقاً همان کدی است که ۷۶ مهاجرتِ امشب برایش نوشته شده‌اند.
+> `main` بعد از فاز ۷ با یک PR از `staging` هم‌تراز می‌شود — **بلوک ۷۳**.
+>
+> **اگر شاخه `main` بود، بایست** — یعنی checkout عوض شده و بیلد کدِ قدیمی را می‌گیرد.
 
 ### بلوک ۷۰ — دیپلوی · **دو چیز اجباری**
 
@@ -1081,3 +1293,54 @@ curl.exe -s -w "\n%{http_code}\n" http://192.168.170.10:3000/api/healthz
    اعلام نمی‌کند). **اگر رسید به‌درستی خوانده شد، آن هم را بگویید** — یعنی فرضِ ما غلط بوده.
 
 **هیچ‌کدام را «درست کنید» نکنید. فقط گزارش.**
+
+---
+
+# بلوک ۷۳ — بستنِ پرسشِ شاخه · **جا نیندازید**
+
+**چه می‌کند:** `main` را با `staging` هم‌تراز می‌کند و لپ‌تاپ پروداکشن را به `main`
+برمی‌گرداند. **این بدهیِ تصمیمِ بلوک ۰٫۱ است.**
+
+> **چرا حالا و نه قبل از اجرا:** چون حالا داده امن است و می‌دانیم چه چیزی واقعاً نشست.
+> **اگر این بلوک انجام نشود، پروداکشن برای همیشه `staging` را دنبال می‌کند** و اولین
+> نفری که فردا `git pull` بزند کدِ آزمایش‌نشده می‌گیرد بدون اینکه بداند.
+
+### ۷۳.۱ · PR از `staging` به `main`
+
+من PR را باز می‌کنم و شماره‌اش را می‌دهم؛ **شما ادغام می‌کنید.** Boundary Guard الزام
+می‌کند که PR به `main` از `staging` بیاید — که همین است.
+
+### ۷۳.۲ · بعد از ادغام، روی لپ‌تاپ پروداکشن
+
+```powershell
+cd C:\afrakala
+git status --porcelain
+git fetch origin
+git checkout main
+git pull --ff-only origin main
+git rev-parse --abbrev-ref HEAD
+git rev-parse --short HEAD
+```
+
+**باید ببینی:** `git status --porcelain` خالی، شاخه `main`، و SHAی تازه.
+
+### ۷۳.۳ · 🔴 یک ناهمخوانیِ انتظاری که نباید کسی را بترساند
+
+بعد از این، `APP_GIT_SHA` روی کانتینر **برابر `git rev-parse --short HEAD` نخواهد بود** —
+چون image از تیپِ `staging` بیلد شد و `main` بعد از ادغام یک commit **دیگر** دارد.
+**کد یکی است؛ شناسه دو تاست.**
+
+**این مهم است چون آن برابری تنها چکی است که یک دیپلویِ غلط را می‌گیرد** (`CLAUDE.md`).
+رها کردنش یعنی آن چک روی این ماشین برای همیشه خاموش می‌ماند.
+
+> ### 🔴 تصمیم شما
+>
+> - **(الف) بعد از ادغام، یک بار دیگر از `main` بیلد کنید — توصیهٔ من.**
+>   همان محتوا، ولی برچسب و شاخه دوباره هم‌خوان می‌شوند و چکِ صحتِ دیپلوی زنده می‌ماند.
+>   *مبادله:* یک بیلد دیگر. **لازم نیست همین امشب باشد** — هر وقت سرِ فرصت.
+> - **(ب) نکنید و ناهمخوانی را ثبت کنید.** *مبادله:* از این به بعد `APP_GIT_SHA` هیچ
+>   چیزی را اثبات نمی‌کند تا بیلد بعدی.
+>
+> **تا وقتی (الف) انجام نشده، این خط در دفتر ثبت می‌شود** تا کسی آن را به‌عنوان دیپلویِ
+> خراب نخواند:
+> `EXPECTED SHA MISMATCH: image built from staging <sha>, main now <sha> - same content`

@@ -16,11 +16,12 @@
 | Item | Value |
 |---|---|
 | Production | `192.168.170.10` · app `:3000` · Kong `:8000` · DB **`postgres`** · container `afrakala-lan-db` |
-| Production repo | `C:\afrakala` · tracks `main` · currently at `469fe0a9` (610 migration files) |
+| Production repo | `C:\afrakala` · tracks `main` at `469fe0a9` (610 migration files) · **Block 0.1 checks it out onto `staging`** — every file the executor reads lives there. `main` is realigned by a `staging → main` PR in Block 73, after the data is safe |
 | Production schema top | migration **424** (`20260904150000`) |
 | Production ledger | **569 rows**, max `20260827120000` (= migration 410) — lies in **both** directions |
-| Backup | `C:\Users\AfRa KaLa\Desktop\prod-20260912.dump` · `-Fc` · taken 2026-09-12 morning · **restore NOT drilled** |
-| Superseded backup | `…\prod-20260908.dump` · 33,784,463 bytes · **four days stale — NOT the restore target.** Keep the file, do not restore from it |
+| Backup — **the restore target** | `C:\Users\AfRa KaLa\Desktop\prod-20260912-final.dump` · taken in **Block 3.5**, after the owner confirms every user is logged out, and **after** the ledger reconciliation and the default-ACL closure — so restoring it undoes neither |
+| Backup — drill input only | `…\prod-20260912.dump` · `-Fc` · taken 2026-09-12 morning · **does not contain today's staff work**; the input to the Block 0-B restore drill and nothing else |
+| Backup — superseded | `…\prod-20260908.dump` · 33,784,463 bytes · four days stale · **no role.** Keep the file, do not restore from it |
 | Rehearsal DB | `prod_rehearsal_20260908` on `192.168.170.8` — a restore of a production dump; still available |
 | The 74 | `docs/missions/prodprep/MIGRATIONS-74.md`, in file-timestamp order (446 before 443, 518 before 517), 422–424 excluded |
 
@@ -126,7 +127,13 @@ eight: 466, 512, 513, 514, 516, 517, **520, 521**.
 
 ### Remaining `UNREHEARSED`, at the moment the owner starts
 
-`U-1` **restore drill of this dump** (verified by size only — largest remaining gap) ·
+`U-1` **restore drill — now partly closed and partly still open.** The morning dump *is*
+drilled, in Block 0-B, on production into a scratch database that is dropped afterwards
+(owner decision). But **the actual restore target — the Block 3.5 final dump — is not
+drilled**; it is checked with `pg_restore --list`, size and md5 only. The drill proves the
+pipeline on this cluster minutes earlier, so the residual risk is small but real, and a full
+drill of the final dump is offered in Block 3.5 at the cost of a few more minutes of
+downtime. ·
 `U-2` ledger reconciliation against a DB named `postgres` · `U-3` the corrected Phase 3 on
 production · `U-4` production's `ai_providers.base_url` read directly · `U-5` Phase 5 as a
 sequence · `U-6` the deploy · `U-7` all 12 `down` files · `U-8` restore onto the live `postgres`
@@ -161,6 +168,9 @@ guess.**
 | D-b | Phase 1 block reads `ai_providers.base_url` | 475 depends on it and step 1.5's query omits it (finding 3) |
 | D-c | 460 skipped, ledger row recorded, migration 522 applied at order 25 | Owner decision **D-62** |
 | D-d | 475 and 507 re-forecast from FAIL to PASS | Measured under the production order (findings 2 and 3) |
+| D-e | **Block 0.1 checks the production host out onto `staging`**; the deploy builds from `staging`; `main` is realigned by a PR in Block 73 | Every file the executor reads — the 77 migrations, BLOCKS.md, 522 — lives on `staging`. On `main` at `469fe0a9` the first `mig_apply` prints `MISSING FILE` and the run stops. A checkout switch is reversible in seconds; a merge into `main` is a change to shared history, so it waits until the data is safe |
+| D-f | **Block 3.5 takes a second, final `pg_dump`** after the owner confirms every user is logged out; it becomes the restore target | Staff worked on production today, so the morning dump would lose their work. It also sits *after* Blocks 2 and 3, so restoring it undoes neither the ledger reconciliation nor the ACL closure — which restoring the morning dump would |
+| D-g | The Phase 4 gate additionally requires `BLOCK 3.5 OK` **and** a recorded final-dump md5 | Without a recorded final dump there is no restore target, and Phase 4 is the first irreversible phase |
 
 ---
 
@@ -172,6 +182,9 @@ guess.**
 |---|---|---|---|
 | **D-62** | order 25 | 460 skipped and superseded by 522; 460's ledger row recorded with a note | Taken before the run |
 | **D-59** | standing | 23 of 42 users keep `admin`; nothing changed | All 15 client-side `admin` gates stay open to half the company after the deploy |
+| **D-63** | Block 0-B | Restore drill runs **on production**, into a scratch database, dropped afterwards | One `CREATE DATABASE` and one `DROP DATABASE` on the production cluster; real data read, never written; `postgres` itself untouched |
+| **D-64** | Block 0.1 | Production host checks out **`staging`** for the run; `staging → main` PR in Block 73 | Production does not track `main` during the run. **Block 73 must not be skipped**, or production follows `staging` silently from then on. After the Block 73 merge, `APP_GIT_SHA` will legitimately differ from `main`'s HEAD — same content, different commit — and a rebuild from `main` is offered to restore that check |
+| **D-65** | Block 3.5 | Final dump taken only after the owner confirms all users are logged out, corroborated by zero `audit_logs` writes in the last 10 minutes | The morning dump is demoted to drill input; the final dump is the only restore target from Block 3.5 onward |
 
 ---
 
