@@ -165,3 +165,86 @@ Evidence command re-run just now:
 ## WHAT WOULD PROVE THAT STEP DONE
 `release/out/rehearsal-e4b.md` ending in `## VERDICT: PASS`, with a `prod_rehearsal_e4b` database
 that no longer exists afterward (dropped by the engine's own cleanup trap either way).
+
+---
+
+## Checkpoint 2 — E4-0: merged `origin/staging`, re-proved Checkpoint 1 (2026-09-13)
+
+### Merge
+```
+$ git fetch origin
+$ git rev-parse origin/staging origin/main
+a5cdc58054728dd07d8cb1106701f6121793f2fa
+a5cdc58054728dd07d8cb1106701f6121793f2fa
+$ git rev-list --left-right --count HEAD...origin/staging
+3	2
+$ git merge origin/staging --no-edit
+EXIT=0            # no conflicts
+$ git rev-parse HEAD
+6ff4b48c68c6a61255a2ee64c135dacb4d650f8f
+$ git status --porcelain
+                  # empty
+```
+13 migrations arrived (`git diff --name-only HEAD origin/staging -- supabase/migrations`):
+526, 527, 528, 530, 531, 532, 533, 534, 535, 536, 537, 538, 539. Migration count on disk went
+to **703** files (`ls supabase/migrations/*.sql | wc -l`), ceiling now `20260913111000`.
+
+**Consequence for Checkpoint 1's honest caveat:** Checkpoint 1 shipped
+`release/config/known-shape-tolerant-migrations.txt` EMPTY because migration 531 was not in this
+branch. After this merge **531 is present** (`supabase/migrations/20260913095000_531_audit_logs_actor_fk_set_null_on_delete.sql`).
+That caveat is now obsolete and the file must be reconsidered against real replay output.
+
+### Re-proof of Checkpoint 1's OWN evidence commands (not trusted — re-run)
+```
+$ bash -n release/lib/rehearse-engine.sh        exit=0
+$ bash -n release/lib/shape-tolerance.sh        exit=0
+$ bash -n release/lib/mig-apply.sh              exit=0
+$ bash -n release/lib/apply-release-engine.sh   exit=0
+
+$ printf '# test file\n20260913095000|constraint "audit_logs_actor_id_fkey" of relation "audit_logs" does not exist\n' > /tmp/shape-test.txt
+$ source release/lib/shape-tolerance.sh; is_tolerated_shape_mismatch ...
+A(declared+match)   rc=0     # tolerate
+B(declared+nomatch) rc=1     # do not tolerate
+C(undeclared)       rc=1     # do not tolerate
+D(no file)          rc=1     # safe default
+
+$ grep -v '^#' release/config/known-ledger-lies.txt | grep -c '^[0-9]'
+36
+
+$ [Parser]::ParseFile(...) on all five release/*.ps1
+release\rehearse.ps1             parse-errors=0
+release\build.ps1                parse-errors=0
+release\emit-blocks.ps1          parse-errors=0
+release\apply-release.ps1        parse-errors=0
+release\validate-blocks.ps1      parse-errors=0
+```
+All Checkpoint 1 claims reproduce. Nothing in it was found false.
+
+### Restore identity re-proved on BOTH sides (the md5-or-nothing rule)
+```
+$ md5sum /d/AfraKalaTest/dumps/prod-20260913.dump
+6ccd2dbb07a9a4d9bbae4421eb3265e0 */d/AfraKalaTest/dumps/prod-20260913.dump
+$ docker exec afrakala-lan-db sh -c 'ls -l /tmp/prod13.dump; md5sum /tmp/prod13.dump'
+-rw-r--r-- 1 root root 35424962 Sep 12 14:11 /tmp/prod13.dump
+6ccd2dbb07a9a4d9bbae4421eb3265e0  /tmp/prod13.dump
+```
+Host and container md5 identical, and both equal the value the launch brief settled.
+
+### Database inventory before any work by E-4
+```
+$ psql -d postgres -c "SELECT datname, pg_size_pretty(pg_database_size(datname)) ... LIKE 'prod_rehearsal%' ..."
+afrakala|367 MB                  <- read-only to E-4
+postgres|138 MB                  <- FORBIDDEN
+prod_rehearsal_20260908|295 MB   <- FORBIDDEN (not mine)
+prod_rehearsal_base|352 MB       <- FORBIDDEN
+prod_rehearsal_da|352 MB         <- FORBIDDEN
+prod_rehearsal_fix|352 MB        <- FORBIDDEN
+prod_rehearsal_gate|352 MB       <- FORBIDDEN
+prod_rehearsal_v1|352 MB         <- FORBIDDEN
+prod_rehearsal_v2|352 MB         <- FORBIDDEN
+```
+`prod_rehearsal_e4b` does **not** exist. E-4 will create it and touch nothing else.
+
+## EXACT NEXT COMMAND (E4-1)
+Add `-RestoreOnly` to `release/rehearse.ps1` (it does not exist today — `param()` block at
+`release/rehearse.ps1:43-52` has no such switch), phase the engine, and run restore only.
