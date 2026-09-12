@@ -870,3 +870,48 @@ getting `42501`. **But the closure comes from migration 393's global FUNCTIONS d
 which 533 never mentions** — so the protection is inherited, not stated, and nothing in this
 repository asserts the installed extension set. That is precisely why the extension ships guarded
 and with its own REVOKEs rather than relying on an inheritance nobody wrote down.
+---
+
+## 🔴 HANDOFF — the mechanism that caught both snapshot gaps is worth more than the tool
+
+The idempotency snapshot used in this release was **too narrow twice**, and each time it produced a
+confident "identical across N lines" that was silent about the very thing being changed:
+
+| miss | what it did not capture | what it therefore missed | how it was caught |
+|---|---|---|---|
+| 1 | view **bodies** — it compared views only by `reloptions` | migration 526 rewriting two view definitions | 526's own output said it had redefined a view **while the diff showed nothing** |
+| 2 | `pg_default_acl` entirely, and EXECUTE for any role other than `anon`/`authenticated` | exactly the two axes migrations **537 and 538** write | an adversarial reviewer noticed the claim outran the evidence |
+
+**Neither gap was caught by the tool. Both were caught by a person asking whether the evidence
+actually covered the claim.** That question is the reusable part. A tool can only ever check the
+dimensions someone thought of; the habit of asking "what would this proof look like if it were
+wrong?" is what finds the dimension nobody thought of.
+
+The tool has been widened once, permanently, to **twelve dimensions**, and **the list is written
+out inside the file itself** (`scripts/schema-snapshot.sh`) together with both misses and how each
+was found — so the next person inherits the coverage instead of rediscovering the gap:
+
+```
+relations (incl. owner, RLS forced, reloptions) · view definitions · columns · constraints ·
+indexes · triggers IN ALL SCHEMAS · functions (body, prosecdef, provolatile, owner, proconfig) ·
+policies (cmd, permissive, roles, qual, with_check) · relation ACLs for EVERY grantee ·
+column ACLs · function ACLs for EVERY grantee · pg_default_acl, all schemas, all objtypes
+```
+
+Coverage went from 15,303 lines to **48,866**. Re-proved at the wider coverage: all twelve
+migrations re-applied to the already-migrated database leave it **byte-identical**, same md5
+`7700c2f45c7549fc10b08c369b62d5d2`.
+
+**The rule to carry:** a snapshot proves idempotency only over the dimensions it captures. Say which
+those are when you claim it, or the number is decoration. "Identical across N lines" without a
+dimension list is the same class of statement as a green CI run nobody read.
+
+## Requirement carried into Wave D (E-4)
+
+`emit-blocks.ps1` must **derive** the counts it prints in `Expect:` lines, never hard-code them.
+The worked example is migration 537: applied on its own it revokes TRUNCATE from `authenticated` on
+**214** tables, but in the release sequence the operator will see **215**, because migration 534
+creates `cron_run_log` first. A hard-coded 214 turns a correct run into a stop condition.
+
+This is the same defect class as migration 477's static REVOKE list — a number generated against one
+shape and asserted against another. Derive at run time, or do not print it.
