@@ -1,6 +1,6 @@
-# Production migration — the run record · 2026-09-08
+# Production migration — the run record · run date 2026-09-12
 
-> **Status: STAGE 0 COMPLETE. THE RUN HAS NOT STARTED.**
+> **Status: STAGE 0 COMPLETE, REFRESHED FOR 2026-09-12. THE RUN HAS NOT STARTED.**
 > No agent has contacted `192.168.170.10`. Nothing below the Stage 0 section has happened yet.
 > This file is written **as the run proceeds**, not after it.
 
@@ -19,7 +19,8 @@
 | Production repo | `C:\afrakala` · tracks `main` · currently at `469fe0a9` (610 migration files) |
 | Production schema top | migration **424** (`20260904150000`) |
 | Production ledger | **569 rows**, max `20260827120000` (= migration 410) — lies in **both** directions |
-| Backup | `C:\Users\AFRA KaLa\Desktop\prod-20260908.dump` · **33,784,463 bytes** · `-Fc` · taken 2026-09-08 · **verified by size only — restore NOT drilled** |
+| Backup | `C:\Users\AfRa KaLa\Desktop\prod-20260912.dump` · `-Fc` · taken 2026-09-12 morning · **restore NOT drilled** |
+| Superseded backup | `…\prod-20260908.dump` · 33,784,463 bytes · **four days stale — NOT the restore target.** Keep the file, do not restore from it |
 | Rehearsal DB | `prod_rehearsal_20260908` on `192.168.170.8` — a restore of a production dump; still available |
 | The 74 | `docs/missions/prodprep/MIGRATIONS-74.md`, in file-timestamp order (446 before 443, 518 before 517), 422–424 excluded |
 
@@ -81,14 +82,45 @@ production dump: **0**. On production the backups are pure duplicates; skipping 
 owner's reading). This was never stated and it is why the rehearsal, unlike the test database,
 could reproduce this class of defect at all.
 
-### Forecast for the 74
+### 2026-09-12 addendum · the gap is **77**, not 74 — `MIGRATIONS-74.md` is stale
+
+PR #435 merged to `staging` on 2026-09-08 (`a6b6c629`). It carried **three** migration files
+production does not have: **520**, **521** and **522**. Recounted today against
+`origin/staging`:
+
+```
+files production lacks (ts > 20260904150000, plus 420/421) : 77
+the same list in MIGRATIONS-74.md                          : 74
+on staging but absent from that list                       : 520, 521, 522
+in that list but absent from staging                       : none
+```
+
+**`MIGRATIONS-74.md` must not be used as tonight's complete list.** The authoritative list is
+the Phase 4 table in `production-migration-20260908-BLOCKS.md`, validated mechanically: 76
+`mig_apply` calls, every file present on disk, every version equal to its filename prefix, no
+duplicates, and the only gap member never applied is 460 — by design.
+
+**`staging` has not moved otherwise.** `origin/staging` is `a6b6c629` = `9c113aac` + #435.
+**PR #436 does not exist** — 435 is the highest in the repository (`gh pr view 436` returns
+`Could not resolve to a PullRequest`). #433 was closed; #434 merged before `9c113aac`.
+
+**520 and 521 were never part of the rehearsed 74, so they were rehearsed today.** Both applied
+to `prod_rehearsal_20260908`, md5 matched on both sides, **both `EXIT=0`**. 520 asserts no
+absolute row counts — its comparisons are relational (`= 0`) — and 521 is three `REVOKE`s.
+**Both carry their own `BEGIN;`/`COMMIT;`**, so the harmless-transaction-warning list is now
+eight: 466, 512, 513, 514, 516, 517, **520, 521**.
+
+### Forecast for the 77
 
 | | count | which |
 |---|---|---|
-| expected to succeed | **69** | includes 462, 475, 476, 477, 478, 487, 497, 507, 514, 516 |
+| in the gap | **77** | |
+| actually run | **76** | 460 is not executed |
+| expected to succeed | **73** | includes 462, 475, 476, 477, 478, 487, 497, 507, 514, 516, 520, 521 |
 | expected to fail, decision at the step | **3** | 449 (order 15), 450 (16), 452 (18) |
-| skipped by owner decision, replaced | **1** | 460 → 522 |
-| applied in addition | **1** | 522, at order 25 |
+| skipped, ledger row **recorded** | **1** | 460 — because 522 does its work |
+| skipped, ledger row **not** recorded | **3** | 449, 450, 452 — nothing does their work; recording would be a lie |
+| ledger rows added by a complete run | **74** | 73 successes + 460's row |
 
 **First stop is order 15.** Past order 18, nothing is currently forecast to stop the run.
 
