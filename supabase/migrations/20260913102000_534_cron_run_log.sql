@@ -15,11 +15,19 @@ SET client_encoding='UTF8';
 -- if applicable, error text. `id` is a surrogate key so a function can UPDATE the row it just
 -- INSERTed (RETURNING id) rather than matching on job_name + started_at.
 --
--- RLS: admin/manager READ only, no other policy. Both writers are SECURITY DEFINER functions
--- owned by supabase_admin (superuser on this cluster -- confirmed live: RLS does not apply to a
--- superuser regardless of policies), so no INSERT/UPDATE policy is needed for the write path
--- this migration actually uses. If a future non-superuser writer is added, it needs its own
--- policy at that time -- not added speculatively here.
+-- RLS: admin/manager READ only, no other policy. CORRECTION (E-5, re-reading 533 before writing
+-- this): the two writers (run_issabel_import, generate_birthday_notifications_worker, migration
+-- 533) are plain PROCEDUREs, NOT SECURITY DEFINER -- 533's own header measures why SECURITY
+-- DEFINER is impossible here (`ERROR: invalid transaction termination`, because it wraps the
+-- call in an implicit subtransaction and this migration's writers COMMIT mid-body). RLS is still
+-- bypassed on every write, but for a different, simpler reason: the only role pg_cron ever
+-- invokes these PROCEDUREs as is `supabase_admin` (the `username` argument 533 passes to
+-- `cron.schedule_in_database`, and the same role used for a manual `CALL`), and `supabase_admin`
+-- is a superuser on this cluster -- confirmed live on prod_rehearsal_e5:
+-- `SELECT rolsuper FROM pg_roles WHERE rolname='supabase_admin'` -> `t`. RLS does not apply to a
+-- superuser regardless of policies, independent of SECURITY DEFINER. So no INSERT/UPDATE policy
+-- is needed for the write path this migration actually uses. If a future non-superuser writer is
+-- added, it needs its own policy at that time -- not added speculatively here.
 -- ============================================================================================
 
 CREATE TABLE IF NOT EXISTS public.cron_run_log (
