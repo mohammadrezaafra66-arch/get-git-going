@@ -622,3 +622,104 @@ ledger-gap items.
   of being folded into a pass count.
 - **`og91-receivables-real-due-date`** — uses a browser page; deferred to Step 6 with the rest.
 
+---
+
+## Step 6 — typecheck, build, deploy to the test app · DONE
+
+### Typecheck: exactly the baseline, per file
+
+```
+70 errors across exactly 6 files
+
+18  src/routes/_app.products.index.tsx          13  src/lib/invoices/functions.ts
+15  src/routes/_app.admin.sales-reminders.tsx   13  src/lib/accounting/functions.ts
+ 6  src/lib/audit/index.ts                       5  src/routes/_app.admin.automation.tsx
+```
+
+Not one error in any of the four files E-3 changed.
+
+**The first run said 72 across 7 files, and chasing that down found something worth keeping.** The
+seventh file was `src/lib/calls/issabel-cdr.server.ts`:
+
+```
+(18,19):  error TS2307: Cannot find module 'mysql2/promise' or its corresponding type declarations.
+(352,37): error TS7006: Parameter 'r' implicitly has an 'any' type.
+```
+
+Neither error is this branch's. The file arrived with **PR #434 (`9c113aac`)**, which is on
+`staging` and predates the branch point, and `git diff --name-only ad0138df HEAD` on that path
+returns nothing. The cause is simpler than a regression: **`mysql2` is declared in `package.json`
+(`^3.24.3`) and was not installed.** `node_modules/.package-lock.json` was last written on **Jul 29**
+— `npm install` had not been run on this machine since #434 merged. Running it added 9 packages,
+and the count fell to 70/6 immediately; the second error was the first one's shadow.
+
+**So the 70/6 baseline holds, and the machine had a stale `node_modules` that would have made any
+local verification here read two errors high.** Worth carrying into the release line: the rehearsal
+should run `npm install` before it trusts a typecheck number.
+
+### Build
+
+```
+npm run build  ->  vite build  ->  exit 0
+client bundle built in 32.27s, SSR environment built, .output/ produced
+```
+
+The pre-existing 500 kB chunk-size warnings are unchanged and are not errors.
+
+### Deploy
+
+Rollback tag taken **before** anything was replaced:
+
+```
+docker tag afrakala-app:lan afrakala-app:rollback-9c113aac      (image d953490abc5f, 4 days old)
+```
+
+Built and deployed from the integration worktree, with `GIT_SHA` and `BUILD_TIME` **on the command
+line** — the `.env.lan` value is pinned and stale, and a build that takes it produces a correct
+image with a lying label:
+
+```
+cd D:\AfraKalaTest\wt-conv-int
+export GIT_SHA=$(git rev-parse --short HEAD)   # f703ae54
+export BUILD_TIME=$(date -Iseconds)
+docker compose --env-file deploy/lan/.env.lan -f deploy/lan/docker-compose.yml build web
+docker compose --env-file deploy/lan/.env.lan -f deploy/lan/docker-compose.yml up -d --no-deps web
+```
+
+`--no-deps` throughout, so `db-role-fix` was never pulled into the start-up graph. It still shows
+`Exited (0) 8 days ago`, which is the expected state; every other `afrakala-lan-*` service stayed
+`Up`.
+
+### Verification — and it checks the thing that failed last time
+
+```
+APP_GIT_SHA      f703ae54        git rev-parse --short HEAD   f703ae54     MATCH
+APP_BUILD_TIME   2026-09-12T22:38:18+05:00
+/login           http=200  0.080s  content-type: text/html; charset=utf-8  Server: (absent)
+/api/version     http=200  0.005s  {"commit":"f703ae54","environment":"lan",...}
+container        afrakala-lan-web  Up (healthy)
+```
+
+The **`Server:` header is absent and the content-type is `text/html`**, which is the specific pair
+that would have caught the 09-12 incident: the container was `Up (healthy)` then too, while
+`:3100` was answering from PostgREST (`Server: postgrest/12.2.0`) and every casual check passed.
+Asserting 200 alone is not enough, and this deploy was verified on all three.
+
+The test app now serves `f703ae54` — up from `9c113aac` built 2026-09-08, four days and four
+merged PRs behind.
+
+### What the test app is serving against — stated, because it matters for Step 7
+
+The deployed code is the integration branch. The **database it talks to is `afrakala`, which has
+none of the ten** and is itself four migrations behind production:
+
+```
+afrakala             686 ledger rows, top 20260908034500, 226 tables, 18 anon-readable relations
+production (dump)    681 ledger rows, top 20260912150000, 227 tables, 20 anon-readable relations
+```
+
+`afrakala` is *tighter* than production on anon grants (476/477 landed there and their production
+equivalents 523/524/525 have not been replayed onto it), and *older* on everything after
+`20260908034500`. Bringing it to parity is the remaining half of "test and production converge on
+one schema", and it is a separate, announced action rather than a side effect of this deploy.
+
