@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { DynamicColumnDataType } from "@/lib/data-tables/constants";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export type FilterColumn = {
   id: string;
@@ -107,7 +108,7 @@ export function FiltersBar({
         {rules.length > 0 && (
           <>
             <Badge variant="secondary" className="h-7">
-              {rules.length} فیلتر فعال
+              {toFaDigits(rules.length)} فیلتر فعال
             </Badge>
             <Button size="sm" variant="ghost" className="h-8 gap-1" onClick={clearAll}>
               <RotateCcw className="h-3.5 w-3.5" />

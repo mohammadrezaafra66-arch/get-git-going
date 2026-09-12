@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useDebounce } from "@/hooks/use-debounce";
+import { toFaDigits } from "@/lib/i18n/formatters";
 import {
   fetchProductRecommendations,
   fetchOverridesForProduct,
@@ -280,7 +281,7 @@ function ManagePanel({ sourceProduct }: { sourceProduct: ProductSearchResult }) 
                           {STOCK_LABEL_FA[rec.stock_status] ?? rec.stock_status}
                         </Badge>
                         <span className="text-[10px] text-muted-foreground">
-                          امتیاز {rec.recommendation_score.toFixed(2)}
+                          امتیاز {toFaDigits(rec.recommendation_score.toFixed(2))}
                         </span>
                       </div>
                       <div className="text-[11px] text-muted-foreground">

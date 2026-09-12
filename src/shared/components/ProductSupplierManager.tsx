@@ -40,6 +40,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 type TrustLevel = "low" | "medium" | "high";
 
@@ -479,7 +480,9 @@ function AddSupplierDialog({
               placeholder="حداکثر ۲۰۰ کاراکتر"
               rows={3}
             />
-            <div className="text-end text-xs text-muted-foreground">{notes.length}/۲۰۰</div>
+            <div className="text-end text-xs text-muted-foreground">
+              {toFaDigits(notes.length)}/۲۰۰
+            </div>
           </div>
         </div>
 

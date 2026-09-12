@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2, PhoneIncoming } from "lucide-react";
 import { toast } from "sonner";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 /**
  * Wave 6 / C-8 — گزارش فعالیت تلفنی به تفکیک داخلی.
@@ -213,8 +214,8 @@ function CallActivityPage() {
 
       {!isPrivileged ? (
         <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-          شما فقط آمار داخلی خودتان را می‌بینید. اگر چیزی نمایش داده نمی‌شود، یعنی هنوز داخلی‌ای
-          به نام شما ثبت نشده است.
+          شما فقط آمار داخلی خودتان را می‌بینید. اگر چیزی نمایش داده نمی‌شود، یعنی هنوز داخلی‌ای به
+          نام شما ثبت نشده است.
         </p>
       ) : null}
 
@@ -309,19 +310,19 @@ function CallActivityPage() {
               </TableRow>
             ) : (
               rows.map((r) => (
-                <TableRow key={`${r.extension}-${r.call_date}-${(r as HourlyRow).call_hour ?? "d"}`}>
+                <TableRow
+                  key={`${r.extension}-${r.call_date}-${(r as HourlyRow).call_hour ?? "d"}`}
+                >
                   <TableCell className="font-medium">{r.extension}</TableCell>
                   <TableCell>{r.call_date}</TableCell>
                   {showingHourly ? (
-                    <TableCell>
-                      {String((r as HourlyRow).call_hour).padStart(2, "0")}:00
-                    </TableCell>
+                    <TableCell>{String((r as HourlyRow).call_hour).padStart(2, "0")}:00</TableCell>
                   ) : null}
                   <TableCell>{r.total_calls}</TableCell>
-                  <TableCell>{r.inbound_count}</TableCell>
-                  <TableCell>{r.outbound_count}</TableCell>
-                  <TableCell>{r.internal_count}</TableCell>
-                  <TableCell>{r.missed_count}</TableCell>
+                  <TableCell>{toFaDigits(r.inbound_count)}</TableCell>
+                  <TableCell>{toFaDigits(r.outbound_count)}</TableCell>
+                  <TableCell>{toFaDigits(r.internal_count)}</TableCell>
+                  <TableCell>{toFaDigits(r.missed_count)}</TableCell>
                   <TableCell>{r.talk_minutes}</TableCell>
                 </TableRow>
               ))
@@ -333,16 +334,16 @@ function CallActivityPage() {
       {/* جمع همین صفحه — عمداً «جمع کل» نیست، چون فقط ردیف‌های نمایش‌داده‌شده را جمع می‌زند. */}
       {rows.length > 0 ? (
         <p className="text-sm text-muted-foreground">
-          جمع این صفحه — کل: {totals.total} · ورودی: {totals.inbound} · خروجی: {totals.outbound} ·
-          داخلی: {totals.internal} · بی‌پاسخ: {totals.missed} · دقایق مکالمه:{" "}
-          {Math.round(totals.minutes * 10) / 10}
+          جمع این صفحه — کل: {toFaDigits(totals.total)} · ورودی: {toFaDigits(totals.inbound)} ·
+          خروجی: {toFaDigits(totals.outbound)} · داخلی: {totals.internal} · بی‌پاسخ: {totals.missed}{" "}
+          · دقایق مکالمه: {Math.round(totals.minutes * 10) / 10}
         </p>
       ) : null}
 
       {/* صفحه‌بندی */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">
-          {total} ردیف · صفحه {page + 1} از {pageCount}
+          {toFaDigits(total)} ردیف · صفحه {toFaDigits(page + 1)} از {toFaDigits(pageCount)}
         </span>
         <div className="flex gap-2">
           <Button

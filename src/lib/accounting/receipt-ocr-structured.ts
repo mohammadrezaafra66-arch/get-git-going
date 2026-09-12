@@ -5,6 +5,7 @@
  */
 
 import { z } from "zod";
+import { toFaDigits } from "@/lib/i18n/formatters";
 import {
   EMPTY_EXTRACTION,
   normalizeDigits,
@@ -147,13 +148,13 @@ function normalizeStatus(raw: string): ReceiptOcrStatus {
   }
   const lower = t.toLowerCase();
   // Explicit non-final confirmation → not SUCCESS
-  if (/قطعی\s*نیست|نهایی\s*نیست|تأیید\s*نهایی\s*نیست|تایید\s*نهایی\s*نیست|not\s*a\s*final/i.test(t)) {
+  if (
+    /قطعی\s*نیست|نهایی\s*نیست|تأیید\s*نهایی\s*نیست|تایید\s*نهایی\s*نیست|not\s*a\s*final/i.test(t)
+  ) {
     if (/در\s*حال|انتظار|ثبت\s*شد|پردازش/.test(t)) return "PENDING";
     return "UNKNOWN";
   }
-  if (
-    /ناموفق|رد\s*شد|لغو|خطا|برگشت\s*خورد|failed|failure|rejected|cancelled/i.test(t)
-  ) {
+  if (/ناموفق|رد\s*شد|لغو|خطا|برگشت\s*خورد|failed|failure|rejected|cancelled/i.test(t)) {
     return "FAILED";
   }
   if (
@@ -163,9 +164,7 @@ function normalizeStatus(raw: string): ReceiptOcrStatus {
   ) {
     return "PENDING";
   }
-  if (
-    /تراکنش\s*موفق|انتقال\s*موفق|با\s*موفقیت|انجام\s*شد|\bموفق\b|success|successful/i.test(t)
-  ) {
+  if (/تراکنش\s*موفق|انتقال\s*موفق|با\s*موفقیت|انجام\s*شد|\bموفق\b|success|successful/i.test(t)) {
     return "SUCCESS";
   }
   if (lower.includes("pending")) return "PENDING";
@@ -292,7 +291,10 @@ export function extractJsonObjectText(raw: string): string {
   const fence = /^```(?:json)?\s*([\s\S]*?)```$/im.exec(body);
   if (fence) body = fence[1].trim();
   // Also strip leading/trailing fence fragments if model was sloppy
-  body = body.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  body = body
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
   const start = body.indexOf("{");
   const end = body.lastIndexOf("}");
   if (start < 0 || end <= start) {
@@ -311,12 +313,8 @@ export function parseReceiptOcrResponse(raw: string): ReceiptOcrResult {
     throw new Error("Vision response is not a JSON object");
   }
   const parsed = ReceiptOcrZod.parse(obj);
-  const receiptDate = normalizeReceiptDate(
-    asRawString(parsed.receipt_date || parsed.date || ""),
-  );
-  const receiptTime = normalizeReceiptTime(
-    asRawString(parsed.receipt_time || parsed.time || ""),
-  );
+  const receiptDate = normalizeReceiptDate(asRawString(parsed.receipt_date || parsed.date || ""));
+  const receiptTime = normalizeReceiptTime(asRawString(parsed.receipt_time || parsed.time || ""));
   // HTML/form use HH:mm — keep seconds only in internal if present; form maps via toHtmlTimeValue
   const amount = parseAmountValue(parsed.amount);
   // OG-85 — the model reads the significant digits correctly and then miscounts the run of
@@ -378,7 +376,9 @@ export function parseReceiptOcrResponse(raw: string): ReceiptOcrResult {
     destination_card: normalizeDigits(asRawString(parsed.destination_card)).replace(/\s+/g, ""),
     source_account: normalizeOcrText(asRawString(parsed.source_account)),
     destination_account: normalizeOcrText(asRawString(parsed.destination_account)),
-    source_sheba: normalizeDigits(asRawString(parsed.source_sheba)).replace(/\s+/g, "").toUpperCase(),
+    source_sheba: normalizeDigits(asRawString(parsed.source_sheba))
+      .replace(/\s+/g, "")
+      .toUpperCase(),
     destination_sheba: normalizeDigits(asRawString(parsed.destination_sheba))
       .replace(/\s+/g, "")
       .toUpperCase(),
@@ -416,7 +416,12 @@ export function parseReceiptVisionJson(raw: string): ReceiptOcrResult {
 export function amountToToman(
   amount: number | null,
   currency: ReceiptOcrCurrency | string,
-): { value: number | null; warning: string | null; original_amount: number | null; original_currency: string } {
+): {
+  value: number | null;
+  warning: string | null;
+  original_amount: number | null;
+  original_currency: string;
+} {
   const original_amount = amount;
   const original_currency = String(currency || "UNKNOWN");
   if (amount == null || !(amount > 0) || amount > 1e14) {
@@ -439,7 +444,12 @@ export function amountToToman(
     }
     const value = amount / 10;
     if (!(value > 0) || value > 1e12) {
-      return { value: null, warning: "مبلغ ریالی نامعتبر بود.", original_amount, original_currency };
+      return {
+        value: null,
+        warning: "مبلغ ریالی نامعتبر بود.",
+        original_amount,
+        original_currency,
+      };
     }
     return {
       value,
@@ -453,12 +463,19 @@ export function amountToToman(
   // TOMAN
   const value = Math.round(amount);
   if (value > 1e12) {
-    return { value: null, warning: "مبلغ خارج از محدوده مجاز است.", original_amount, original_currency };
+    return {
+      value: null,
+      warning: "مبلغ خارج از محدوده مجاز است.",
+      original_amount,
+      original_currency,
+    };
   }
   return { value, warning: null, original_amount, original_currency };
 }
 
-export function mapTransferMethodToChannel(method: ReceiptOcrTransferMethod | string): DocumentChannel {
+export function mapTransferMethodToChannel(
+  method: ReceiptOcrTransferMethod | string,
+): DocumentChannel {
   switch (method) {
     case "PAYA":
       return "paya";
@@ -481,8 +498,8 @@ function buildLabeledRawText(s: ReceiptOcrResult, amountToman: number | null): s
   const lines: string[] = [];
   if (s.status) lines.push(`وضعیت: ${s.status}`);
   if (s.transfer_method) lines.push(`روش انتقال: ${s.transfer_method}`);
-  if (amountToman != null) lines.push(`مبلغ: ${amountToman} تومان`);
-  else if (s.amount != null) lines.push(`مبلغ: ${s.amount} ${s.currency}`);
+  if (amountToman != null) lines.push(`مبلغ: ${toFaDigits(amountToman)} تومان`);
+  else if (s.amount != null) lines.push(`مبلغ: ${toFaDigits(s.amount)} ${s.currency}`);
   if (s.receipt_date) lines.push(`تاریخ روی فیش: ${s.receipt_date}`);
   if (s.receipt_time) lines.push(`ساعت روی فیش: ${s.receipt_time}`);
   if (s.sender_name) lines.push(`واریزکننده: ${s.sender_name}`);

@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 import { uploadWithProgress } from "@/lib/storage/upload-with-progress";
 import { CameraCaptureButton } from "@/shared/components/CameraCaptureButton";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 interface ProductImageRow {
   id: string;
@@ -167,7 +168,7 @@ export function ProductImagesSection({ productId }: Props) {
         <div className="text-sm font-medium">
           تصاویر محصول
           <span className="ms-2 text-xs font-normal text-muted-foreground">
-            {rows.length} از {MAX_IMAGES}
+            {toFaDigits(rows.length)} از {toFaDigits(MAX_IMAGES)}
           </span>
         </div>
         <Button

@@ -30,7 +30,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { ResponsiveContainer, LineChart, Line } from "recharts";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { formatNumber, formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import {
   ingestMarketRatesExternal,
   getExternalRatesStatus,
@@ -312,88 +312,91 @@ function MarketRatesWorkshopPage() {
           </div>
         ) : (
           <>
-          {!latestQ.isLoading &&
-            Object.keys(latestQ.data ?? {}).length === 0 &&
-            (indicatorsQ.data?.length ?? 0) > 0 && (
-              <div className="mb-3 space-y-2 rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
-                <p className="font-semibold text-foreground">هنوز نرخی ثبت نشده است</p>
-                <p>
-                  برای شروع، از دکمه «ثبت نرخ جدید» در بالای صفحه استفاده کنید تا نرخ ارز یا طلا را
-                  به صورت دستی وارد کنید.
-                </p>
-                {!canWrite && (
-                  <p>شما دسترسی مشاهده دارید. برای ثبت نرخ با مدیر سیستم تماس بگیرید.</p>
-                )}
-              </div>
-            )}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {indicatorsQ.data?.map((ind) => {
-              const t = latestQ.data?.[ind.id];
-              const isUp = (t?.change_amount ?? 0) > 0;
-              const isDown = (t?.change_amount ?? 0) < 0;
-              const sparklineData = sparklineQ.data?.[ind.id] ?? [];
-              return (
-                <Card key={ind.id}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="flex items-center justify-between text-base">
-                      <span>{ind.title_fa}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {CATEGORY_LABEL[ind.category] ?? ind.category}
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {!t ? (
-                      <p className="text-sm text-muted-foreground">نرخی ثبت نشده است.</p>
-                    ) : (
-                      <div className="space-y-1">
-                        <div className="text-2xl font-bold">
-                          {formatNumber(Number(t.value))}{" "}
-                          <span className="text-xs font-normal text-muted-foreground">
-                            {t.unit === "toman" ? "تومان" : t.unit}
-                          </span>
-                        </div>
-                        {t.change_amount !== null && (
-                          <div
-                            className={`flex items-center gap-1 text-xs ${isUp ? "text-emerald-600" : isDown ? "text-rose-600" : "text-muted-foreground"}`}
-                          >
-                            {isUp && <TrendingUp className="h-3 w-3" />}
-                            {isDown && <TrendingDown className="h-3 w-3" />}
-                            <span>{formatNumber(Math.abs(Number(t.change_amount)))}</span>
-                            {t.change_percent !== null && (
-                              <span>({Number(t.change_percent).toFixed(2)}٪)</span>
-                            )}
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <span>{sourceMap[t.source_id]?.title_fa ?? "—"}</span>
-                          <span>{formatDateFa(t.observed_at)}</span>
-                        </div>
-                        <Badge variant={STATUS_VARIANT[t.status] ?? "default"} className="text-xs">
-                          {STATUS_LABEL[t.status] ?? t.status}
+            {!latestQ.isLoading &&
+              Object.keys(latestQ.data ?? {}).length === 0 &&
+              (indicatorsQ.data?.length ?? 0) > 0 && (
+                <div className="mb-3 space-y-2 rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+                  <p className="font-semibold text-foreground">هنوز نرخی ثبت نشده است</p>
+                  <p>
+                    برای شروع، از دکمه «ثبت نرخ جدید» در بالای صفحه استفاده کنید تا نرخ ارز یا طلا
+                    را به صورت دستی وارد کنید.
+                  </p>
+                  {!canWrite && (
+                    <p>شما دسترسی مشاهده دارید. برای ثبت نرخ با مدیر سیستم تماس بگیرید.</p>
+                  )}
+                </div>
+              )}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {indicatorsQ.data?.map((ind) => {
+                const t = latestQ.data?.[ind.id];
+                const isUp = (t?.change_amount ?? 0) > 0;
+                const isDown = (t?.change_amount ?? 0) < 0;
+                const sparklineData = sparklineQ.data?.[ind.id] ?? [];
+                return (
+                  <Card key={ind.id}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center justify-between text-base">
+                        <span>{ind.title_fa}</span>
+                        <Badge variant="outline" className="text-xs">
+                          {CATEGORY_LABEL[ind.category] ?? ind.category}
                         </Badge>
-                        {sparklineData.length > 1 && (
-                          <div className="mt-2 h-10 w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                              <LineChart data={sparklineData}>
-                                <Line
-                                  type="monotone"
-                                  dataKey="value"
-                                  stroke={isUp ? "#059669" : isDown ? "#dc2626" : "#94a3b8"}
-                                  strokeWidth={1.5}
-                                  dot={false}
-                                />
-                              </LineChart>
-                            </ResponsiveContainer>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {!t ? (
+                        <p className="text-sm text-muted-foreground">نرخی ثبت نشده است.</p>
+                      ) : (
+                        <div className="space-y-1">
+                          <div className="text-2xl font-bold">
+                            {formatNumber(Number(t.value))}{" "}
+                            <span className="text-xs font-normal text-muted-foreground">
+                              {t.unit === "toman" ? "تومان" : t.unit}
+                            </span>
                           </div>
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                          {t.change_amount !== null && (
+                            <div
+                              className={`flex items-center gap-1 text-xs ${isUp ? "text-emerald-600" : isDown ? "text-rose-600" : "text-muted-foreground"}`}
+                            >
+                              {isUp && <TrendingUp className="h-3 w-3" />}
+                              {isDown && <TrendingDown className="h-3 w-3" />}
+                              <span>{formatNumber(Math.abs(Number(t.change_amount)))}</span>
+                              {t.change_percent !== null && (
+                                <span>({toFaDigits(Number(t.change_percent).toFixed(2))}٪)</span>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{sourceMap[t.source_id]?.title_fa ?? "—"}</span>
+                            <span>{formatDateFa(t.observed_at)}</span>
+                          </div>
+                          <Badge
+                            variant={STATUS_VARIANT[t.status] ?? "default"}
+                            className="text-xs"
+                          >
+                            {STATUS_LABEL[t.status] ?? t.status}
+                          </Badge>
+                          {sparklineData.length > 1 && (
+                            <div className="mt-2 h-10 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={sparklineData}>
+                                  <Line
+                                    type="monotone"
+                                    dataKey="value"
+                                    stroke={isUp ? "#059669" : isDown ? "#dc2626" : "#94a3b8"}
+                                    strokeWidth={1.5}
+                                    dot={false}
+                                  />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </>
         )}
       </section>
@@ -503,7 +506,7 @@ function MarketRatesWorkshopPage() {
                             {Number(t.change_amount) > 0 ? "+" : ""}
                             {formatNumber(Number(t.change_amount))}
                             {t.change_percent !== null &&
-                              ` (${Number(t.change_percent).toFixed(2)}٪)`}
+                              ` (${toFaDigits(Number(t.change_percent).toFixed(2))}٪)`}
                           </span>
                         ) : (
                           "—"

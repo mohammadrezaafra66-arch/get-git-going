@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type {} from "@tanstack/react-start";
+import { BRANDING } from "@/config/branding";
 
-const BASE_URL = "https://get-git-going.lovable.app";
+const BASE_URL = BRANDING.publicOrigin;
 
 interface SitemapEntry {
   path: string;

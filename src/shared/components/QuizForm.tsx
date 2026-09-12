@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export interface QuizQuestion {
   id?: string;
@@ -162,7 +163,7 @@ export function QuizForm({ defaultValues, onSubmit, submitting, onCancel }: Prop
                       name={`q-${qIdx}-correct`}
                       checked={q.correct_value === oIdx}
                       onChange={() => updateQuestion(qIdx, { correct_value: oIdx })}
-                      aria-label={`گزینه صحیح ${oIdx + 1}`}
+                      aria-label={`گزینه صحیح ${toFaDigits(oIdx + 1)}`}
                     />
                     <Input
                       value={opt.text}
@@ -172,7 +173,7 @@ export function QuizForm({ defaultValues, onSubmit, submitting, onCancel }: Prop
                         );
                         updateQuestion(qIdx, { options: newOptions });
                       }}
-                      placeholder={`گزینه ${oIdx + 1}`}
+                      placeholder={`گزینه ${toFaDigits(oIdx + 1)}`}
                       className="flex-1"
                     />
                     {q.options.length > 2 && (

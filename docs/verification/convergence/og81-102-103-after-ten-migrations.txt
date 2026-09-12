@@ -1,0 +1,342 @@
+
+Running 19 tests using 1 worker
+
+[1/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:244:1 › the target list still resolves to real functions
+[2/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:259:1 › ⛔ anon executes NONE of the functions 476 closed
+[3/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:268:1 › authenticated still executes ALL of them — the revoke cut only the anonymous path
+[4/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:276:1 › service_role still executes ALL of them
+[5/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:284:1 › ⛔ the 17 deliberate exclusions stay reachable by anon
+  1) [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:284:1 › ⛔ the 17 deliberate exclusions stay reachable by anon 
+
+    Error: these are referenced by RLS policies on anon-accessible tables, views anon can read, or constraints on anon-writable tables — closing them makes the POLICY raise 42501 and takes the public sale-list page and product feed down: dyn_table_role_can_view(_user_id uuid, _access_level text, _allowed_roles jsonb). Do not 'finish the sweep' by revoking these.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "dyn_table_role_can_view(_user_id uuid, _access_level text, _allowed_roles jsonb)",
+    + ]
+
+      294 |       `the public sale-list page and product feed down: ${closed.join(", ")}. ` +
+      295 |       "Do not 'finish the sweep' by revoking these.",
+    > 296 |   ).toEqual([]);
+          |     ^
+      297 | });
+      298 |
+      299 | test("no NEW function in public is born anon-executable", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:296:5
+
+    Error Context: test-results\211-218\security-og102-pre393-anon-56db4-ions-stay-reachable-by-anon-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og102-pre393-anon-56db4-ions-stay-reachable-by-anon-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og102-pre393-anon-56db4-ions-stay-reachable-by-anon-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[6/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:299:1 › no NEW function in public is born anon-executable
+  2) [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:299:1 › no NEW function in public is born anon-executable 
+
+    Error: these non-extension, non-trigger public functions are anon-executable and are not one of the 17 documented exclusions: _par_latest_usd_rate(), _promo_policy_for(p_uid uuid), bot_authenticate_key(p_raw_key text), calculate_adjusted_price(_product_id uuid), compute_promotion_scores(_channel_id uuid, _min_score numeric, _limit integer), create_dual_document(p_payer_type text, p_payer_id uuid, p_beneficiary_type text, p_beneficiary_id uuid, p_amount numeric, p_document_date date, p_tracking_number text, p_description text, p_source_bank text, p_destination_bank text, p_transferrer_name text, p_transferrer_account_no text, p_recipient_name text, p_recipient_account_no text, p_attachments jsonb), create_payment(p_channel text, p_payee_type text, p_payee_id uuid, p_amount numeric, p_payment_date date, p_source_account_id uuid, p_tracking_number text, p_cheque_kind text, p_cheque_number text, p_cheque_due_date date, p_endorsed_cheque_id uuid, p_purchase_id uuid, p_description text, p_attachments jsonb), create_receipt(p_channel text, p_customer_id uuid, p_amount numeric, p_payment_date date, p_payment_time time without time zone, p_destination_bank_account_id uuid, p_tracking_number text, p_source_bank text, p_cheque_number text, p_cheque_due_date date, p_cheque_bank text, p_description text, p_allocations jsonb, p_attachments jsonb), find_duplicate_product(p_brand_id uuid, p_category_id uuid, p_model text, p_color text, p_capacity text, p_exclude_id uuid), get_current_league(_employee_id uuid), get_customer_credit(p_customer_id uuid), get_employee_rank(_employee_id uuid), get_leaderboard(_period text, _team text, _department text, _role text, _limit integer, _offset integer), get_leaderboard_all_time(_team text, _department text, _role text, _limit integer, _offset integer), get_leaderboard_daily(_team text, _department text, _role text, _limit integer, _offset integer), get_leaderboard_monthly(_team text, _department text, _role text, _limit integer, _offset integer), get_leaderboard_weekly(_team text, _department text, _role text, _limit integer, _offset integer), get_league_leaderboard(_league league_tier, _limit integer, _offset integer), get_numeric_setting(_key text, _default numeric), get_observatory_pdf_hints_for_products(p_product_ids uuid[]), get_observatory_snippets_for_products(p_product_ids uuid[]), get_product_price_bounds(_product_id uuid, _sale_price_type_id uuid), get_product_stats(p_product_id uuid), get_product_timeline(p_product_id uuid, p_limit integer, p_offset integer), get_rank_neighbors(_employee_id uuid, _period text, _window integer), get_receivable_detail(p_customer_id uuid, p_invoice_id uuid), get_recent_purchase_label(p_product_id uuid), get_recent_purchase_labels(p_ids uuid[]), get_workflow_settings(), person_fk_registry_report(), person_merge_registry_keys(), product_videos_waiting(), refresh_sale_list_prices(p_list_id uuid), require_asan_code(p_person_id uuid), resolve_market_product_match(p_source_name market_match_source, p_source_product_url text, p_source_product_id text), search_messenger_messages_semantic(p_group_id uuid, p_query_embedding vector, p_limit integer). Either the pg_default_acl FUNCTIONS grant to anon came back (see migration 393), or a migration issued an explicit GRANT ... TO anon. Add a REVOKE, or add the function to MUST_STAY_OPEN with the policy/view/constraint row that requires it.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 38
+
+    - Array []
+    + Array [
+    +   "_par_latest_usd_rate()",
+    +   "_promo_policy_for(p_uid uuid)",
+    +   "bot_authenticate_key(p_raw_key text)",
+    +   "calculate_adjusted_price(_product_id uuid)",
+    +   "compute_promotion_scores(_channel_id uuid, _min_score numeric, _limit integer)",
+    +   "create_dual_document(p_payer_type text, p_payer_id uuid, p_beneficiary_type text, p_beneficiary_id uuid, p_amount numeric, p_document_date date, p_tracking_number text, p_description text, p_source_bank text, p_destination_bank text, p_transferrer_name text, p_transferrer_account_no text, p_recipient_name text, p_recipient_account_no text, p_attachments jsonb)",
+    +   "create_payment(p_channel text, p_payee_type text, p_payee_id uuid, p_amount numeric, p_payment_date date, p_source_account_id uuid, p_tracking_number text, p_cheque_kind text, p_cheque_number text, p_cheque_due_date date, p_endorsed_cheque_id uuid, p_purchase_id uuid, p_description text, p_attachments jsonb)",
+    +   "create_receipt(p_channel text, p_customer_id uuid, p_amount numeric, p_payment_date date, p_payment_time time without time zone, p_destination_bank_account_id uuid, p_tracking_number text, p_source_bank text, p_cheque_number text, p_cheque_due_date date, p_cheque_bank text, p_description text, p_allocations jsonb, p_attachments jsonb)",
+    +   "find_duplicate_product(p_brand_id uuid, p_category_id uuid, p_model text, p_color text, p_capacity text, p_exclude_id uuid)",
+    +   "get_current_league(_employee_id uuid)",
+    +   "get_customer_credit(p_customer_id uuid)",
+    +   "get_employee_rank(_employee_id uuid)",
+    +   "get_leaderboard(_period text, _team text, _department text, _role text, _limit integer, _offset integer)",
+    +   "get_leaderboard_all_time(_team text, _department text, _role text, _limit integer, _offset integer)",
+    +   "get_leaderboard_daily(_team text, _department text, _role text, _limit integer, _offset integer)",
+    +   "get_leaderboard_monthly(_team text, _department text, _role text, _limit integer, _offset integer)",
+    +   "get_leaderboard_weekly(_team text, _department text, _role text, _limit integer, _offset integer)",
+    +   "get_league_leaderboard(_league league_tier, _limit integer, _offset integer)",
+    +   "get_numeric_setting(_key text, _default numeric)",
+    +   "get_observatory_pdf_hints_for_products(p_product_ids uuid[])",
+    +   "get_observatory_snippets_for_products(p_product_ids uuid[])",
+    +   "get_product_price_bounds(_product_id uuid, _sale_price_type_id uuid)",
+    +   "get_product_stats(p_product_id uuid)",
+    +   "get_product_timeline(p_product_id uuid, p_limit integer, p_offset integer)",
+    +   "get_rank_neighbors(_employee_id uuid, _period text, _window integer)",
+    +   "get_receivable_detail(p_customer_id uuid, p_invoice_id uuid)",
+    +   "get_recent_purchase_label(p_product_id uuid)",
+    +   "get_recent_purchase_labels(p_ids uuid[])",
+    +   "get_workflow_settings()",
+    +   "person_fk_registry_report()",
+    +   "person_merge_registry_keys()",
+    +   "product_videos_waiting()",
+    +   "refresh_sale_list_prices(p_list_id uuid)",
+    +   "require_asan_code(p_person_id uuid)",
+    +   "resolve_market_product_match(p_source_name market_match_source, p_source_product_url text, p_source_product_id text)",
+    +   "search_messenger_messages_semantic(p_group_id uuid, p_query_embedding vector, p_limit integer)",
+    + ]
+
+      322 |       "migration issued an explicit GRANT ... TO anon. Add a REVOKE, or add the function to " +
+      323 |       "MUST_STAY_OPEN with the policy/view/constraint row that requires it.",
+    > 324 |   ).toEqual([]);
+          |     ^
+      325 | });
+      326 |
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:324:5
+
+    Error Context: test-results\211-218\security-og102-pre393-anon-b1b7d-lic-is-born-anon-executable-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og102-pre393-anon-b1b7d-lic-is-born-anon-executable-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og102-pre393-anon-b1b7d-lic-is-born-anon-executable-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[7/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:494:1 › ⛔ anon holds NO write privilege on any table in public
+[8/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:523:1 › ⛔ anon reads exactly the eleven and nothing else
+  3) [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:523:1 › ⛔ anon reads exactly the eleven and nothing else 
+
+    Error: anon can SELECT these and they are not one of the eleven documented exclusions: categories, products. Either REVOKE SELECT ... FROM anon, or add the table to KEEP_OPEN together with the view, policy or public page that requires it.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 4
+
+    - Array []
+    + Array [
+    +   "categories",
+    +   "products",
+    + ]
+
+      534 |       "Either REVOKE SELECT ... FROM anon, or add the table to KEEP_OPEN together with the view, " +
+      535 |       "policy or public page that requires it.",
+    > 536 |   ).toEqual([]);
+          |     ^
+      537 | });
+      538 |
+      539 | test("⛔ the eleven stay readable by anon — the direction nobody checks", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og103-anon-table-grants-stay-closed.spec.ts:536:5
+
+    Error Context: test-results\211-218\security-og103-anon-table--73199-the-eleven-and-nothing-else-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og103-anon-table--73199-the-eleven-and-nothing-else-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og103-anon-table--73199-the-eleven-and-nothing-else-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[9/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:539:1 › ⛔ the eleven stay readable by anon — the direction nobody checks
+[10/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:558:1 › authenticated and service_role still read everything anon lost
+[11/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:575:1 › service_role still writes everything anon lost
+[12/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:589:1 › ⛔ the column-level SELECT grants that keep the public product feed alive are intact
+  4) [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:589:1 › ⛔ the column-level SELECT grants that keep the public product feed alive are intact 
+
+    Error: the anon column grants on products/categories changed; /api/public/products depends on them
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Array [
+    -   "categories=6",
+    -   "products=9",
+    +   "academy_quiz_questions=5",
+    +   "products=11",
+      ]
+
+      608 |     cols,
+      609 |     "the anon column grants on products/categories changed; /api/public/products depends on them",
+    > 610 |   ).toEqual(["categories=6", "products=9"]);
+          |     ^
+      611 | });
+      612 |
+      613 | test("⛔ OG-77 at table scale: no NEW security_invoker view is readable-but-unusable", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og103-anon-table-grants-stay-closed.spec.ts:610:5
+
+    Error Context: test-results\211-218\security-og103-anon-table--87b9a-oduct-feed-alive-are-intact-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og103-anon-table--87b9a-oduct-feed-alive-are-intact-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og103-anon-table--87b9a-oduct-feed-alive-are-intact-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[13/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:613:1 › ⛔ OG-77 at table scale: no NEW security_invoker view is readable-but-unusable
+[14/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:651:1 › the baseline is still exactly the two known pairs — it has not been quietly widened
+  5) [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:651:1 › the baseline is still exactly the two known pairs — it has not been quietly widened 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 0
+
+      Array [
+    -   "anon | effective_currencies_view | products",
+        "anon | vw_purchase_float | purchases",
+      ]
+
+      677 |      order by 1
+      678 |   `);
+    > 679 |   expect(broken.sort()).toEqual([...OG77_TABLE_BASELINE].sort());
+          |                         ^
+      680 | });
+      681 |
+      682 | test("the target lists still resolve to real tables", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og103-anon-table-grants-stay-closed.spec.ts:679:25
+
+    Error Context: test-results\211-218\security-og103-anon-table--70ff5-as-not-been-quietly-widened-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og103-anon-table--70ff5-as-not-been-quietly-widened-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og103-anon-table--70ff5-as-not-been-quietly-widened-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[15/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:682:1 › the target lists still resolve to real tables
+  6) [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:682:1 › the target lists still resolve to real tables 
+
+    Error: a table named in this gate no longer exists under that name
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+    -   "keep=11 sel=190 wr=204",
+    +   "keep=11 sel=184 wr=198",
+      ]
+
+      688 |     ${PUBLIC_TABLES}
+      689 |   `);
+    > 690 |   expect(counts, "a table named in this gate no longer exists under that name").toEqual([
+          |                                                                                 ^
+      691 |     `keep=${KEEP_OPEN.length} sel=${REVOKED_SELECT.length} wr=${REVOKED_WRITE.length}`,
+      692 |   ]);
+      693 | });
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og103-anon-table-grants-stay-closed.spec.ts:690:81
+
+    Error Context: test-results\211-218\security-og103-anon-table--e67f3-till-resolve-to-real-tables-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og103-anon-table--e67f3-till-resolve-to-real-tables-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og103-anon-table--e67f3-till-resolve-to-real-tables-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[16/19] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row
+  7) [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row 
+
+    Error: 9 migration(s) are applied-but-unrecorded: 20260818150000, 20260818157000, 20260822210000, 20260828000000, 20260828010000, 20260829000000, 20260905171000, 20260905171500 …. A deployer reading the ledger would re-run these, and several migrations in this repo are NOT idempotent. Record the row — do NOT re-run the migration.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 11
+
+    - Array []
+    + Array [
+    +   "20260818150000",
+    +   "20260818157000",
+    +   "20260822210000",
+    +   "20260828000000",
+    +   "20260828010000",
+    +   "20260829000000",
+    +   "20260905171000",
+    +   "20260905171500",
+    +   "20260905180000",
+    + ]
+
+      52 |       "A deployer reading the ledger would re-run these, and several migrations in this repo are NOT idempotent. " +
+      53 |       "Record the row — do NOT re-run the migration.",
+    > 54 |   ).toEqual([]);
+         |     ^
+      55 | });
+      56 |
+      57 | test("⛔ every ledger row has a migration file on disk", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og81-migration-ledger-matches-disk.spec.ts:54:5
+
+    Error Context: test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[17/19] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:57:1 › ⛔ every ledger row has a migration file on disk
+[18/19] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated
+  8) [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated 
+
+    Error: disk 700 vs ledger 691 — the two must agree exactly
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 691
+    Received: 700
+
+      80 |     disk.length,
+      81 |     `disk ${disk.length} vs ledger ${ledger.length} — the two must agree exactly`,
+    > 82 |   ).toBe(ledger.length);
+         |     ^
+      83 | });
+      84 |
+      85 | test("no duplicate versions on either side", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og81-migration-ledger-matches-disk.spec.ts:82:5
+
+    Error Context: test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[19/19] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:85:1 › no duplicate versions on either side
+  8 failed
+    [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:284:1 › ⛔ the 17 deliberate exclusions stay reachable by anon 
+    [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:299:1 › no NEW function in public is born anon-executable 
+    [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:523:1 › ⛔ anon reads exactly the eleven and nothing else 
+    [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:589:1 › ⛔ the column-level SELECT grants that keep the public product feed alive are intact 
+    [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:651:1 › the baseline is still exactly the two known pairs — it has not been quietly widened 
+    [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:682:1 › the target lists still resolve to real tables 
+    [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row 
+    [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated 
+  11 passed (10.3s)

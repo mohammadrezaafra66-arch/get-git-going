@@ -46,8 +46,33 @@ export async function getPublicSaleList(listId: string, page = 1): Promise<Publi
 
   if (listErr || !list) return null;
 
-  // Refresh prices from latest history before reading items (live pricing)
-  await supabase.rpc("refresh_sale_list_prices", { p_list_id: listId });
+  // Refresh prices from latest history before reading items (live pricing).
+  //
+  // KEPT DELIBERATELY — it is not dead code, though it is unreachable for the visitors this
+  // file is named after. Measured on a production-shape restore:
+  //
+  //   sale_lists / sale_list_items  : anon SELECT = f (RLS on, zero policies for anon)
+  //   refresh_sale_list_prices(uuid): anon EXECUTE = f, authenticated EXECUTE = t
+  //
+  // So for an ANONYMOUS visitor this line is never reached — the `sale_lists` query above
+  // already returned null and the function bailed at the `if (listErr || !list)` guard. For a
+  // SIGNED-IN viewer it does run, and it is the live price refresh the page depends on.
+  //
+  // e2e/security/og61-anon-cannot-reach-definer-writers.spec.ts names THIS FILE as the reason
+  // the function is deliberately left reachable by `authenticated`: "Invoked on sale-list page
+  // load (src/lib/public/get-public-sale-list.ts and the sale-list route); a role gate would
+  // blank the page for viewers who are allowed to see it." Deleting the call would therefore
+  // also falsify that gate's own recorded justification.
+  //
+  // The result is now checked instead of discarded. supabase-js does not throw on an RPC error,
+  // so the previous bare `await` swallowed every failure silently. A failed refresh is not fatal
+  // — the items below are still readable, only possibly stale — so this warns and continues.
+  const { error: refreshErr } = await supabase.rpc("refresh_sale_list_prices", {
+    p_list_id: listId,
+  });
+  if (refreshErr) {
+    console.warn("[sale-list] price refresh failed; prices may be stale:", refreshErr.message);
+  }
 
   // 2) Fetch sale price type title (best-effort)
   let priceTypeTitle: string | null = null;

@@ -16,6 +16,7 @@ import {
 import type { WorkbenchFilters, CurrencyCodeV } from "@/lib/pricing/workbench-filters";
 import { DEFAULT_WORKBENCH_FILTERS, STOCK_LABEL } from "@/lib/pricing/workbench-filters";
 import { CURRENCY_LABELS } from "@/lib/pricing/constants";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 // منبع رسمی ارز: Database["public"]["Enums"]["currency_code"] = "toman" | "usd" | "aed"
 // فیلتر «ارز خرید» فقط برای محصولات foreign معنی دارد، پس toman از لیست خارج می‌شود.
@@ -280,7 +281,7 @@ export function WorkbenchFiltersBar({
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
           {activeCount > 0 ? (
-            <Badge variant="secondary">{activeCount} فیلتر فعال</Badge>
+            <Badge variant="secondary">{toFaDigits(activeCount)} فیلتر فعال</Badge>
           ) : (
             <span className="text-xs text-muted-foreground">فیلتری اعمال نشده است</span>
           )}

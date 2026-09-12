@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export function DailyMoodEntryDetails({
   entry,
@@ -168,7 +169,9 @@ export function DailyMoodEntryDetails({
                 placeholder="فقط برای مدیران قابل مشاهده…"
               />
               <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{note.length}/2000</span>
+                <span className="text-xs text-muted-foreground">
+                  {toFaDigits(note.length)}/۲۰۰۰
+                </span>
                 <Button size="sm" onClick={() => void saveNote()} disabled={busy}>
                   ذخیره یادداشت
                 </Button>

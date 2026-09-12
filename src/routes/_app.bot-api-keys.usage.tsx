@@ -27,7 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useDebounce } from "@/hooks/use-debounce";
-import { formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/bot-api-keys/usage")({
   beforeLoad: async () => {
@@ -226,7 +226,7 @@ function BotApiUsagePage() {
                     {r.ip}
                   </span>
                   <div className="flex items-center gap-2">
-                    <Badge variant="destructive">{r.failed_count} خطا</Badge>
+                    <Badge variant="destructive">{toFaDigits(r.failed_count)} خطا</Badge>
                     <span className="text-xs text-muted-foreground">
                       {formatDateTimeFa(r.last_attempt_at)}
                     </span>

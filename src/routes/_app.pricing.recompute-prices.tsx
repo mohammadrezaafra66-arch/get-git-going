@@ -25,7 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { publishAllProductsPrices, type PublishProductResult } from "@/lib/pricing/publish-prices";
-import { formatNumber } from "@/lib/i18n/formatters";
+import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import { useComputedPricesRealtime } from "@/hooks/pricing/useComputedPricesRealtime";
 import { triggerPricingRecomputeQueue } from "@/lib/pricing/process-queue.functions";
 
@@ -59,7 +59,7 @@ function RecomputePricesPage() {
   const { data: counts } = useQuery({
     queryKey: ["recompute-eligible-count", onlyAvailable],
     queryFn: async () => {
-      let qAll = supabase.from("products").select("id", { count: "exact", head: true });
+      const qAll = supabase.from("products").select("id", { count: "exact", head: true });
       let qElig = supabase.from("products").select("id", { count: "exact", head: true });
       if (onlyAvailable) {
         qElig = qElig.eq("status", "active").in("stock_status", ["available", "limited"]);
@@ -135,8 +135,8 @@ function RecomputePricesPage() {
       });
       setSummary({ written: res.total_prices_written, failed: res.total_failed });
       toast.success(
-        `${res.total_prices_written} قیمت ذخیره شد` +
-          (res.total_failed ? ` — ${res.total_failed} خطا` : ""),
+        `${toFaDigits(res.total_prices_written)} قیمت ذخیره شد` +
+          (res.total_failed ? ` — ${toFaDigits(res.total_failed)} خطا` : ""),
       );
     } catch (e: any) {
       toast.error(e?.message ?? "خطا در اجرا");
@@ -334,7 +334,8 @@ function RecomputePricesPage() {
             <div className="space-y-1">
               <Progress value={pct} />
               <div className="text-xs text-muted-foreground">
-                {progress.done} از {progress.total} محصول ({pct}%)
+                {toFaDigits(progress.done)} از {toFaDigits(progress.total)} محصول ({toFaDigits(pct)}
+                %)
               </div>
             </div>
           )}
