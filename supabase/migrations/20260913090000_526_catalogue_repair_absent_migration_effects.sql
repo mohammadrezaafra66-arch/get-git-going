@@ -9,7 +9,13 @@ SET client_encoding='UTF8';
 -- ============================================================================================
 --
 -- This is NOT a redefinition of 386/394/396/404/409. Those migrations are not edited (CLAUDE.md
--- rule 6) and their ledger rows are untouched -- this migration inserts its own new row. Every
+-- rule 6) and their ledger rows are untouched; this migration gets a ledger row of its own,
+-- at version 20260913090000, WRITTEN BY THE OPERATOR'S mig_apply STEP AND NOT BY THIS FILE.
+-- Wording corrected 2026-09-12 by the Stage 2 gate: the previous sentence read "this
+-- migration inserts its own new row", which invites the defect found in 535/536 -- a
+-- self-INSERT makes the operator's ledger step report a duplicate-key ERROR, a stop
+-- condition on the owner-typed run. No migration in this mission writes its own ledger row;
+-- verified across all ten. See INTEGRATION-LOG.md, "Step 3 - gate finding G-1". Every
 -- statement below is CATALOGUE-DRIVEN: it reads the live pg_catalog state of the target object,
 -- compares it against the end state the original migration asserted (via that migration's own
 -- gate, or via the live pg_get_functiondef/pg_get_viewdef read against the migration file), and

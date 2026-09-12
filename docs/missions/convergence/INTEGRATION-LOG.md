@@ -335,13 +335,24 @@ one is a file that exists:
 |---|---|---|
 | `20260818150000` | 336 drop dead receipt posting path | **covered** — E-1's 527 is its guard-free re-issue |
 | `20260818157000` | 343 posted entry immutability | **covered** — E-1's 528 |
-| `20260822210000` | 373 close anon default privileges | **needs a Stage 3 decision** |
+| `20260822210000` | 373 close anon default privileges | **DECIDED (OG-C)** — ledger row only, never re-run, and only after `anon_default_acl = 0` is checked |
 | `20260828000000` | 411 customer credit ranges widened | owner APPROVED (OG-A) — ships as-is in its own release block |
 | `20260828010000` | 412 cooperation hint matches widened range | same block as 411 |
 | `20260829000000` | 413 salesperson scoring ranges widened | same block as 411 |
-| `20260905171000` | 449 retire daily capital functions | **needs a Stage 3 decision** |
-| `20260905171500` | 450 retire superseded tables | **needs a Stage 3 decision** |
-| `20260905180000` | 452 retire parameter weight backups by rename | **needs a Stage 3 decision** |
+| `20260905171000` | 449 retire daily capital functions | **ACCEPTED DIVERGENCE (OG-J)** — permanently skipped, **no ledger row** |
+| `20260905171500` | 450 retire superseded tables | **ACCEPTED DIVERGENCE (OG-J)** — permanently skipped, **no ledger row** |
+| `20260905180000` | 452 retire parameter weight backups by rename | **ACCEPTED DIVERGENCE (OG-J)** — permanently skipped, **no ledger row** |
+
+> **OG-J is a decision, not a gap, and the reason is the most expensive lesson in this mission.**
+> Nothing performed 449/450/452's work on production, so recording a ledger row for them would be a
+> false statement about the schema — exactly what `og81` exists to catch. They are skipped without
+> a row, permanently. The consequence is that **six `zz_retired_*` table names differ between test
+> and production forever**, plus `payment_receipts_backup_20260722`, which 450 dropped on test and
+> which production still has. That divergence is precisely what made migration 477 — a static list
+> generated from the test catalogue — abort on production on 2026-09-12 and need re-issuing as 523
+> and 524. The rule it leaves behind, now with three instances behind it: **a migration whose
+> target set is a list of names generated on one database cannot be applied to the other. Derive at
+> run time, or do not ship it.**
 
 And **four** run in the other direction — applied on production, absent from test:
 `20260908120000` (522), `20260912140000` (523), `20260912143000` (524), `20260912150000` (525) —
@@ -388,7 +399,7 @@ shows the ten moving **three** numbers, all in the safe direction:
 
 | gate | baseline | after | cause |
 |---|---|---|---|
-| og102 — functions anon may execute outside the 17 exclusions | 41 | **38** | `asan_list_bank_deposit_export` revoked by 535; `expire_stale_credit_holds` dropped by 526; `post_receipt_journal` dropped by 527 |
+| og102 — functions anon may execute outside the 17 exclusions | 39 | **36** | `asan_list_bank_deposit_export` revoked by 535; `expire_stale_credit_holds` dropped by 526; `post_receipt_journal` dropped by 527 |
 | og81 — applied-but-unrecorded | 19 | **9** | the ten got their ledger rows |
 | og81 — disk vs ledger | 700 vs 681 | 700 vs **691** | same |
 
@@ -416,7 +427,7 @@ is a Stage 3 decision.
 **og102 (2) — production never received migration 476's effect, and this is the largest single
 security finding of the gate.**
 
-1. *"no NEW function in public is born anon-executable"* — **38 application functions in `public`
+1. *"no NEW function in public is born anon-executable"* — **36 application functions in `public`
    are executable by `anon` on production** and are not among the 17 documented exclusions. The
    list includes `create_payment`, `create_receipt`, `create_dual_document`, `get_customer_credit`,
    `get_receivable_detail`, `bot_authenticate_key`, `refresh_sale_list_prices` and 31 others. 476
@@ -480,7 +491,7 @@ None of the four is caused by this branch, and all four are identical in the bas
 ### What this step does and does not license
 
 It does **not** say the eight failures are acceptable. Three of them (og103 1-3) describe a real
-over-grant on production, and og102's 38 functions describe a larger one. What it says is narrower
+over-grant on production, and og102's 36 functions describe a larger one. What it says is narrower
 and is the only thing the gate is entitled to conclude: **the eleven migrations in this branch are
 not their cause, and applying this branch does not make any of them worse.** Every number moved by
 the ten moved toward closed.
@@ -601,10 +612,10 @@ None is caused by this branch; all 21 are red on production's own shape.
 | `og78-default-privilege-restores-are-derived` | 3 | production's `pg_default_acl` differs across `auth`, `extensions`, `graphql_public`. |
 | `og100-purchase-term-is-mandatory` | 3 | its FORCED-DISTURBANCE half must drop a constraint: `ERROR: must be owner of table` — the same restore-ownership artifact, which the schema-level GRANT cannot fix. |
 | `h9-manual-credit-floor-guard` | 1 | same (`must be owner of table customers`, disabling a trigger). |
-| `og77-view-callers-can-execute-what-views-call` | 2 | *"anon regained EXECUTE — 395's closure was undone"* and *"supabase_read_only_user should still be blocked on the OG-45 views; found 10"*. **Real production findings**, same family as og102's 38 functions. |
+| `og77-view-callers-can-execute-what-views-call` | 2 | *"anon regained EXECUTE — 395's closure was undone"* and *"supabase_read_only_user should still be blocked on the OG-45 views; found 10"*. **Real production findings**, same family as og102's 36 functions. |
 | `og81-migration-ledger-matches-disk` | 2 | the nine-migration convergence gap. |
 
-Two of those groups are genuine production security findings (og77's two, alongside og102's 38);
+Two of those groups are genuine production security findings (og77's two, alongside og102's 36);
 two are artifacts of how a rehearsal database is restored; the rest are the known OCR and
 ledger-gap items.
 
@@ -722,4 +733,324 @@ production (dump)    681 ledger rows, top 20260912150000, 227 tables, 20 anon-re
 equivalents 523/524/525 have not been replayed onto it), and *older* on everything after
 `20260908034500`. Bringing it to parity is the remaining half of "test and production converge on
 one schema", and it is a separate, announced action rather than a side effect of this deploy.
+
+
+---
+
+## Correction to Steps 4 and 5 — the anon-executable count is 36, not 38
+
+The figures above originally read **41 before / 38 after**. Both were wrong by two, and the error
+was mine: I read the counts off Playwright's diff rendering (`+ Received + 38`), which counts the
+array's bracket lines as well as its items. Counted directly against the catalogue with og102's own
+predicate:
+
+```
+prod_rehearsal_base (production shape)   39
+prod_rehearsal_gate (after the ten)      36
+```
+
+Verified by extracting the names out of og102's own failure message and diffing them against an
+independent query — the two lists are **identical, 36 items, zero difference in either direction**.
+The delta of 3 between the two databases is unchanged and still accounted for exactly:
+`asan_list_bank_deposit_export` (535), `expire_stale_credit_holds` (526), `post_receipt_journal`
+(527).
+
+Nothing else in Steps 4 or 5 depends on the figure. The finding itself — that production carries a
+population of `anon`-executable application functions which migration 476 never reached — stands,
+and is now measured rather than transcribed.
+---
+
+## Step 7 — O-5 cold-session checks · DONE, and it found a defect
+
+Two roles, each in a browser context that has never visited the app — the state a real user is in
+the morning after a deploy, and the state nobody was in on 2026-09-12 when `:3100` was answering
+from PostgREST behind a healthy container.
+
+For each role, each route is asserted on four things, not one: HTTP **200**, `content-type:
+text/html`, **no `Server: postgrest` header**, and no bounce to `/login`. Then the role label must
+be visible, and a screenshot is taken.
+
+```
+accountant     /dashboard  /accounting/payables   role label «حسابدار»     PASS
+salesperson-a  /dashboard  /pricing               role label «فروشنده»     PASS
+2 passed
+```
+
+Screenshots: `docs/verification/convergence/o5/` — six PNGs, 1440x900, taken against
+`APP_GIT_SHA=c0804142`.
+
+### 🔴 G-4 — F-9 was applied to one of the two identical strings. The screenshot found it.
+
+The salesperson dashboard rendered its purchase-request KPI subtitle as **`0 تأیید · 0 در انتظار`**
+— Latin digits, in a Persian RTL interface. E-3's F-9 fix routed that exact string through
+`toPersianDigits`, but only in `AdminKpis()`:
+
+```
+src/routes/_app.dashboard.tsx
+  line 199  AdminKpis()   ${toPersianDigits(purchases.data.approved)} تأیید · ...   <- fixed by E-3
+  line 290  SalesKpis()   ${purchases.data.approved} تأیید · ...                    <- missed
+```
+
+The file has four KPI blocks — `DashboardPage`, `AdminKpis`, `SalesKpis`, `AccountantKpis` — and
+the sales one carries a copy of the same template. A source review of the diff cannot see this;
+only rendering the page as the role that gets that block can. Fixed at `c0804142`, one line, the
+same shape as the change already reviewed at line 199, and **re-proved by redeploying and
+re-taking the screenshot**: it now reads `۰ تأیید · ۰ در انتظار`.
+
+A full scan of the route for the same class found nothing else: the only other Persian template
+string interpolating a value is `${created.toLocaleString("fa-IR")} نوتیفیکیشن تولد ایجاد شد`,
+which already localises its own digits.
+
+### 🟠 The app shows every user a red "live connection lost" badge, and it is not a glitch
+
+Visible in both dashboard screenshots: **«اتصال زنده قطع است»**. The console explains it:
+
+```
+WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?...' failed:
+Error during WebSocket handshake: Unexpected response code: 404
+```
+
+404, not a timeout — Kong has no route for it, because **there is no `realtime` service in the LAN
+stack at all**: `docker ps -a` lists no realtime container and `deploy/lan/docker-compose.yml`
+declares none. The app opens that socket on every page load for every user, so the red badge is
+permanent, and production runs the same compose family. Not caused by this branch and not fixed
+here; HANDOFF, because a permanently-red status indicator trains people to ignore status
+indicators.
+
+The other console lines are `[auth-diagnostic]` traces logged at error level. They are
+informational and are reported rather than asserted on.
+
+---
+
+## Step 8 — the owner's four decisions, and the ledger-insert sweep
+
+### The sweep, answered in full: zero across all twelve, not just the two
+
+The question was whether G-1 was swept or spot-fixed, and specifically whether 526's own header —
+which said it *"inserts its own new row"* — described a literal `INSERT`.
+
+```
+file                                          mentions  non-comment  EXECUTABLE INSERT
+526 catalogue_repair                              0          0              0
+527 drop_dead_receipt_posting_path                0          0              0
+528 posted_entry_immutability                     0          0              0
+530 overdue_sensor_covers_unknown_due_date        0          0              0
+531 audit_logs_actor_fk_set_null_on_delete        0          0              0
+532 drop_duplicate_signup_trigger                 0          0              0
+533 pg_cron_http_scheduler                        0          0              0
+534 cron_run_log                                  0          0              0
+535 security3_s5_function_fixes                   1          0              0
+536 ai_providers_updated_by                       1          0              0
+537 revoke_truncate_from_authenticated            0          0              0
+538 close_anon_execute_on_pre393_functions        0          0              0
+```
+
+The two remaining mentions are the comments this gate wrote where the `INSERT`s used to be. There
+is **no executable `schema_migrations` write in any migration in this release.**
+
+**526 was prose, not SQL — but the prose was dangerous and has been corrected.** Its header read
+*"their ledger rows are untouched -- this migration inserts its own new row"*, which reads as a
+description of what the file does. It does not; the operator's `mig_apply` writes that row. Left
+alone, that sentence is an instruction to the next author to add exactly the defect 535 and 536
+shipped. It now names the mechanism, the owner of the step, and this finding. Comment-only change;
+526's md5 changed and it was re-applied and re-proved from a fresh restore.
+
+**There is also empirical proof, independent of the grep.** Every one of the twelve returned
+`INSERT 0 1` from the operator's ledger step on a database restored minutes earlier. A file that
+had already inserted its own row could not produce that — it would produce the duplicate-key error
+that found G-1 in the first place.
+
+---
+
+### Decision 1 — TRUNCATE ships as migration 537
+
+**Measured first, as instructed.** Nothing legitimately needs it:
+
+*Repository grep.* `TRUNCATE` appears in `e2e/` exactly three times, and not once as something a
+test does: twice inside the guards that **forbid** it (`e2e/helpers/db.ts:26` `assertReadOnlySql`
+and `e2e/helpers/db-write.ts:26`), and once in an og103 comment. In `src/` every match is the
+Tailwind class `truncate`. In `scripts/` and `deploy/`, none. No migration in the repository issues
+`GRANT TRUNCATE`.
+
+*Which role e2e actually connects as — measured, not assumed from the default.*
+
+```
+e2e/helpers/db.ts:17     E2E_DB_USER ?? "postgres"      -> psql -U postgres
+e2e/helpers/tx.ts:33     E2E_DB_USER ?? "postgres"      -> psql -U postgres
+e2e/helpers/db-write.ts:71                              -> psql -U supabase_admin -d afrakala
+e2e/helpers/pgrest.ts:54 mintJwt(... role: "authenticated")
+```
+
+Nothing overrides `E2E_DB_USER` anywhere in `e2e/`, `playwright*.ts` or `package.json`; the two
+specs that re-declare it (`a4-…`, `a5-…`) repeat the same default. So the DB-level helpers connect
+as **`postgres`** and the write helper as **`supabase_admin`** — both of which keep TRUNCATE on all
+227/228 tables. The only role 537 touches that any test reaches is **`authenticated`, through
+`pgrest.ts`** — and PostgREST exposes no TRUNCATE verb, no `public` function truncates anything but
+a temporary table, and no spec contains the statement.
+
+*Five functions do contain TRUNCATE, and all five are safe:*
+
+```
+bot_query_table_rows              TRUNCATE _bot_q_rows      temp table, SECURITY DEFINER
+export_dynamic_table_rows         TRUNCATE _x_rows          temp table, SECURITY DEFINER
+query_dynamic_table_rows          TRUNCATE _q_rows          temp table, SECURITY DEFINER
+recompute_dynamic_capital_setting TRUNCATE _sp_cust         temp table, SECURITY DEFINER
+run_daily_capital_allocation      TRUNCATE _sp_cust         temp table, SECURITY DEFINER
+```
+
+Temporary tables live in `pg_temp_*` and are reached by no grant in `public`; and all five are
+SECURITY DEFINER owned by `supabase_admin`, so the privilege that matters is the owner's.
+
+**Then the test the decision demanded.** The full DB-parameterised scoped suite, run on the gate
+database before and after 537:
+
+```
+ten migrations only   21 failed · 69 passed · 1 skipped
++ 537                 21 failed · 69 passed · 1 skipped
+```
+
+Identical, and the failing **titles** are identical in both directions of the comparison — zero
+regressed, zero cleared. **537 is GREEN.**
+
+Result on the catalogue:
+
+```
+                       before   after
+authenticated TRUNCATE   214       0     (227 tables; 228 after 534 adds cron_run_log)
+service_role  TRUNCATE   227     228     untouched, asserted by 537's own gate
+authenticated SELECT     227     227     untouched
+authenticated UPDATE     223     223     untouched
+pg_default_acl TABLES  authenticated=arwdDxt  ->  authenticated=arwdxt   for BOTH grantors
+```
+
+That last line is the half that makes it permanent. The default is registered **twice**, under
+`supabase_admin` and under `postgres`, and `ALTER DEFAULT PRIVILEGES` without `FOR ROLE` touches
+only the current role's entry — so a one-statement fix would look complete and leave the other
+grantor re-granting `D` to every new table. 537 handles both.
+
+Proven idempotent and shape-tolerant: a second pass reports `0 revoked, 228 already closed`; run
+against a raw production restore without the other eleven it reports `214 revoked, 13 already
+closed` — exactly the measured numbers.
+
+---
+
+### Decision 2 — the anon-executable functions ship as migration 538. The split, first.
+
+**The count is 36, not 38** — see the correction above; 38 and 41 were my misreadings of
+Playwright's diff rendering. The split, measured on the gate database:
+
+| n | shape | what they are |
+|---|---|---|
+| **2** | **DEFINER · WRITES · NO caller check** | **`bot_authenticate_key(text)`, `refresh_sale_list_prices(uuid)`** |
+| 3 | DEFINER · WRITES · caller-checked | `create_payment`, `create_receipt`, `create_dual_document` |
+| 4 | DEFINER · reads · caller-checked | `get_customer_credit`, `get_receivable_detail`, `product_videos_waiting`, `search_messenger_messages_semantic` |
+| 25 | DEFINER · reads · no caller check | the leaderboards, product/pricing lookups, observatory snippets, registry reports |
+| 2 | INVOKER · reads · no caller check | `compute_promotion_scores`, `require_asan_code` |
+
+**The two on the first row are the live holes**, exactly as the decision anticipated: SECURITY
+DEFINER, they write, they run as `supabase_admin`, they check nothing about the caller, and an
+unauthenticated PostgREST request reaches them. The two INVOKER ones are dead weight — they run as
+`anon`, so RLS still stands between them and every row. The 25 read-only DEFINERs are in between:
+they bypass RLS to read, which is a disclosure surface, not a write surface.
+
+**The tension with Phase 5 block 65, named rather than smoothed over.** On 2026-09-12 that block
+reported *"zero sensitive functions for anon"* and it was true of what it checked: a **12-item
+list** of named sensitive functions, none of which is in the 36. This is a **full catalogue sweep**
+against og102's predicate, and it finds a different population. Both statements are correct; they
+are answers to different questions, and the second is the one that would have caught these.
+
+**Two things the measurement changed about how 538 is written.**
+
+*First, revoking from `anon` alone would have done nothing on most of them.* Of the 39 (pre-ten):
+
+```
+24  carry an explicit `=X` entry -- EXECUTE granted to PUBLIC
+15  carry only `anon=X`
+```
+
+`has_function_privilege('anon', …)` is true whenever PUBLIC holds it, so on those 24 a revoke from
+`anon` changes the ACL and changes nothing about who can call the function. PUBLIC has to go too.
+
+*Second, revoking PUBLIC blindly would have repeated migration 405.*
+
+```
+role                       can execute    holds own grant
+authenticated                    39             39     safe
+service_role                     39             39     safe
+authenticator                    24              0     depends on PUBLIC
+dashboard_user                   24              0     depends on PUBLIC
+products_api_readonly            24              0     depends on PUBLIC
+supabase_read_only_user          24              0     depends on PUBLIC
+```
+
+395 revoked from PUBLIC, every catalogue check it shipped passed, and a live credentialed API went
+down because `products_api_readonly` reached `get_product_price_bounds` only through PUBLIC.
+
+So 538 grants explicitly **before** revoking, to a set derived twice over: a role must (i) lose
+access when PUBLIC goes, and (ii) be a role this schema already knows about — it holds at least one
+explicit privilege on some relation in `public`. On the production dump (ii) selects exactly
+`postgres, supabase_admin, service_role, authenticated, anon, products_api_readonly`. In practice
+**538 issues grants to `products_api_readonly` and nothing else** — the same one role and one grant
+405 had to add by hand. `authenticator` needs none: `pg_auth_members` shows it is a member of
+`anon`, `authenticated`, `service_role` and `products_api_readonly`.
+
+> **A first draft of 538 got this wrong and it is worth recording.** It preserved *every*
+> non-superuser role that would lose access, which turned one implicit PUBLIC entry into **thirteen
+> explicit ACL entries per function** — `pgsodium_keyholder` and `pgbouncer` granted EXECUTE on
+> `create_payment`. It also granted to `supabase_read_only_user`, which
+> `og77-view-callers-can-execute-what-views-call.spec.ts` asserts should be **blocked**. Caution
+> pointed the wrong way is not caution. The narrowed version leaves those roles to lose the
+> incidental PUBLIC grant, which is the correct outcome.
+
+**Result.** `538: closed 36 function(s) to anon; issued preserving grant(s) to products_api_readonly only.`
+
+```
+                            ten only    + 537 + 538
+anon EXECUTE on public fns     541          505
+og81/og102/og103            8 failed     7 failed    og102 "no NEW function ... born anon-executable"  PASSES
+scoped DB suite            21f · 69p    19f · 71p    og77's two failures BOTH CLEAR
+regressions                     —            0
+```
+
+538 clears `og77`'s *"anon regained EXECUTE — 395's closure was undone"* and *"supabase_read_only_user
+should still be blocked"* as a side effect of doing the job properly.
+
+All twelve re-applied to the already-migrated database: **identical across 15,422 snapshot lines.**
+
+**One og102 test stays red, deliberately.** `dyn_table_role_can_view` is not anon-executable on
+production and 538 does not open it. The four policies referencing it are on `dynamic_tables`,
+`dynamic_table_rows`, `dynamic_table_columns` and `dynamic_table_cells`, and `anon` can read none
+of the four — so no anonymous query ever evaluates them. Whether the gate's 17-item list or
+production's grants should move is a decision, not a repair, and 538 does not make it.
+
+---
+
+### Decision 3 — 373 is ledger-row-only (OG-C)
+
+Recorded here so the release blocks inherit it: 373 (`20260822210000`,
+`close_anon_default_privileges`) is **not re-run**. The row is inserted after checking
+`anon_default_acl = 0`, and only if that check passes. It is one of the nine in the schema-diff
+section, and it is the only one of the nine that gets a ledger row.
+
+---
+
+### Decision 4 — 449 / 450 / 452 are ACCEPTED DIVERGENCE, not a gap (OG-J)
+
+Permanently skipped, **and no ledger row**: nothing performed their work on production, so a row
+would be a false statement about the schema — the precise failure `og81` exists to catch, written
+deliberately.
+
+**The consequence, stated explicitly because it is what broke 477.** These three retire and rename
+tables. Test has them; production never will. So **six `zz_retired_*` table names differ between the
+two databases forever**, along with `payment_receipts_backup_20260722`, which 450 dropped on test
+and which still exists on production. That is exactly why 477 — a static list generated from the
+test catalogue — aborted on production on 2026-09-12 and had to be re-issued as 523 (477 minus the
+six) plus 524 (catalogue-driven, closing them under their production names).
+
+The operational rule that follows, and it now has three instances behind it (477, 476, and
+whatever comes next): **a migration whose target set is a list of names generated on one database
+cannot be applied to the other.** Derive at run time, or do not ship it.
+
+This is recorded in the schema-diff section as **ACCEPTED**, with that reason, so that the next
+reader of the nine-migration gap does not try to close it.
 
