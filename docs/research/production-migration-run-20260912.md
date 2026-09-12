@@ -1,8 +1,19 @@
 # Production migration — the run record · run date 2026-09-12
 
-> **Status: STAGE 0 COMPLETE, REFRESHED FOR 2026-09-12. THE RUN HAS NOT STARTED.**
-> No agent has contacted `192.168.170.10`. Nothing below the Stage 0 section has happened yet.
-> This file is written **as the run proceeds**, not after it.
+> ## ✅ Status: THE RUN IS COMPLETE. Phase 7 **PASSED**.
+>
+> Finished 2026-09-12. **Ledger 681**, top version `20260912150000` (migration 525).
+> `APP_GIT_SHA = d60232f5`, equal to `main`'s HEAD. `anon` reads **20** relations, down from 214.
+> **75 applied · 2 skipped-and-recorded (460, 477) · 3 skipped-and-not-recorded (449, 450, 452)
+> · 0 left failing.** The full account is in **Final state** at the end of this file.
+>
+> No agent contacted `192.168.170.10` at any point. Every production command was typed by the
+> owner; every output below is theirs, pasted back. This file was written **as the run
+> proceeded**, not reconstructed afterwards.
+>
+> **Read the sections in order, not in isolation.** Stage 0 below is the *pre-run* forecast and is
+> deliberately preserved as written, so what was predicted can be compared against what happened.
+> Where a Stage 0 figure was overtaken by events it now carries an inline correction.
 
 **Orchestrator:** Claude Code · **Executor:** the owner, at the production keyboard
 **Branch:** `feature/prodprep-20260908` · **Runbook:** `docs/runbooks/production-migration-20260908.md`
@@ -85,6 +96,20 @@ could reproduce this class of defect at all.
 
 ### 2026-09-12 addendum · the gap is **77**, not 74 — `MIGRATIONS-74.md` is stale
 
+> **⚠️ Overtaken by the run itself — the final number is 80.** The count below was correct when
+> written. Two more migrations were authored *during* the run to close failures it uncovered, and
+> the sequence ended at **80**:
+>
+> | | count | when it entered |
+> |---|---|---|
+> | the gap as measured pre-run | 77 | this section |
+> | **+ 523, 524** — replace 477, which aborted at order 39 | 79 | mid-Phase 4, Block 32 |
+> | **+ 525** — close the five DEFINER views Block 67 found | **80** | Phase 5, Block 67.5 |
+>
+> Phase 4's own closing tally therefore reads "the gap was **79**, not 77" — correct for Phase 4,
+> which ended before 525 existed. **Neither figure is wrong; they are counts taken at different
+> moments.** The number that describes the whole night is 80.
+
 PR #435 merged to `staging` on 2026-09-08 (`a6b6c629`). It carried **three** migration files
 production does not have: **520**, **521** and **522**. Recounted today against
 `origin/staging`:
@@ -124,6 +149,25 @@ eight: 466, 512, 513, 514, 516, 517, **520, 521**.
 | ledger rows added by a complete run | **74** | 73 successes + 460's row |
 
 **First stop is order 15.** Past order 18, nothing is currently forecast to stop the run.
+
+#### How that forecast actually scored
+
+| forecast | outcome |
+|---|---|
+| first stop at order 15 (449) | ✅ **exact** — failed verbatim, rolled back |
+| 450 at order 16, 452 at order 18 | ✅ **exact** — both failed verbatim with the predicted messages |
+| 475 passes (re-forecast from FAIL) | ✅ **correct** — the state-based check held |
+| 507 passes (re-forecast from FAIL) | ✅ **correct** — and it retroactively proved Block 3 was complete |
+| 462, 476, 478, 487, 497, 514, 516 pass | ✅ **all seven passed** — the preflight answers held |
+| 520, 521 pass | ✅ both passed |
+| "past order 18, nothing stops the run" | ❌ **WRONG — 477 aborted at order 39** |
+
+**One unforecast failure in 74, and it was the one migration Stage 0 had explicitly flagged as
+carrying a hidden risk.** §5 of `STAGE0-findings.md` warned that 477 is a static list of 390
+`REVOKE`s generated from the test catalogue, and that "a table that is on production but absent
+from test is silently left with its `anon` grant." The failure ran the *other* way — six tables
+present on test under `zz_retired_*` names were absent on production, because 450 and 452 had been
+skipped an hour earlier. The risk was identified; its direction was not. 523 and 524 closed it.
 
 ### Remaining `UNREHEARSED`, at the moment the owner starts
 
@@ -694,6 +738,8 @@ expose a genuinely missing migration before anything is written. **Awaiting a de
 | D-e | **Block 0.1 checks the production host out onto `staging`**; the deploy builds from `staging`; `main` is realigned by a PR in Block 73 | Every file the executor reads — the 77 migrations, BLOCKS.md, 522 — lives on `staging`. On `main` at `469fe0a9` the first `mig_apply` prints `MISSING FILE` and the run stops. A checkout switch is reversible in seconds; a merge into `main` is a change to shared history, so it waits until the data is safe |
 | D-f | **Block 3.5 takes a second, final `pg_dump`** after the owner confirms every user is logged out; it becomes the restore target | Staff worked on production today, so the morning dump would lose their work. It also sits *after* Blocks 2 and 3, so restoring it undoes neither the ledger reconciliation nor the ACL closure — which restoring the morning dump would |
 | D-g | The Phase 4 gate additionally requires `BLOCK 3.5 OK` **and** a recorded final-dump md5 | Without a recorded final dump there is no restore target, and Phase 4 is the first irreversible phase |
+| **D-h** | **477 skipped, ledger row recorded, migrations 523 + 524 applied in its place at Block 32** | 477 is a static list of 390 `REVOKE`s generated from the **test** catalogue, where 450 and 452 had renamed six tables to `zz_retired_*`. Those two were skipped on production, so the six keep their original names and 477 aborted: `relation "zz_retired_dynamic_parameter_weights_backup_142" does not exist`. 523 is 477 minus exactly twelve lines, proven by diff; 524 closes the six under their real names **plus `payment_receipts_backup_20260722`**, which 450 had dropped on test before 477's list was generated, so 477 never contained a line for it. Result: `anon_readable_relations` 214 → 25 |
+| **D-i** | **Migration 525 applied at Block 67.5, after Phase 4 closed** | Block 67's census found five **DEFINER** views still anon-readable — three of them with `arwdDxt`, i.e. INSERT/UPDATE/DELETE, not merely SELECT. They execute as their owner, so RLS on the base tables does not apply to the caller. 523/524 could not reach them: 477, which 523 derives from, targets `relkind = 'r'` only, so views were never in its scope. Result: 25 → **20**, and no `DEFINER` view is anon-readable |
 
 ---
 
@@ -712,15 +758,15 @@ expose a genuinely missing migration before anything is written. **Awaiting a de
 
 ---
 
-## Final state
+## Final state — ➡️ see **Final state** at the end of this file
 
-*(filled in at the end)*
+*This placeholder was written before the run. It is kept so the document's original shape stays
+visible, but it is **not** the answer: the real figures were recorded as the run finished and live
+in the **Final state** section at the very end, after Block 73.*
 
-- Ledger top version: —
-- Ledger row count: —
-- `APP_GIT_SHA`: —
-- Phase 5 census (`anon` reads exactly the KEEP_OPEN set): —
-- Migrations applied / skipped / failed: —
+- Ledger top version: **`20260912150000`** · row count **681**
+- `APP_GIT_SHA`: **`d60232f5`** · Phase 5 census: `anon` reads **20**, down from 214
+- **75 applied · 2 skipped-and-recorded · 3 skipped-and-not-recorded · 0 failing**
 
 ---
 
