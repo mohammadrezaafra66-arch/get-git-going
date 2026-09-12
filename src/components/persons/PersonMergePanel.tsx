@@ -5,7 +5,7 @@ import { Loader2, Merge } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 
 export type MergeCandidateView = {
   id: string;
@@ -29,10 +29,16 @@ const STATUS_LABEL: Record<string, string> = {
 
 function statusBadge(status: string) {
   if (status === "pending") {
-    return <Badge className="bg-amber-500 text-white hover:bg-amber-500">{STATUS_LABEL[status]}</Badge>;
+    return (
+      <Badge className="bg-amber-500 text-white hover:bg-amber-500">{STATUS_LABEL[status]}</Badge>
+    );
   }
   if (status === "merged") {
-    return <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">{STATUS_LABEL[status]}</Badge>;
+    return (
+      <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">
+        {STATUS_LABEL[status]}
+      </Badge>
+    );
   }
   return (
     <Badge variant="outline" className="text-muted-foreground">
@@ -59,11 +65,12 @@ export function PersonMergePanel({
         .order("created_at", { ascending: false })
         .limit(20);
       if (error) throw error;
-      const rows = (data ?? []) as Omit<MergeCandidateView, "other_person_id" | "other_display_name">[];
+      const rows = (data ?? []) as Omit<
+        MergeCandidateView,
+        "other_person_id" | "other_display_name"
+      >[];
       const otherIds = [
-        ...new Set(
-          rows.map((r) => (r.person_id_a === personId ? r.person_id_b : r.person_id_a)),
-        ),
+        ...new Set(rows.map((r) => (r.person_id_a === personId ? r.person_id_b : r.person_id_a))),
       ];
       const nameById = new Map<string, string>();
       if (otherIds.length) {
@@ -88,9 +95,7 @@ export function PersonMergePanel({
 
   if (!canReview) {
     return (
-      <p className="text-sm text-muted-foreground">
-        وضعیت ادغام برای این نقش قابل نمایش نیست.
-      </p>
+      <p className="text-sm text-muted-foreground">وضعیت ادغام برای این نقش قابل نمایش نیست.</p>
     );
   }
 
@@ -115,9 +120,7 @@ export function PersonMergePanel({
   const other = rows.filter((r) => r.status !== "pending");
 
   if (rows.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">نامزد ادغامی برای این شخص ثبت نشده است.</p>
-    );
+    return <p className="text-sm text-muted-foreground">نامزد ادغامی برای این شخص ثبت نشده است.</p>;
   }
 
   return (
@@ -152,7 +155,7 @@ export function PersonMergePanel({
       {other.length > 0 ? (
         <details className="text-sm">
           <summary className="cursor-pointer text-muted-foreground">
-            سوابق دیگر ({other.length})
+            سوابق دیگر ({toFaDigits(other.length)})
           </summary>
           <ul className="mt-2 space-y-2">
             {other.map((r) => (

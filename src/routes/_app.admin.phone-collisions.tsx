@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/table";
 import { Loader2, PhoneOff, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 /**
  * ASAN M3.2 — the phone collision review queue.
@@ -149,7 +150,7 @@ function PhoneCollisionsPage() {
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm text-muted-foreground">
           {pending.length > 0
-            ? `${pending.length} مورد در انتظار بررسی`
+            ? `${toFaDigits(pending.length)} مورد در انتظار بررسی`
             : "موردی در انتظار بررسی نیست"}
         </div>
         <Button variant="outline" onClick={rescan} disabled={scanning}>

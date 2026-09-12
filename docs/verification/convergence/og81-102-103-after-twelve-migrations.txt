@@ -1,0 +1,273 @@
+
+Running 19 tests using 1 worker
+
+[1/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:244:1 › the target list still resolves to real functions
+[2/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:259:1 › ⛔ anon executes NONE of the functions 476 closed
+[3/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:268:1 › authenticated still executes ALL of them — the revoke cut only the anonymous path
+[4/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:276:1 › service_role still executes ALL of them
+[5/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:284:1 › ⛔ the 17 deliberate exclusions stay reachable by anon
+  1) [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:284:1 › ⛔ the 17 deliberate exclusions stay reachable by anon 
+
+    Error: these are referenced by RLS policies on anon-accessible tables, views anon can read, or constraints on anon-writable tables — closing them makes the POLICY raise 42501 and takes the public sale-list page and product feed down: dyn_table_role_can_view(_user_id uuid, _access_level text, _allowed_roles jsonb). Do not 'finish the sweep' by revoking these.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "dyn_table_role_can_view(_user_id uuid, _access_level text, _allowed_roles jsonb)",
+    + ]
+
+      294 |       `the public sale-list page and product feed down: ${closed.join(", ")}. ` +
+      295 |       "Do not 'finish the sweep' by revoking these.",
+    > 296 |   ).toEqual([]);
+          |     ^
+      297 | });
+      298 |
+      299 | test("no NEW function in public is born anon-executable", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:296:5
+
+    Error Context: test-results\211-218\security-og102-pre393-anon-56db4-ions-stay-reachable-by-anon-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og102-pre393-anon-56db4-ions-stay-reachable-by-anon-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og102-pre393-anon-56db4-ions-stay-reachable-by-anon-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[6/19] [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:299:1 › no NEW function in public is born anon-executable
+[7/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:494:1 › ⛔ anon holds NO write privilege on any table in public
+[8/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:523:1 › ⛔ anon reads exactly the eleven and nothing else
+  2) [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:523:1 › ⛔ anon reads exactly the eleven and nothing else 
+
+    Error: anon can SELECT these and they are not one of the eleven documented exclusions: categories, products. Either REVOKE SELECT ... FROM anon, or add the table to KEEP_OPEN together with the view, policy or public page that requires it.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 4
+
+    - Array []
+    + Array [
+    +   "categories",
+    +   "products",
+    + ]
+
+      534 |       "Either REVOKE SELECT ... FROM anon, or add the table to KEEP_OPEN together with the view, " +
+      535 |       "policy or public page that requires it.",
+    > 536 |   ).toEqual([]);
+          |     ^
+      537 | });
+      538 |
+      539 | test("⛔ the eleven stay readable by anon — the direction nobody checks", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og103-anon-table-grants-stay-closed.spec.ts:536:5
+
+    Error Context: test-results\211-218\security-og103-anon-table--73199-the-eleven-and-nothing-else-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og103-anon-table--73199-the-eleven-and-nothing-else-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og103-anon-table--73199-the-eleven-and-nothing-else-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[9/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:539:1 › ⛔ the eleven stay readable by anon — the direction nobody checks
+[10/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:558:1 › authenticated and service_role still read everything anon lost
+[11/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:575:1 › service_role still writes everything anon lost
+[12/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:589:1 › ⛔ the column-level SELECT grants that keep the public product feed alive are intact
+  3) [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:589:1 › ⛔ the column-level SELECT grants that keep the public product feed alive are intact 
+
+    Error: the anon column grants on products/categories changed; /api/public/products depends on them
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Array [
+    -   "categories=6",
+    -   "products=9",
+    +   "academy_quiz_questions=5",
+    +   "products=11",
+      ]
+
+      608 |     cols,
+      609 |     "the anon column grants on products/categories changed; /api/public/products depends on them",
+    > 610 |   ).toEqual(["categories=6", "products=9"]);
+          |     ^
+      611 | });
+      612 |
+      613 | test("⛔ OG-77 at table scale: no NEW security_invoker view is readable-but-unusable", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og103-anon-table-grants-stay-closed.spec.ts:610:5
+
+    Error Context: test-results\211-218\security-og103-anon-table--87b9a-oduct-feed-alive-are-intact-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og103-anon-table--87b9a-oduct-feed-alive-are-intact-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og103-anon-table--87b9a-oduct-feed-alive-are-intact-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[13/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:613:1 › ⛔ OG-77 at table scale: no NEW security_invoker view is readable-but-unusable
+[14/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:651:1 › the baseline is still exactly the two known pairs — it has not been quietly widened
+  4) [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:651:1 › the baseline is still exactly the two known pairs — it has not been quietly widened 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 0
+
+      Array [
+    -   "anon | effective_currencies_view | products",
+        "anon | vw_purchase_float | purchases",
+      ]
+
+      677 |      order by 1
+      678 |   `);
+    > 679 |   expect(broken.sort()).toEqual([...OG77_TABLE_BASELINE].sort());
+          |                         ^
+      680 | });
+      681 |
+      682 | test("the target lists still resolve to real tables", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og103-anon-table-grants-stay-closed.spec.ts:679:25
+
+    Error Context: test-results\211-218\security-og103-anon-table--70ff5-as-not-been-quietly-widened-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og103-anon-table--70ff5-as-not-been-quietly-widened-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og103-anon-table--70ff5-as-not-been-quietly-widened-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[15/19] [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:682:1 › the target lists still resolve to real tables
+  5) [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:682:1 › the target lists still resolve to real tables 
+
+    Error: a table named in this gate no longer exists under that name
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Array [
+    -   "keep=11 sel=190 wr=204",
+    +   "keep=11 sel=184 wr=198",
+      ]
+
+      688 |     ${PUBLIC_TABLES}
+      689 |   `);
+    > 690 |   expect(counts, "a table named in this gate no longer exists under that name").toEqual([
+          |                                                                                 ^
+      691 |     `keep=${KEEP_OPEN.length} sel=${REVOKED_SELECT.length} wr=${REVOKED_WRITE.length}`,
+      692 |   ]);
+      693 | });
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og103-anon-table-grants-stay-closed.spec.ts:690:81
+
+    Error Context: test-results\211-218\security-og103-anon-table--e67f3-till-resolve-to-real-tables-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og103-anon-table--e67f3-till-resolve-to-real-tables-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og103-anon-table--e67f3-till-resolve-to-real-tables-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[16/19] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row
+  6) [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row 
+
+    Error: 9 migration(s) are applied-but-unrecorded: 20260818150000, 20260818157000, 20260822210000, 20260828000000, 20260828010000, 20260829000000, 20260905171000, 20260905171500 …. A deployer reading the ledger would re-run these, and several migrations in this repo are NOT idempotent. Record the row — do NOT re-run the migration.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 11
+
+    - Array []
+    + Array [
+    +   "20260818150000",
+    +   "20260818157000",
+    +   "20260822210000",
+    +   "20260828000000",
+    +   "20260828010000",
+    +   "20260829000000",
+    +   "20260905171000",
+    +   "20260905171500",
+    +   "20260905180000",
+    + ]
+
+      52 |       "A deployer reading the ledger would re-run these, and several migrations in this repo are NOT idempotent. " +
+      53 |       "Record the row — do NOT re-run the migration.",
+    > 54 |   ).toEqual([]);
+         |     ^
+      55 | });
+      56 |
+      57 | test("⛔ every ledger row has a migration file on disk", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og81-migration-ledger-matches-disk.spec.ts:54:5
+
+    Error Context: test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[17/19] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:57:1 › ⛔ every ledger row has a migration file on disk
+[18/19] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated
+  7) [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated 
+
+    Error: disk 702 vs ledger 693 — the two must agree exactly
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 693
+    Received: 702
+
+      80 |     disk.length,
+      81 |     `disk ${disk.length} vs ledger ${ledger.length} — the two must agree exactly`,
+    > 82 |   ).toBe(ledger.length);
+         |     ^
+      83 | });
+      84 |
+      85 | test("no duplicate versions on either side", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og81-migration-ledger-matches-disk.spec.ts:82:5
+
+    Error Context: test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[19/19] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:85:1 › no duplicate versions on either side
+  7 failed
+    [chromium-admin] › e2e\security\og102-pre393-anon-execute-grants-stay-closed.spec.ts:284:1 › ⛔ the 17 deliberate exclusions stay reachable by anon 
+    [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:523:1 › ⛔ anon reads exactly the eleven and nothing else 
+    [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:589:1 › ⛔ the column-level SELECT grants that keep the public product feed alive are intact 
+    [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:651:1 › the baseline is still exactly the two known pairs — it has not been quietly widened 
+    [chromium-admin] › e2e\security\og103-anon-table-grants-stay-closed.spec.ts:682:1 › the target lists still resolve to real tables 
+    [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row 
+    [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated 
+  12 passed (8.7s)

@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { toFaDigits } from "@/lib/i18n/formatters";
 import {
   validateStockAlertInput,
   findOpenStockAlert,
@@ -155,7 +156,7 @@ export function StockAlertDialog({
               rows={3}
               placeholder="مثلاً: تماس بعد از ساعت ۱۸"
             />
-            <p className="text-[11px] text-muted-foreground">{note.length}/۵۰۰</p>
+            <p className="text-[11px] text-muted-foreground">{toFaDigits(note.length)}/۵۰۰</p>
           </div>
         </div>
 

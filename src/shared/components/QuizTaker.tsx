@@ -3,6 +3,7 @@ import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export interface TakerQuestion {
   id: string;
@@ -50,11 +51,11 @@ export function QuizTaker({
           ) : (
             <XCircle className="mx-auto h-14 w-14 text-destructive" />
           )}
-          <div className="text-2xl font-bold">{result.score}%</div>
+          <div className="text-2xl font-bold">{toFaDigits(result.score)}%</div>
           <p className={result.passed ? "text-emerald-700" : "text-destructive"}>
             {result.passed
               ? "تبریک! شما در آزمون قبول شدید."
-              : `متأسفانه قبول نشدید (حد قبولی: ${passingScore}٪).`}
+              : `متأسفانه قبول نشدید (حد قبولی: ${toFaDigits(passingScore)}٪).`}
           </p>
           {onRetry && (
             <Button onClick={onRetry} variant="outline">

@@ -23,7 +23,7 @@ import {
   type EffectiveCurrency,
   type RecomputeSummary,
 } from "@/lib/pricing/effective-currencies";
-import { formatNumber, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatDateTimeFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 
 /**
  * کارت جانبی collapsible برای ویرایش سریع نرخ ارزهای مؤثر.
@@ -82,7 +82,7 @@ export function EffectiveCurrenciesPanel() {
       setEditing(null);
       setDraftRate("");
       toast.success(
-        `نرخ ${c.title} با موفقیت ثبت شد و ${results.filter((r) => !r.error).length} قیمت بازمحاسبه شد.`,
+        `نرخ ${c.title} با موفقیت ثبت شد و ${toFaDigits(results.filter((r) => !r.error).length)} قیمت بازمحاسبه شد.`,
         { id: toastId },
       );
       qc.invalidateQueries({ queryKey: ["effective-currencies"] });
@@ -110,7 +110,7 @@ export function EffectiveCurrenciesPanel() {
           <span className="font-medium text-sm">نرخ ارزهای مؤثر</span>
           {items.length > 0 && (
             <Badge variant="secondary" className="text-xs">
-              {items.length} ارز
+              {toFaDigits(items.length)} ارز
             </Badge>
           )}
         </div>
@@ -146,7 +146,7 @@ export function EffectiveCurrenciesPanel() {
                       {c.code}
                     </Badge>
                     <Badge variant="secondary" className="text-xs">
-                      {c.affected_products_count} محصول
+                      {toFaDigits(c.affected_products_count)} محصول
                     </Badge>
                   </div>
                   {c.latest_rate_at && (

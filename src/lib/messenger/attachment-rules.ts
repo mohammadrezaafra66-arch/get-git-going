@@ -1,6 +1,8 @@
 // Phase 4 — قوانین مشترک پیوست پیام‌رسان (UI + serverFn pre-check)
 // سقف‌ها باید با messenger_attachment_size_ok در migration Phase 2 یکسان بمانند.
 
+import { toFaDigits } from "@/lib/i18n/formatters";
+
 export type AttachmentKind = "image" | "video" | "audio" | "pdf" | "word" | "excel" | "zip";
 
 export type AttachmentRule = {
@@ -110,10 +112,10 @@ export function acceptAttribute(): string {
 
 export function formatBytes(n: number): string {
   if (!Number.isFinite(n) || n < 0) return "—";
-  if (n < 1024) return `${n} B`;
-  if (n < MB) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * MB) return `${(n / MB).toFixed(1)} MB`;
-  return `${(n / (1024 * MB)).toFixed(1)} GB`;
+  if (n < 1024) return `${toFaDigits(n)} B`;
+  if (n < MB) return `${toFaDigits((n / 1024).toFixed(1))} KB`;
+  if (n < 1024 * MB) return `${toFaDigits((n / MB).toFixed(1))} MB`;
+  return `${toFaDigits((n / (1024 * MB)).toFixed(1))} GB`;
 }
 
 export const ABSOLUTE_MAX_BYTES = 52_428_800; // 50MB hard cap (matches Phase 3 RPC)

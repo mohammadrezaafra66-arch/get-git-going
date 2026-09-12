@@ -41,7 +41,7 @@ import {
   type AiUsageRoute,
 } from "@/lib/ai/types";
 import { AI_USAGE_DEFINITIONS, type AiUsageKey } from "@/lib/ai/usages";
-import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/admin/ai-providers")({
   // Wave 2 / B-1 — the client half of the guard below. `beforeLoad` runs only on the server
@@ -287,8 +287,8 @@ function AiProvidersPage() {
       const known = r.models.filter((m) => m.capabilitiesKnown);
       toast.success(
         known.length > 0
-          ? `${r.models.length} مدل یافت شد؛ قابلیت ${known.length} مدل توسط سرویس گزارش شد.`
-          : `${r.models.length} مدل یافت شد. این سرویس قابلیت مدل‌ها را گزارش نمی‌کند؛ انتخاب با شماست.`,
+          ? `${toFaDigits(r.models.length)} مدل یافت شد؛ قابلیت ${toFaDigits(known.length)} مدل توسط سرویس گزارش شد.`
+          : `${toFaDigits(r.models.length)} مدل یافت شد. این سرویس قابلیت مدل‌ها را گزارش نمی‌کند؛ انتخاب با شماست.`,
       );
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "خطا در دریافت مدل‌ها."),

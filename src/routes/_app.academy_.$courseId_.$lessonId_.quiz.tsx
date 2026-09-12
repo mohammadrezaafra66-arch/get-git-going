@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { QuizTaker, type TakerQuestion } from "@/shared/components/QuizTaker";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/academy_/$courseId_/$lessonId_/quiz")({
   beforeLoad: async () => {
@@ -96,7 +97,7 @@ function QuizPage() {
     <div className="space-y-5">
       <PageHeader
         title={data.quiz.title || "آزمون درس"}
-        description={`نمره قبولی: ${data.quiz.passing_score}٪`}
+        description={`نمره قبولی: ${toFaDigits(data.quiz.passing_score)}٪`}
         actions={
           <Button asChild variant="outline" size="sm">
             <Link to="/academy/$courseId/$lessonId" params={{ courseId, lessonId }}>

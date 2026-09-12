@@ -1,0 +1,759 @@
+
+Running 91 tests using 1 worker
+
+[1/91] [chromium-admin] › e2e\business-flows\og64-tehran-today-bucketing.spec.ts:99:3 › OG-64 — Tehran's today, not the machine's › CONTROL: the pre-fix expression MOVES with the clock, so this gate is not vacuous
+[2/91] [chromium-admin] › e2e\business-flows\og64-tehran-today-bucketing.spec.ts:114:3 › OG-64 — Tehran's today, not the machine's › get_payables_summary answers with TEHRAN's today
+[3/91] [chromium-admin] › e2e\business-flows\og64-tehran-today-bucketing.spec.ts:128:3 › OG-64 — Tehran's today, not the machine's › get_receivables_summary answers with TEHRAN's today
+[4/91] [chromium-admin] › e2e\business-flows\og64-tehran-today-bucketing.spec.ts:136:3 › OG-64 — Tehran's today, not the machine's › no function, view or policy in the converted set still asks UTC
+[5/91] [chromium-admin] › e2e\business-flows\og64-tehran-today-bucketing.spec.ts:168:3 › OG-64 — Tehran's today, not the machine's › the RLS policy moved WITH the function it guards, not after it
+[6/91] [chromium-admin] › e2e\security\d4-settlement-dead-predicates.spec.ts:34:3 › D-4 — the premise: a second file of either kind is impossible › both UNIQUE constraints are in place
+[7/91] [chromium-admin] › e2e\security\d4-settlement-dead-predicates.spec.ts:44:3 › D-4 — the premise: a second file of either kind is impossible › and no person in fact holds two of either
+[8/91] [chromium-admin] › e2e\security\d4-settlement-dead-predicates.spec.ts:58:3 › D-4 — the dead predicates are gone from the live bodies › list_mutual_settlement_candidates no longer counts files
+[9/91] [chromium-admin] › e2e\security\d4-settlement-dead-predicates.spec.ts:67:3 › D-4 — the dead predicates are gone from the live bodies › person_settlement_position no longer raises on a duplicate that cannot exist
+[10/91] [chromium-admin] › e2e\security\d4-settlement-dead-predicates.spec.ts:79:3 › D-4 — the dead predicates are gone from the live bodies › both keep their role gate, SECURITY DEFINER and pinned search_path
+[11/91] [chromium-admin] › e2e\security\d4-settlement-dead-predicates.spec.ts:95:3 › D-4 — the rewrite selects exactly the same persons › count(*) = 1 and EXISTS pick the identical set
+[12/91] [chromium-admin] › e2e\security\d4-settlement-dead-predicates.spec.ts:109:3 › D-4 — the rewrite selects exactly the same persons › the candidate set is non-empty, so the assertion above is not vacuous
+[13/91] [chromium-admin] › e2e\security\e2-signup-audit-and-actor-delete.spec.ts:116:3 › E-2 — signup audit rows and actor deletion (530/531/532) › auth.users carries exactly one signup trigger after 532
+[14/91] [chromium-admin] › e2e\security\e2-signup-audit-and-actor-delete.spec.ts:121:3 › E-2 — signup audit rows and actor deletion (530/531/532) › a signup writes exactly one user_registered audit row
+[15/91] [chromium-admin] › e2e\security\e2-signup-audit-and-actor-delete.spec.ts:126:3 › E-2 — signup audit rows and actor deletion (530/531/532) › deleting a user with audit history succeeds after 531
+[16/91] [chromium-admin] › e2e\security\e2-signup-audit-and-actor-delete.spec.ts:131:3 › E-2 — signup audit rows and actor deletion (530/531/532) › the audit row survives the delete with actor_id nulled
+[17/91] [chromium-admin] › e2e\security\h3-healthz-probes-a-keep-open-table.spec.ts:55:1 › healthz probes a table og103 keeps open to anon
+[18/91] [chromium-admin] › e2e\security\h3-healthz-probes-a-keep-open-table.spec.ts:68:1 › the probed table really is readable by anon right now
+[19/91] [chromium-admin] › e2e\security\h3-healthz-probes-a-keep-open-table.spec.ts:89:1 › GET /api/healthz answers 200 and reports the database up
+[20/91] [chromium-admin] › e2e\security\h9-manual-credit-floor-guard.spec.ts:146:1 › sales cannot CREATE a customer that already carries a credit ceiling
+[21/91] [chromium-admin] › e2e\security\h9-manual-credit-floor-guard.spec.ts:151:1 › sales cannot RAISE the ceiling on an existing customer
+[22/91] [chromium-admin] › e2e\security\h9-manual-credit-floor-guard.spec.ts:156:1 › ⛔ sales can still create an ordinary customer and edit ordinary fields
+[23/91] [chromium-admin] › e2e\security\h9-manual-credit-floor-guard.spec.ts:163:1 › the refusals come from the guard — with the trigger off, both writes succeed
+[chromium-admin] › e2e\security\h9-manual-credit-floor-guard.spec.ts:163:1 › the refusals come from the guard — with the trigger off, both writes succeed
+psql:<stdin>:6: ERROR:  must be owner of table customers
+
+  1) [chromium-admin] › e2e\security\h9-manual-credit-floor-guard.spec.ts:163:1 › the refusals come from the guard — with the trigger off, both writes succeed 
+
+    Error: Command failed: docker exec -i afrakala-lan-db psql -U postgres -d prod_rehearsal_gate -A -t -v ON_ERROR_STOP=1 -f -
+    psql:<stdin>:6: ERROR:  must be owner of table customers
+
+
+       at helpers\tx.ts:60
+
+      58 | ROLLBACK;
+      59 | `;
+    > 60 |   const out = execFileSync(
+         |               ^
+      61 |     "docker",
+      62 |     [
+      63 |       "exec",
+        at inRolledBackTx (D:\AfraKalaTest\wt-conv-int\e2e\helpers\tx.ts:60:15)
+        at outcomes (D:\AfraKalaTest\wt-conv-int\e2e\security\h9-manual-credit-floor-guard.spec.ts:49:17)
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\h9-manual-credit-floor-guard.spec.ts:166:13
+
+    Error Context: test-results\211-218\security-h9-manual-credit--16558-ger-off-both-writes-succeed-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-h9-manual-credit--16558-ger-off-both-writes-succeed-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-h9-manual-credit--16558-ger-off-both-writes-succeed-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[24/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:50:3 › OG-100 — purchases.payment_term_id is NOT NULL › REFUSES stripping the term from an existing purchase
+[25/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:64:3 › OG-100 — purchases.payment_term_id is NOT NULL › ACCEPTS moving a purchase to a different valid term
+[26/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:75:3 › OG-100 — purchases.payment_term_id is NOT NULL › FORCED DISTURBANCE: without the constraint the same PATCH succeeds
+[chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:75:3 › OG-100 — purchases.payment_term_id is NOT NULL › FORCED DISTURBANCE: without the constraint the same PATCH succeeds
+psql:<stdin>:14: ERROR:  must be owner of table purchases
+
+  2) [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:75:3 › OG-100 — purchases.payment_term_id is NOT NULL › FORCED DISTURBANCE: without the constraint the same PATCH succeeds 
+
+    Error: Command failed: docker exec -i afrakala-lan-db psql -U postgres -d prod_rehearsal_gate -A -t -v ON_ERROR_STOP=1 -f -
+    psql:<stdin>:14: ERROR:  must be owner of table purchases
+
+
+       at helpers\tx.ts:60
+
+      58 | ROLLBACK;
+      59 | `;
+    > 60 |   const out = execFileSync(
+         |               ^
+      61 |     "docker",
+      62 |     [
+      63 |       "exec",
+        at inRolledBackTx (D:\AfraKalaTest\wt-conv-int\e2e\helpers\tx.ts:60:15)
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og100-purchase-term-is-mandatory.spec.ts:76:17
+
+    Error Context: test-results\211-218\security-og100-purchase-te-bde6a-int-the-same-PATCH-succeeds-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og100-purchase-te-bde6a-int-the-same-PATCH-succeeds-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og100-purchase-te-bde6a-int-the-same-PATCH-succeeds-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[27/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:92:3 › OG-100 — payment_terms.days is NOT NULL and non-negative › REFUSES a term with no day count
+[28/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:105:3 › OG-100 — payment_terms.days is NOT NULL and non-negative › REFUSES a negative day count
+[29/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:116:3 › OG-100 — payment_terms.days is NOT NULL and non-negative › ACCEPTS zero — that is cash, and it must stay legal
+[30/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:128:3 › OG-100 — payment_terms.days is NOT NULL and non-negative › FORCED DISTURBANCE: without the constraints both violations succeed
+[chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:128:3 › OG-100 — payment_terms.days is NOT NULL and non-negative › FORCED DISTURBANCE: without the constraints both violations succeed
+psql:<stdin>:9: ERROR:  must be owner of table payment_terms
+
+  3) [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:128:3 › OG-100 — payment_terms.days is NOT NULL and non-negative › FORCED DISTURBANCE: without the constraints both violations succeed 
+
+    Error: Command failed: docker exec -i afrakala-lan-db psql -U postgres -d prod_rehearsal_gate -A -t -v ON_ERROR_STOP=1 -f -
+    psql:<stdin>:9: ERROR:  must be owner of table payment_terms
+
+
+       at helpers\tx.ts:60
+
+      58 | ROLLBACK;
+      59 | `;
+    > 60 |   const out = execFileSync(
+         |               ^
+      61 |     "docker",
+      62 |     [
+      63 |       "exec",
+        at inRolledBackTx (D:\AfraKalaTest\wt-conv-int\e2e\helpers\tx.ts:60:15)
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og100-purchase-term-is-mandatory.spec.ts:129:17
+
+    Error Context: test-results\211-218\security-og100-purchase-te-f845a-nts-both-violations-succeed-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og100-purchase-te-f845a-nts-both-violations-succeed-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og100-purchase-te-f845a-nts-both-violations-succeed-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[31/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:147:3 › OG-100 — a settlement term in use cannot be deleted › REFUSES deleting a term that a purchase points at
+[32/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:160:3 › OG-100 — a settlement term in use cannot be deleted › ACCEPTS deleting a term nothing uses — obsolete terms are still removable
+[33/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:171:3 › OG-100 — a settlement term in use cannot be deleted › FORCED DISTURBANCE: with ON DELETE SET NULL the delete succeeds and strips real purchases
+[chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:171:3 › OG-100 — a settlement term in use cannot be deleted › FORCED DISTURBANCE: with ON DELETE SET NULL the delete succeeds and strips real purchases
+psql:<stdin>:9: ERROR:  must be owner of table purchases
+
+  4) [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:171:3 › OG-100 — a settlement term in use cannot be deleted › FORCED DISTURBANCE: with ON DELETE SET NULL the delete succeeds and strips real purchases 
+
+    Error: Command failed: docker exec -i afrakala-lan-db psql -U postgres -d prod_rehearsal_gate -A -t -v ON_ERROR_STOP=1 -f -
+    psql:<stdin>:9: ERROR:  must be owner of table purchases
+
+
+       at helpers\tx.ts:60
+
+      58 | ROLLBACK;
+      59 | `;
+    > 60 |   const out = execFileSync(
+         |               ^
+      61 |     "docker",
+      62 |     [
+      63 |       "exec",
+        at inRolledBackTx (D:\AfraKalaTest\wt-conv-int\e2e\helpers\tx.ts:60:15)
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og100-purchase-term-is-mandatory.spec.ts:172:17
+
+    Error Context: test-results\211-218\security-og100-purchase-te-55c0d-s-and-strips-real-purchases-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og100-purchase-te-55c0d-s-and-strips-real-purchases-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og100-purchase-te-55c0d-s-and-strips-real-purchases-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[34/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:200:3 › OG-100 — the migration wrote what it said it wrote › the three constraints are live in the schema, not merely in the file
+[35/91] [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:221:3 › OG-100 — the migration wrote what it said it wrote › no purchase lost its term when the migration ran
+[36/91] [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:91:1 › the pinned provider SURVIVES the capability filter — the step that silently disabled OCR
+  5) [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:91:1 › the pinned provider SURVIVES the capability filter — the step that silently disabled OCR 
+
+    Error: receipt_ocr.vision is pinned to a provider that does NOT declare the vision capability — applyUsageRoute would return an empty list and OCR would be silently disabled
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      101 |     "receipt_ocr.vision is pinned to a provider that does NOT declare the vision capability — " +
+      102 |       "applyUsageRoute would return an empty list and OCR would be silently disabled",
+    > 103 |   ).toBe(1);
+          |     ^
+      104 | });
+      105 |
+      106 | test("resolution yields exactly ONE provider, and it is LOCAL", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og72-receipt-ocr-runs-locally.spec.ts:103:5
+
+    Error Context: test-results\211-218\security-og72-receipt-ocr--1b534--that-silently-disabled-OCR-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og72-receipt-ocr--1b534--that-silently-disabled-OCR-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og72-receipt-ocr--1b534--that-silently-disabled-OCR-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[37/91] [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:106:1 › resolution yields exactly ONE provider, and it is LOCAL
+  6) [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:106:1 › resolution yields exactly ONE provider, and it is LOCAL 
+
+    Error: vision resolution produced 0 providers: 
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      109 |     resolved.length,
+      110 |     `vision resolution produced ${resolved.length} providers: ${resolved.map((r) => r.name).join(", ")}`,
+    > 111 |   ).toBe(1);
+          |     ^
+      112 |   expect(resolved[0].kind, "receipt OCR must resolve to the local ollama provider").toBe("ollama");
+      113 |   expect(resolved[0].visionModel, "the local provider has no vision model set").not.toBe("");
+      114 | });
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og72-receipt-ocr-runs-locally.spec.ts:111:5
+
+    Error Context: test-results\211-218\security-og72-receipt-ocr--f2fcd-NE-provider-and-it-is-LOCAL-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og72-receipt-ocr--f2fcd-NE-provider-and-it-is-LOCAL-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og72-receipt-ocr--f2fcd-NE-provider-and-it-is-LOCAL-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[38/91] [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:116:1 › ⛔ no internet required — the resolved host is a private address, not a cloud service
+  7) [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:116:1 › ⛔ no internet required — the resolved host is a private address, not a cloud service 
+
+    Error: nothing resolved at all
+
+    expect(received).toBeTruthy()
+
+    Received: undefined
+
+      116 | test("⛔ no internet required — the resolved host is a private address, not a cloud service", () => {
+      117 |   const [resolved] = resolveVisionProviders();
+    > 118 |   expect(resolved, "nothing resolved at all").toBeTruthy();
+          |                                               ^
+      119 |
+      120 |   const host = new URL(resolved.baseUrl).hostname;
+      121 |   // RFC1918 / loopback / .local only. A public hostname here means a banking slip — which
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og72-receipt-ocr-runs-locally.spec.ts:118:47
+
+    Error Context: test-results\211-218\security-og72-receipt-ocr--cfaab-address-not-a-cloud-service-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og72-receipt-ocr--cfaab-address-not-a-cloud-service-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og72-receipt-ocr--cfaab-address-not-a-cloud-service-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[39/91] [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:136:1 › a REAL vision call reads the AMOUNT and DATE off a Persian slip
+  8) [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:136:1 › a REAL vision call reads the AMOUNT and DATE off a Persian slip 
+
+    Error: nothing resolved at all
+
+    expect(received).toBeTruthy()
+
+    Received: undefined
+
+      140 |
+      141 |   const [resolved] = resolveVisionProviders();
+    > 142 |   expect(resolved, "nothing resolved at all").toBeTruthy();
+          |                                               ^
+      143 |
+      144 |   // `__dirname` does not exist here — this project is ESM, and referencing it throws
+      145 |   // ReferenceError rather than resolving to anything. Playwright runs from the config
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og72-receipt-ocr-runs-locally.spec.ts:142:47
+
+    Error Context: test-results\211-218\security-og72-receipt-ocr--46d6c-and-DATE-off-a-Persian-slip-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og72-receipt-ocr--46d6c-and-DATE-off-a-Persian-slip-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og72-receipt-ocr--46d6c-and-DATE-off-a-Persian-slip-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[40/91] [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:67:1 › ⛔ no role can read a view whose functions it cannot execute
+[41/91] [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:76:1 › the products API actually serves rows to its own credentialed role
+[42/91] [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:93:1 › ⛔ the repair did NOT give the function back to anon
+  9) [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:93:1 › ⛔ the repair did NOT give the function back to anon 
+
+    Error: anon regained EXECUTE — 395's closure was undone
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "false"
+    Received: "true"
+
+       97 |     select has_function_privilege('anon','public.get_product_price_bounds(uuid,uuid)','EXECUTE')::text
+       98 |   `);
+    >  99 |   expect(anonCan[0], "anon regained EXECUTE — 395's closure was undone").toBe("false");
+          |                                                                          ^
+      100 | });
+      101 |
+      102 | test("OG-45's pin is still in place — supabase_read_only_user is still blocked", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:99:74
+
+    Error Context: test-results\211-218\security-og77-view-callers-4d562-e-the-function-back-to-anon-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og77-view-callers-4d562-e-the-function-back-to-anon-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og77-view-callers-4d562-e-the-function-back-to-anon-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[43/91] [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:102:1 › OG-45's pin is still in place — supabase_read_only_user is still blocked
+  10) [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:102:1 › OG-45's pin is still in place — supabase_read_only_user is still blocked 
+
+    Error: supabase_read_only_user should still be blocked on the OG-45 views; found 10
+
+    expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 11
+    Received:    10
+
+      115 |     blocked.length,
+      116 |     `supabase_read_only_user should still be blocked on the OG-45 views; found ${blocked.length}`,
+    > 117 |   ).toBeGreaterThanOrEqual(11);
+          |     ^
+      118 | });
+      119 |
+      120 | test("every request-facing role is covered by this gate, not just the two 395 named", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:117:5
+
+    Error Context: test-results\211-218\security-og77-view-callers-08c7a--only-user-is-still-blocked-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og77-view-callers-08c7a--only-user-is-still-blocked-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og77-view-callers-08c7a--only-user-is-still-blocked-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[44/91] [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:120:1 › every request-facing role is covered by this gate, not just the two 395 named
+[45/91] [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:37:1 › ⛔ no schema meets the criterion without a FUNCTIONS restore
+  11) [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:37:1 › ⛔ no schema meets the criterion without a FUNCTIONS restore 
+
+    Error: these schemas would have functions created closed to anon/authenticated/service_role: auth, extensions, pgsodium, pgsodium_masks, storage, vault. Add an ALTER DEFAULT PRIVILEGES … GRANT EXECUTE ON FUNCTIONS TO PUBLIC for each — and do not narrow this criterion to make the failure go away.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 8
+
+    - Array []
+    + Array [
+    +   "auth",
+    +   "extensions",
+    +   "pgsodium",
+    +   "pgsodium_masks",
+    +   "storage",
+    +   "vault",
+    + ]
+
+      58 |       "Add an ALTER DEFAULT PRIVILEGES … GRANT EXECUTE ON FUNCTIONS TO PUBLIC for each — and do not " +
+      59 |       "narrow this criterion to make the failure go away.",
+    > 60 |   ).toEqual([]);
+         |     ^
+      61 | });
+      62 |
+      63 | test("the criterion is not vacuous — it selects a real set", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og78-default-privilege-restores-are-derived.spec.ts:60:5
+
+    Error Context: test-results\211-218\security-og78-default-priv-07e7b-without-a-FUNCTIONS-restore-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og78-default-priv-07e7b-without-a-FUNCTIONS-restore-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og78-default-priv-07e7b-without-a-FUNCTIONS-restore-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[46/91] [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:63:1 › the criterion is not vacuous — it selects a real set
+  12) [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:63:1 › the criterion is not vacuous — it selects a real set 
+
+    Error: graphql_public is the schema that motivated this gate
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: "graphql_public"
+    Received array: ["auth", "extensions", "pgsodium", "pgsodium_masks", "storage", "vault"]
+
+      70 |     `the criterion selects only ${covered.length} schema(s): ${covered.join(", ")}`,
+      71 |   ).toBeGreaterThanOrEqual(4);
+    > 72 |   expect(covered, "graphql_public is the schema that motivated this gate").toContain(
+         |                                                                            ^
+      73 |     "graphql_public",
+      74 |   );
+      75 | });
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og78-default-privilege-restores-are-derived.spec.ts:72:76
+
+    Error Context: test-results\211-218\security-og78-default-priv-fb852-ous-—-it-selects-a-real-set-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og78-default-priv-fb852-ous-—-it-selects-a-real-set-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og78-default-priv-fb852-ous-—-it-selects-a-real-set-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[47/91] [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:77:1 › ⛔ the global FUNCTIONS revoke is still in place
+[48/91] [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:87:1 › ⛔ public is still closed to anon by default — 393's actual purpose
+[49/91] [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:98:1 › auth and storage are correctly EXCLUDED — per-grantor, not per-schema
+  13) [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:98:1 › auth and storage are correctly EXCLUDED — per-grantor, not per-schema 
+
+    Error: auth must not meet the criterion — its functions are supabase_auth_admin's
+
+    expect(received).not.toContain(expected) // indexOf
+
+    Expected value: not "auth"
+    Received array:     ["auth", "extensions", "pgsodium", "pgsodium_masks", "storage", "vault"]
+
+      105 |     covered,
+      106 |     "auth must not meet the criterion — its functions are supabase_auth_admin's",
+    > 107 |   ).not.toContain("auth");
+          |         ^
+      108 |   expect(
+      109 |     covered,
+      110 |     "storage must not meet the criterion — its functions are supabase_storage_admin's",
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og78-default-privilege-restores-are-derived.spec.ts:107:9
+
+    Error Context: test-results\211-218\security-og78-default-priv-9590f--per-grantor-not-per-schema-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og78-default-priv-9590f--per-grantor-not-per-schema-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og78-default-priv-9590f--per-grantor-not-per-schema-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[50/91] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row
+  14) [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row 
+
+    Error: 9 migration(s) are applied-but-unrecorded: 20260818150000, 20260818157000, 20260822210000, 20260828000000, 20260828010000, 20260829000000, 20260905171000, 20260905171500 …. A deployer reading the ledger would re-run these, and several migrations in this repo are NOT idempotent. Record the row — do NOT re-run the migration.
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  -  1
+    + Received  + 11
+
+    - Array []
+    + Array [
+    +   "20260818150000",
+    +   "20260818157000",
+    +   "20260822210000",
+    +   "20260828000000",
+    +   "20260828010000",
+    +   "20260829000000",
+    +   "20260905171000",
+    +   "20260905171500",
+    +   "20260905180000",
+    + ]
+
+      52 |       "A deployer reading the ledger would re-run these, and several migrations in this repo are NOT idempotent. " +
+      53 |       "Record the row — do NOT re-run the migration.",
+    > 54 |   ).toEqual([]);
+         |     ^
+      55 | });
+      56 |
+      57 | test("⛔ every ledger row has a migration file on disk", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og81-migration-ledger-matches-disk.spec.ts:54:5
+
+    Error Context: test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og81-migration-le-5508a-le-on-disk-has-a-ledger-row-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[51/91] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:57:1 › ⛔ every ledger row has a migration file on disk
+[52/91] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated
+  15) [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated 
+
+    Error: disk 700 vs ledger 691 — the two must agree exactly
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 691
+    Received: 700
+
+      80 |     disk.length,
+      81 |     `disk ${disk.length} vs ledger ${ledger.length} — the two must agree exactly`,
+    > 82 |   ).toBe(ledger.length);
+         |     ^
+      83 | });
+      84 |
+      85 | test("no duplicate versions on either side", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og81-migration-ledger-matches-disk.spec.ts:82:5
+
+    Error Context: test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og81-migration-le-b9bdb--—-both-sides-are-populated-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[53/91] [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:85:1 › no duplicate versions on either side
+[54/91] [chromium-admin] › e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:60:3 › OG-85 — OCR amount arithmetic › every stored receipt amount is exactly one tenth of what the model returned
+[55/91] [chromium-admin] › e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:75:3 › OG-85 — OCR amount arithmetic › the invariant is measured against real rows, not an empty set
+  16) [chromium-admin] › e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:75:3 › OG-85 — OCR amount arithmetic › the invariant is measured against real rows, not an empty set 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+      82 |       ),
+      83 |     );
+    > 84 |     expect(scored).toBeGreaterThan(0);
+         |                    ^
+      85 |   });
+      86 |
+      87 |   test("the three measured cases are still present as evidence", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:84:20
+
+    Error Context: test-results\211-218\security-og85-ocr-amount-a-44b2b--real-rows-not-an-empty-set-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og85-ocr-amount-a-44b2b--real-rows-not-an-empty-set-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og85-ocr-amount-a-44b2b--real-rows-not-an-empty-set-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[56/91] [chromium-admin] › e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:87:3 › OG-85 — OCR amount arithmetic › the three measured cases are still present as evidence
+  17) [chromium-admin] › e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:87:3 › OG-85 — OCR amount arithmetic › the three measured cases are still present as evidence 
+
+    Error: expect(received).toBeGreaterThan(expected)
+
+    Expected: > 0
+    Received:   0
+
+       96 |         order by 1`,
+       97 |     );
+    >  98 |     expect(seen.length).toBeGreaterThan(0);
+          |                         ^
+       99 |   });
+      100 | });
+      101 |
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:98:25
+
+    Error Context: test-results\211-218\security-og85-ocr-amount-a-247c0-e-still-present-as-evidence-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og85-ocr-amount-a-247c0-e-still-present-as-evidence-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og85-ocr-amount-a-247c0-e-still-present-as-evidence-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[57/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:28:3 › OG-86 — quote lines require a real product › the RPC refuses a manual line
+[58/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:40:3 › OG-86 — quote lines require a real product › the guard names both sources, not just one
+[59/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:53:3 › OG-86 — quote lines require a real product › product_price is still accepted — the guard did not close the ordinary path
+[60/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:64:3 › OG-86 — quote lines require a real product › the historical free item is still readable
+  18) [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:64:3 › OG-86 — quote lines require a real product › the historical free item is still readable 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: "1"
+    Received: "0"
+
+      71 |         where i.product_id is null and q.quote_number = 'SQ-2026-000001'`,
+      72 |     );
+    > 73 |     expect(survives).toBe("1");
+         |                      ^
+      74 |   });
+      75 |
+      76 |   test("the source enum still carries all three values", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\og86-quote-lines-require-a-real-product.spec.ts:73:22
+
+    Error Context: test-results\211-218\security-og86-quote-lines--32f82-free-item-is-still-readable-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-og86-quote-lines--32f82-free-item-is-still-readable-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-og86-quote-lines--32f82-free-item-is-still-readable-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[61/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:76:3 › OG-86 — quote lines require a real product › the source enum still carries all three values
+[62/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:87:3 › OG-86 — quote lines require a real product › product_id is still nullable
+[63/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:96:3 › OG-86 — quote lines require a real product › the free-item entry points are gone from the quote form
+[64/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:103:3 › OG-86 — quote lines require a real product › but the label for an existing free item still renders
+[65/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:110:3 › OG-86 — quote lines require a real product › choosing a registered product is untouched
+[66/91] [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:115:3 › OG-86 — quote lines require a real product › client validation mirrors the server rule
+[67/91] [chromium-admin] › e2e\security\og89-quote-records-its-acceptance-moment.spec.ts:30:3 › OG-89 — the acceptance moment is recorded › the column is added, and nullable
+[68/91] [chromium-admin] › e2e\security\og89-quote-records-its-acceptance-moment.spec.ts:34:3 › OG-89 — the acceptance moment is recorded › it is stamped where canceled_at is stamped: the BEFORE UPDATE trigger
+[69/91] [chromium-admin] › e2e\security\og89-quote-records-its-acceptance-moment.spec.ts:42:3 › OG-89 — the acceptance moment is recorded › it also fires on INSERT, because a quote can be born accepted
+[70/91] [chromium-admin] › e2e\security\og89-quote-records-its-acceptance-moment.spec.ts:47:3 › OG-89 — the acceptance moment is recorded › coalesce, not a bare now()
+[71/91] [chromium-admin] › e2e\security\og89-quote-records-its-acceptance-moment.spec.ts:53:3 › OG-89 — the acceptance moment is recorded › the status RPC is left alone
+[72/91] [chromium-admin] › e2e\security\og89-quote-records-its-acceptance-moment.spec.ts:65:3 › OG-89 — the acceptance moment is recorded › the rewrite keeps the guards it inherited
+[73/91] [chromium-admin] › e2e\security\og89-quote-records-its-acceptance-moment.spec.ts:74:3 › OG-89 — the acceptance moment is recorded › nothing is backfilled here
+[74/91] [chromium-admin] › e2e\security\og90-accepted-at-backfill-decisions.spec.ts:23:3 › OG-90 — the backfill's decisions › (a) the FIRST acceptance event, not the last
+[75/91] [chromium-admin] › e2e\security\og90-accepted-at-backfill-decisions.spec.ts:30:3 › OG-90 — the backfill's decisions › (b) no timezone conversion -- both columns are timestamptz
+[76/91] [chromium-admin] › e2e\security\og90-accepted-at-backfill-decisions.spec.ts:36:3 › OG-90 — the backfill's decisions › (c) a quote with no acceptance event keeps NULL
+[77/91] [chromium-admin] › e2e\security\og90-accepted-at-backfill-decisions.spec.ts:44:3 › OG-90 — the backfill's decisions › it is idempotent, and cannot overwrite a real 417 stamp
+[78/91] [chromium-admin] › e2e\security\og90-accepted-at-backfill-decisions.spec.ts:48:3 › OG-90 — the backfill's decisions › it only touches quotes that are actually accepted
+[79/91] [chromium-admin] › e2e\security\og90-accepted-at-backfill-decisions.spec.ts:52:3 › OG-90 — the backfill's decisions › the source is the audit trail, identified by action and new_status
+[80/91] [chromium-admin] › e2e\security\og90-accepted-at-backfill-decisions.spec.ts:60:3 › OG-90 — the backfill's decisions › it verifies its own result rather than trusting the UPDATE
+[81/91] [chromium-admin] › e2e\security\og90-accepted-at-backfill-decisions.spec.ts:66:3 › OG-90 — the backfill's decisions › SQ-2026-000005's settlement days are not touched here
+[82/91] [chromium-admin] › e2e\security\og98-empty-stored-phone-must-not-unlink.spec.ts:54:3 › OG-98 — a customer with no stored phone still links › THE BUG: empty stored phone + typed number must still link
+[83/91] [chromium-admin] › e2e\security\og98-empty-stored-phone-must-not-unlink.spec.ts:60:3 › OG-98 — a customer with no stored phone still links › and a NULL-shaped empty value behaves the same
+[84/91] [chromium-admin] › e2e\security\og98-empty-stored-phone-must-not-unlink.spec.ts:66:3 › OG-98 — a customer with no stored phone still links › a stored phone that MATCHES still links — formatting differences included
+[85/91] [chromium-admin] › e2e\security\og98-empty-stored-phone-must-not-unlink.spec.ts:76:3 › OG-98 — a customer with no stored phone still links › A REAL DIVERGENCE STILL CLEARS THE LINK — this is the money-safety half
+[86/91] [chromium-admin] › e2e\security\og98-empty-stored-phone-must-not-unlink.spec.ts:88:3 › OG-98 — a customer with no stored phone still links › a changed NAME still clears the link
+[87/91] [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:47:1 › ⛔ no NEW test-marked posted receipt has appeared
+[88/91] [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:64:1 › ⛔ no NEW test-marked posted journal entry has appeared
+[89/91] [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:79:1 › the known residue is still exactly what it was — no more, and no fewer
+  19) [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:79:1 › the known residue is still exactly what it was — no more, and no fewer 
+
+    Error: a known-stuck receipt disappeared — the immutability guarantee moved
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1
+    Received: 0
+
+      87 |     receipts.length,
+      88 |     "a known-stuck receipt disappeared — the immutability guarantee moved",
+    > 89 |   ).toBe(KNOWN_STUCK_RECEIPT_IDS.length);
+         |     ^
+      90 |
+      91 |   const entries = dbRows(
+      92 |     `select id::text from public.journal_entries where id in (${quoted(KNOWN_STUCK_JOURNAL_IDS)}) order by 1`,
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:89:5
+
+    Error Context: test-results\211-218\security-rule12-no-gate-cr-127fc--was-—-no-more-and-no-fewer-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-rule12-no-gate-cr-127fc--was-—-no-more-and-no-fewer-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-rule12-no-gate-cr-127fc--was-—-no-more-and-no-fewer-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[90/91] [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:99:1 › OG-76's receipt is REVERSED, so it is ledger-neutral rather than merely present
+  20) [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:99:1 › OG-76's receipt is REVERSED, so it is ledger-neutral rather than merely present 
+
+    Error: OG-76's receipt is no longer marked reversed
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "true|true"
+    Received: undefined
+
+      104 |       from public.payment_receipts where id = '${KNOWN_STUCK_RECEIPT_IDS[0]}'
+      105 |   `);
+    > 106 |   expect(row[0], "OG-76's receipt is no longer marked reversed").toBe("true|true");
+          |                                                                  ^
+      107 | });
+      108 |
+      109 | test("no spec calls a document-creating RPC outside a rolled-back transaction", () => {
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:106:66
+
+    Error Context: test-results\211-218\security-rule12-no-gate-cr-353ef--rather-than-merely-present-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-rule12-no-gate-cr-353ef--rather-than-merely-present-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-rule12-no-gate-cr-353ef--rather-than-merely-present-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+[91/91] [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:109:1 › no spec calls a document-creating RPC outside a rolled-back transaction
+  21) [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:109:1 › no spec calls a document-creating RPC outside a rolled-back transaction 
+
+    Error: these specs create a financial document with no rolled-back transaction: e2e\unit\ledger-wizard-party-pick.spec.ts
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 3
+
+    - Array []
+    + Array [
+    +   "e2e\\unit\\ledger-wizard-party-pick.spec.ts",
+    + ]
+
+      145 |     offenders,
+      146 |     `these specs create a financial document with no rolled-back transaction: ${offenders.join(", ")}`,
+    > 147 |   ).toEqual([]);
+          |     ^
+      148 | });
+      149 |
+        at D:\AfraKalaTest\wt-conv-int\e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:147:5
+
+    Error Context: test-results\211-218\security-rule12-no-gate-cr-471c0-e-a-rolled-back-transaction-chromium-admin\error-context.md
+
+    attachment #2: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\security-rule12-no-gate-cr-471c0-e-a-rolled-back-transaction-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\security-rule12-no-gate-cr-471c0-e-a-rolled-back-transaction-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  21 failed
+    [chromium-admin] › e2e\security\h9-manual-credit-floor-guard.spec.ts:163:1 › the refusals come from the guard — with the trigger off, both writes succeed 
+    [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:75:3 › OG-100 — purchases.payment_term_id is NOT NULL › FORCED DISTURBANCE: without the constraint the same PATCH succeeds 
+    [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:128:3 › OG-100 — payment_terms.days is NOT NULL and non-negative › FORCED DISTURBANCE: without the constraints both violations succeed 
+    [chromium-admin] › e2e\security\og100-purchase-term-is-mandatory.spec.ts:171:3 › OG-100 — a settlement term in use cannot be deleted › FORCED DISTURBANCE: with ON DELETE SET NULL the delete succeeds and strips real purchases 
+    [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:91:1 › the pinned provider SURVIVES the capability filter — the step that silently disabled OCR 
+    [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:106:1 › resolution yields exactly ONE provider, and it is LOCAL 
+    [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:116:1 › ⛔ no internet required — the resolved host is a private address, not a cloud service 
+    [chromium-admin] › e2e\security\og72-receipt-ocr-runs-locally.spec.ts:136:1 › a REAL vision call reads the AMOUNT and DATE off a Persian slip 
+    [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:93:1 › ⛔ the repair did NOT give the function back to anon 
+    [chromium-admin] › e2e\security\og77-view-callers-can-execute-what-views-call.spec.ts:102:1 › OG-45's pin is still in place — supabase_read_only_user is still blocked 
+    [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:37:1 › ⛔ no schema meets the criterion without a FUNCTIONS restore 
+    [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:63:1 › the criterion is not vacuous — it selects a real set 
+    [chromium-admin] › e2e\security\og78-default-privilege-restores-are-derived.spec.ts:98:1 › auth and storage are correctly EXCLUDED — per-grantor, not per-schema 
+    [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:44:1 › ⛔ every migration file on disk has a ledger row 
+    [chromium-admin] › e2e\security\og81-migration-ledger-matches-disk.spec.ts:69:1 › the comparison is not vacuous — both sides are populated 
+    [chromium-admin] › e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:75:3 › OG-85 — OCR amount arithmetic › the invariant is measured against real rows, not an empty set 
+    [chromium-admin] › e2e\security\og85-ocr-amount-arithmetic-is-not-the-bug.spec.ts:87:3 › OG-85 — OCR amount arithmetic › the three measured cases are still present as evidence 
+    [chromium-admin] › e2e\security\og86-quote-lines-require-a-real-product.spec.ts:64:3 › OG-86 — quote lines require a real product › the historical free item is still readable 
+    [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:79:1 › the known residue is still exactly what it was — no more, and no fewer 
+    [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:99:1 › OG-76's receipt is REVERSED, so it is ledger-neutral rather than merely present 
+    [chromium-admin] › e2e\security\rule12-no-gate-creates-posted-documents.spec.ts:109:1 › no spec calls a document-creating RPC outside a rolled-back transaction 
+  1 skipped
+  69 passed (23.3s)

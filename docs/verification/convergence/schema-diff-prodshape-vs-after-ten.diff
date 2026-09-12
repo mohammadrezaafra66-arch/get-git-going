@@ -1,0 +1,137 @@
+51a52,53
+> r|cron_run_log|t|
+> S|cron_run_log_id_seq|f|
+179c181
+< v|product_computed_prices_public|f|
+---
+> v|product_computed_prices_public|f|security_invoker=true
+244c246
+< v|v_promotion_suggestions|f|
+---
+> v|v_promotion_suggestions|f|security_invoker=true
+366a369
+> ai_providers|updated_by|uuid|YES|
+780a784,790
+> cron_run_log|error_text|text|YES|
+> cron_run_log|finished_at|timestamp with time zone|YES|
+> cron_run_log|http_status|integer|YES|
+> cron_run_log|id|bigint|NO|
+> cron_run_log|job_name|text|NO|
+> cron_run_log|started_at|timestamp with time zone|NO|now()
+> cron_run_log|status|text|NO|'running'::text
+2995c3005
+< admin_delete_ai_provider|p_id uuid|t|cf812b61e608af57fe10c90607c18996
+---
+> admin_delete_ai_provider|p_id uuid|t|823616cddda0317fe3a7761dd5c652a8
+2997c3007
+< admin_upsert_ai_provider|p_id uuid, p_name text, p_label text, p_kind text, p_base_url text, p_is_active boolean, p_priority integer, p_chat_model text, p_embed_model text, p_vision_model text, p_capabilities text[], p_api_key text, p_notes text|t|1671a3bd9379f842aac16dbcd9be41a3
+---
+> admin_upsert_ai_provider|p_id uuid, p_name text, p_label text, p_kind text, p_base_url text, p_is_active boolean, p_priority integer, p_chat_model text, p_embed_model text, p_vision_model text, p_capabilities text[], p_api_key text, p_notes text|t|b8355413814c2db250aa2bfa52d9d7cd
+3023c3033
+< asan_list_bank_deposit_export|_from date, _to date|t|2437128065b65c7caffc627f1cda8bda
+---
+> asan_list_bank_deposit_export|_from date, _to date|t|1e4d61fdfec8d2431c25eed1ac340e13
+3108c3118
+< can_issue_customer_invoice|p_customer_id uuid|t|26dec7b58f9f81159a597252df0a8ac2
+---
+> can_issue_customer_invoice|p_customer_id uuid|t|95913af14e48d86a7a5d58bac2bda09f
+3144c3154
+< create_purchase|p_product_id uuid, p_payment_term_id uuid, p_purchase_price numeric, p_currency text, p_quantity integer, p_purchase_date date, p_supplier_id uuid, p_cash_price numeric, p_warehouse_id uuid, p_notes text, p_request_id uuid, p_allocate_quantity numeric, p_allow_over_allocation boolean, p_over_allocation_note text, p_idempotency_key text|t|36bd6e7427871102742a1479545d5481
+---
+> create_purchase|p_product_id uuid, p_payment_term_id uuid, p_purchase_price numeric, p_currency text, p_quantity integer, p_purchase_date date, p_supplier_id uuid, p_cash_price numeric, p_warehouse_id uuid, p_notes text, p_request_id uuid, p_allocate_quantity numeric, p_allow_over_allocation boolean, p_over_allocation_note text, p_idempotency_key text|t|a677703894a2b3a5b2438dc57b333b7e
+3156c3166
+< delete_bot_api_key_secure|_key_id uuid, _reason text|t|b3a4d7d2a5990de041a562b9c7a72d32
+---
+> delete_bot_api_key_secure|_key_id uuid, _reason text|t|5c9573fc768ea379263e2e9ac3d6755a
+3173d3182
+< expire_stale_credit_holds|p_days integer|t|9401333969fd1bb481aea40864337df0
+3371a3381
+> generate_birthday_notifications_worker||f|7be487d834e5066d10ca9c4b3202137e
+3396c3406
+< get_payables_list|p_from_date date, p_to_date date, p_supplier_id uuid, p_due_filter text, p_search text, p_limit integer, p_offset integer, p_include_paid boolean|t|ec1982c205cb20b4649e7594303fd538
+---
+> get_payables_list|p_from_date date, p_to_date date, p_supplier_id uuid, p_due_filter text, p_search text, p_limit integer, p_offset integer, p_include_paid boolean|t|84323b23c94efa8628c393add28949f3
+3568d3577
+< post_receipt_journal|_receipt_id uuid|t|fe57bed6f736fe55adc7cdb65549acb0
+3621a3631
+> run_issabel_import||f|028041c7238a51f66db64432414eebb1
+3633a3644
+> set_ai_providers_updated_by||f|b394301aaa44ee0a4400b2f8ccb8b202
+3712a3724,3725
+> tg_journal_entry_immutable||f|1d18c907ae82ffde99ac2ff5fac930b0
+> tg_journal_line_immutable||f|4aad1aa46e7719fed503a64dfecc70b5
+3782c3795
+< upsert_staff_daily_performance_metric|p_staff_user_id uuid, p_metric_date date, p_sales_amount numeric, p_profit_amount numeric, p_inbound_calls_count integer, p_outbound_calls_count integer, p_talk_time_minutes integer, p_notes text|t|d731b14ddb6c72809445b7d0b1928ff8
+---
+> upsert_staff_daily_performance_metric|p_staff_user_id uuid, p_metric_date date, p_sales_amount numeric, p_profit_amount numeric, p_inbound_calls_count integer, p_outbound_calls_count integer, p_talk_time_minutes integer, p_notes text|t|16fc2b76dbad7b4c8816e8befebd95f5
+3937a3951
+> cron_run_log|cron_run_log_admin_manager_read|SELECT|has_any_role(auth.uid(), ARRAY['admin'::text, 'manager'::text])|
+4514c4528
+< staff_daily_performance_metrics|sdpm_insert_privileged|INSERT||(has_any_role(auth.uid(), ARRAY['admin'::app_role, 'manager'::app_role, 'accountant'::app_role]) AND (metric_date >= (CURRENT_DATE - '5 days'::interval)) AND (metric_date <= CURRENT_DATE))
+---
+> staff_daily_performance_metrics|sdpm_insert_privileged|INSERT||(has_any_role(auth.uid(), ARRAY['admin'::app_role, 'manager'::app_role, 'accountant'::app_role]) AND (metric_date >= (tehran_today() - '5 days'::interval)) AND (metric_date <= tehran_today()))
+4516c4530
+< staff_daily_performance_metrics|sdpm_update_privileged|UPDATE|(has_any_role(auth.uid(), ARRAY['admin'::app_role, 'manager'::app_role, 'accountant'::app_role]) AND (metric_date >= (CURRENT_DATE - '5 days'::interval)))|(has_any_role(auth.uid(), ARRAY['admin'::app_role, 'manager'::app_role, 'accountant'::app_role]) AND (metric_date >= (CURRENT_DATE - '5 days'::interval)))
+---
+> staff_daily_performance_metrics|sdpm_update_privileged|UPDATE|(has_any_role(auth.uid(), ARRAY['admin'::app_role, 'manager'::app_role, 'accountant'::app_role]) AND (metric_date >= (tehran_today() - '5 days'::interval)))|(has_any_role(auth.uid(), ARRAY['admin'::app_role, 'manager'::app_role, 'accountant'::app_role]) AND (metric_date >= (tehran_today() - '5 days'::interval)))
+4659c4673
+< audit_logs|audit_logs_actor_id_fkey|FOREIGN KEY (actor_id) REFERENCES auth.users(id)
+---
+> audit_logs|audit_logs_actor_id_fkey|FOREIGN KEY (actor_id) REFERENCES auth.users(id) ON DELETE SET NULL
+4784a4799,4800
+> cron_run_log|cron_run_log_pkey|PRIMARY KEY (id)
+> cron_run_log|cron_run_log_status_check|CHECK ((status = ANY (ARRAY['running'::text, 'succeeded'::text, 'failed'::text])))
+5591a5608
+> ai_providers|trg_ai_providers_set_updated_by|CREATE TRIGGER trg_ai_providers_set_updated_by BEFORE UPDATE ON public.ai_providers FOR EACH ROW EXECUTE FUNCTION set_ai_providers_updated_by()
+5689a5707,5708
+> journal_entries|trg_journal_entry_immutable|CREATE TRIGGER trg_journal_entry_immutable BEFORE DELETE OR UPDATE ON public.journal_entries FOR EACH ROW EXECUTE FUNCTION tg_journal_entry_immutable()
+> journal_lines|trg_journal_line_immutable|CREATE TRIGGER trg_journal_line_immutable BEFORE DELETE OR UPDATE ON public.journal_lines FOR EACH ROW EXECUTE FUNCTION tg_journal_line_immutable()
+7126a7146,7173
+> cron_run_log|10|DELETE
+> cron_run_log|10|INSERT
+> cron_run_log|10|REFERENCES
+> cron_run_log|10|SELECT
+> cron_run_log|10|TRIGGER
+> cron_run_log|10|TRUNCATE
+> cron_run_log|10|UPDATE
+> cron_run_log|16384|DELETE
+> cron_run_log|16384|INSERT
+> cron_run_log|16384|REFERENCES
+> cron_run_log|16384|SELECT
+> cron_run_log|16384|TRIGGER
+> cron_run_log|16384|TRUNCATE
+> cron_run_log|16384|UPDATE
+> cron_run_log|16448|DELETE
+> cron_run_log|16448|INSERT
+> cron_run_log|16448|REFERENCES
+> cron_run_log|16448|SELECT
+> cron_run_log|16448|TRIGGER
+> cron_run_log|16448|TRUNCATE
+> cron_run_log|16448|UPDATE
+> cron_run_log|16449|DELETE
+> cron_run_log|16449|INSERT
+> cron_run_log|16449|REFERENCES
+> cron_run_log|16449|SELECT
+> cron_run_log|16449|TRIGGER
+> cron_run_log|16449|TRUNCATE
+> cron_run_log|16449|UPDATE
+12732c12779
+< asan_list_bank_deposit_export(_from date, _to date)|t|t
+---
+> asan_list_bank_deposit_export(_from date, _to date)|f|t
+12884d12930
+< expire_stale_credit_holds(p_days integer)|t|t
+13082a13129
+> generate_birthday_notifications_worker()|f|f
+13279d13325
+< post_receipt_journal(_receipt_id uuid)|t|t
+13332a13379
+> run_issabel_import()|f|f
+13344a13392
+> set_ai_providers_updated_by()|f|f
+13425a13474,13475
+> tg_journal_entry_immutable()|f|t
+> tg_journal_line_immutable()|f|t
+13685a13736,13737
+> cron_run_log|cron_run_log_pkey|CREATE UNIQUE INDEX cron_run_log_pkey ON public.cron_run_log USING btree (id)
+> cron_run_log|idx_cron_run_log_job_started|CREATE INDEX idx_cron_run_log_job_started ON public.cron_run_log USING btree (job_name, started_at DESC)

@@ -36,7 +36,7 @@ import {
   useTodayPenaltyStats,
   useTodayDocumentStats,
 } from "@/hooks/dashboard/useDashboardStats";
-import { formatTomanFa } from "@/lib/dashboard/utils";
+import { formatTomanFa, toPersianDigits } from "@/lib/dashboard/utils";
 import { getPageTitle } from "@/config/branding";
 
 export const Route = createFileRoute("/_app/dashboard")({
@@ -175,7 +175,9 @@ function AdminKpis() {
           icon={ShoppingCart}
           color="blue"
           value={sales.data?.count ?? null}
-          subtitle={sales.data ? `${sales.data.issuedCount} فاکتور صادرشده` : undefined}
+          subtitle={
+            sales.data ? `${toPersianDigits(sales.data.issuedCount)} فاکتور صادرشده` : undefined
+          }
           loading={sales.isLoading}
         />
         <KpiCard
@@ -194,7 +196,7 @@ function AdminKpis() {
           value={purchases.data?.total ?? null}
           subtitle={
             purchases.data
-              ? `${purchases.data.approved} تأیید · ${purchases.data.pending} در انتظار`
+              ? `${toPersianDigits(purchases.data.approved)} تأیید · ${toPersianDigits(purchases.data.pending)} در انتظار`
               : undefined
           }
           loading={purchases.isLoading}
@@ -285,7 +287,7 @@ function SalesKpis() {
           value={purchases.data?.total ?? null}
           subtitle={
             purchases.data
-              ? `${purchases.data.approved} تأیید · ${purchases.data.pending} در انتظار`
+              ? `${toPersianDigits(purchases.data.approved)} تأیید · ${toPersianDigits(purchases.data.pending)} در انتظار`
               : undefined
           }
           loading={purchases.isLoading}

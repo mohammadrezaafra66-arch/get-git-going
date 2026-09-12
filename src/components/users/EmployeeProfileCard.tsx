@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
-import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
 import { Pencil, UserCog } from "lucide-react";
 import { toast } from "sonner";
 
@@ -243,7 +243,7 @@ export function EmployeeProfileCard({ userId }: { userId: string }) {
                 maxLength={500}
               />
               <div className="text-left text-xs text-muted-foreground">
-                {bio.length} / ۵۰۰
+                {toFaDigits(bio.length)} / ۵۰۰
               </div>
             </div>
           </div>

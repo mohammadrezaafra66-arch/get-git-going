@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasAnyRole } from "@/lib/rbac/roles";
 import { BRANDING, getPageTitle } from "@/config/branding";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/academy")({
   beforeLoad: async () => {
@@ -118,7 +119,7 @@ function AcademyListPage() {
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">
                         <BookOpen className="ms-1 h-3 w-3" />
-                        {lessonsCount} درس
+                        {toFaDigits(lessonsCount)} درس
                       </Badge>
                       {progress === 100 && (
                         <Badge className="bg-emerald-500 text-white hover:bg-emerald-500">

@@ -1,0 +1,129 @@
+
+Running 2 tests using 1 worker
+
+[1/2] [chromium-o5] › test-results\o5\o5-wave-b.spec.ts:55:3 › accountant: the three unseen pages, cold session
+[chromium-o5] › test-results\o5\o5-wave-b.spec.ts:55:3 › accountant: the three unseen pages, cold session
+
+### accountant -> /sales/credit-requests   (credit request / approval)
+
+    HTTP 200  content-type=text/html; charset=utf-8  Server=(absent)
+    landed on: http://192.168.170.8:3100/sales/credit-requests
+    body (first 600 chars): «محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست» myafrakala.ir سامانه یکپارچه مدیریت سازمانی جستجوی سریع فروش Ctrl K فروش موردی برای نمایش وجود ندارد اعلان‌ها راهنما TE test.accountant@afrakala.local حسابدار Toggle Sidebar ورود 9+ TE test.accountant@afrakala.local حسابدار جستجوی سریع فروش جزئیات درخواست‌های افزایش اعتبار ثبت درخواست سقف اعتبار برای مشتری و بررسی درخواست‌های ثبت‌شده ثبت درخواست جدید جست‌وجوی مشتری مشتری انتخاب مشتری مبلغ درخواستی (ریال) توضیحات ثبت درخواست درخواست‌ها همه مشتری مبلغ درخواستی وضعیت تاریخ ثبت تاریخ بررسی اقدام مشتری آزمایشی 16 ۵۰۰,۰۰۰,۰۰۰ ریال تأیید شده ۱۶ شه
+
+    console errors on this page (4):
+
+      [auth-diagnostic][session.onAuthStateChange] TOKEN_REFRESHED {hasSession: true, sessionUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, previousUserId: null, isFullReload: false, isSignOut: false}
+
+      [auth-diagnostic][session.onAuthStateChange] INITIAL_SESSION {hasSession: true, sessionUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, previousUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, isFullReload: false, isSignOut: false}
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+
+### accountant -> /admin/person-fields   (custom person fields)
+
+    HTTP 200  content-type=text/html; charset=utf-8  Server=(absent)
+    landed on: http://192.168.170.8:3100/admin/person-fields
+    body (first 600 chars): «محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست» myafrakala.ir سامانه یکپارچه مدیریت سازمانی جستجوی سریع فروش Ctrl K داشبورد موردی برای نمایش وجود ندارد اعلان‌ها راهنما TE test.accountant@afrakala.local حسابدار Toggle Sidebar ورود 9+ TE test.accountant@afrakala.local حسابدار صفحه دسترسی ندارید. این بخش فقط برای مدیر کل، مدیر است.
+
+    console errors on this page (3):
+
+      [auth-diagnostic][session.onAuthStateChange] SIGNED_IN {hasSession: true, sessionUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, previousUserId: null, isFullReload: true, isSignOut: false}
+
+      [auth-diagnostic][session.onAuthStateChange] INITIAL_SESSION {hasSession: true, sessionUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, previousUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, isFullReload: false, isSignOut: false}
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+
+### accountant -> /admin/call-extensions   (Issabel call extensions)
+
+    HTTP 200  content-type=text/html; charset=utf-8  Server=(absent)
+    landed on: http://192.168.170.8:3100/admin/call-extensions
+    body (first 600 chars): «محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست» myafrakala.ir سامانه یکپارچه مدیریت سازمانی جستجوی سریع فروش Ctrl K داشبورد موردی برای نمایش وجود ندارد اعلان‌ها راهنما TE test.accountant@afrakala.local حسابدار Toggle Sidebar ورود 9+ TE test.accountant@afrakala.local حسابدار داخلی‌های تلفن دسترسی ندارید. این بخش فقط برای مدیر کل، مدیر است.
+
+    console errors on this page (5):
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+      [auth-diagnostic][session.onAuthStateChange] SIGNED_IN {hasSession: true, sessionUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, previousUserId: null, isFullReload: true, isSignOut: false}
+
+      [auth-diagnostic][session.onAuthStateChange] INITIAL_SESSION {hasSession: true, sessionUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, previousUserId: 90c0479f-410d-4fff-9e00-34bbba1cce2b, isFullReload: false, isSignOut: false}
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+
+### G-4 rendered  accountant /dashboard
+
+    Latin-digit Persian KPI subtitles found: none
+
+[2/2] [chromium-o5] › test-results\o5\o5-wave-b.spec.ts:55:3 › sales: the three unseen pages, cold session
+[chromium-o5] › test-results\o5\o5-wave-b.spec.ts:55:3 › sales: the three unseen pages, cold session
+
+### sales -> /sales/credit-requests   (credit request / approval)
+
+    HTTP 200  content-type=text/html; charset=utf-8  Server=(absent)
+    landed on: http://192.168.170.8:3100/sales/credit-requests
+    body (first 600 chars): «محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست» myafrakala.ir سامانه یکپارچه مدیریت سازمانی جستجوی سریع فروش Ctrl K فروش موردی برای نمایش وجود ندارد اعلان‌ها راهنما TE test.sales@afrakala.local فروشنده Toggle Sidebar ورود TE test.sales@afrakala.local فروشنده جستجوی سریع فروش جزئیات درخواست‌های افزایش اعتبار ثبت درخواست سقف اعتبار برای مشتری و بررسی درخواست‌های ثبت‌شده ثبت درخواست جدید جست‌وجوی مشتری مشتری انتخاب مشتری مبلغ درخواستی (ریال) توضیحات ثبت درخواست درخواست‌ها همه مشتری مبلغ درخواستی وضعیت تاریخ ثبت تاریخ بررسی مشتری آزمایشی 16 ۵۰۰,۰۰۰,۰۰۰ ریال تأیید شده ۱۶ شهریور ۱۴۰۵ ۱۶ شهریور
+
+    console errors on this page (4):
+
+      [auth-diagnostic][session.onAuthStateChange] TOKEN_REFRESHED {hasSession: true, sessionUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, previousUserId: null, isFullReload: false, isSignOut: false}
+
+      [auth-diagnostic][session.onAuthStateChange] INITIAL_SESSION {hasSession: true, sessionUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, previousUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, isFullReload: false, isSignOut: false}
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+
+### sales -> /admin/person-fields   (custom person fields)
+
+    HTTP 200  content-type=text/html; charset=utf-8  Server=(absent)
+    landed on: http://192.168.170.8:3100/admin/person-fields
+    body (first 600 chars): «محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست» myafrakala.ir سامانه یکپارچه مدیریت سازمانی جستجوی سریع فروش Ctrl K داشبورد موردی برای نمایش وجود ندارد اعلان‌ها راهنما TE test.sales@afrakala.local فروشنده Toggle Sidebar ورود TE test.sales@afrakala.local فروشنده صفحه دسترسی ندارید. این بخش فقط برای مدیر کل، مدیر است.
+
+    console errors on this page (4):
+
+      [auth-diagnostic][session.onAuthStateChange] SIGNED_IN {hasSession: true, sessionUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, previousUserId: null, isFullReload: true, isSignOut: false}
+
+      [auth-diagnostic][session.onAuthStateChange] INITIAL_SESSION {hasSession: true, sessionUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, previousUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, isFullReload: false, isSignOut: false}
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+
+### sales -> /admin/call-extensions   (Issabel call extensions)
+
+    HTTP 200  content-type=text/html; charset=utf-8  Server=(absent)
+    landed on: http://192.168.170.8:3100/admin/call-extensions
+    body (first 600 chars): «محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست» myafrakala.ir سامانه یکپارچه مدیریت سازمانی جستجوی سریع فروش Ctrl K داشبورد موردی برای نمایش وجود ندارد اعلان‌ها راهنما TE test.sales@afrakala.local فروشنده Toggle Sidebar ورود TE test.sales@afrakala.local فروشنده داخلی‌های تلفن دسترسی ندارید. این بخش فقط برای مدیر کل، مدیر است.
+
+    console errors on this page (4):
+
+      [auth-diagnostic][session.onAuthStateChange] SIGNED_IN {hasSession: true, sessionUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, previousUserId: null, isFullReload: true, isSignOut: false}
+
+      [auth-diagnostic][session.onAuthStateChange] INITIAL_SESSION {hasSession: true, sessionUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, previousUserId: ea9b35dd-fd57-4905-9355-50ca8646d4d1, isFullReload: false, isSignOut: false}
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+      WebSocket connection to 'ws://192.168.170.8:9000/realtime/v1/websocket?apikey=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI&vsn=2.0.0' failed: Error during WebSocket handshake:
+
+
+### COLD GATE  sales -> /admin/automation
+
+    HTTP 200  content-type=text/html; charset=utf-8  Server=(absent)
+    landed on: http://192.168.170.8:3100/admin/automation
+    body (first 600 chars): «محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست» myafrakala.ir سامانه یکپارچه مدیریت سازمانی جستجوی سریع فروش Ctrl K مدیریت موردی برای نمایش وجود ندارد اعلان‌ها راهنما TE test.sales@afrakala.local فروشنده Toggle Sidebar ورود TE test.sales@afrakala.local فروشنده اتوماسیون فاز صفر مرکز اتوماسیون و ربات‌ها نمای کنترل فاز صفر و صف کنترل‌شده ترب؛ اجرای مستقیم از مرورگر انجام نمی‌شود. این صفحه برای مشاهده وضعیت، کنترل گاردها، اجرای dummy فاز صفر و ثبت job کنترل‌شده ترب در صف است. درخواست ترب فقط به صورت PENDING در صف ذخیره می‌شود و اجرای آن با worker و evidence انجام می‌شود. وضعیت مسیر ترب Skel
+
+    VERDICT: RENDERED (no redirect)
+
+
+### G-4 rendered  sales /dashboard
+
+    Latin-digit Persian KPI subtitles found: none
+
+  2 passed (25.5s)

@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toFaDigits } from "@/lib/i18n/formatters";
 import {
   Table,
   TableBody,
@@ -296,7 +297,9 @@ function CreditRulesPage() {
       {Math.abs(totalWeight - 1) > 0.001 && (
         <Alert variant={totalWeight > 1 ? "destructive" : "default"}>
           <AlertDescription className="flex items-center gap-2">
-            <span>مجموع وزن‌های فعال: {totalWeight.toFixed(2)} (مقدار توصیه‌شده: ۱.۰۰)</span>
+            <span>
+              مجموع وزن‌های فعال: {toFaDigits(totalWeight.toFixed(2))} (مقدار توصیه‌شده: ۱.۰۰)
+            </span>
             <HelpHint
               text={
                 "مجموع وزن همهٔ پارامترهای فعال باید برابر ۱.۰۰ باشد تا امتیاز نهایی صفر تا صد به‌درستی محاسبه شود.\n" +

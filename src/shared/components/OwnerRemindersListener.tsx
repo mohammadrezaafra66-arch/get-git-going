@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { usePopupCenter } from "@/lib/popups/PopupCenterProvider";
+import { toFaDigits } from "@/lib/i18n/formatters";
 import {
   fetchStalePurchasePrices,
   fetchStaleUnavailableProducts,
@@ -100,7 +101,7 @@ export function OwnerRemindersListener() {
     const bucket = dayBucket();
     for (const r of rows) {
       const reason = r.is_usd_drifted
-        ? `تغییر معادل دلاری ${r.usd_drift_pct?.toFixed(1)}٪ (بیش از ${USD_DRIFT_THRESHOLD_PCT}٪)`
+        ? `تغییر معادل دلاری ${toFaDigits(r.usd_drift_pct?.toFixed(1) ?? "")}٪ (بیش از ${toFaDigits(USD_DRIFT_THRESHOLD_PCT)}٪)`
         : "قیمت خرید تومانی نیاز به بازبینی دارد";
       const id = `reminder-price-${r.product_id}-${r.is_usd_drifted ? "drift" : "stale"}-${bucket}`;
       if (shownRef.current.has(id)) continue;

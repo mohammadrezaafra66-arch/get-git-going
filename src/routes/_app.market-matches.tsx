@@ -34,6 +34,7 @@ import { Loader2, CheckCircle2, XCircle, Ban, Search, ExternalLink } from "lucid
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
 import { searchProducts } from "@/lib/pricing/queries";
+import { toFaDigits } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/market-matches")({
   component: MarketMatchesPage,
@@ -288,7 +289,9 @@ function MarketMatchesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    {r.confidence_score != null ? Number(r.confidence_score).toFixed(1) : "—"}
+                    {r.confidence_score != null
+                      ? toFaDigits(Number(r.confidence_score).toFixed(1))
+                      : "—"}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
                     {r.afrakala_product_name_snapshot ?? "—"}
@@ -320,7 +323,7 @@ function MarketMatchesPage() {
             قبلی
           </Button>
           <span>
-            صفحه {page + 1} از {pageCount}
+            صفحه {toFaDigits(page + 1)} از {toFaDigits(pageCount)}
           </span>
           <Button
             size="sm"
@@ -524,7 +527,9 @@ function MatchDetailDialog({
             </div>
             <div>
               <span className="text-muted-foreground">اطمینان:</span>{" "}
-              {match.confidence_score != null ? Number(match.confidence_score).toFixed(1) : "—"}
+              {match.confidence_score != null
+                ? toFaDigits(Number(match.confidence_score).toFixed(1))
+                : "—"}
             </div>
             {match.afrakala_product_name_snapshot && (
               <div>
@@ -626,7 +631,7 @@ function MatchDetailDialog({
         </div>
 
         <div className="border-t pt-4">
-          <div className="text-sm font-medium mb-2">رویدادها ({events.length})</div>
+          <div className="text-sm font-medium mb-2">رویدادها ({toFaDigits(events.length)})</div>
           <div className="max-h-60 overflow-y-auto space-y-1 text-xs">
             {events.length === 0 ? (
               <div className="text-muted-foreground">رویدادی ثبت نشده</div>

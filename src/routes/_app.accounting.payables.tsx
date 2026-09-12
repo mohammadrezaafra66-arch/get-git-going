@@ -9,6 +9,7 @@ import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
 import { cn } from "@/lib/utils";
 import { useDebounce } from "@/hooks/use-debounce";
+import { CURRENCY_LABELS, type CurrencyCode } from "@/lib/pricing/constants";
 
 import { PageHeader } from "@/components/common/PageHeader";
 import { AgingBucketBadge, AgingBucketCards } from "@/components/accounting/AgingBuckets";
@@ -121,7 +122,9 @@ const NA = "نامشخص";
 
 function fmtMoney(n: number | null | undefined, currency?: string | null) {
   if (n == null) return NA;
-  const cur = currency || "تومان";
+  const cur = currency
+    ? (CURRENCY_LABELS[currency as CurrencyCode] ?? currency)
+    : CURRENCY_LABELS.toman;
   return `${toFaDigits(Math.round(Number(n)).toLocaleString("en-US"))} ${cur}`;
 }
 function fmtNum(n: number | null | undefined) {
