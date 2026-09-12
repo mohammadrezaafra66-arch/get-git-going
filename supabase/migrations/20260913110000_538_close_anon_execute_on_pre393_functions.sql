@@ -73,9 +73,16 @@ SET client_encoding='UTF8';
 -- postgres, supabase_admin, service_role, authenticated, anon, products_api_readonly. Since
 -- `authenticated` and `service_role` already hold their own grant on all 39 and `anon` is the
 -- target, **this issues grants to `products_api_readonly` and to nothing else** -- the same one
--- role and the same one grant that migration 405 had to add by hand after 395. `authenticator`
--- needs nothing: pg_auth_members shows it is a MEMBER of anon, authenticated, service_role and
--- products_api_readonly, so it inherits theirs.
+-- role and the same one grant that migration 405 had to add by hand after 395.
+--
+-- `authenticator` needs nothing either, but NOT for the reason an earlier draft of this comment
+-- gave. That draft said it "inherits" from anon/authenticated/service_role/products_api_readonly
+-- because pg_auth_members lists it as a member. **That is false and was corrected after an
+-- independent verifier measured it:** `authenticator` is `rolinherit = false`, so membership
+-- grants it nothing automatically, and its own reach over `public` functions does fall here.
+-- It is safe for a different reason -- PostgREST authenticates as `authenticator` and then
+-- `SET ROLE`s to `anon` or `authenticated` for every request, so the role that is actually
+-- checked at query time is never `authenticator` itself.
 --
 -- `dashboard_user`, `supabase_read_only_user`, `pgbouncer`, the three `pgsodium_*` roles and the
 -- `supabase_*_admin` roles DO lose an incidental PUBLIC grant here, and that is deliberate: none

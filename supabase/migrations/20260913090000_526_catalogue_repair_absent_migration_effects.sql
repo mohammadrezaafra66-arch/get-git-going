@@ -1301,6 +1301,6 @@ BEGIN
     RAISE EXCEPTION '526 gate: expire_stale_credit_holds(integer,integer) is missing';
   END IF;
 
-  RAISE NOTICE '526 OK: all five migrations'' asserted end states (386/394/396/404/409) are present in the catalogue. Ledger rows for 386/394/396/404/409 are untouched; this migration records its own new row.';
+  RAISE NOTICE '526 OK: all five migrations'' asserted end states (386/394/396/404/409) are present in the catalogue. Ledger rows for 386/394/396/404/409 are untouched. This migration does NOT write supabase_migrations.schema_migrations -- the operator''s ledger step does, and expects INSERT 0 1.';
 END
 $gate526$;
