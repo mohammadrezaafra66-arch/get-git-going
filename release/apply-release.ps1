@@ -18,7 +18,11 @@ param(
     [string]$Container = "afrakala-lan-db",
     [string]$DbUser = "supabase_admin",
     [string]$Tarball = "",
-    [string]$TarballSha256 = ""
+    [string]$TarballSha256 = "",
+    # The same release/config/decided-migrations.txt the rehearsal ran with. Defence in depth: the
+    # engine refuses a mig_apply block for a version declared SKIP, and re-checks a decided
+    # LEDGER_ONLY version's guard against the REAL target before writing its ledger row.
+    [string]$Decided = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -82,6 +86,14 @@ $bashArgs = @(
     "--repo-root", $repoRoot.Path.Replace('\', '/'),
     "--log", $logPath.Replace('\', '/')
 )
+if ($Decided -ne "") {
+    $decidedResolved = Resolve-Path $Decided -ErrorAction SilentlyContinue
+    if (-not $decidedResolved) {
+        Write-Host "Decision file not found: $Decided" -ForegroundColor Red
+        exit 2
+    }
+    $bashArgs += @("--decided", $decidedResolved.Path.Replace('\', '/'))
+}
 
 Write-Host "Running apply-release engine (bash) against $TargetDb@$Container ..." -ForegroundColor Cyan
 & $bashPath @bashArgs

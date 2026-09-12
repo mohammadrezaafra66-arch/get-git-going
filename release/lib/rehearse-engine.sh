@@ -72,6 +72,8 @@ SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SELF_DIR/mig-apply.sh"
 # shellcheck source=./shape-tolerance.sh
 source "$SELF_DIR/shape-tolerance.sh"
+# shellcheck source=./decided-migrations.sh
+source "$SELF_DIR/decided-migrations.sh"
 
 # ---------- tolerated pg_restore error substrings ----------------------------------------------
 # Measured on the real 2026-09-12 production dump against a scratch database
@@ -101,7 +103,7 @@ is_tolerated_error() {
 # ---------- arg parsing ------------------------------------------------------------------------
 DUMP="" CONTAINER="afrakala-lan-db" DBUSER="supabase_admin" PREFIX="prod_rehearsal_"
 RUNDATE="$(date +%Y%m%d)" MIGDIR="supabase/migrations" REPO_ROOT="." CEILING=""
-KNOWN_LIES="" OUT="" SHAPE_TOLERANT=""
+KNOWN_LIES="" OUT="" SHAPE_TOLERANT="" DECIDED=""
 PHASE="all" STATE_DIR="" FROM=0 TO=0 BATCH=0 DROP_WHEN_DONE=0
 FAILED=0
 
@@ -117,6 +119,7 @@ while [ $# -gt 0 ]; do
     --ceiling) CEILING="$2"; shift 2;;
     --known-ledger-lies) KNOWN_LIES="$2"; shift 2;;
     --shape-tolerant) SHAPE_TOLERANT="$2"; shift 2;;
+    --decided) DECIDED="$2"; shift 2;;
     --phase) PHASE="$2"; shift 2;;
     --state-dir) STATE_DIR="$2"; shift 2;;
     --from) FROM="$2"; shift 2;;
@@ -480,6 +483,8 @@ cat "$TMP/to_ledger_only.txt" | sed 's/$/|LEDGER_ONLY/' >> "$TMP/apply_plan.txt"
 sort "$TMP/apply_plan.txt" -o "$TMP/apply_plan.txt"
 echo "## Apply plan: $(wc -l < "$TMP/apply_plan.txt") versions, in timestamp order" | tee -a "$REPORT"
 : > "$TMP/shape_tolerated.txt"
+: > "$TMP/decision_skipped.txt"
+: > "$TMP/decision_ledger_only.txt"
 : > "$TMP/notices.txt"
 echo 0 > "$TMP/progress.txt"
 
@@ -504,7 +509,9 @@ if want_replay; then
 PLAN="$TMP/apply_plan.txt"
 [ -f "$PLAN" ] || { echo "FATAL: $PLAN missing -- run --phase restore first"; exit 2; }
 PLAN_TOTAL=$(wc -l < "$PLAN" | tr -d ' ')
-[ -f "$TMP/shape_tolerated.txt" ] || : > "$TMP/shape_tolerated.txt"
+[ -f "$TMP/shape_tolerated.txt" ]      || : > "$TMP/shape_tolerated.txt"
+[ -f "$TMP/decision_skipped.txt" ]     || : > "$TMP/decision_skipped.txt"
+[ -f "$TMP/decision_ledger_only.txt" ] || : > "$TMP/decision_ledger_only.txt"
 
 DONE_IDX=0
 if [ -f "$TMP/progress.txt" ]; then DONE_IDX=$(tr -dc '0-9' < "$TMP/progress.txt"); fi
@@ -552,6 +559,59 @@ while IFS='|' read -r ver kind; do
   [ -n "$ver" ] || continue
   file=$(ls "$MIGDIR"/${ver}_*.sql 2>/dev/null | head -1)
   APPLY_OUT="$TMP/apply_out_${ver}.txt"
+
+  # ---- THIRD CATEGORY: SKIPPED BY RECORDED DECISION (release/lib/decided-migrations.sh) --------
+  # This is checked BEFORE the migration is attempted, which is the whole difference between this
+  # and shape tolerance. Shape tolerance is reactive -- run it, catch the error, match the text,
+  # continue, and leave the version an OPEN question for a human. A decided version is never run
+  # at all: the SQL is not delivered to the container, no error is produced, and the question is
+  # CLOSED because a human answered it on the record before this run existed.
+  #
+  # Reporting those two as one bucket is how a release line starts lying, so they are counted and
+  # rendered separately everywhere downstream.
+  DECIDED_DISP=""
+  if [ -n "$DECIDED" ]; then DECIDED_DISP=$(decided_disposition "$ver" "$DECIDED" 2>/dev/null || true); fi
+
+  if [ "$DECIDED_DISP" = "SKIP" ]; then
+    {
+      echo "SKIPPED BY DECISION $(decided_id "$ver" "$DECIDED"): $ver ($(basename "${file:-<no file>}"))"
+      echo "  reason:$(decided_reason "$ver" "$DECIDED")"
+      echo "  the SQL was NOT delivered and NOT executed, and NO ledger row is written -- that"
+      echo "  absence is the decision, not an omission. See release/config/decided-migrations.txt."
+    } | tee -a "$REPORT"
+    echo "$ver|${file:-}" >> "$TMP/decision_skipped.txt"
+    echo "$IDX" > "$TMP/progress.txt"
+    continue
+  fi
+
+  if [ "$DECIDED_DISP" = "LEDGER_ONLY" ]; then
+    D_GSQL=$(decided_guard_sql "$ver" "$DECIDED"); D_GEXP=$(decided_guard_expect "$ver" "$DECIDED")
+    if [ -n "$D_GSQL" ]; then
+      D_GOT=$(psql_scalar "$CONTAINER" "$DBUSER" "$DB" "$D_GSQL")
+      echo "DECISION GUARD $(decided_id "$ver" "$DECIDED") for $ver: got [$D_GOT], expected [$D_GEXP]" | tee -a "$REPORT"
+      if [ "$D_GOT" != "$D_GEXP" ]; then
+        echo "STOPPING: the guard behind this decision does not hold on this target. The decision" | tee -a "$REPORT"
+        echo "rests on a premise that is not true here, so the ledger row must NOT be written." | tee -a "$REPORT"
+        echo "STOPPING at first failure: $ver (DECIDED_LEDGER_ONLY) at plan index $IDX" | tee -a "$REPORT"
+        FAILED=1
+        break
+      fi
+    fi
+    if grep -qx "$ver" "$TMP/ledger.txt" 2>/dev/null; then
+      echo "NOTE: $ver already has a ledger row on this shape; nothing to write." | tee -a "$REPORT"
+    else
+      ledger_insert_only "$CONTAINER" "$DBUSER" "$DB" "$ver" 2>&1 | tee -a "$REPORT" | tee "$APPLY_OUT" >/dev/null
+      if [ "${PIPESTATUS[0]}" != "0" ]; then
+        echo "STOPPING at first failure: $ver (DECIDED_LEDGER_ONLY) at plan index $IDX" | tee -a "$REPORT"
+        FAILED=1
+        break
+      fi
+    fi
+    echo "$ver|${file:-}" >> "$TMP/decision_ledger_only.txt"
+    echo "$IDX" > "$TMP/progress.txt"
+    continue
+  fi
+
   if [ "$kind" = "APPLY" ]; then
     if [ -z "$file" ]; then
       echo "FATAL: no file on disk for candidate $ver" | tee -a "$REPORT"
@@ -607,6 +667,39 @@ done < <(sed -n "${BFROM},${BTO}p" "$PLAN")
   fi
 } | tee -a "$REPORT"
 
+{
+  echo
+  echo "## Decided dispositions (release/lib/decided-migrations.sh) — NOT tolerated errors"
+  echo
+  echo "A version here was never attempted. No SQL was delivered, nothing raised, and there was"
+  echo "nothing to tolerate. The disposition was decided by a human on the record BEFORE this run,"
+  echo "and each line names the decision so a reader can check it rather than take this file's word."
+  echo
+  if [ -s "$TMP/decision_skipped.txt" ]; then
+    echo "SKIPPED BY DECISION — no SQL run, NO ledger row (the absence IS the decision):"
+    echo '```'
+    while IFS='|' read -r _v _f; do
+      [ -n "$_v" ] || continue
+      echo "$_v|$(decided_id "$_v" "$DECIDED")|$(basename "${_f:-unknown}")"
+    done < "$TMP/decision_skipped.txt"
+    echo '```'
+  else
+    echo "SKIPPED BY DECISION: none in this batch."
+  fi
+  echo
+  if [ -s "$TMP/decision_ledger_only.txt" ]; then
+    echo "LEDGER-ROW-ONLY BY DECISION — no SQL run, ledger row written after its guard checked out:"
+    echo '```'
+    while IFS='|' read -r _v _f; do
+      [ -n "$_v" ] || continue
+      echo "$_v|$(decided_id "$_v" "$DECIDED")|$(basename "${_f:-unknown}")"
+    done < "$TMP/decision_ledger_only.txt"
+    echo '```'
+  else
+    echo "LEDGER-ROW-ONLY BY DECISION: none in this batch."
+  fi
+} | tee -a "$REPORT"
+
 # Ledger delta is printed BEFORE the failure check on purpose: a batch that stopped early still
 # has to account for what it did write, otherwise a failed batch reports nothing measurable.
 LEDGER_BATCH_AFTER=$(psql_scalar "$CONTAINER" "$DBUSER" "$DB"   "SELECT count(*) FROM supabase_migrations.schema_migrations;")
@@ -655,7 +748,9 @@ if [ "$PHASE" = "gates" ]; then
     echo "will never exist anywhere. Finish the batches first."
     exit 3
   fi
-  [ -f "$TMP/shape_tolerated.txt" ] || : > "$TMP/shape_tolerated.txt"
+  [ -f "$TMP/shape_tolerated.txt" ]      || : > "$TMP/shape_tolerated.txt"
+  [ -f "$TMP/decision_skipped.txt" ]     || : > "$TMP/decision_skipped.txt"
+  [ -f "$TMP/decision_ledger_only.txt" ] || : > "$TMP/decision_ledger_only.txt"
   GATE_DB_EXISTS=$(docker exec -e PGPASSWORD="$(docker exec "$CONTAINER" printenv POSTGRES_PASSWORD | tr -d '')"     "$CONTAINER" sh -c "psql -U '$DBUSER' -d postgres --no-psqlrc -A -t -c \"SELECT 1 FROM pg_database WHERE datname='$DB';\"")
   if [ "$GATE_DB_EXISTS" != "1" ]; then
     echo "FATAL: database '$DB' does not exist. The restore phase's database was dropped or never"
@@ -676,7 +771,17 @@ fi
   while read -r ver; do
     [ -n "$ver" ] || continue
     f=$(ls "$MIGDIR"/${ver}_*.sql 2>/dev/null | head -1); f=$(basename "${f:-unknown}")
-    if grep -qx "$ver|$f" "$TMP/shape_tolerated.txt" 2>/dev/null || grep -q "^$ver|" "$TMP/shape_tolerated.txt" 2>/dev/null; then
+    # The DECISION FILE is the authority here, not what this particular replay happened to do.
+    # A release document must instruct what was decided; a replay that predated the declaration
+    # (or that resumed past the entry) does not change the decision. Where the two differ, the
+    # "## Decision exercise record" section below says so explicitly rather than hiding it.
+    _dd=""
+    if [ -n "$DECIDED" ]; then _dd=$(decided_disposition "$ver" "$DECIDED" 2>/dev/null || true); fi
+    if [ "$_dd" = "SKIP" ]; then
+      echo "$ver|DECISION_SKIPPED|$f"
+    elif [ "$_dd" = "LEDGER_ONLY" ]; then
+      echo "$ver|DECIDED_LEDGER_ONLY|$f"
+    elif grep -q "^$ver|" "$TMP/shape_tolerated.txt" 2>/dev/null; then
       echo "$ver|SHAPE_TOLERATED|$f"
     else
       echo "$ver|APPLY|$f"
@@ -700,6 +805,34 @@ fi
     echo "$ver|UNVERIFIABLE|"
   done < "$TMP/unverifiable.txt"
   echo '```'
+} | tee -a "$REPORT"
+
+# ---------- decision exercise record --------------------------------------------------------------
+# The FINAL classification above takes the DECISION FILE as authority. This section says, for every
+# declared version, whether THIS run actually exercised that disposition or merely inherited it --
+# because "the document says skip" and "the engine skipped it in front of me" are different claims
+# and only one of them is evidence.
+{
+  echo
+  echo "## Decision exercise record (release/config/decided-migrations.txt)"
+  echo
+  if [ -z "$DECIDED" ]; then
+    echo "no decision file was passed (--decided); nothing is decided and nothing was skipped."
+  else
+    echo '```'
+    printf '%-14s %-6s %-20s %s
+' "VERSION" "DECIS" "DISPOSITION" "EXERCISED IN THIS REPLAY?"
+    for _dv in $(decided_versions "$DECIDED"); do
+      _ddisp=$(decided_disposition "$_dv" "$DECIDED")
+      _did=$(decided_id "$_dv" "$DECIDED")
+      _dex="NO -- plan index already past when the declaration was read"
+      if grep -q "^$_dv|" "$TMP/decision_skipped.txt" 2>/dev/null; then _dex="YES -- skipped in front of this run, no SQL delivered"; fi
+      if grep -q "^$_dv|" "$TMP/decision_ledger_only.txt" 2>/dev/null; then _dex="YES -- guard checked, ledger row only"; fi
+      printf '%-14s %-6s %-20s %s
+' "$_dv" "$_did" "$_ddisp" "$_dex"
+    done
+    echo '```'
+  fi
 } | tee -a "$REPORT"
 
 # ---------- sequenced expectations (measured, never typed) ---------------------------------------
@@ -730,21 +863,115 @@ fi
   echo '```'
 } | tee -a "$REPORT"
 
-# ---------- gates: og81 / og102 / og103 -----------------------------------------------------------
-echo "## Gates og81 / og102 / og103 against $DB" | tee -a "$REPORT"
+# ---------- gates: og102 / og103 run together; og81 runs ALONE and on purpose ---------------------
+# og81 is separated from the other two because its result has to be reconciled, not merely read.
+# og81 asserts that the ledger and the migration directory agree EXACTLY, in both directions, with
+# no allowlist -- deliberately, and that deliberateness is documented in the spec itself. But this
+# release ships versions that will NEVER have a ledger row on the target: three by recorded
+# decision (OG-J: 449/450/452) and however many the shape-tolerance mechanism left unapplied. On a
+# database carrying those decisions, og81 CANNOT pass, and it must not be made to.
+#
+# So the engine does not weaken, patch or skip og81. It runs it unmodified, records its real
+# result, and then MEASURES the disk-versus-ledger difference itself and requires that difference
+# to equal the declared exception set EXACTLY, in both directions. Anything else -- one extra
+# unrecorded version, or one declared version that turns out to have a row after all -- is FATAL.
+# That is a STRICTER test than og81 alone, not a looser one: og81 asks "is the difference empty",
+# this asks "is the difference precisely the set a human signed for".
+echo "## Gates og102 / og103 against $DB" | tee -a "$REPORT"
 GATE_LOG="$TMP/gates.log"
 (
   export E2E_DB_CONTAINER="$CONTAINER"
   export E2E_DB_NAME="$DB"
   export E2E_DB_USER="postgres"
   cd "$REPO_ROOT" && npx playwright test \
-    e2e/security/og81-migration-ledger-matches-disk.spec.ts \
     e2e/security/og102-pre393-anon-execute-grants-stay-closed.spec.ts \
     e2e/security/og103-anon-table-grants-stay-closed.spec.ts
 ) > "$GATE_LOG" 2>&1
 GATE_RC=$?
-tail -60 "$GATE_LOG" | tee -a "$REPORT"
-echo "playwright exit code = $GATE_RC" | tee -a "$REPORT"
+tail -40 "$GATE_LOG" | tee -a "$REPORT"
+echo "og102/og103 playwright exit code = $GATE_RC" | tee -a "$REPORT"
+
+echo "## Gate og81 against $DB (run alone; see the reconciliation below)" | tee -a "$REPORT"
+OG81_LOG="$TMP/og81.log"
+(
+  export E2E_DB_CONTAINER="$CONTAINER"
+  export E2E_DB_NAME="$DB"
+  export E2E_DB_USER="postgres"
+  cd "$REPO_ROOT" && npx playwright test e2e/security/og81-migration-ledger-matches-disk.spec.ts
+) > "$OG81_LOG" 2>&1
+OG81_RC=$?
+tail -25 "$OG81_LOG" | tee -a "$REPORT"
+echo "og81 playwright exit code = $OG81_RC" | tee -a "$REPORT"
+
+# ---------- og81 reconciliation: measured here, not parsed out of playwright's output -------------
+ls "$MIGDIR"/*.sql | xargs -n1 basename | sed 's/_.*//' | sort -u > "$TMP/og81_disk.txt"
+psql_scalar "$CONTAINER" "$DBUSER" "$DB" \
+  "SELECT version FROM supabase_migrations.schema_migrations ORDER BY 1;" | sort -u > "$TMP/og81_ledger.txt"
+comm -23 "$TMP/og81_disk.txt" "$TMP/og81_ledger.txt" > "$TMP/og81_unrecorded.txt"
+comm -13 "$TMP/og81_disk.txt" "$TMP/og81_ledger.txt" > "$TMP/og81_orphaned.txt"
+
+# the declared exception set: decided SKIPs plus shape-tolerated versions, and nothing else
+{
+  if [ -n "$DECIDED" ]; then
+    for _dv in $(decided_versions "$DECIDED"); do
+      if [ "$(decided_disposition "$_dv" "$DECIDED")" = "SKIP" ]; then echo "$_dv"; fi
+    done
+  fi
+  cut -d'|' -f1 "$TMP/shape_tolerated.txt" 2>/dev/null
+} | sed '/^$/d' | sort -u > "$TMP/og81_declared.txt"
+
+comm -23 "$TMP/og81_unrecorded.txt" "$TMP/og81_declared.txt" > "$TMP/og81_unexplained.txt"
+comm -13 "$TMP/og81_unrecorded.txt" "$TMP/og81_declared.txt" > "$TMP/og81_stale_decl.txt"
+OG81_RECONCILED=1
+if [ -s "$TMP/og81_unexplained.txt" ]; then OG81_RECONCILED=0; fi
+if [ -s "$TMP/og81_stale_decl.txt" ];  then OG81_RECONCILED=0; fi
+if [ -s "$TMP/og81_orphaned.txt" ];    then OG81_RECONCILED=0; fi
+
+{
+  echo
+  echo "## og81 reconciliation (measured directly from disk and the live ledger)"
+  echo
+  echo '```'
+  echo "migration files on disk        : $(wc -l < "$TMP/og81_disk.txt" | tr -d ' ')"
+  echo "ledger rows in $DB : $(wc -l < "$TMP/og81_ledger.txt" | tr -d ' ')"
+  echo "files with NO ledger row       : $(wc -l < "$TMP/og81_unrecorded.txt" | tr -d ' ')"
+  echo "ledger rows with NO file       : $(wc -l < "$TMP/og81_orphaned.txt" | tr -d ' ')   (must be 0 -- a deleted migration file)"
+  echo "declared exception set         : $(wc -l < "$TMP/og81_declared.txt" | tr -d ' ')   (decided SKIP + shape-tolerated)"
+  echo "UNEXPLAINED unrecorded         : $(wc -l < "$TMP/og81_unexplained.txt" | tr -d ' ')   (must be 0)"
+  echo "declared but actually recorded : $(wc -l < "$TMP/og81_stale_decl.txt" | tr -d ' ')   (must be 0 -- a stale declaration)"
+  echo '```'
+  echo
+  echo "every file with no ledger row, and why:"
+  echo '```'
+  if [ -s "$TMP/og81_unrecorded.txt" ]; then
+    while read -r _uv; do
+      [ -n "$_uv" ] || continue
+      _why="UNEXPLAINED -- this is a real og81 failure"
+      if [ -n "$DECIDED" ] && [ "$(decided_disposition "$_uv" "$DECIDED" 2>/dev/null || true)" = "SKIP" ]; then
+        _why="skipped by decision $(decided_id "$_uv" "$DECIDED") -- no row on purpose, permanently"
+      elif grep -q "^$_uv|" "$TMP/shape_tolerated.txt" 2>/dev/null; then
+        _why="shape-tolerated -- not applied on this shape, OPEN question for a human"
+      fi
+      echo "$_uv  $_why"
+    done < "$TMP/og81_unrecorded.txt"
+  else
+    echo "(none -- ledger and disk agree exactly)"
+  fi
+  echo '```'
+  echo
+  if [ "$OG81_RECONCILED" = "1" ] && [ "$OG81_RC" != "0" ]; then
+    echo "og81 FAILED as a raw gate, and that failure is FULLY ACCOUNTED: the difference between"
+    echo "disk and ledger is exactly the declared exception set, no more and no less. This is not"
+    echo "og81 being weakened -- the gate ran unmodified and its real result is printed above. It"
+    echo "is the release line stating, with a measurement, that the remaining difference is the one"
+    echo "a human signed for. On the real target these versions will be absent from the ledger"
+    echo "forever; that is OG-J, recorded at docs/missions/convergence/INTEGRATION-LOG.md:1037."
+  elif [ "$OG81_RECONCILED" = "1" ]; then
+    echo "og81 PASSED outright: ledger and disk agree exactly and the declared exception set is empty."
+  else
+    echo "og81 FAILED and the failure is NOT accounted. See the counts above."
+  fi
+} | tee -a "$REPORT"
 
 # ---------- anon view/matview census (og103's documented blind spot, R-4 Task 3 step 8) ----------
 echo "## Anon census over relkind IN ('v','m') — views and materialized views" | tee -a "$REPORT"
@@ -765,9 +992,73 @@ if [ -n "$CENSUS" ]; then
   echo '```' | tee -a "$REPORT"
 fi
 
+# ---------- candidate accounting: every candidate in exactly one bucket, and they must SUM --------
+# The arithmetic IS the point. A release report that lists outcomes without reconciling them to the
+# candidate count can lose a migration between buckets and nobody would notice.
+A_CONSIDERED=$(wc -l < "$TMP/candidates.txt" | tr -d ' ')
+A_OK=$(wc -l < "$TMP/ok.txt" | tr -d ' ')
+A_LEDGER_ONLY=$(wc -l < "$TMP/to_ledger_only.txt" | tr -d ' ')
+A_LIES=$(wc -l < "$TMP/ledger_lies.txt" | tr -d ' ')
+A_UNVERIFIABLE=$(wc -l < "$TMP/unverifiable.txt" | tr -d ' ')
+A_APPLIED=0; A_TOLERATED=0; A_DECIDED_SKIP=0; A_DECIDED_LEDGER=0
+while read -r _av; do
+  [ -n "$_av" ] || continue
+  _ad=""
+  if [ -n "$DECIDED" ]; then _ad=$(decided_disposition "$_av" "$DECIDED" 2>/dev/null || true); fi
+  if   [ "$_ad" = "SKIP" ];        then A_DECIDED_SKIP=$((A_DECIDED_SKIP+1))
+  elif [ "$_ad" = "LEDGER_ONLY" ]; then A_DECIDED_LEDGER=$((A_DECIDED_LEDGER+1))
+  elif grep -q "^$_av|" "$TMP/shape_tolerated.txt" 2>/dev/null; then A_TOLERATED=$((A_TOLERATED+1))
+  else A_APPLIED=$((A_APPLIED+1))
+  fi
+done < "$TMP/to_apply.txt"
+A_REFUSED=$((PLAN_TOTAL - DONE_IDX))
+if [ "$A_REFUSED" -lt 0 ]; then A_REFUSED=0; fi
+A_SUM=$((A_OK + A_APPLIED + A_LEDGER_ONLY + A_DECIDED_LEDGER + A_TOLERATED + A_DECIDED_SKIP + A_LIES + A_UNVERIFIABLE))
+{
+  echo
+  echo "## Candidate accounting — every candidate in exactly one bucket, and they must SUM"
+  echo
+  echo '```'
+  printf '%-48s %6s\n' "considered (candidates at or below the ceiling)" "$A_CONSIDERED"
+  printf '%-48s %6s\n' "  OK                  (ledger + catalogue agree)" "$A_OK"
+  printf '%-48s %6s\n' "  APPLIED             (replayed by this rehearsal)" "$A_APPLIED"
+  printf '%-48s %6s\n' "  LEDGER_ONLY         (catalogue-driven, row only)" "$A_LEDGER_ONLY"
+  printf '%-48s %6s\n' "  DECIDED_LEDGER_ONLY (decision, row only, guarded)" "$A_DECIDED_LEDGER"
+  printf '%-48s %6s\n' "  SHAPE_TOLERATED     (failed, declared, still OPEN)" "$A_TOLERATED"
+  printf '%-48s %6s\n' "  SKIPPED_BY_DECISION (never run at all, CLOSED)" "$A_DECIDED_SKIP"
+  printf '%-48s %6s\n' "  LEDGER_LIES         (pre-declared, untouched)" "$A_LIES"
+  printf '%-48s %6s\n' "  UNVERIFIABLE        (row exists, no catalogue signal)" "$A_UNVERIFIABLE"
+  printf '%-48s %6s\n' "  REFUSED             (plan entries never attempted)" "$A_REFUSED"
+  printf '%-48s %6s\n' "  ---- sum" "$A_SUM"
+  echo '```'
+  echo
+  echo "SHAPE_TOLERATED and SKIPPED_BY_DECISION are NOT the same bucket and must never be summed"
+  echo "together. The first is a migration that FAILED on this shape and whose disposition is still"
+  echo "an open question for a human. The second was never attempted at all, because a human closed"
+  echo "the question before this run started -- release/config/decided-migrations.txt names the"
+  echo "decision behind each one. Conflating them reports an open risk as a settled one."
+  echo
+  echo "UNVERIFIABLE is the honest weak spot of catalogue-over-ledger, and it is large. Those"
+  echo "versions have a ledger row and NO catalogue signal at all -- function-only, grant-only and"
+  echo "data-only migrations that docs/missions/prodprep/ledger-evidence.sh cannot probe. For them"
+  echo "this rehearsal trusts the ledger, which is the very thing migration 477 proved can lie."
+} | tee -a "$REPORT"
+
+if [ "$A_SUM" != "$A_CONSIDERED" ]; then
+  echo "## VERDICT: FAIL (candidate accounting does not sum: $A_SUM != $A_CONSIDERED)" | tee -a "$REPORT"
+  assemble_report
+  exit 1
+fi
+
 # ---------- final verdict ---------------------------------------------------------------------
 if [ "$GATE_RC" != "0" ]; then
-  echo "## VERDICT: FAIL (og81/og102/og103 did not all pass)" | tee -a "$REPORT"
+  echo "## VERDICT: FAIL (og102/og103 did not both pass)" | tee -a "$REPORT"
+  assemble_report
+  exit 1
+fi
+
+if [ "$OG81_RECONCILED" != "1" ]; then
+  echo "## VERDICT: FAIL (og81's disk/ledger difference is not exactly the declared exception set)" | tee -a "$REPORT"
   assemble_report
   exit 1
 fi

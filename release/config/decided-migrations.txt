@@ -1,0 +1,68 @@
+# decided-migrations.txt — migrations whose disposition on the release target was DECIDED by a
+# human, on the record, BEFORE any rehearsal ran. Consumed by release/lib/decided-migrations.sh
+# via release/rehearse.ps1 -Decided <this file> and release/apply-release.ps1 -Decided <this file>.
+#
+# Format: VERSION|DISPOSITION|DECISION_ID|GUARD_SQL|GUARD_EXPECT|REASON
+# See release/lib/decided-migrations.sh's header for the full contract. Comments start with '#'.
+#
+# ============================================================================================
+# WHY THIS FILE IS NOT release/config/known-shape-tolerant-migrations.txt
+# ============================================================================================
+# Shape tolerance is REACTIVE: the engine runs the migration, the migration raises, the error text
+# matches a declaration, and the run continues with the version left as an OPEN question — a
+# "HUMAN REVIEW REQUIRED" block in the release document, because nobody has decided yet what the
+# real target should do.
+#
+# This file is DECLARATIVE and PRIOR: the SQL is never delivered to the container and never runs,
+# so there is no error to tolerate. The question is CLOSED — a human already answered it and the
+# answer is recorded elsewhere in the repository, cited per line below.
+#
+# Conflating the two would report "this failed and we continued" and "we decided never to run
+# this" as the same thing. They are opposites for anyone reading the report to decide whether the
+# release is safe. The engine counts and renders them separately, deliberately.
+#
+# ============================================================================================
+# OG-J — 449 / 450 / 452: PERMANENTLY SKIPPED, NO LEDGER ROW
+# ============================================================================================
+# Recorded at docs/missions/convergence/STATE.md:750 and
+# docs/missions/convergence/INTEGRATION-LOG.md:342-352 (the schema-diff table) and 1037-1058
+# (Decision 4, with the reasoning).
+#
+# These three retire and rename tables on the TEST computer. Nothing performed that work on
+# production and nothing ever will, so a ledger row for them would be a FALSE STATEMENT about
+# production's schema — exactly the failure e2e/security/og81-migration-ledger-matches-disk.spec.ts
+# was written to catch. og81 fails in BOTH directions on purpose, so "insert the row to make og81
+# green" is the single thing that must never be done here.
+#
+# THE ACCEPTED CONSEQUENCE, stated so the next reader does not try to "close the gap":
+# six zz_retired_* table names differ between test and production FOREVER, plus
+# payment_receipts_backup_20260722, which 450 dropped on test and which production still has. That
+# divergence is precisely what made migration 477 — a static REVOKE list generated from the test
+# catalogue — abort on production on 2026-09-12 and need re-issuing as 523 (477 minus the six) and
+# 524 (catalogue-driven, closing them under their production names).
+#
+# It is ALSO why these three cannot simply be applied: E-4's replay measured, on a restore of the
+# 2026-09-13 production dump, that 449 and 450 assert the test computer's literal row counts as
+# preconditions —
+#     449: daily_capital_snapshots expected 10 rows, found 0
+#     449: daily_capital_inputs    expected  2 rows, found 0
+#     450: backup_142 / backup_20260722 expected 18 rows, found 16; knowledge_documents 1 vs 0
+# — so they abort on production's shape permanently. The decision predates that measurement and
+# the measurement confirms it.
+20260905171000|SKIP|OG-J||| 449 retire daily capital functions. Nothing performed this work on production; a ledger row would be false. ACCEPTED DIVERGENCE, not a gap.
+20260905171500|SKIP|OG-J||| 450 retire superseded tables. Same decision; production keeps payment_receipts_backup_20260722 forever.
+20260905180000|SKIP|OG-J||| 452 retire parameter weight backups by rename. Same decision; the zz_retired_* names differ between test and production forever.
+#
+# ============================================================================================
+# OG-C — 373: LEDGER-ROW-ONLY, GUARDED
+# ============================================================================================
+# Recorded at docs/missions/convergence/STATE.md:749 and INTEGRATION-LOG.md:338 and 1028-1034:
+# "373 is NOT re-run. The row is inserted after checking anon_default_acl = 0, and only if that
+# check passes. It is the only one of the nine that gets a ledger row."
+#
+# The guard below is that check, expressed as the same query the rehearsal's own Preflight snapshot
+# already runs (release/lib/rehearse-engine.sh, the PREFLIGHT block) so the two cannot disagree:
+# if pg_default_acl carries no entry mentioning anon, 373's work is already done and re-running it
+# would be a schema mutation nobody asked for. If the guard does NOT return 0, the premise behind
+# the decision is untrue of this target and the engine STOPS — it does not warn and continue.
+20260822210000|LEDGER_ONLY|OG-C|SELECT count(*) FROM pg_default_acl WHERE defaclacl::text LIKE '%anon%'|0| 373 close anon default privileges. Effect already present when the guard reads 0; the row makes the ledger true instead of false. Never re-run.

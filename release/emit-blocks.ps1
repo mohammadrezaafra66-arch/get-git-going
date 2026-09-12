@@ -22,7 +22,12 @@ param(
     [Parameter(Mandatory = $true)][string]$RehearsalReport,
     [Parameter(Mandatory = $true)][string]$Date,
     [string]$BuildManifest = "",
-    [string]$Tarball = ""
+    [string]$Tarball = "",
+    # The same decision file the rehearsal was run with (release/config/decided-migrations.txt).
+    # It carries the DECISION_ID, the guard and the reason behind every decided version, so an
+    # emitted block can CITE the decision instead of asserting it. Optional, but the script warns
+    # if the report contains decided versions and this is not supplied.
+    [string]$Decided = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -126,8 +131,32 @@ Write-Host "Sequenced expectations parsed for $($noticesByVersion.Keys.Count) mi
 $applyList = $classified | Where-Object { $_.Bucket -eq 'APPLY' } | Sort-Object Version
 $ledgerOnlyList = $classified | Where-Object { $_.Bucket -eq 'LEDGER_ONLY' } | Sort-Object Version
 $shapeTolerantList = $classified | Where-Object { $_.Bucket -eq 'SHAPE_TOLERATED' } | Sort-Object Version
+# THE THIRD CATEGORY. Not shape tolerance, and rendered nothing like it -- see the block emitters
+# further down. SHAPE_TOLERATED means "it failed here and a human still has to decide";
+# DECISION_SKIPPED means "a human already decided it never runs, and it gets no ledger row".
+$decisionSkippedList = $classified | Where-Object { $_.Bucket -eq 'DECISION_SKIPPED' } | Sort-Object Version
+$decidedLedgerOnlyList = $classified | Where-Object { $_.Bucket -eq 'DECIDED_LEDGER_ONLY' } | Sort-Object Version
 
-Write-Host "Parsed rehearsal: $($applyList.Count) APPLY, $($ledgerOnlyList.Count) LEDGER_ONLY, $($shapeTolerantList.Count) SHAPE_TOLERATED" -ForegroundColor Cyan
+# --- decision file: DECISION_ID, guard and reason per version, so a block can cite its source ----
+$decisionById = @{}
+if ($Decided -ne "" -and (Test-Path $Decided)) {
+    foreach ($dl in (Get-Content -Path $Decided -Encoding UTF8)) {
+        if ($dl.Trim() -eq "" -or $dl.TrimStart().StartsWith("#")) { continue }
+        $f = $dl -split '\|', 6
+        if ($f.Count -ge 6) {
+            $decisionById[$f[0]] = [PSCustomObject]@{
+                Disposition = $f[1]; DecisionId = $f[2]
+                GuardSql = $f[3]; GuardExpect = $f[4]; Reason = $f[5].Trim()
+            }
+        }
+    }
+    Write-Host "Decision file parsed: $($decisionById.Keys.Count) declared version(s)" -ForegroundColor Cyan
+} elseif ($decisionSkippedList.Count -gt 0 -or $decidedLedgerOnlyList.Count -gt 0) {
+    Write-Host "WARNING: the rehearsal report contains decided versions but -Decided was not supplied;" -ForegroundColor Yellow
+    Write-Host "         their blocks will render without the decision's own reason text." -ForegroundColor Yellow
+}
+
+Write-Host "Parsed rehearsal: $($applyList.Count) APPLY, $($ledgerOnlyList.Count) LEDGER_ONLY, $($shapeTolerantList.Count) SHAPE_TOLERATED, $($decisionSkippedList.Count) DECISION_SKIPPED, $($decidedLedgerOnlyList.Count) DECIDED_LEDGER_ONLY" -ForegroundColor Cyan
 
 $outDir = Join-Path $PSScriptRoot "out"
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
@@ -370,6 +399,76 @@ automatic block -- do not run mig_apply for this version from this document as w
     Add-Line "Expect: whether the target already has the object this migration alters, then either"
     Add-Line "Expect: run mig_apply by hand or, if the target genuinely lacks it too, treat this as"
     Add-Line "Expect: a real gap and escalate (CLAUDE.md rule 6: fix forward, never edit the old file)"
+    Add-Line ""
+    $blockN++
+}
+
+# --- ledger-row-only BY RECORDED DECISION (e.g. OG-C / migration 373) ---------------------------
+# Distinct from the catalogue-driven LEDGER_ONLY blocks above: those were classified by measuring
+# the live catalogue during this rehearsal. These were decided by a human beforehand, and the
+# block cites the decision and carries its guard, because the decision rests on the guard being
+# true of THIS target -- not of the one the decision was written against.
+foreach ($m in $decidedLedgerOnlyList) {
+    $d = $decisionById[$m.Version]
+    $did = if ($d) { $d.DecisionId } else { "(decision file not supplied)" }
+    Add-Line "### Block $blockN - ledger-row-only BY DECISION $did - $($m.Version) . $($m.File)"
+    Add-Line ""
+    if ($d) { Add-Line "Decision $($d.DecisionId): $($d.Reason)" ; Add-Line "" }
+    [void]$sb.AppendLine(@'
+The SQL is NOT re-run -- the decision says so, and CLAUDE.md rule 2b says re-running a migration
+to "make the ledger right" is how a non-idempotent one does real damage. Only the ledger row is
+written, and only after the guard below holds on THIS target. A guard that disagrees is a STOP,
+not a warning: it means the premise the decision rested on is not true here.
+'@)
+    Add-Line ""
+    if ($d -and $d.GuardSql -ne "") {
+        Add-Line "    docker exec afrakala-lan-db psql -U supabase_admin -d postgres -tAc \"
+        [void]$sb.AppendLine("      ""$($d.GuardSql);""")
+        Add-Line ""
+        Add-Line "Expect: $($d.GuardExpect)"
+        Add-Line "Expect: any other value = STOP. Do not write the ledger row; escalate."
+        Add-Line ""
+    }
+    Add-Line "    ledger_insert_only $($m.Version)"
+    Add-Line ""
+    Add-Line "Expect: INSERT 0 1"
+    Add-Line "Expect: OK ledger-row-only $($m.Version)"
+    Add-Line ""
+    $blockN++
+}
+
+# --- SKIPPED BY RECORDED DECISION -- the third category, and the one that must not be confused ---
+# with shape tolerance above. A shape-tolerated block says "this failed here and a human must
+# decide". This one says "a human already decided, and the answer is that it never runs and never
+# gets a ledger row". There is deliberately NO executable directive in this block: nothing for
+# release/lib/apply-release-engine.sh to match, so nothing can be run from it by accident.
+foreach ($m in $decisionSkippedList) {
+    $d = $decisionById[$m.Version]
+    $did = if ($d) { $d.DecisionId } else { "(decision file not supplied)" }
+    Add-Line "### Block $blockN - SKIPPED BY DECISION $did - DO NOT RUN - $($m.Version) . $($m.File)"
+    Add-Line ""
+    if ($d) { Add-Line "Decision $($d.DecisionId): $($d.Reason)" ; Add-Line "" }
+    [void]$sb.AppendLine(@'
+This is NOT a tolerated failure and NOT an omission. The migration was never attempted during the
+rehearsal -- its SQL was never delivered to the container and nothing raised -- because a human
+decided beforehand that it does not run on this target. Nothing performed its work here, so a
+ledger row would be a FALSE statement about the schema, which is precisely what
+e2e/security/og81-migration-ledger-matches-disk.spec.ts exists to catch. og81 fails in BOTH
+directions on purpose, so "insert the row to make og81 green" is the one thing never to do here.
+
+THE ACCEPTED CONSEQUENCE: this version will be absent from the target's ledger FOREVER, and the
+repository's file set and the target's schema will never agree about it. That is the decision, not
+a gap for a later release to close. The reasoning is recorded in
+docs/missions/convergence/INTEGRATION-LOG.md (Decision 4, OG-J) and STATE.md.
+
+    # Nothing to run. Confirm only that the decision still holds -- the row must NOT be there:
+'@)
+    Add-Line "    docker exec afrakala-lan-db psql -U supabase_admin -d postgres -tAc \"
+    [void]$sb.AppendLine("      ""SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version = '$($m.Version)';""")
+    Add-Line ""
+    Add-Line "Expect: 0 (no ledger row, permanently, by decision $did)"
+    Add-Line "Expect: do NOT run mig_apply for this version, and do NOT insert the row"
+    Add-Line "Expect: a value of 1 here means someone recorded it anyway -- STOP and escalate"
     Add-Line ""
     $blockN++
 }

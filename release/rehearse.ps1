@@ -49,6 +49,19 @@
 #   file format and full rationale. Omitting this flag changes nothing — the pre-existing hard-stop
 #   behaviour on any replay failure is unchanged.
 #
+# -Decided <path> (THE THIRD CATEGORY -- read this before assuming it duplicates -ShapeTolerant):
+#   pre-declares versions whose disposition a human already DECIDED, on the record, before any
+#   rehearsal ran. -ShapeTolerant is REACTIVE -- run the migration, catch the error, match the text,
+#   continue, and leave the version an OPEN question ("HUMAN REVIEW REQUIRED" in the release
+#   document). -Decided is DECLARATIVE and PRIOR -- the SQL is never delivered and never runs, so
+#   there is no error to tolerate, and the question is CLOSED. Two dispositions: SKIP (no SQL, NO
+#   ledger row -- the absence IS the decision, e.g. OG-J for migrations 449/450/452) and
+#   LEDGER_ONLY (no SQL, ledger row written only after a declared guard checks out, e.g. OG-C for
+#   migration 373). The engine counts and renders the two mechanisms separately and never sums
+#   them: "this failed and we continued" and "we decided never to run this" are opposite facts, and
+#   conflating them is how a release line starts lying. See release/lib/decided-migrations.sh and
+#   release/config/decided-migrations.txt.
+#
 # OUTPUT
 #   release/out/rehearsal-<date>.md — full report: restore source + md5, ledger state BEFORE
 #   replay, per-migration classification, replay log, og81/og102/og103 results, anon view/matview
@@ -72,6 +85,7 @@ param(
     [string]$Ceiling = "",
     [string]$KnownLedgerLies = "",
     [string]$ShapeTolerant = "",
+    [string]$Decided = "",
     [switch]$RestoreOnly,
     [switch]$Replay,
     [switch]$GatesOnly,
@@ -165,6 +179,10 @@ if ($KnownLedgerLies -ne "") {
 if ($ShapeTolerant -ne "") {
     $stResolved = Resolve-Path $ShapeTolerant
     $bashArgs += @("--shape-tolerant", $stResolved.Path.Replace('\', '/'))
+}
+if ($Decided -ne "") {
+    $dcResolved = Resolve-Path $Decided
+    $bashArgs += @("--decided", $dcResolved.Path.Replace('\', '/'))
 }
 
 Write-Host "Running rehearsal engine (bash) ..." -ForegroundColor Cyan

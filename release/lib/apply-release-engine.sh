@@ -16,9 +16,16 @@ export MSYS_NO_PATHCONV=1
 
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SELF_DIR/mig-apply.sh"
+# The decision file is consulted here as DEFENCE IN DEPTH, not as the primary control. The release
+# document already renders a decided version as a non-executable block, so nothing should reach
+# this engine for one. If a hand-edited document ever does carry a mig_apply line for a version
+# declared SKIP, this engine refuses it rather than trusting the document -- and for a decided
+# LEDGER_ONLY it re-checks the guard here, against the REAL target, because a guard that held on
+# the rehearsal shape is not evidence about production.
+source "$SELF_DIR/decided-migrations.sh"
 
 RELEASE_MD="" CONTAINER="afrakala-lan-db" DBUSER="supabase_admin" TARGET_DB=""
-MIGDIR="supabase/migrations" REPO_ROOT="." LOG=""
+MIGDIR="supabase/migrations" REPO_ROOT="." LOG="" DECIDED=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -29,6 +36,7 @@ while [ $# -gt 0 ]; do
     --migdir) MIGDIR="$2"; shift 2;;
     --repo-root) REPO_ROOT="$2"; shift 2;;
     --log) LOG="$2"; shift 2;;
+    --decided) DECIDED="$2"; shift 2;;
     *) echo "unknown arg: $1"; exit 2;;
   esac
 done
@@ -68,11 +76,30 @@ process_block() {
   case "$kind" in
     APPLY)
       local path="$MIGDIR/$file"
+      if [ -n "$DECIDED" ] && [ "$(decided_disposition "$ver" "$DECIDED" 2>/dev/null || true)" = "SKIP" ]; then
+        log "REFUSED: this document carries a mig_apply line for $ver, which decision"
+        log "$(decided_id "$ver" "$DECIDED") declares PERMANENTLY SKIPPED on this target. The document and the"
+        log "decision file disagree; running it would perform work a human decided must not happen."
+        return 1
+      fi
       log "Block: mig_apply $ver $file"
       mig_apply "$CONTAINER" "$DBUSER" "$TARGET_DB" "$ver" "$path" 2>&1 | tee -a "$LOG"
       return "${PIPESTATUS[0]}"
       ;;
     LEDGER_ONLY)
+      if [ -n "$DECIDED" ] && [ "$(decided_disposition "$ver" "$DECIDED" 2>/dev/null || true)" = "LEDGER_ONLY" ]; then
+        local gsql gexp got
+        gsql=$(decided_guard_sql "$ver" "$DECIDED"); gexp=$(decided_guard_expect "$ver" "$DECIDED")
+        if [ -n "$gsql" ]; then
+          got=$(psql_scalar "$CONTAINER" "$DBUSER" "$TARGET_DB" "$gsql")
+          log "DECISION GUARD $(decided_id "$ver" "$DECIDED") for $ver: got [$got], expected [$gexp]"
+          if [ "$got" != "$gexp" ]; then
+            log "REFUSED: the guard behind this decision does not hold on $TARGET_DB. The premise the"
+            log "decision rested on is not true here, so the ledger row must NOT be written."
+            return 1
+          fi
+        fi
+      fi
       log "Block: ledger_insert_only $ver"
       ledger_insert_only "$CONTAINER" "$DBUSER" "$TARGET_DB" "$ver" 2>&1 | tee -a "$LOG"
       return "${PIPESTATUS[0]}"

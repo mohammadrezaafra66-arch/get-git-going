@@ -523,3 +523,73 @@ Every other `prod_rehearsal_*` database, plus `afrakala` and `postgres`, untouch
 - E4-3, E4-4 (emit half), E4-5, E4-6: BLOCKED behind migrations 449 and 450.
 - The next agent can resume from plan index 7 without a fresh restore - the database is still
   there and `release/runs/e4b/progress.txt` says 6.
+
+
+---
+
+## Checkpoint 7 — the THIRD CATEGORY exists: skipped by recorded decision (2026-09-13)
+
+The previous run stopped at plan index 7 on migrations 449/450, and refused both to fix them
+(migrations are out of this role's permissions) and to declare them shape-tolerant (nothing
+re-issues their work, so tolerating would silently drop it). That refusal was correct on the
+information it had. What it was missing is a decision that already existed in this repository:
+
+```
+$ grep -n "OG-J\|OG-C" docs/missions/convergence/STATE.md
+749:- **OG-C** — 373: ledger row only, never re-run, and only after `anon_default_acl = 0` checks out.
+750:- **OG-J** — 449/450/452: permanently skipped, **no ledger row**, because nothing did their work.
+```
+with the full reasoning at `docs/missions/convergence/INTEGRATION-LOG.md:342-352` and `:1028-1058`.
+
+So 449/450/452 are neither a tolerated error nor dropped work. They are a third thing: **skipped
+by recorded decision, no ledger row, permanently** — accepted divergence. The engine had no such
+category. It does now, and it is visibly different from shape tolerance everywhere downstream,
+because conflating "this failed and we continued" with "we decided never to run this" is exactly
+how a release line starts lying.
+
+### What was built
+- `release/lib/decided-migrations.sh` — the parser and its rationale. Two dispositions: `SKIP`
+  (no SQL, NO ledger row) and `LEDGER_ONLY` (no SQL, ledger row only after a declared guard holds).
+- `release/config/decided-migrations.txt` — 449/450/452 as `SKIP` under OG-J; 373 as `LEDGER_ONLY`
+  under OG-C with its `anon_default_acl = 0` guard. Every line cites the decision's own file:line.
+- `release/lib/rehearse-engine.sh` — `--decided`; the replay loop checks the decision **before**
+  attempting the migration (shape tolerance only ever looks **after** a failure — that is the
+  mechanical difference); new `## Decided dispositions`, `## Decision exercise record`,
+  `## og81 reconciliation` and `## Candidate accounting` sections; og81 now runs ALONE, unmodified,
+  and its result is reconciled against the declared exception set instead of being read raw.
+- `release/rehearse.ps1` / `release/apply-release.ps1` — `-Decided <path>`.
+- `release/lib/apply-release-engine.sh` — defence in depth: refuses a `mig_apply` line for a
+  version declared `SKIP`, and re-checks a decided `LEDGER_ONLY` guard against the REAL target.
+- `release/emit-blocks.ps1` — `DECISION_SKIPPED` blocks carry **no executable directive at all**,
+  so nothing can be run from them by accident; `DECIDED_LEDGER_ONLY` blocks carry the guard first.
+
+### E3 — unit evidence, re-runnable without docker
+```
+$ bash -n release/lib/decided-migrations.sh                      exit=0
+$ bash -n release/lib/rehearse-engine.sh                         exit=0
+$ bash -n release/lib/apply-release-engine.sh                    exit=0
+$ source release/lib/decided-migrations.sh; F=release/config/decided-migrations.txt
+A declared SKIP        : disp=[SKIP]        id=[OG-J] rc=0
+B declared LEDGER_ONLY : disp=[LEDGER_ONLY] guard=[SELECT count(*) FROM pg_default_acl WHERE defaclacl::text LIKE '%anon%'] expect=[0]
+C undeclared version   : rc=1
+D no file at all       : rc=1        <- safe default: nothing is decided unless declared
+E all declared versions: 20260905171000 20260905171500 20260905180000 20260822210000
+$ [Parser]::ParseFile on all five release/*.ps1                  parse-errors=0 each
+```
+
+### E4-7a — `release/runs/` gitignored
+19 run artefacts were showing as untracked work. `git status --porcelain` before: 19 `??` lines
+under `release/runs/e4b/`. After: none. The deliverable is `release/out/`, which stays tracked.
+
+## EXACT NEXT COMMAND (E4-3)
+```
+.\release\rehearse.ps1 -Date e4b -Replay -BatchSize 8 `
+  -ShapeTolerant release\config\known-shape-tolerant-migrations.txt `
+  -Decided release\config\decided-migrations.txt
+```
+repeated until `REPLAY COMPLETE`. Never one batch of 22.
+
+## WHAT WOULD PROVE THAT STEP DONE
+The replay passing plan indices 7, 8 and 9 with `SKIPPED BY DECISION OG-J` and a ledger delta of
+0 for those three, then reaching `REPLAY COMPLETE`, then a gates run whose report ends
+`## VERDICT: PASS` with a candidate accounting that sums to 703.
