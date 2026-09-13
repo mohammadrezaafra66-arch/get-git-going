@@ -657,27 +657,88 @@ was not. Every VITE_* value was a build arg, the deploy used --no-build, so the 
 never applied and nothing ever looked at what was actually inside the image. This block looks at
 the served bundle and nothing else. An env-file check would have passed that day.
 
-Under runtime configuration the client bundle must contain NO host literal at all: the address
-arrives at runtime from the container environment. So the probe is not "does it contain the right
-host" -- it is "does it contain ANY host", which is a stronger and simpler property.
+Under runtime configuration the client bundle must contain NO host literal: the address arrives
+at runtime from the container environment. So the probe is not "does it contain the right host"
+-- it is "does it contain ANY host", which is a stronger and simpler property.
+
+B1, 2026-09-14. The first version of (i) matched only http(s)://IPv4:port, so a bundle carrying
+http://kong:8000 or https://<ref>.supabase.co passed. (i) is now DEFAULT-DENY: every URL literal
+in the client bundle is either on a reviewed list or a failure. A minified bundle cannot tell a
+fetch base from help text -- both are string literals -- so the probe does not guess intent:
+  - an IP literal, an explicit port, a dotless name (kong, localhost), a private suffix
+  (.local/.lan/.internal/...) or a Supabase host ALWAYS fails, whatever list a host is on;
+  - illustrative text of that shape is allowed only as that EXACT literal and only up to the
+  number of times it was measured in the bundle, so reusing it as a real endpoint fails;
+  - any other host must be a reviewed public third party (links, placeholders, schema ids).
+A new third-party host fails loudly and by name; the fix is one reviewed line in this emitter.
 '@)
 Add-Line ""
 Add-Line "    `$img    = 'afrakala-app:$d1BuildSha'"
 Add-Line "    `$target = '$D6TargetHost'"
 [void]$sb.AppendLine(@'
-    # (i) no baked host literal in the CLIENT bundle
-    $found = docker run --rm --entrypoint sh $img -c "grep -rhoE 'https?://[0-9]{1,3}(\.[0-9]{1,3}){3}:[0-9]+' /app/.output/public 2>/dev/null | sort -u"
-    # Allowlisted: UI help text in src/routes/_app.admin.ai-providers.tsx that SHOWS an operator
-    # what an Ollama URL looks like. It is displayed, never fetched. Anything else is a failure.
-    $allow = @("http://192.168.170.8:11434")
-    $bad = @($found | Where-Object { $_ -and ($allow -notcontains $_.Trim()) })
+    # (0) the image must exist, or every check below measures nothing and passes.
+    if (-not (docker images -q $img)) {
+      Write-Host "FAIL D6(0): image $img does not exist on this machine. Nothing was measured."
+      exit 1
+    }
+
+    # (i) no host literal in the CLIENT bundle
+    $scan = docker run --rm --entrypoint sh $img -c "find /app/.output/public -type f -name '*.js' | wc -l | sed 's/^/SCANNED /'; grep -rhoE '(https?|wss?):(//|\\/\\/)[][:alnum:]._~%:@-]*' /app/.output/public; grep -rhoE '[a-z0-9]{20}\.supabase\.(co|in)' /app/.output/public; true"
+    $scanExit = $LASTEXITCODE
+    $scanned = 0
+    $hits = @()
+    foreach ($l in @($scan)) {
+      $s = ([string]$l).Trim()
+      if ($s -match '^SCANNED\s+(\d+)$') { $scanned = [int]$Matches[1] } elseif ($s) { $hits += ($s -replace '\\/', '/') }
+    }
+    if ($scanExit -ne 0 -or $scanned -lt 1) {
+      Write-Host "FAIL D6(i): the scan measured nothing (docker exit $scanExit, $scanned js file(s) read)."
+      exit 1
+    }
+    # Backend-SHAPED literals that are not endpoints: exact string -> most occurrences allowed.
+    $allowExact = @{
+      'http://192.168.170.8:11434' = 1  # src/routes/_app.admin.ai-providers.tsx:95 -- help text shown to an operator
+      'http://localhost:9999'      = 1  # @supabase/auth-js GOTRUE_URL -- default used only when no url is given
+      'http://localhost'           = 1  # router origin fallback when window.origin is "null"
+      'http://macVmlSchemaUri'     = 1  # xlsx XML namespace identifier, never fetched
+    }
+    # Reviewed public third-party hosts (links, input placeholders, XML/JSON-schema ids).
+    $allowHosts = @('www.w3.org', 'schemas.openxmlformats.org', 'sheetjs.openxmlformats.org',
+      'schemas.microsoft.com', 'purl.org', 'purl.oclc.org', 'openoffice.org', 'docs.oasis-open.org',
+      'json-schema.org', 'schema.org', 'jspdf.default.namespaceuri', 'github.com', 'shahabyazdi.github.io',
+      'momentjs.com', 'react.dev', 'fb.me', 'cdnjs.cloudflare.com', 'example.com', 'api.example.com',
+      'api.openai.com', 'ai.gateway.lovable.dev', 'get-git-going.lovable.app',
+      'pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev', 'myafrakala.ir', 'torob.com', 'app.didar.me',
+      'wa.me', 'chat.whatsapp.com', 'eitaa.com', 'rubika.ir', 'ble.ir')
+    $bad = @()
+    foreach ($g in @($hits | Group-Object)) {
+      $lit = $g.Name
+      if ($lit -notmatch '://') { $bad += "$lit  (Supabase project host)"; continue }
+      $auth = ($lit -split '://', 2)[1] -replace '^[^@]*@', ''
+      if ($auth -notmatch '[A-Za-z0-9]') { continue }   # "https://" prefix tests, "https://..." prose
+      if ($allowExact.ContainsKey($lit)) {
+        if ($g.Count -gt $allowExact[$lit]) { $bad += "$lit  (allowed $($allowExact[$lit])x as illustrative text, found $($g.Count)x)" }
+        continue
+      }
+      $name = $auth; $port = ''
+      if ($auth -match '^(\[[^\]]*\]?)(:.*)?$' -or $auth -match '^([^:]*)(:.*)?$') { $name = $Matches[1]; $port = $Matches[2] }
+      $why = @()
+      if ($port) { $why += 'explicit port' }
+      if ($name -match '^\[' -or $name -match '^\d{1,3}(\.\d{1,3}){3}$') { $why += 'IP literal' }
+      elseif ($name -notmatch '\.') { $why += 'bare name with no dot' }
+      if ($name -match '\.(local|localdomain|lan|internal|intranet|home|corp|test|arpa)$') { $why += 'private suffix' }
+      if ($name -match '(^|\.)supabase\.(co|in)$') { $why += 'Supabase host' }
+      if ($why.Count -eq 0 -and $allowHosts -contains $name) { continue }
+      if ($why.Count -eq 0) { $why += 'host not on the reviewed list' }
+      $bad += "$lit  ($($why -join ', '))"
+    }
     if ($bad.Count -gt 0) {
-      Write-Host "FAIL D6(i): host literal(s) baked into the client bundle:"
+      Write-Host "FAIL D6(i): host literal(s) baked into the client bundle ($scanned js files read):"
       $bad | ForEach-Object { Write-Host "    $_" }
       Write-Host "    A host literal here means the image is tied to the machine that built it."
       exit 1
     }
-    Write-Host "OK D6(i): no baked host literal in the client bundle"
+    Write-Host "OK D6(i): no baked host literal in the client bundle ($scanned js files read, $($hits.Count) URL literal(s) classified)"
 
     # (ii) the runtime mechanism must actually be present in the bundle
     $hasCfg = docker run --rm --entrypoint sh $img -c "grep -rl __APP_RUNTIME_CONFIG__ /app/.output/public 2>/dev/null | head -1"
@@ -689,7 +750,15 @@ Add-Line "    `$target = '$D6TargetHost'"
     Write-Host "OK D6(ii): runtime config mechanism present"
 
     # (iii) this image, given THIS target's environment, must serve THIS target's address.
-    $served = docker run --rm --entrypoint sh -e SUPABASE_URL="http://${target}:8000" $img -c 'node .output/server/index.mjs >/dev/null 2>&1 & for i in $(seq 1 45); do wget -qO- http://127.0.0.1:3000/login >/dev/null 2>&1 && break; sleep 1; done; wget -qO- http://127.0.0.1:3000/login 2>/dev/null | grep -oE "\"supabaseUrl\":\"[^\"]*\"" | head -1'
+    # No double quote inside the sh -c argument: Windows PowerShell 5.1 does not escape an embedded
+    # " when calling a native exe, so sh received a cut string, $served came back $null, and
+    # `$null -notmatch` is False -- this check printed OK having measured nothing (B1, 2026-09-14).
+    $served = docker run --rm --entrypoint sh -e SUPABASE_URL="http://${target}:8000" $img -c 'node .output/server/index.mjs >/dev/null 2>&1 & for i in $(seq 1 45); do wget -qO- http://127.0.0.1:3000/login >/dev/null 2>&1 && break; sleep 1; done; wget -qO- http://127.0.0.1:3000/login 2>/dev/null | grep -oE ''.supabaseUrl.:.[^,}]*'' | head -1'
+    $served = [string]$served
+    if (-not $served) {
+      Write-Host "FAIL D6(iii): the image served no supabaseUrl at all. Nothing was measured."
+      exit 1
+    }
     if ($served -notmatch [regex]::Escape($target)) {
       Write-Host "FAIL D6(iii): served config does not name the target $target. Got: $served"
       exit 1
