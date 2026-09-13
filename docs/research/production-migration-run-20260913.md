@@ -541,3 +541,140 @@ environment. Rotating it is the owner's decision; nothing was rotated.
    **Both `VITE_APP_ENV` and `VITE_TRUSTED_HOSTS` must be fixed together**: setting only the first
    swaps the amber "test environment" banner for the red "production on a test address" banner,
    because `isLocalOrTestHost("192.168.170.10")` is true and the trusted-host list is empty.
+
+---
+
+# Post-release backup · 2026-09-13 18:38 UTC
+
+**This dump was taken at 2026-09-13 18:38:51 UTC against a database at ledger 696 with top version
+`20260913111000`. It is the first backup we can prove sits after today's migrations.**
+
+## The ownership question, answered before dumping
+
+The working script connects as `postgres` while `CLAUDE.md` says objects are owned by
+`supabase_admin`. Measured on this host before taking the dump:
+
+```
+rolname          rolsuper  rolbypassrls
+postgres         t         t
+supabase_admin   t         t
+
+postgres can SELECT 227 of 227 public tables
+object ownership in public: supabase_admin 240 · postgres 17
+```
+
+**`postgres` is a superuser here**, so the ownership split does not omit anything. That is a
+measured difference from `CLAUDE.md`, which describes the image's `migrate.sh` demoting `postgres`
+— true of the local/test stack, not of this host. Corroborated independently: today's automatic
+dump (taken as `postgres`) and the manual dump taken earlier as `supabase_admin` both reported
+`TOC Entries: 5220`.
+
+## State captured
+
+```
+ledger_count | top_version    | utc_now                    | db
+         696 | 20260913111000 | 2026-09-13 18:38:35.403281 | postgres
+```
+
+## The dump
+
+`pg_dump` form matched to `AfraKala-AutoBackup.ps1:39` rather than invented:
+
+```
+docker exec afrakala-lan-db pg_dump -U postgres -d postgres -Fc -f /tmp/post-release-696.dump
+PG_DUMP_EXIT=0
+```
+
+Three `circular foreign-key constraints` warnings appeared, as on every dump of this database —
+not a failure, but it means any restore needs `--disable-triggers`.
+
+Extracted with the stdin route rather than the script's `docker cp`, per `CLAUDE.md` DB-safety
+rule 1 and proven byte-exact several times today:
+
+```
+docker exec afrakala-lan-db cat /tmp/post-release-696.dump > <dest>
+COPY_EXIT=0
+md5(container) = b4e43d31e055ea23ab860608e9a7adfc
+md5(on disk)   = b4e43d31e055ea23ab860608e9a7adfc     identical
+```
+
+Destination: `C:\AfraKalaServer\AfraKalaNightlyBackups\afrakala-db-20260913-post-release-696.dump`
+· 36,302,396 bytes.
+
+## Verification, without restoring
+
+```
+PG_RESTORE_EXIT=0
+; Archive created at 2026-09-13 18:38:51 UTC
+;     dbname: postgres
+;     TOC Entries: 5227
+TOC lines: 5236
+stderr: (empty)
+```
+
+### 🔴 The TOC count is a finding
+
+| dump | taken | TOC entries |
+|---|---|---|
+| `prod-20260913.dump` (manual, **pre-release**) | 13:54 UTC | 5220 |
+| `afrakala-db-20260913-Auto.dump` (**the scheduled one**) | 12:53:51 UTC | **5220** |
+| `afrakala-db-20260913-post-release-696.dump` (this one) | 18:38:51 UTC | **5227** |
+
+**+7 against both.** The automatic dump's TOC equals the pre-release dump's exactly, and is seven
+entries short of the post-release schema. So the 12:53 automatic dump **almost certainly predates
+today's migrations' object changes** — which is precisely the risk that prompted this task.
+Restoring it would have rolled the schema back behind the 14 migrations. This is inference from the
+TOC count, not proof of its ledger value; proving that would require restoring it, which was
+forbidden and was not done.
+
+## Off this machine
+
+```
+source SHA256 308FF8BC811F6A24C3B333A20711F0A8077D91330E479D2510A4F0F36FED178B
+copy   SHA256 308FF8BC811F6A24C3B333A20711F0A8077D91330E479D2510A4F0F36FED178B     MATCH
+\\192.168.170.8\dumps\afrakala-db-20260913-post-release-696.dump · 36,302,396 bytes
+```
+
+The database and its backups no longer share a single disk.
+
+---
+
+# Backup-task findings · measurement only, nothing fixed
+
+1. **`backup-afrakala-lan.ps1` and `backup-afrakala-heavy-weekly.ps1` write to `D:\`, which does not
+   exist on this host.** Drives here are `C:` and `F:`. Both scripts open with
+   `$ErrorActionPreference = "Stop"` and die at **line 16**, `New-Item -ItemType Directory -Force
+   $DbDir,…`, with exit 1 — which is exactly the `Last Result: 1` both tasks report. Their own
+   `BACKUP-REPORT.txt` is defined at line 18 *inside* the same non-existent directory, so they
+   cannot even log their own failure. They were written for the test box, where `D:` is the working
+   drive, and copied here without changing the paths — **the same defect class as the autostart
+   script's hardcoded `cd`**. Both also extract with `docker cp` and dump as `-U postgres`.
+
+2. **`AfraKala Auto Backup` and `AfraKala Auto Backup Nightly` are two tasks calling the same
+   script at the same minute.** Both run `AfraKala-AutoBackup.ps1`, both last ran 2026-09-13
+   04:00:01. That is one backup taken twice, not two backups. Each also carries **two** triggers
+   (daily + weekly). `AfraKala Auto Backup Nightly`'s command line additionally has an
+   **unterminated quote** (`-File "C:\…\AfraKala-AutoBackup.ps1` with no closing `"`) and no
+   `-ExecutionPolicy Bypass`, yet still reports 0.
+
+3. **`AfraKala-AutoBackup.ps1`'s `C:` → `D:` mirror fails silently and the task still returns 0.**
+   Its `$ManualNightlyPath = "D:\AfraKalaNightlyBackups"` and `$ManualWeeklyPath =
+   "D:\AfraKalaWeeklyBackups"` do not exist. The dumps it makes land on `C:` and are real; the
+   off-disk copy has never happened. **A green task that did nothing is worse than a red one** —
+   the red ones at least announce themselves.
+
+4. **The dump timestamps do not match the 04:00 schedule.** `20260913` at 16:23, `20260912` at
+   17:39, `20260910` at 15:00, `20260909` at 17:50 — only `20260911` at 04:00 was actually the
+   scheduler. Most of the backups this project has been relying on were taken **by hand**, so their
+   continuation depends on a person remembering.
+
+5. **The Task Scheduler operational log is disabled on this host** (`IsEnabled: False`), so no
+   event explains either failure. The cause above was established from the scripts and the
+   filesystem instead.
+
+6. Incidental: `/tmp/afrakala-db-canonical.dump` inside `afrakala-lan-db`, noted as an unexplained
+   artefact on 2026-09-12, is **`AfraKala-AutoBackup.ps1`'s working file** (line 39). That loose end
+   is closed.
+
+**Nothing was fixed.** No script edited, no task changed, no schedule touched, no dump deleted,
+nothing restored.
