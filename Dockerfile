@@ -25,8 +25,10 @@ COPY . .
 RUN rm -f .npmrc .yarnrc .yarnrc.yml .bunfig.toml bunfig.toml || true
 
 # Public client-safe build args (baked into client bundle)
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
+# VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY are deliberately NOT build
+# args any more. Baking them here is what tied an image to the machine that
+# built it and caused the 2026-09-13 incident. They now reach the client at
+# runtime from the container environment -- see src/lib/runtime-config.ts.
 ARG VITE_SUPABASE_PROJECT_ID
 # Environment identity for the client bundle. Without VITE_APP_ENV the bundle
 # falls back to Vite's MODE, which is always "production" for a real build; the
@@ -42,9 +44,7 @@ ARG VITE_TRUSTED_HOSTS
 # GET /api/version.
 ARG GIT_SHA=unknown
 ARG BUILD_TIME=unknown
-ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
-    VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
-    VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
+ENV VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
     VITE_APP_ENV=$VITE_APP_ENV \
     VITE_TRUSTED_HOSTS=$VITE_TRUSTED_HOSTS \
     GIT_SHA=$GIT_SHA \

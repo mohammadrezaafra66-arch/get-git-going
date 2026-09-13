@@ -15,10 +15,10 @@ function createSupabaseClient() {
   //      هرگز اجرا نمی‌شد — fallbackی که وجود نداشت.
   // نتیجه‌اش حادثهٔ ۲۰۲۶-۰۹-۱۳ بود: image ساخته‌شده روی باکس تست، روی production.
   //
-  // کلید هنوز از `import.meta.env` می‌آید؛ در گام بعدی به همین مسیر منتقل می‌شود.
-  const SUPABASE_URL = getRuntimeConfig().supabaseUrl;
-  const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  // کلید هم از همین مسیر می‌آید: کلید تست و production یکی نیستند.
+  const runtime = getRuntimeConfig();
+  const SUPABASE_URL = runtime.supabaseUrl;
+  const SUPABASE_PUBLISHABLE_KEY = runtime.supabaseAnonKey;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     throw new Error(

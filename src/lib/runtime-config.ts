@@ -30,6 +30,15 @@
 export type RuntimeConfig = {
   /** مبدأ Supabase/Kong — روی تست `http://192.168.170.8:9000`، روی production `http://192.168.170.10:8000` */
   supabaseUrl?: string;
+  /**
+   * کلید عمومی `anon`.
+   *
+   * این کلید عمداً عمومی است و در مرورگر دیده می‌شود؛ محافظ واقعی RLS است نه پنهان
+   * بودن کلید. ولی کلیدِ **تست** و کلیدِ **production** یکی نیستند، پس این مقدار هم
+   * وابسته به میزبان است و نباید در build پخته شود. در حادثهٔ ۲۰۲۶-۰۹-۱۳ کلید تست
+   * داخل image مستقر روی production بود.
+   */
+  supabaseAnonKey?: string;
 };
 
 declare global {
@@ -52,6 +61,11 @@ export function readServerRuntimeConfig(): RuntimeConfig {
   const env = typeof process !== "undefined" ? process.env : undefined;
   return {
     supabaseUrl: env?.SUPABASE_URL || env?.VITE_SUPABASE_URL || undefined,
+    supabaseAnonKey:
+      env?.SUPABASE_PUBLISHABLE_KEY ||
+      env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
+      env?.SUPABASE_ANON_KEY ||
+      undefined,
   };
 }
 

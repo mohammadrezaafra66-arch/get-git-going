@@ -30,8 +30,9 @@ services:
       context: ../..
       dockerfile: Dockerfile
       args:
-        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
-        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        # VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY removed on purpose:
+        # they are host-dependent and must not be baked into the bundle. They are
+        # delivered at runtime through the `environment:` block below.
         VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
         # production روی سرور اصلی، test روی کامپیوتر تست.
         # VITE_TRUSTED_HOSTS آدرس واقعی همان سرور است تا بنر هشدار قرمز نمایش داده نشود.
