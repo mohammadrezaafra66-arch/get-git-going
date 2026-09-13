@@ -141,3 +141,23 @@ docs/verification/P0.*-*-backup.sql
 .ship-state.json
 .ship.log
 .shipmsg
+
+# Rehearsal and apply-release run artefacts (release/rehearse.ps1 --state-dir,
+# release/apply-release.ps1's run log). These are per-run working state, not
+# deliverables: the apply plan, progress counter, per-migration psql output,
+# classification lists and console logs for ONE rehearsal against ONE restored
+# dump. They are large, derived, and meaningless against any other run.
+#
+# They were showing up as 19 untracked paths in `git status`, which matters for
+# more than tidiness here: this repo's rule is that a file appearing untracked in
+# your tree that you did not create belongs to another agent, and these made that
+# rule unreadable. The DELIVERABLE is release/out/ (rehearsal-<date>.md and
+# RELEASE-<date>.md), which stays tracked.
+release/runs/
+#
+# NOTE, measured 2026-09-13: five files under release/runs/e4b/ were already TRACKED when this
+# rule was added, and a gitignore entry does not untrack anything. Four of them are stable
+# narrative evidence the E-4 proof document cites by path, so they stay. The fifth,
+# release/runs/e4b/progress.txt, is a bare counter rewritten by EVERY replay batch -- it is the
+# single file that made the tree dirty after each checkpoint, which is the noise this rule exists
+# to remove -- so it was untracked with `git rm --cached` (the file itself is untouched on disk).
