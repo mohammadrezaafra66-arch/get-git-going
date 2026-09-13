@@ -27,7 +27,8 @@ param(
     # It carries the DECISION_ID, the guard and the reason behind every decided version, so an
     # emitted block can CITE the decision instead of asserting it. Optional, but the script warns
     # if the report contains decided versions and this is not supplied.
-    [string]$Decided = ""
+    [string]$Decided = "",
+    [string]$D6TargetHost = "192.168.170.10"
 )
 
 $ErrorActionPreference = "Stop"
@@ -630,6 +631,61 @@ $blockN++
 
 Add-Line "---"
 Add-Line ""
+$blockN++
+
+Add-Line "### Block $blockN - artifact probe (D6)"
+Add-Line ""
+[void]$sb.AppendLine(@'
+D6. On 2026-09-13 the env file on production was CORRECT for the whole incident. The artifact
+was not. Every VITE_* value was a build arg, the deploy used --no-build, so the correct env file
+never applied and nothing ever looked at what was actually inside the image. This block looks at
+the served bundle and nothing else. An env-file check would have passed that day.
+
+Under runtime configuration the client bundle must contain NO host literal at all: the address
+arrives at runtime from the container environment. So the probe is not "does it contain the right
+host" -- it is "does it contain ANY host", which is a stronger and simpler property.
+'@)
+Add-Line ""
+Add-Line "    `$img    = 'afrakala-app:$d1BuildSha'"
+Add-Line "    `$target = '$D6TargetHost'"
+[void]$sb.AppendLine(@'
+    # (i) no baked host literal in the CLIENT bundle
+    $found = docker run --rm --entrypoint sh $img -c "grep -rhoE 'https?://[0-9]{1,3}(\.[0-9]{1,3}){3}:[0-9]+' /app/.output/public 2>/dev/null | sort -u"
+    # Allowlisted: UI help text in src/routes/_app.admin.ai-providers.tsx that SHOWS an operator
+    # what an Ollama URL looks like. It is displayed, never fetched. Anything else is a failure.
+    $allow = @("http://192.168.170.8:11434")
+    $bad = @($found | Where-Object { $_ -and ($allow -notcontains $_.Trim()) })
+    if ($bad.Count -gt 0) {
+      Write-Host "FAIL D6(i): host literal(s) baked into the client bundle:"
+      $bad | ForEach-Object { Write-Host "    $_" }
+      Write-Host "    A host literal here means the image is tied to the machine that built it."
+      exit 1
+    }
+    Write-Host "OK D6(i): no baked host literal in the client bundle"
+
+    # (ii) the runtime mechanism must actually be present in the bundle
+    $hasCfg = docker run --rm --entrypoint sh $img -c "grep -rl __APP_RUNTIME_CONFIG__ /app/.output/public 2>/dev/null | head -1"
+    if (-not $hasCfg) {
+      Write-Host "FAIL D6(ii): __APP_RUNTIME_CONFIG__ is absent from the client bundle."
+      Write-Host "    Without it the client has no address at all. Do not deploy this image."
+      exit 1
+    }
+    Write-Host "OK D6(ii): runtime config mechanism present"
+
+    # (iii) this image, given THIS target's environment, must serve THIS target's address.
+    $served = docker run --rm --entrypoint sh -e SUPABASE_URL="http://${target}:8000" $img -c 'node .output/server/index.mjs >/dev/null 2>&1 & for i in $(seq 1 45); do wget -qO- http://127.0.0.1:3000/login >/dev/null 2>&1 && break; sleep 1; done; wget -qO- http://127.0.0.1:3000/login 2>/dev/null | grep -oE "\"supabaseUrl\":\"[^\"]*\"" | head -1'
+    if ($served -notmatch [regex]::Escape($target)) {
+      Write-Host "FAIL D6(iii): served config does not name the target $target. Got: $served"
+      exit 1
+    }
+    Write-Host "OK D6(iii): served config = $served"
+'@)
+Add-Line ""
+Add-Line "Expect: OK D6(i), no baked host literal in the client bundle"
+Add-Line "Expect: OK D6(ii), runtime config mechanism present"
+Add-Line "Expect: OK D6(iii), served config naming $D6TargetHost"
+Add-Line ""
+
 Add-Line "# Phase 6 - deploy"
 Add-Line ""
 Add-Line "### Block $blockN - rollback tag"
