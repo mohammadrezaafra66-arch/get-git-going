@@ -34,10 +34,9 @@ services:
         # they are host-dependent and must not be baked into the bundle. They are
         # delivered at runtime through the `environment:` block below.
         VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID}
-        # production روی سرور اصلی، test روی کامپیوتر تست.
-        # VITE_TRUSTED_HOSTS آدرس واقعی همان سرور است تا بنر هشدار قرمز نمایش داده نشود.
-        VITE_APP_ENV: ${VITE_APP_ENV:-production}
-        VITE_TRUSTED_HOSTS: ${VITE_TRUSTED_HOSTS:-}
+        # VITE_APP_ENV / VITE_TRUSTED_HOSTS removed from build args as well: both
+        # are host-dependent (they decide the safety banner) and are delivered at
+        # runtime through the `environment:` block below.
         GIT_SHA: ${GIT_SHA:-local-unknown}
         BUILD_TIME: ${BUILD_TIME:-local-unknown}
         APP_ENV: lan
@@ -49,6 +48,12 @@ services:
       PORT: "3000"
       SUPABASE_URL: ${SUPABASE_URL}
       SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY}
+      # هویت محیط و میزبان‌های مورد اعتماد — در زمان اجرا، نه زمان build.
+      # نام‌ها عمداً همان `VITE_*` مانده‌اند چون `.env.lan` هر دو میزبان از قبل
+      # همین نام‌ها را با مقدار درست دارد؛ پس سرور production بدون هیچ تغییری در
+      # فایلِ آن میزبان درست می‌شود.
+      VITE_APP_ENV: ${VITE_APP_ENV:-production}
+      VITE_TRUSTED_HOSTS: ${VITE_TRUSTED_HOSTS:-}
       SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
       LOVABLE_API_KEY: ${LOVABLE_API_KEY}
       OCR_ENABLED: ${OCR_ENABLED:-false}

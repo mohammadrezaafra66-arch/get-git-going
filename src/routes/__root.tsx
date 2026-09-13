@@ -311,7 +311,7 @@ function normalizeEnvironmentName(value: unknown) {
 // machine that matters. Set VITE_TRUSTED_HOSTS at build time (comma-separated)
 // to tell the bundle which hostnames are legitimate for it.
 function getTrustedHosts() {
-  return String(import.meta.env.VITE_TRUSTED_HOSTS ?? "")
+  return String(getRuntimeConfig().trustedHosts ?? "")
     .split(",")
     .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean);
@@ -331,9 +331,10 @@ function isLocalOrTestHost(hostname: string) {
 }
 
 function EnvironmentSafetyBanner() {
-  const appEnv = normalizeEnvironmentName(
-    import.meta.env.VITE_APP_ENV ?? import.meta.env.VITE_ENVIRONMENT_NAME ?? import.meta.env.MODE,
-  );
+  // از پیکربندی زمان اجرا، نه از literalِ پخته‌شده در build. تا ۲۰۲۶-۰۹-۱۳ این مقدار
+  // در build ثابت می‌شد، پس image ساخته‌شده روی باکس تست حتی روی production هم
+  // خودش را «test» می‌دانست.
+  const appEnv = normalizeEnvironmentName(getRuntimeConfig().appEnv ?? import.meta.env.MODE);
   const bannerEnabled =
     normalizeEnvironmentName(import.meta.env.VITE_SHOW_ENVIRONMENT_BANNER) === "true";
   const configuredBannerText = String(import.meta.env.VITE_ENVIRONMENT_BANNER_TEXT ?? "").trim();

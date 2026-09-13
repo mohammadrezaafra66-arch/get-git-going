@@ -30,13 +30,16 @@ RUN rm -f .npmrc .yarnrc .yarnrc.yml .bunfig.toml bunfig.toml || true
 # built it and caused the 2026-09-13 incident. They now reach the client at
 # runtime from the container environment -- see src/lib/runtime-config.ts.
 ARG VITE_SUPABASE_PROJECT_ID
-# Environment identity for the client bundle. Without VITE_APP_ENV the bundle
+# VITE_APP_ENV / VITE_TRUSTED_HOSTS are no longer build args either. They decide
+# whether the safety banner renders, and they differ between hosts, so baking
+# them tied the banner to the building machine exactly as the Supabase URL was
+# tied. Both now arrive at runtime -- see src/lib/runtime-config.ts.
+#
+# (historical note) Environment identity for the client bundle. Without VITE_APP_ENV the bundle
 # falls back to Vite's MODE, which is always "production" for a real build; the
 # environment safety banner then treats every LAN address as a test address and
 # shows a red warning even on the production server. VITE_TRUSTED_HOSTS lists
 # the hostnames that deployment is legitimately served from.
-ARG VITE_APP_ENV
-ARG VITE_TRUSTED_HOSTS
 # Build identity. Also declared in the runtime stage below (a Dockerfile ARG is
 # scoped to one stage), but needed HERE too: vite.config.ts reads GIT_SHA and
 # BUILD_TIME at build time to derive the service worker's version, which is what
@@ -45,8 +48,6 @@ ARG VITE_TRUSTED_HOSTS
 ARG GIT_SHA=unknown
 ARG BUILD_TIME=unknown
 ENV VITE_SUPABASE_PROJECT_ID=$VITE_SUPABASE_PROJECT_ID \
-    VITE_APP_ENV=$VITE_APP_ENV \
-    VITE_TRUSTED_HOSTS=$VITE_TRUSTED_HOSTS \
     GIT_SHA=$GIT_SHA \
     BUILD_TIME=$BUILD_TIME \
     NODE_ENV=production \

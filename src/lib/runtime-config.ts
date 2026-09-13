@@ -39,6 +39,19 @@ export type RuntimeConfig = {
    * داخل image مستقر روی production بود.
    */
   supabaseAnonKey?: string;
+  /**
+   * هویت محیط: `production` روی سرور اصلی، `test` روی باکس تست.
+   * بنر ایمنی در `src/routes/__root.tsx` روی همین تصمیم می‌گیرد.
+   */
+  appEnv?: string;
+  /**
+   * میزبان‌هایی که این استقرار آن‌ها را آدرسِ واقعیِ خودش اعلام می‌کند (با کاما).
+   *
+   * production روی یک IP از رنج LAN زندگی می‌کند (`192.168.170.10`) که
+   * `isLocalOrTestHost()` وگرنه آن را «production روی آدرس تست» می‌خواند و یک بنر
+   * قرمزِ دائمیِ کاذب نشان می‌دهد. این مقدار و `appEnv` باید **با هم** درست باشند.
+   */
+  trustedHosts?: string;
 };
 
 declare global {
@@ -66,6 +79,11 @@ export function readServerRuntimeConfig(): RuntimeConfig {
       env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
       env?.SUPABASE_ANON_KEY ||
       undefined,
+    // نام‌های `VITE_*` عمداً حفظ شده‌اند: فایل‌های `.env.lan` روی هر دو میزبان از
+    // قبل همین نام‌ها را دارند و مقدارشان درست است. با پاس‌دادنشان در زمان اجرا،
+    // سرور production بدون هیچ تغییری در فایلِ آن میزبان درست می‌شود.
+    appEnv: env?.APP_PUBLIC_ENV || env?.VITE_APP_ENV || undefined,
+    trustedHosts: env?.APP_TRUSTED_HOSTS || env?.VITE_TRUSTED_HOSTS || undefined,
   };
 }
 
