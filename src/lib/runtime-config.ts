@@ -73,7 +73,22 @@ export const RUNTIME_CONFIG_GLOBAL = "__APP_RUNTIME_CONFIG__";
 export function readServerRuntimeConfig(): RuntimeConfig {
   const env = typeof process !== "undefined" ? process.env : undefined;
   return {
-    supabaseUrl: env?.SUPABASE_URL || env?.VITE_SUPABASE_URL || undefined,
+    // ترتیب اهمیت دارد و با یک آزمونِ مرورگرِ واقعی کشف شد.
+    //
+    // `SUPABASE_URL` روی این استقرار `http://kong:8000` است — نامِ سرویس در شبکهٔ
+    // داخلیِ compose. برای SSR درست است، ولی مرورگر **هرگز** نمی‌تواند به آن برسد.
+    // اگر آن را اول بگذاریم، کلاینت یک آدرسِ غیرقابل‌دسترس می‌گیرد و هیچ‌کدام از
+    // بررسی‌های آرتیفکتی هم آن را نمی‌بینند: bundle تمیز است، مکانیزم کار می‌کند،
+    // فقط **مقدار** غلط است.
+    //
+    // `APP_SUPABASE_PUBLIC_URL` همان آدرسِ رو‌به‌مرورگر است و compose از قبل آن را
+    // در زمان اجرا پاس می‌دهد (`deploy/lan/docker-compose.yml:67`).
+    // `src/routes/api.version.ts:18` از قبل همین نام را می‌خواند.
+    supabaseUrl:
+      env?.APP_SUPABASE_PUBLIC_URL ||
+      env?.VITE_SUPABASE_URL ||
+      env?.SUPABASE_URL ||
+      undefined,
     supabaseAnonKey:
       env?.SUPABASE_PUBLISHABLE_KEY ||
       env?.VITE_SUPABASE_PUBLISHABLE_KEY ||
