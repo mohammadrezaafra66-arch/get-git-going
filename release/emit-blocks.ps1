@@ -827,6 +827,16 @@ fetch base from help text -- both are string literals -- so the probe does not g
   number of times it was measured in the bundle, so reusing it as a real endpoint fails;
   - any other host must be a reviewed public third party (links, placeholders, schema ids).
 A new third-party host fails loudly and by name; the fix is one reviewed line in this emitter.
+
+C6, 2026-09-14. REVIEW-2 built an image whose bundle held `Bz="192.168.170.8:9000"` and
+`"http://"+Bz` -- the incident's own host:port, joined to its scheme at runtime -- plus
+`HTTP://192.168.170.8:9000` and `"//kong:8000"`, and D6 and D9 both passed it: (i) only saw
+lower-case `scheme://` literals. (i) now also reads the scheme case-insensitively, and reads every
+SCHEME-LESS host:port literal (a full IPv4:port anywhere; a name:port inside quotes or after //)
+under the same default-deny rules -- it always has an explicit port, so it always fails unless it
+is on the exact-literal list. Digits-only pairs ("18:52", a time) are not addresses. Every host
+comparison here is exact: (iii) requires the served supabaseUrl to EQUAL http://<target>:8000,
+where it used to accept any value merely containing the target (.10 inside .100).
 '@)
 Add-Line ""
 Add-Line "    & {   # GATE D6 + D9 -- paste from this line to the matching closing brace"
@@ -843,13 +853,34 @@ Add-Line "    `$target = '$D6TargetHost'"
     }
 
     # (i) no host literal in the CLIENT bundle
-    $scan = docker run --rm --entrypoint sh $img -c "find /app/.output/public -type f -name '*.js' | wc -l | sed 's/^/SCANNED /'; grep -rhoE '(https?|wss?):(//|\\/\\/)[][:alnum:]._~%:@-]*' /app/.output/public; grep -rhoE '[a-z0-9]{20}\.supabase\.(co|in)' /app/.output/public; true"
+    $scan = docker run --rm --entrypoint sh $img -c "find /app/.output/public -type f -name '*.js' | wc -l | sed 's/^/SCANNED /'; grep -rhoiE '(https?|wss?):(//|\\/\\/)[][:alnum:]._~%:@-]*' /app/.output/public; grep -rhoE '[a-z0-9]{20}\.supabase\.(co|in)' /app/.output/public; grep -rhoE '.?(//|\\/\\/)?[A-Za-z0-9][A-Za-z0-9._-]*:[0-9]{1,5}.?' /app/.output/public | sed 's/^/BARE /'; true"
     $scanExit = $LASTEXITCODE
     $scanned = 0
     $hits = @()
+    $bareRaw = @()
     foreach ($l in @($scan)) {
       $s = ([string]$l).Trim()
-      if ($s -match '^SCANNED\s+(\d+)$') { $scanned = [int]$Matches[1] } elseif ($s) { $hits += ($s -replace '\\/', '/') }
+      if ($s -match '^SCANNED\s+(\d+)$') { $scanned = [int]$Matches[1] }
+      elseif (([string]$l).StartsWith('BARE ')) { $bareRaw += ([string]$l).Substring(5) }
+      elseif ($s) { $hits += ($s -replace '\\/', '/') }
+    }
+    # C6 -- scheme-less host:port. Each raw candidate carries one character of context either side.
+    $quoteChars = [string][char]34 + [char]39 + [char]96
+    $bareLits = @()
+    foreach ($c in $bareRaw) {
+      if ($c -cnotmatch '^(?<pre>[^A-Za-z0-9._-]?)(?<sl>//|\\/\\/)?(?<hn>[A-Za-z0-9][A-Za-z0-9._-]*):(?<port>[0-9]{1,5})(?<post>.?)$') { continue }
+      $pre = $Matches['pre']; $sl = $Matches['sl']; $hn = $Matches['hn']; $port = $Matches['port']; $post = $Matches['post']
+      if ($post -match '[A-Za-z0-9_:]') { continue }           # runs on ("T23:59:59", "valueformat:1:text"): not host:port
+      if ($sl -and $pre -eq ':') { continue }                   # scheme://host:port -- the URL scan above classifies it
+      $isIp = $hn -match '^\d{1,3}(\.\d{1,3}){3}$'
+      if (-not $isIp -and -not $sl) {
+        # A NAME without // counts only as a whole string literal: "kong:8000" or "kong:8000/rest".
+        # Measured on the clean bundle, everything else of that shape is CSS or a time:
+        # {box-shadow:0 0 5px ...}, ;font-weight:700;, "2026-04-26T10:00:00Z".
+        if ($hn -cnotmatch '[A-Za-z]') { continue }
+        if (-not ($pre -ne '' -and $quoteChars.Contains($pre) -and ($post -eq '/' -or ($post -ne '' -and $quoteChars.Contains($post))))) { continue }
+      }
+      $bareLits += $(if ($sl) { '//' } else { '' }) + "$hn`:$port"
     }
     if ($scanExit -ne 0 -or $scanned -lt 1) {
       Write-Host "FAIL D6(i): the scan measured nothing (docker exit $scanExit, $scanned js file(s) read)."
@@ -873,12 +904,29 @@ Add-Line "    `$target = '$D6TargetHost'"
       'pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev', 'myafrakala.ir', 'torob.com', 'app.didar.me',
       'wa.me', 'chat.whatsapp.com', 'eitaa.com', 'rubika.ir', 'ble.ir')
     $bad = @()
-    foreach ($g in @($hits | Group-Object)) {
+    # Exact, case-sensitive comparisons only: a PowerShell hashtable key lookup, -contains and
+    # Group-Object all ignore case by default, so 'HTTP://LOCALHOST:9999' would have borrowed the
+    # allowance of 'http://localhost:9999'. Sorted, because Group-Object orders groups differently in
+    # Windows PowerShell 5.1 and pwsh 7 and the GATE line must read the same in both.
+    foreach ($g in @($bareLits | Group-Object -CaseSensitive | Sort-Object -Property Name -CaseSensitive)) {
+      $lit = $g.Name
+      if (@($allowExact.Keys) -ccontains $lit) {
+        if ($g.Count -gt $allowExact[$lit]) { $bad += "$lit  (allowed $($allowExact[$lit])x as illustrative text, found $($g.Count)x)" }
+        continue
+      }
+      $name = ($lit -replace '^//', '') -replace ':[0-9]+$', ''
+      $why = @('scheme-less host:port', 'explicit port')
+      if ($name -match '^\d{1,3}(\.\d{1,3}){3}$') { $why += 'IP literal' } elseif ($name -notmatch '\.') { $why += 'bare name with no dot' }
+      if ($name -match '\.(local|localdomain|lan|internal|intranet|home|corp|test|arpa)$') { $why += 'private suffix' }
+      if ($name -match '(^|\.)supabase\.(co|in)$') { $why += 'Supabase host' }
+      $bad += "$lit  ($($why -join ', '))"
+    }
+    foreach ($g in @($hits | Group-Object -CaseSensitive | Sort-Object -Property Name -CaseSensitive)) {
       $lit = $g.Name
       if ($lit -notmatch '://') { $bad += "$lit  (Supabase project host)"; continue }
       $auth = ($lit -split '://', 2)[1] -replace '^[^@]*@', ''
       if ($auth -notmatch '[A-Za-z0-9]') { continue }   # "https://" prefix tests, "https://..." prose
-      if ($allowExact.ContainsKey($lit)) {
+      if (@($allowExact.Keys) -ccontains $lit) {
         if ($g.Count -gt $allowExact[$lit]) { $bad += "$lit  (allowed $($allowExact[$lit])x as illustrative text, found $($g.Count)x)" }
         continue
       }
@@ -890,7 +938,7 @@ Add-Line "    `$target = '$D6TargetHost'"
       elseif ($name -notmatch '\.') { $why += 'bare name with no dot' }
       if ($name -match '\.(local|localdomain|lan|internal|intranet|home|corp|test|arpa)$') { $why += 'private suffix' }
       if ($name -match '(^|\.)supabase\.(co|in)$') { $why += 'Supabase host' }
-      if ($why.Count -eq 0 -and $allowHosts -contains $name) { continue }
+      if ($why.Count -eq 0 -and $allowHosts -ccontains $name) { continue }
       if ($why.Count -eq 0) { $why += 'host not on the reviewed list' }
       $bad += "$lit  ($($why -join ', '))"
     }
@@ -902,7 +950,7 @@ Add-Line "    `$target = '$D6TargetHost'"
       Write-Host "GATE D6 FAIL $gateWhy"
       $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
-    Write-Host "OK D6(i): no baked host literal in the client bundle ($scanned js files read, $($hits.Count) URL literal(s) classified)"
+    Write-Host "OK D6(i): no baked host literal in the client bundle ($scanned js files read, $($hits.Count) URL literal(s) and $($bareLits.Count) scheme-less host:port literal(s) classified)"
 
     # (ii) the runtime mechanism must actually be present in the bundle
     $hasCfg = docker run --rm --entrypoint sh $img -c "grep -rl __APP_RUNTIME_CONFIG__ /app/.output/public 2>/dev/null | head -1"
@@ -920,16 +968,20 @@ Add-Line "    `$target = '$D6TargetHost'"
     # " when calling a native exe, so sh received a cut string, $served came back $null, and
     # `$null -notmatch` is False -- this check printed OK having measured nothing (B1, 2026-09-14).
     $served = docker run --rm --entrypoint sh -e SUPABASE_URL="http://${target}:8000" $img -c 'node .output/server/index.mjs >/dev/null 2>&1 & for i in $(seq 1 45); do wget -qO- http://127.0.0.1:3000/login >/dev/null 2>&1 && break; sleep 1; done; wget -qO- http://127.0.0.1:3000/login 2>/dev/null | grep -oE ''.supabaseUrl.:.[^,}]*'' | head -1'
-    $served = [string]$served
+    $served = ([string]$served).Trim()
     if (-not $served) {
       Write-Host "FAIL D6(iii): the image served no supabaseUrl at all. Nothing was measured."
       $gateWhy = "the image served no supabaseUrl"
       Write-Host "GATE D6 FAIL $gateWhy"
       $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
-    if ($served -notmatch [regex]::Escape($target)) {
-      Write-Host "FAIL D6(iii): served config does not name the target $target. Got: $served"
-      $gateWhy = "served config does not name the target $target"
+    # C6: EXACT equality with the value this probe injected, never a substring (.10 is inside .100).
+    $servedUrl = ''
+    if ($served -cmatch '^"supabaseUrl":"([^"]*)"$') { $servedUrl = $Matches[1] }
+    $expectedServed = "http://${target}:8000"
+    if ($servedUrl -cne $expectedServed) {
+      Write-Host "FAIL D6(iii): served supabaseUrl is not exactly $expectedServed. Got: $served"
+      $gateWhy = "served supabaseUrl '$servedUrl' is not exactly $expectedServed"
       Write-Host "GATE D6 FAIL $gateWhy"
       $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
@@ -977,7 +1029,7 @@ Add-Line "    `$target = '$D6TargetHost'"
 Add-Line ""
 Add-Line "Expect: OK D6(i), no baked host literal in the client bundle"
 Add-Line "Expect: OK D6(ii), runtime config mechanism present"
-Add-Line "Expect: OK D6(iii), served config naming $D6TargetHost"
+Add-Line "Expect: OK D6(iii), served supabaseUrl exactly http://${D6TargetHost}:8000"
 Add-Line "Expect: OK D9, served host browser-reachable (not a compose service name, not loopback)"
 Add-Line "Expect: GATE D6 PASS, then GATE D9 PASS as the last line printed"
 Add-Line ""
