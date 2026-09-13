@@ -347,6 +347,31 @@ Add-Line ""
 foreach ($m in $applyList) {
     Add-Line "### Block $blockN - migration $($m.Version) . $($m.File)"
     Add-Line ""
+    # If the migration header carries an OWNER DECISION notice, reproduce it HERE, literally.
+    # The operator reads the block, not the file: a decision that lives only in the migration's
+    # header is a decision the person running the release never sees.
+    $migPath = Join-Path (Join-Path (Split-Path $PSScriptRoot -Parent) "supabase\migrations") $m.File
+    if (Test-Path $migPath) {
+        $hdr = Get-Content -LiteralPath $migPath -Encoding UTF8
+        $start = -1
+        for ($i = 0; $i -lt $hdr.Count; $i++) {
+            if ($hdr[$i] -match 'OWNER DECISION') { $start = $i; break }
+        }
+        if ($start -ge 0) {
+            # Walk back to the top of the comment run, then forward to its end.
+            $from = $start
+            while ($from -gt 0 -and $hdr[$from - 1] -match '^\s*--') { $from-- }
+            $to = $start
+            while ($to -lt ($hdr.Count - 1) -and $hdr[$to + 1] -match '^\s*--') { $to++ }
+            Add-Line "> **OWNER DECISION — read this before running the block.** Reproduced verbatim from"
+            Add-Line "> ``supabase/migrations/$($m.File)``; the operator reads the block, not the file."
+            Add-Line ""
+            for ($i = $from; $i -le $to; $i++) {
+                Add-Line ("    " + $hdr[$i])
+            }
+            Add-Line ""
+        }
+    }
     Add-Line "    mig_apply $($m.Version) $($m.File)"
     Add-Line ""
     Add-Line "Expect: OK $($m.File)"
