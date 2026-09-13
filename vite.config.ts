@@ -7,10 +7,19 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
-const cloudUrl =
-  process.env.VITE_SUPABASE_URL ??
-  process.env.SUPABASE_URL ??
-  "https://kwwkppkcihrbeurwudjh.supabase.co";
+// آدرس Supabase عمداً اینجا نیست.
+//
+// تا ۲۰۲۶-۰۹-۱۳ یک `cloudUrl` اینجا بود که در `define` پایین به یک string literal
+// تبدیل می‌شد. یعنی آدرسِ ماشینی که build را اجرا می‌کرد داخل bundle پخته می‌شد و
+// image به آن میزبان گره می‌خورد. نتیجه‌اش این شد که یک image ساخته‌شده روی باکس
+// تست، روی production نشست و همهٔ فراخوانی‌ها به Kong تست رفت.
+//
+// حالا آدرس در زمان اجرا از محیطِ کانتینر خوانده می‌شود:
+//   `src/lib/runtime-config.ts`  ← خواندن
+//   `src/routes/__root.tsx`      ← تزریق در <head> پیش از chunkهای Vite
+//
+// **هیچ مقدار وابسته به میزبان را دوباره به `define` اضافه نکنید.** آزمونِ آرتیفکت
+// در خط release این را می‌سنجد و build را رد می‌کند.
 
 const cloudPublishableKey =
   process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
@@ -54,7 +63,6 @@ export default defineConfig({
   vite: {
     plugins: disableLovableMcp ? [] : [mcpPlugin()],
     define: {
-      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(cloudUrl),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(cloudPublishableKey),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(cloudProjectId),
       "import.meta.env.VITE_BUILD_ID": JSON.stringify(buildId || "dev"),

@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { getRuntimeConfig } from "@/lib/runtime-config";
 
 /**
  * Storage upload with real progress and bounded retry — Phase 8.4 (D8-7),
@@ -65,10 +66,13 @@ function isRetryableStatus(status: number): boolean {
 }
 
 function resolveConfig() {
-  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  // آدرس از پیکربندی زمان اجرا می‌آید (`src/lib/runtime-config.ts`)، نه از یک
+  // literal پخته‌شده در build — دلیلش در همان فایل و در
+  // `src/integrations/supabase/client.ts` آمده است.
+  const url = getRuntimeConfig().supabaseUrl;
   const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
   if (!url || !key) {
-    throw makeError("Supabase configuration is missing in the client bundle.", undefined, false);
+    throw makeError("Supabase configuration is missing at runtime.", undefined, false);
   }
   return { url: url.replace(/\/+$/, ""), key };
 }
