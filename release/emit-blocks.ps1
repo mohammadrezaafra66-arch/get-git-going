@@ -510,21 +510,60 @@ if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     Add-Line ""
     Add-Line "    # deliver the tarball over the proven LAN channel (SMB share \\192.168.170.8\dumps),"
     Add-Line "    # then on the target machine:"
+    Add-Line ""
+    [void]$sb.AppendLine(@'
+    # D2 -- freeze the CURRENTLY RUNNING image under the rollback name FIRST, before
+    # :lan is repointed. The previous order tagged :lan to the incoming image and only
+    # afterwards ran `docker tag :lan :lan-rollback`, which moved the rollback name onto
+    # the NEW image and left the running-good image with no tag at all. That is a
+    # rollback that rolls forward.
+    docker tag afrakala-app:lan afrakala-app:lan-rollback
+    docker inspect afrakala-lan-web --format "{{.Image}}"
+    docker images afrakala-app:lan-rollback --format "{{.ID}}"
+
+Expect: afrakala-app:lan-rollback resolves to the image the running container is on
+'@)
+    Add-Line ""
     Add-Line "    gunzip -c afrakala-app-$($manifest.git_sha).tar.gz | docker load"
     Add-Line "    docker tag afrakala-app:$($manifest.git_sha) afrakala-app:lan"
     [void]$sb.AppendLine('    docker images afrakala-app:lan --format "{{.ID}}"')
     Add-Line ""
     Add-Line "Expect: loaded image ID = $($manifest.image_id)"
+    Add-Line ""
+    [void]$sb.AppendLine(@'
+    # D3 -- the two names MUST now resolve to DIFFERENT images.
+    $lanId = (docker images afrakala-app:lan --format "{{.ID}}")
+    $rbId  = (docker images afrakala-app:lan-rollback --format "{{.ID}}")
+    if ($lanId -eq $rbId) {
+      Write-Host "FAIL D3: :lan and :lan-rollback are the same image ($lanId)."
+      Write-Host "         Rolling back would change nothing. Stop here."
+      exit 1
+    }
+    Write-Host "OK D3: lan=$lanId rollback=$rbId"
+
+Expect: OK D3, printing two DIFFERENT ids. A match is a hard failure.
+'@)
 } else {
     [void]$sb.AppendLine(@'
 No build manifest was supplied to emit-blocks.ps1 (-BuildManifest). Run release/build.ps1
 first, then re-generate this document, or fill this block in by hand before applying:
 
+    # D2 -- freeze the running image under the rollback name BEFORE :lan moves.
+    docker tag afrakala-app:lan afrakala-app:lan-rollback
+    docker images afrakala-app:lan-rollback --format "{{.ID}}"
+
     gunzip -c afrakala-app-<sha>.tar.gz | docker load
     docker tag afrakala-app:<sha> afrakala-app:lan
     docker images afrakala-app:lan --format "{{.ID}}"
 
+    # D3 -- the two names must resolve to DIFFERENT images.
+    $lanId = (docker images afrakala-app:lan --format "{{.ID}}")
+    $rbId  = (docker images afrakala-app:lan-rollback --format "{{.ID}}")
+    if ($lanId -eq $rbId) { Write-Host "FAIL D3: identical ($lanId)"; exit 1 }
+    Write-Host "OK D3: lan=$lanId rollback=$rbId"
+
 Expect: loaded image ID = <fill in from release/out/build-<sha>.json>
+Expect: OK D3, two DIFFERENT ids
 '@)
 }
 Add-Line ""
@@ -555,7 +594,10 @@ remained -- a check that passes without being true, which is the defect this pip
 stop. The prune below matches any tag containing 'rollback' EXCEPT the one agreed name, which
 covers every convention observed (lan-rollback-<reason>, rollback-<sha>, and the unnamed one).
 
-    docker tag afrakala-app:lan afrakala-app:lan-rollback
+    # D2: the `docker tag afrakala-app:lan afrakala-app:lan-rollback` line that used to
+    # sit here is DELETED. It ran AFTER :lan had already been repointed at the incoming
+    # image, so it pointed the rollback name at the new image. The rollback tag is now
+    # taken in the image-transfer block, before :lan moves.
     docker images afrakala-app --format "{{.Repository}}:{{.Tag}}" |
       Where-Object { $_ -match 'rollback' -and $_ -ne 'afrakala-app:lan-rollback' } |
       ForEach-Object { docker rmi $_ }
