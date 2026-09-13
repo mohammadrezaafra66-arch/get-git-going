@@ -223,6 +223,14 @@ Every block below has a literal 'Expect:' line. release/validate-blocks.ps1 chec
 document mechanically before anyone runs it. release/apply-release.ps1 stops at the FIRST
 block whose live output disagrees with its Expect: line -- exactly BLOCKS.md's own rule.
 
+HOW TO PASTE A GATE. Every gate, and every region that changes state after a gate, is ONE
+`& { ... }` region: copy it from its `& {` line to its closing `}` line and paste it whole.
+A failing gate prints `GATE <id> FAIL <reason>` and then stops with a red error. It does NOT
+close the window or end the shell, so the reason stays on screen. The failure is also recorded
+in this shell, and every later region that changes state (:lan retag, rollback-tag prune, deploy)
+refuses to run and prints NOT RUN while any gate has failed and has not since printed PASS. That
+record lives only in THIS shell: in a new window, re-run the gates first.
+
 ---
 
 ### Block 0 - checkout state (run BEFORE anything else in this document)
@@ -236,6 +244,8 @@ second and neither was proved. This block proves them, and it is deliberately pl
 before the first Expect: in the document so nothing else can run first.
 '@)
 Add-Line ""
+Add-Line "    & {   # GATE D1a -- paste from this line to the matching closing brace"
+Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
 Add-Line "    # D1(a) -- the checkout must BE the commit this release was built from."
 Add-Line "    `$buildSha = '$d1BuildSha'"
 [void]$sb.AppendLine(@'
@@ -243,22 +253,28 @@ Add-Line "    `$buildSha = '$d1BuildSha'"
     $dirty    = (git status --porcelain)
     if ($headSha -ne $buildSha) {
       Write-Host "FAIL D1a: HEAD is $headSha but this release was built from $buildSha"
-      Write-Host "GATE D1a FAIL HEAD $headSha is not the build sha $buildSha"
-      exit 1
+      $gateWhy = "HEAD $headSha is not the build sha $buildSha"
+      Write-Host "GATE D1a FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D1a'] = $gateWhy; throw "STOPPED at gate D1a: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     if ($dirty) {
       Write-Host "FAIL D1a: working tree is not clean:"
       $dirty | ForEach-Object { Write-Host "    $_" }
-      Write-Host "GATE D1a FAIL working tree is not clean ($(@($dirty).Count) path(s))"
-      exit 1
+      $gateWhy = "working tree is not clean ($(@($dirty).Count) path(s))"
+      Write-Host "GATE D1a FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D1a'] = $gateWhy; throw "STOPPED at gate D1a: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     Write-Host "OK D1a: HEAD = $headSha, tree clean"
+    $global:AFRAKALA_FAILED_GATES.Remove('D1a')
     Write-Host "GATE D1a PASS"
+    }   # end GATE D1a
 '@)
 Add-Line ""
 Add-Line "Expect: OK D1a, HEAD equal to the build sha $d1BuildSha, working tree clean"
 Add-Line "Expect: the last line printed is GATE D1a PASS"
 Add-Line ""
+Add-Line "    & {   # GATE D1b -- paste from this line to the matching closing brace"
+Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
 Add-Line "    # D1(b) -- every migration file in THIS release set must exist on disk."
 Add-Line "    `$expected = @($d1MigList)"
 [void]$sb.AppendLine(@'
@@ -269,11 +285,14 @@ Add-Line "    `$expected = @($d1MigList)"
     if ($missing.Count -gt 0) {
       Write-Host "FAIL D1b: $($missing.Count) of $($expected.Count) migration file(s) missing:"
       $missing | ForEach-Object { Write-Host "    MISSING $_" }
-      Write-Host "GATE D1b FAIL $($missing.Count) migration file(s) missing: $($missing -join ', ')"
-      exit 1
+      $gateWhy = "$($missing.Count) migration file(s) missing: $($missing -join ', ')"
+      Write-Host "GATE D1b FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D1b'] = $gateWhy; throw "STOPPED at gate D1b: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     Write-Host "OK D1b: all $($expected.Count) migration files present"
+    $global:AFRAKALA_FAILED_GATES.Remove('D1b')
     Write-Host "GATE D1b PASS"
+    }   # end GATE D1b
 '@)
 Add-Line ""
 Add-Line "Expect: OK D1b, all $d1MigCount migration files present, zero missing"
@@ -609,8 +628,25 @@ Add-Line "# Phase 5 - image"
 Add-Line ""
 Add-Line "### Block $blockN - image transfer"
 Add-Line ""
+# C4, 2026-09-14. A gate used to end with `exit 1`. Measured by REVIEW-2 section 2.2 and again here:
+# pasted into a console-host window, `exit 1` closes the window and the GATE ... FAIL line goes with
+# it; in Windows Terminal the text stays but the shell is dead and Enter starts a fresh one. The
+# owner PASTES these blocks. So every gate is now one `& { ... }` region that ends in `throw`: the
+# rest of the region does not run, the shell and the reason stay, and `powershell -File` still
+# exits 1. Because the shell now survives, a region pasted AFTER a failed gate would run -- `exit`
+# used to prevent that by killing the shell -- so each state-changing region opens with this guard.
+$stateGuardOpen = @'
+    & {   # <what> -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -is [hashtable] -and $global:AFRAKALA_FAILED_GATES.Count -gt 0) {
+      $failedNow = @($global:AFRAKALA_FAILED_GATES.GetEnumerator() | ForEach-Object { "GATE $($_.Key) FAIL $($_.Value)" }) -join ' | '
+      Write-Host "NOT RUN: gate(s) FAILED earlier in this shell and have not printed PASS since: $failedNow"
+      throw "NOT RUN -- nothing in this region ran. Failed earlier in this shell: $failedNow"
+    }
+'@
 # D2, emitted identically whether or not a build manifest was supplied.
 $d2Snippet = @'
+    & {   # GATE D2 -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
     # D2 -- freeze the CURRENTLY RUNNING image under the rollback name FIRST, before
     # :lan is repointed. The previous order tagged :lan to the incoming image and only
     # afterwards ran `docker tag :lan :lan-rollback`, which moved the rollback name onto
@@ -624,8 +660,9 @@ $d2Snippet = @'
     $runningId = [string](docker inspect afrakala-lan-web --format "{{.Image}}")
     if ($LASTEXITCODE -ne 0 -or $runningId -notmatch '^sha256:[0-9a-f]{64}$') {
       Write-Host "FAIL D2: could not read the image afrakala-lan-web is running (got '$runningId')."
-      Write-Host "GATE D2 FAIL cannot read the image afrakala-lan-web is running"
-      exit 1
+      $gateWhy = "cannot read the image afrakala-lan-web is running"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     docker tag $runningId $rollbackTag
     $tagExit = $LASTEXITCODE
@@ -633,17 +670,21 @@ $d2Snippet = @'
       Write-Host "FAIL D2: cannot tag the running image $runningId (docker tag exit $tagExit)."
       Write-Host "         The image is not in this machine's image store, or the tag name is invalid."
       Write-Host "         Either way NO rollback point was taken. Stop."
-      Write-Host "GATE D2 FAIL docker tag of the running image failed, no rollback point taken"
-      exit 1
+      $gateWhy = "docker tag of the running image failed, no rollback point taken"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     $rbId = [string](docker image inspect $rollbackTag --format "{{.Id}}")
     if ($tagExit -ne 0 -or $rbId -ne $runningId) {
       Write-Host "FAIL D2: $rollbackTag is '$rbId' but the running image is $runningId (docker tag exit $tagExit)."
-      Write-Host "GATE D2 FAIL rollback tag is '$rbId' but the running image is $runningId"
-      exit 1
+      $gateWhy = "rollback tag is '$rbId' but the running image is $runningId"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     Write-Host "OK D2: $rollbackTag = running image $runningId"
+    $global:AFRAKALA_FAILED_GATES.Remove('D2')
     Write-Host "GATE D2 PASS"
+    }   # end GATE D2
 
 Expect: OK D2, afrakala-app:lan-rollback equal to the running container's full sha256 image id
 Expect: the last line printed is GATE D2 PASS
@@ -657,24 +698,31 @@ if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     Add-Line ""
     [void]$sb.AppendLine($d2Snippet)
     Add-Line ""
+    [void]$sb.AppendLine($stateGuardOpen.Replace('<what>', ':lan retag'))
     Add-Line "    gunzip -c afrakala-app-$($manifest.git_sha).tar.gz | docker load"
     Add-Line "    docker tag afrakala-app:$($manifest.git_sha) afrakala-app:lan"
     [void]$sb.AppendLine('    docker images afrakala-app:lan --format "{{.ID}}"')
+    Add-Line "    }   # end :lan retag"
     Add-Line ""
     Add-Line "Expect: loaded image ID = $($manifest.image_id)"
     Add-Line ""
     [void]$sb.AppendLine(@'
+    & {   # GATE D3 -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
     # D3 -- the two names MUST now resolve to DIFFERENT images.
     $lanId = (docker images afrakala-app:lan --format "{{.ID}}")
     $rbId  = (docker images afrakala-app:lan-rollback --format "{{.ID}}")
     if ($lanId -eq $rbId) {
       Write-Host "FAIL D3: :lan and :lan-rollback are the same image ($lanId)."
       Write-Host "         Rolling back would change nothing. Stop here."
-      Write-Host "GATE D3 FAIL :lan and :lan-rollback are the same image ($lanId)"
-      exit 1
+      $gateWhy = ":lan and :lan-rollback are the same image ($lanId)"
+      Write-Host "GATE D3 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D3'] = $gateWhy; throw "STOPPED at gate D3: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     Write-Host "OK D3: lan=$lanId rollback=$rbId"
+    $global:AFRAKALA_FAILED_GATES.Remove('D3')
     Write-Host "GATE D3 PASS"
+    }   # end GATE D3
 
 Expect: OK D3, printing two DIFFERENT ids. A match is a hard failure.
 Expect: the last line printed is GATE D3 PASS
@@ -685,17 +733,23 @@ No build manifest was supplied to emit-blocks.ps1 (-BuildManifest). Run release/
 first, then re-generate this document, or fill this block in by hand before applying:
 '@)
     [void]$sb.AppendLine($d2Snippet)
+    [void]$sb.AppendLine($stateGuardOpen.Replace('<what>', ':lan retag'))
     [void]$sb.AppendLine(@'
     gunzip -c afrakala-app-<sha>.tar.gz | docker load
     docker tag afrakala-app:<sha> afrakala-app:lan
     docker images afrakala-app:lan --format "{{.ID}}"
+    }   # end :lan retag
 
+    & {   # GATE D3 -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
     # D3 -- the two names must resolve to DIFFERENT images.
     $lanId = (docker images afrakala-app:lan --format "{{.ID}}")
     $rbId  = (docker images afrakala-app:lan-rollback --format "{{.ID}}")
-    if ($lanId -eq $rbId) { Write-Host "FAIL D3: identical ($lanId)"; Write-Host "GATE D3 FAIL :lan and :lan-rollback are the same image ($lanId)"; exit 1 }
+    if ($lanId -eq $rbId) { Write-Host "FAIL D3: identical ($lanId)"; $gateWhy = ":lan and :lan-rollback are the same image ($lanId)"; Write-Host "GATE D3 FAIL $gateWhy"; $global:AFRAKALA_FAILED_GATES['D3'] = $gateWhy; throw "STOPPED at gate D3: $gateWhy -- nothing after it in this region ran; this shell is still open" }
     Write-Host "OK D3: lan=$lanId rollback=$rbId"
+    $global:AFRAKALA_FAILED_GATES.Remove('D3')
     Write-Host "GATE D3 PASS"
+    }   # end GATE D3
 
 Expect: loaded image ID = <fill in from release/out/build-<sha>.json>
 Expect: OK D3, two DIFFERENT ids
@@ -733,14 +787,17 @@ fetch base from help text -- both are string literals -- so the probe does not g
 A new third-party host fails loudly and by name; the fix is one reviewed line in this emitter.
 '@)
 Add-Line ""
+Add-Line "    & {   # GATE D6 + D9 -- paste from this line to the matching closing brace"
+Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
 Add-Line "    `$img    = 'afrakala-app:$d1BuildSha'"
 Add-Line "    `$target = '$D6TargetHost'"
 [void]$sb.AppendLine(@'
     # (0) the image must exist, or every check below measures nothing and passes.
     if (-not (docker images -q $img)) {
       Write-Host "FAIL D6(0): image $img does not exist on this machine. Nothing was measured."
-      Write-Host "GATE D6 FAIL image $img does not exist on this machine"
-      exit 1
+      $gateWhy = "image $img does not exist on this machine"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
 
     # (i) no host literal in the CLIENT bundle
@@ -754,8 +811,9 @@ Add-Line "    `$target = '$D6TargetHost'"
     }
     if ($scanExit -ne 0 -or $scanned -lt 1) {
       Write-Host "FAIL D6(i): the scan measured nothing (docker exit $scanExit, $scanned js file(s) read)."
-      Write-Host "GATE D6 FAIL the client bundle scan measured nothing"
-      exit 1
+      $gateWhy = "the client bundle scan measured nothing"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     # Backend-SHAPED literals that are not endpoints: exact string -> most occurrences allowed.
     $allowExact = @{
@@ -798,8 +856,9 @@ Add-Line "    `$target = '$D6TargetHost'"
       Write-Host "FAIL D6(i): host literal(s) baked into the client bundle ($scanned js files read):"
       $bad | ForEach-Object { Write-Host "    $_" }
       Write-Host "    A host literal here means the image is tied to the machine that built it."
-      Write-Host "GATE D6 FAIL host literal(s) in the client bundle: $(@($bad | ForEach-Object { ($_ -split '  ', 2)[0] }) -join ', ')"
-      exit 1
+      $gateWhy = "host literal(s) in the client bundle: $(@($bad | ForEach-Object { ($_ -split '  ', 2)[0] }) -join ', ')"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     Write-Host "OK D6(i): no baked host literal in the client bundle ($scanned js files read, $($hits.Count) URL literal(s) classified)"
 
@@ -808,8 +867,9 @@ Add-Line "    `$target = '$D6TargetHost'"
     if (-not $hasCfg) {
       Write-Host "FAIL D6(ii): __APP_RUNTIME_CONFIG__ is absent from the client bundle."
       Write-Host "    Without it the client has no address at all. Do not deploy this image."
-      Write-Host "GATE D6 FAIL __APP_RUNTIME_CONFIG__ is absent from the client bundle"
-      exit 1
+      $gateWhy = "__APP_RUNTIME_CONFIG__ is absent from the client bundle"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     Write-Host "OK D6(ii): runtime config mechanism present"
 
@@ -821,15 +881,18 @@ Add-Line "    `$target = '$D6TargetHost'"
     $served = [string]$served
     if (-not $served) {
       Write-Host "FAIL D6(iii): the image served no supabaseUrl at all. Nothing was measured."
-      Write-Host "GATE D6 FAIL the image served no supabaseUrl"
-      exit 1
+      $gateWhy = "the image served no supabaseUrl"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     if ($served -notmatch [regex]::Escape($target)) {
       Write-Host "FAIL D6(iii): served config does not name the target $target. Got: $served"
-      Write-Host "GATE D6 FAIL served config does not name the target $target"
-      exit 1
+      $gateWhy = "served config does not name the target $target"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     Write-Host "OK D6(iii): served config = $served"
+    $global:AFRAKALA_FAILED_GATES.Remove('D6')
     Write-Host "GATE D6 PASS"
 
     # D9 -- the served host must be reachable FROM A BROWSER.
@@ -842,8 +905,9 @@ Add-Line "    `$target = '$D6TargetHost'"
     if ($served -match '"supabaseUrl":"https?://([^/:"]+)') { $servedHost = $Matches[1] }
     if ($servedHost -eq "") {
       Write-Host "FAIL D9: could not parse a host out of the served config: $served"
-      Write-Host "GATE D9 FAIL no host could be parsed from the served config"
-      exit 1
+      $gateWhy = "no host could be parsed from the served config"
+      Write-Host "GATE D9 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D9'] = $gateWhy; throw "STOPPED at gate D9: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     $isIPv4     = $servedHost -match '^\d{1,3}(\.\d{1,3}){3}$'
     $isDottedFqdn = $servedHost -match '^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$'
@@ -851,18 +915,22 @@ Add-Line "    `$target = '$D6TargetHost'"
     if ($isLoopback) {
       Write-Host "FAIL D9: served host '$servedHost' is loopback. Correct inside the container,"
       Write-Host "         unreachable for every browser except one on the server itself."
-      Write-Host "GATE D9 FAIL served host '$servedHost' is loopback"
-      exit 1
+      $gateWhy = "served host '$servedHost' is loopback"
+      Write-Host "GATE D9 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D9'] = $gateWhy; throw "STOPPED at gate D9: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     if (-not ($isIPv4 -or $isDottedFqdn)) {
       Write-Host "FAIL D9: served host '$servedHost' is a bare name with no dot -- a"
       Write-Host "         compose service name or container alias. SSR resolves it; a browser"
       Write-Host "         cannot. Set APP_SUPABASE_PUBLIC_URL to the address staff type."
-      Write-Host "GATE D9 FAIL served host '$servedHost' is a bare name with no dot"
-      exit 1
+      $gateWhy = "served host '$servedHost' is a bare name with no dot"
+      Write-Host "GATE D9 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D9'] = $gateWhy; throw "STOPPED at gate D9: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
     Write-Host "OK D9: served host '$servedHost' is browser-reachable"
+    $global:AFRAKALA_FAILED_GATES.Remove('D9')
     Write-Host "GATE D9 PASS"
+    }   # end GATE D6 + D9
 '@)
 Add-Line ""
 Add-Line "Expect: OK D6(i), no baked host literal in the client bundle"
@@ -895,6 +963,9 @@ remained -- a check that passes without being true, which is the defect this pip
 stop. The prune below matches any tag containing 'rollback' EXCEPT the one agreed name, which
 covers every convention observed (lan-rollback-<reason>, rollback-<sha>, and the unnamed one).
 
+'@)
+[void]$sb.AppendLine($stateGuardOpen.Replace('<what>', 'rollback-tag prune'))
+[void]$sb.AppendLine(@'
     # D2: the `docker tag afrakala-app:lan afrakala-app:lan-rollback` line that used to
     # sit here is DELETED. It ran AFTER :lan had already been repointed at the incoming
     # image, so it pointed the rollback name at the new image. The rollback tag is now
@@ -903,6 +974,7 @@ covers every convention observed (lan-rollback-<reason>, rollback-<sha>, and the
       Where-Object { $_ -match 'rollback' -and $_ -ne 'afrakala-app:lan-rollback' } |
       ForEach-Object { docker rmi $_ }
     docker images afrakala-app --format "{{.Repository}}:{{.Tag}}`t{{.CreatedAt}}"
+    }   # end rollback-tag prune
 
 Expect: afrakala-app:lan-rollback present
 Expect: no OTHER tag whose name contains 'rollback' remains (any convention, not just lan-*)
@@ -912,12 +984,14 @@ $blockN++
 
 Add-Line "### Block $blockN - deploy"
 Add-Line ""
+[void]$sb.AppendLine($stateGuardOpen.Replace('<what>', 'deploy'))
 [void]$sb.AppendLine(@'
     $env:GIT_SHA = (git rev-parse --short HEAD)
     $env:BUILD_TIME = (Get-Date -Format o)
     docker compose --env-file deploy/lan/.env.lan -f deploy/lan/docker-compose.yml `
       up -d --no-deps --no-build web
     docker restart afrakala-lan-rest
+    }   # end deploy
 
 Expect: --no-deps present (its absence takes the whole app down, CLAUDE.md OG-68)
 Expect: GIT_SHA set on the command line (its absence silently mislabels the running image)
