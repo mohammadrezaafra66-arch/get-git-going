@@ -458,3 +458,206 @@ afrakala-lan-web StartedAt=2026-09-12T17:46:06.169711504Z  Health=healthy
 از‌دست‌دادنِ نسخهٔ فعلی‌اش فاصله دارد.
 
 چاره‌جویی یک تصمیمِ جداست و اینجا انجام نشد.
+
+---
+
+# پیوست ۳ — بستنِ چهار بازدارندهٔ بازبینی (۲۰۲۶-۰۹-۱۴)
+
+مبنا: `REVIEW-20260913.md` (commit `88887140`) — حکم REJECT. شاخه روی `88887140`، پایه
+`origin/main` @ `9bc8d554`، باکس `D:\AfraKalaTest\app`. فقط همین چهار مورد لمس شد؛ تنها فایلِ
+کد که تغییر کرد `release/emit-blocks.ps1` است. این پیوست حکم نمی‌دهد — بازبین حکم می‌دهد.
+
+روشِ اندازه‌گیری: هر بلوک از یک سندِ RELEASE که **emitterِ commit‌شده** تولید کرد، عیناً
+بیرون کشیده شد (فقط de-indent و جایگزینیِ صریحِ نامِ image/تگِ خصوصی، که هر جایگزینی چاپ شد)،
+با `powershell.exe -File` (Windows PowerShell 5.1) اجرا شد، و exit code **جدا از هر pipe**
+خوانده شد. فاز ۳ روی `608c3f4d` اجرا شد (blob emitter = `df83cd7d`، درختِ تمیز).
+
+## ۰. پیش از اصلاح — هر سه بازدارنده بازتولید شد
+
+| id | ورودی | خروجیِ emitterِ `88887140` | exit |
+|---|---|---|---|
+| B1 | image با `http://kong:8000` کاشته در `index-Bvgj7gd2.js` | `OK D6(i)` | بلوک بعداً در D9 به دلیلِ دیگری افتاد |
+| B1 | image با `https://kwwkppkcihrbeurwudjh.supabase.co` کاشته | `OK D6(i)` | همان |
+| B1 | image ناموجود | `OK D6(i)` (D6(ii) گرفت) | `1` |
+| B2 | e4b + `## VERDICT: FAIL` + نثرِ ستون-۰ `VERDICT: PASS is the outcome…` | `Written: RELEASE-…md` | `0` |
+| B3 | خطوطِ D2 عیناً (تگِ مقصد در فضای‌نامِ `afrakala-b3`) | rollback = `296eb4b4899f`، running = `0c3106602cc9` | `0` |
+
+## ۱. B1 — D6 probeِ شکسته بود
+
+**آنچه واقعاً غلط بود.** (i) فقط `https?://IPv4:port` را می‌دید. به‌علاوه — **یافتهٔ تازه، در
+بازبینی ثبت نشده بود** — زیر Windows PowerShell 5.1 آرگومانِ `sh -c` در D6(iii) شاملِ `"`
+بود؛ 5.1 آن را escape نمی‌کند، `sh` رشتهٔ بریده گرفت (`sh: syntax error: unterminated quoted
+string`)، `$served` برابر `$null` شد، و `$null -notmatch 'x'` برابر `False` است — پس
+`OK D6(iii): served config = ` روی **هیچ** چاپ شد. بلوک فقط چون D9 نتوانست میزبان را parse
+کند exit 1 می‌داد؛ یعنی روی production همیشه قرمز می‌شد، به دلیلِ غلط. (pwsh 7.6 همان خط را
+درست اجرا می‌کند؛ اندازه‌گیری شد.) بازبین D9 را روی رشتهٔ سرو‌شده‌ای که خودش گرفته بود سنجید،
+نه از راهِ این خطِ docker.
+
+**چه عوض شد.**
+- (0) اگر `docker images -q $img` خالی باشد → FAIL. (i) اگر docker run exit≠0 یا صفر فایل js
+  خوانده شد → FAIL. خالی‌گذری بسته شد.
+- (i) **default-deny**: هر literalِ `http/https/ws/wss://host` در `/app/.output/public`
+  (و هر `<ref>.supabase.co|in` بدون scheme) یا روی فهرستِ بازبینی‌شده است یا FAIL.
+- **تمایزِ endpointِ کارکردی از متنِ توضیحی:** در bundleِ minify‌شده این دو از نظرِ واژگانی قابل
+  تشخیص نیستند — هر دو string literal‌اند — پس probe نیت را حدس نمی‌زند. به‌جایش:
+  (الف) هر literalی که **شکلِ backend** دارد — IP، پورتِ صریح، نامِ بی‌نقطه (`kong`، `localhost`)،
+  پسوندِ خصوصی، میزبانِ Supabase — **همیشه** FAIL است و فهرستِ میزبان نمی‌تواند نجاتش دهد؛
+  (ب) متنِ توضیحی با این شکل فقط به‌صورتِ **literalِ دقیق** و حداکثر به **تعدادِ اندازه‌گیری‌شده**
+  مجاز است (`http://192.168.170.8:11434` = ۱ بار، `_app.admin.ai-providers.tsx:95`)؛ اگر همان
+  رشته جای دیگری به‌عنوانِ endpoint تکرار شود، شمارش بالا می‌رود و FAIL می‌شود؛
+  (ج) هر میزبانِ دیگر باید شخصِ ثالثِ عمومیِ بازبینی‌شده باشد (لینک، placeholder، شناسهٔ
+  namespace). فهرست از **موجودیِ اندازه‌گیری‌شدهٔ** bundleِ فعلی ساخته شد (۳۱ میزبان + ۴ literalِ
+  دقیق: help text، `GOTRUE_URL` در `@supabase/auth-js`، fallbackِ origin در router،
+  namespaceِ xlsx).
+- **هزینه، صریح:** میزبانِ شخصِ ثالثِ تازه (مثلاً یک لینکِ جدید در UI) probe را با **نامِ همان
+  میزبان** قرمز می‌کند؛ اصلاح یک خطِ بازبینی‌شده در emitter است. پرصدا، نه خاموش.
+- (iii) آرگومانِ `sh -c` دیگر هیچ `"` ندارد (خروجی هم‌شکلِ قبل: `"supabaseUrl":"…"`)؛
+  `$served` خالی → FAIL. منطقِ D9 دست نخورد.
+
+**اثباتِ دوجهته** (Windows PowerShell 5.1):
+
+| ورودی | باید | نتیجه | exit |
+|---|---|---|---|
+| image حادثه `296eb4b4899f` | FAIL | `http://192.168.170.8:9000  (explicit port, IP literal)` — تنها موردِ نام‌برده | `1` |
+| کاشتهٔ `http://kong:8000` | FAIL | `http://kong:8000  (explicit port, bare name with no dot)` | `1` |
+| کاشتهٔ `.supabase.co` | FAIL | `https://kwwkppkcihrbeurwudjh.supabase.co  (Supabase host)` + شکلِ بی‌scheme | `1` |
+| image ناموجود | FAIL | `FAIL D6(0): … does not exist on this machine. Nothing was measured.` | `1` |
+| help text دو بار | FAIL | `http://192.168.170.8:11434  (allowed 1x as illustrative text, found 2x)` | `1` |
+| image بدونِ server | FAIL | `FAIL D6(iii): the image served no supabaseUrl at all.` | `1` |
+| bundleِ فعلی (`review-ae47de4a`)، help text حاضر ۱× | PASS | `OK D6(i) (475 js files read, 176 URL literal(s) classified)` … `OK D9` | `0` (5.1 **و** pwsh 7.6) |
+
+commit: `beece1ff`.
+
+## ۲. B2 — D8 probeِ شکسته بود
+
+**آنچه واقعاً غلط بود.** `^\s*#*\s*VERDICT:` — `#` اختیاری بود، پس نثرِ ستون-۰ «حکم» شمرده شد.
+
+**چه عوض شد.** حکم فقط همان شکلی است که `release/lib/rehearse-engine.sh` می‌نویسد
+(`echo "## VERDICT: PASS"` در `:1245`، و `## VERDICT: FAIL[ (reason)]` در
+`:559,804,1155,1163,1227,1234,1240`): خطِ دقیقِ `^## VERDICT: (PASS|FAIL)( \(.*\))?$`، حساس به
+حروف، **بیرون از code fence**. سرتیترِ شبهِ‌حکم در هر شکلِ دیگر رد می‌شود (fail-closed).
+
+**اثباتِ دوجهته:**
+
+| ورودی | باید | نتیجه | exit | سند نوشته شد؟ |
+|---|---|---|---|---|
+| نثرِ `VERDICT: PASS` پس از `## VERDICT: FAIL` | REJECT | `final : :2049 ## VERDICT: FAIL` | `1` | خیر |
+| آخرین FAIL پس از PASSِ قبلی | REJECT | `final : :2049 ## VERDICT: FAIL (planted…)` | `1` | خیر |
+| `## VERDICT: PASS` فقط داخلِ fence پس از FAIL | REJECT | `final : :2049 ## VERDICT: FAIL` | `1` | خیر |
+| `## verdict: pass` | REJECT | `verdict-like heading(s) the rehearsal engine never writes: :2050` | `1` | خیر |
+| `rehearsal-e4b.md` | ACCEPT | آخرین سرتیترِ واقعی `:2047 ## VERDICT: PASS` (`:878` FAIL پیش از آن) | `0` | بله |
+| e4b + خطِ نثرِ حاویِ `VERDICT: FAIL` | ACCEPT | نثر حکم نیست | `0` | بله |
+
+commit: `5d4df9e1`.
+
+## ۳. B3 — D2 بسته نشده بود
+
+**آنچه واقعاً غلط بود.** `docker tag afrakala-app:lan afrakala-app:lan-rollback` تگی را فریز
+می‌کرد که در حالِ جایگزینی است، نه image در حال اجرا؛ بدونِ assertion، با دو چاپ در دو قالب.
+
+**چه عوض شد.** بلوک `.Image`ِ کانتینرِ `afrakala-lan-web` را (sha256 کامل) می‌خواند، **همان id**
+را به‌عنوانِ rollback تگ می‌کند، تگ را دوباره می‌خواند و id کامل را با id کامل مقایسه می‌کند؛ هر
+شکست → `FAIL D2` و `exit 1`. از یک snippet در هر دو شاخهٔ emitter (با/بی manifest).
+
+**یافتهٔ اندازه‌گیری‌شده — با انتظارِ ۳.۱۱ مأموریت نمی‌خواند.** imageِ در حال اجرای این باکس،
+`sha256:0c3106602cc9…`، **در image store نیست**: `docker image inspect` با id کامل و کوتاه →
+`No such image`؛ `docker tag` → exit 1. کنترل: `docker tag` با sha256 کاملِ imageِ حاضر
+(`296eb4b4899f`) → exit 0. و `.Image`ِ کانتینر با `.Id`ِ image روی چهار کانتینرِ دیگر
+(`afrakala-lan-kong`، `afrakala-lan-caddy`، `afrakala-lan-db`، `hanieh-backend-1`) **دقیقاً
+برابر** است — پس قالب‌ها یکی‌اند و مقایسه معتبر است. این همان «ریسکِ ایستا»ی بندِ ۸ پیوستِ ۲
+است؛ بازبین آن را «تأییدنشده» گذاشته بود (بخش ۹ بند ۹). پس روی stackِ زنده **نتیجهٔ درستِ D2
+همان FAIL است** — نقطهٔ بازگشتی برای گرفتن وجود ندارد — و D2 همین را می‌گوید. انتظارِ «تگ کن و
+موفقیت را assert کن» روی این باکس **دست‌یافتنی نیست**؛ جهتِ PASS روی یک کانتینرِ یک‌بارمصرف
+اثبات شد.
+
+**اثباتِ دوجهته** (تگ‌ها در فضای‌نامِ خصوصی؛ `:lan` هرگز جابه‌جا نشد):
+
+| ورودی | باید | نتیجه | exit |
+|---|---|---|---|
+| زنده: `afrakala-lan-web` (`0c3106602cc9`، غایب از store)، `:lan`=`296eb4b4899f` | FAIL | `cannot tag the running image … NO rollback point was taken. Stop.` | `1` |
+| کانتینرِ یک‌بارمصرف (`alpine:3.20.3`، بدونِ env برنامه) | PASS | `OK D2: … = running image sha256:1e42bbe2…`؛ بازخوانی: برابر | `0` |
+| mutant: بازگرداندنِ منبعِ قدیمی `afrakala-app:lan` | FAIL | `rollback tag is 'sha256:296eb4b4…' but the running image is sha256:1e42bbe2…` | `1` |
+| کانتینرِ ناموجود / نامِ تگِ نامعتبر | FAIL | `could not read …` / `cannot tag …` | `1` / `1` |
+
+commit: `dac904e7`.
+
+## ۴. B4 — هیچ‌چیز D1/D2/D3/D6/D9 را اجرا نمی‌کند
+
+**تعیین از روی کد — گزینهٔ (b).**
+- `release/apply-release.ps1:3-5`: «executes the Preflight + Phase 4 (migration) blocks … and
+  STOPS before Phase 5 (image/deploy) -- deploy is always a human step, never this script's.»
+- `release/lib/apply-release-engine.sh:5-13`: همان دامنه، به‌عنوانِ تصمیمِ عمدی.
+- `release/lib/apply-release-engine.sh:60,136,145`: engine فقط preflight SQLِ خودش و خطوطِ
+  مطابقِ `mig_apply` / `ledger_insert_only` را اجرا می‌کند؛ هیچ مسیری برای اجرای بلوکِ
+  PowerShell ندارد.
+- قاطع: `Block 0` (D1) **پیش از** `# Phase 5` است و باز هم اجرا نمی‌شود. پس engine «زود
+  نمی‌ایستد» — یک اجراکنندهٔ migration است، by design. (a) رد شد. بلوک‌های gate را انسان اجرا
+  می‌کند، همان‌طور که ۲۰۲۶-۰۹-۱۳ شد؛ نقصِ واقعی این است که شکستِ دستی می‌توانست دیده نشود.
+
+**چه عوض شد.** هر gate — D1a، D1b، D2، D3 (هر دو شاخه)، D6، D9 — به‌عنوانِ **آخرین خروجی** یک
+خطِ واحد چاپ می‌کند: `GATE <id> PASS` یا `GATE <id> FAIL <reason>` و سپس `exit 1`؛ و یک
+`Expect:` که همان خط را نام می‌برد. منطقِ هیچ check عوض نشد؛ فقط خطِ خروجی اضافه شد.
+`validate-blocks.ps1` روی سندِ emit‌شده: `PASSED`، `exit 0`.
+
+**اثباتِ دوجهته** (آخرین خطِ غیرخالیِ خروجی و exit):
+
+| gate | PASS | FAIL |
+|---|---|---|
+| D1a | worktreeِ تمیز روی HEAD → `GATE D1a PASS`, `0` | sha اشتباه → `GATE D1a FAIL HEAD … is not the build sha deadbeef`, `1`؛ درختِ کثیف → `… not clean (1 path(s))`, `1` |
+| D1b | ۱۵ از ۱۵ → `GATE D1b PASS`, `0` | `GATE D1b FAIL 1 migration file(s) missing: 20260913101000_533_pg_cron_http_scheduler.sql`, `1` |
+| D2 | کانتینرِ یک‌بارمصرف → `GATE D2 PASS`, `0` | زنده → `GATE D2 FAIL docker tag of the running image failed, no rollback point taken`, `1` |
+| D3 | دو image → `GATE D3 PASS`, `0` | یک image → `GATE D3 FAIL :lan and :lan-rollback are the same image (92c554df96cc)`, `1` |
+| D6 | bundleِ فعلی → `GATE D6 PASS` | حادثه → `GATE D6 FAIL host literal(s) in the client bundle: http://192.168.170.8:9000`, `1` |
+| D9 | `10.99.99.99` → `GATE D9 PASS` (آخرین خطِ بلوک), `0` | `kong` → `GATE D9 FAIL served host 'kong' is a bare name with no dot`, `1` |
+
+commit: `608c3f4d`.
+
+## ۵. فاز ۳ — ابطالِ کلِ مجموعه روی `608c3f4d`
+
+۲۴ ردیف (همهٔ ورودی‌های بازبینی + کنترل‌های مثبت + mutantها). `BROKEN_PROBES=0`،
+`OVER_REJECT=0`. ردیف‌های مأموریت:
+۳.۱ FAIL/1 · ۳.۲ FAIL/1 · ۳.۳ FAIL/1 · ۳.۴ PASS/0 · ۳.۵ FAIL/1 · ۳.۶ REJECT/1 · ۳.۷ REJECT/1 ·
+۳.۸ ACCEPT/0 · ۳.۹ FAIL/1 (کنترل PASS/0) · ۳.۱۰ FAIL/1 با نامِ فایل (کنترل‌ها PASS/0) ·
+۳.۱۱ زنده FAIL/1 — **درست، ولی نه مطابقِ انتظارِ مأموریت** (بخش ۳)؛ یک‌بارمصرف PASS/0؛ mutant FAIL/1.
+
+## ۶. typecheck
+
+`npm run typecheck` یک بار: **70 خطا در 6 فایل** — همان شش فایل و همان شمارشِ هر فایل که
+بازبینی ثبت کرد. اختلاف: `TYPECHECK_EXIT=2` اندازه‌گیری شد؛ بازبینی `TYPECHECK_EXIT=0` نوشته
+بود. `tsc` با وجودِ خطا غیرصفر برمی‌گرداند — ثبت می‌شود، بازنویسی نمی‌شود. تنها فایلِ لمس‌شده
+پس از بازبینی `release/emit-blocks.ps1` است (TypeScript نیست).
+
+## ۷. پاک‌سازی و سلامتِ stack
+
+```
+docker rmi afrakala-b1:{planted-kong,planted-supa,ollama-twice,no-server}  -> exit 0
+docker rmi afrakala-app:review-ae47de4a (92c554df96cc, 1.32GB)            -> exit 0
+فضای‌نام‌های خصوصیِ afrakala-b1/b3/b4/p3: خالی؛ کانتینرهای آزمایشی: صفر؛ worktreeهای خودم: حذف
+afrakala-app:lan -> 296eb4b4899f   (بدون تغییر)
+afrakala-lan-web StartedAt=2026-09-12T17:46:06.169711504Z  restarts=0  health=healthy
+```
+هیچ ارتباطی با `192.168.170.10`، هیچ deploy/restart/compose build، هیچ `docker commit`/`pause`،
+هیچ کانتینری با `SUPABASE_URL` به سمتِ `.10` (D6(iii) با `-D6TargetHost 10.99.99.99` تولید شد).
+
+## ۸. یادداشتِ دائمی — اختلافِ ۸ در برابر ۱۳ وظیفه **توضیح داده شد**
+
+«۸» شمارشِ `overall`ِ `get_task_kpi_report(30)` است که به پنجرهٔ ۳۰ روزه محدود است؛ «۱۳» کلِ
+جدولِ `tasks`. `8 (درونِ ۳۰ روز) + 5 (قدیمی‌تر) = 13`. فرضیهٔ RLS را بازبین رد کرد (برای ادمین
+RLS ۱۳ یا ۰ می‌دهد، هرگز ۸). خوش‌خیم و بی‌ربط به این شاخه.
+
+## ۹. تأیید نشده
+
+۱. **رفتارِ `exit 1` در کنسولِ تعاملی آزموده نشد.** اگر مالک بلوک را در یک پنجرهٔ PowerShell
+   paste کند، `exit` خودِ پنجره را می‌بندد و خطِ `GATE … FAIL` با آن ناپدید می‌شود — شکست دیده
+   می‌شود (پنجره بسته شد) ولی **دلیلش** نه. همهٔ اثبات‌ها با `powershell -File` بود.
+۲. **PASSِ D2 روی stackِ واقعی** اندازه‌گیری نشد و روی این باکس ممکن نیست (بخش ۳). روی
+   `192.168.170.10` هم آزموده نشد.
+۳. **پایداریِ فهرستِ میزبان‌های D6** در طولِ زمان — امروز روی bundleِ فعلی پاس است؛ یک ارتقای
+   وابستگی یا لینکِ تازه آن را پرصدا قرمز می‌کند.
+۴. **D6 فقط `http/https/ws/wss` و `<20char>.supabase.co|in` را می‌بیند**؛ literalِ میزبان بدونِ
+   scheme (مثلاً `"kong:8000"` خام) دیده نمی‌شود.
+۵. **D6(iii) و D9 روی production** اجرا نشد؛ روی این باکس فقط با هدفِ ساختگیِ `10.99.99.99`.
+۶. نکاتِ بازبین که عمداً دست نخوردند (خارج از چهار بازدارنده): شمارهٔ تکراریِ `Block 30`،
+   پیش‌فرضِ `D6TargetHost=192.168.170.10`، خالی‌گذریِ D1b با مجموعهٔ تهی، aliasِ نقطه‌دارِ D9،
+   `appEnv`ِ غلط‌تایپ‌شده، و جملهٔ سرِ سندِ emit‌شده («apply-release.ps1 stops at the FIRST block
+   whose live output disagrees») که با دامنهٔ واقعیِ engine (بخش ۴) نمی‌خواند.
