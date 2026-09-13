@@ -59,15 +59,38 @@ $reportLines = Get-Content -Path $RehearsalReport -Encoding UTF8
 # echoes exactly "## VERDICT: PASS" or "## VERDICT: FAIL" with an optional " (reason)" -- and only
 # outside a fenced code block. Anything that looks like a verdict heading but is not in that form
 # is refused rather than guessed at.
+#
+# C5, 2026-09-14. Every ``` or ~~~ line used to TOGGLE the fence state, so REVIEW-2 hid a real final
+# `## VERDICT: FAIL` two ways and a release document was written: (1) a fence left open, which
+# silently swallowed everything after it; (2) a `~~~` line inside a ``` fence, which flipped the
+# state so the FAIL after the real closing fence counted as "inside". A fence now closes only on a
+# line of the SAME character, at least as long as the opener, with nothing else on it (CommonMark),
+# and a fence still open at end of file is refused: what follows it cannot be read as verdicts.
 $verdictLines = @()
 $malformedVerdicts = @()
-$inFence = $false
+$fenceChar = ''          # '' = not inside a fence; otherwise the character that opened it
+$fenceLen = 0
+$fenceOpenedAt = 0
 for ($i = 0; $i -lt $reportLines.Count; $i++) {
     $l = $reportLines[$i]
-    if ($l -match '^\s{0,3}(```|~~~)') { $inFence = -not $inFence; continue }
-    if ($inFence) { continue }
+    if ($fenceChar -eq '') {
+        if ($l -match '^\s{0,3}(`{3,}|~{3,})') {
+            $fenceChar = $Matches[1].Substring(0, 1); $fenceLen = $Matches[1].Length; $fenceOpenedAt = $i + 1
+            continue
+        }
+    } else {
+        if ($l -match '^\s{0,3}(`{3,}|~{3,})\s*$' -and $Matches[1].Substring(0, 1) -ceq $fenceChar -and $Matches[1].Length -ge $fenceLen) {
+            $fenceChar = ''
+        }
+        continue
+    }
     if ($l -cmatch '^## VERDICT: (PASS|FAIL)( \(.*\))?\s*$') { $verdictLines += ":$($i + 1)  $l" }
     elseif ($l -match '^\s{0,3}#{1,6}\s*VERDICT') { $malformedVerdicts += ":$($i + 1)  $l" }
+}
+if ($fenceChar -ne '') {
+    Write-Host "FATAL: rehearsal report ends inside a code fence opened at :$fenceOpenedAt ('$($fenceChar * $fenceLen)') that is never closed." -ForegroundColor Red
+    Write-Host "  Everything after that line is unreadable as a verdict, so the final verdict cannot be established." -ForegroundColor Yellow
+    exit 1
 }
 if ($malformedVerdicts.Count -gt 0) {
     Write-Host "FATAL: rehearsal report has verdict-like heading(s) the rehearsal engine never writes:" -ForegroundColor Red
