@@ -386,3 +386,158 @@ Do not re-enable it until the scheduler mini-release ships a start script that h
   on disk in `.env.lan` and never reach the container.
 
 Until all four hold, the task being disabled is the correct state, not a temporary workaround.
+
+---
+
+# 🔴 ROLLED BACK · 2026-09-13 ~14:45 UTC · the release pointed production at the TEST database
+
+The release PASSED every `Expect:` in the runbook and was still wrong. Two defects reported from a
+production screenshot of `/sales/search` turned out to have one root cause, and it was severe enough
+to roll the image back under decision 5.
+
+## What the screenshot showed
+
+1. A banner: «محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست» — on production, telling staff
+   their real data is fake.
+2. «نرخ لحظه‌ای دلار: ۱۸۶,۱۰۰ تومان — به‌روزرسانی: ۱۸ مرداد ۱۴۰۵، ۱۰:۱۴» — a rate ~35 days stale,
+   while production's own active rate was **230,000** set the same morning.
+
+## Ruling out the obvious, in order
+
+| check | result |
+|---|---|
+| Which database was queried | **`-d postgres`** — the live one. `afrakala` **does not exist on this host** (`FATAL: database "afrakala" does not exist`; the cluster holds `postgres` and `afrakala_g3_migration_test`) |
+| Which database PostgREST serves | `PGRST_DB_URI=postgres://<redacted>@db:5432/**postgres**` — the same one |
+| Does the API filter the row | anon gets **401** (`currency_rates` is not anon-readable). Simulated a real `sales` user's JWT per CLAUDE.md rule 7: `policy_passes=t`, `visible_rows=461`, and the query returned **230,000 @ 12:22:28**. RLS does **not** hide it |
+| Does the app read a precomputed object | No — `_app.sales.search.tsx:532` → `fetchEffectiveCurrencies` → `effective-currencies.ts:29-34` reads `currency_rates` **directly** with `is_active=eq.true` |
+| Does production's own history explain 186,100 | Two rows, both `is_active=f`, at Tehran **08:29** and **12:40** on 2026-08-09. The screenshot says **10:14**. **Neither matches** — the displayed row is not production's |
+
+## The actual cause
+
+The served client bundle had the Supabase URL **baked in at build time**:
+
+```
+function D2(){ return $2("http://192.168.170.8:9000") ... }     <- test box Kong
+grep -c "192.168.170.10" <bundle>  ->  0
+```
+
+`192.168.170.8:9000` is the **test computer's** Kong (production is `:8000`). So every Supabase call
+from a staff browser — read **and write** — was going to the test database. The banner was the same
+root cause: `VITE_APP_ENV` baked as `"test"`, and `VITE_TRUSTED_HOSTS` baked empty.
+
+## It was a regression of THIS release
+
+| | previous image `8b04c479e022` | released image `296eb4b4899f` |
+|---|---|---|
+| SSR LAN origin | **`http://192.168.170.10:8000`** (production) | **`http://192.168.170.8:9000`** (test) |
+| client bundle | reads its URL from `window.__…` at **runtime** | **`http://192.168.170.8:9000` baked** |
+
+The release changed the app from runtime-configured to build-time-baked, and the baked values came
+from the machine that built it. `release/build.ps1` never passes `VITE_APP_ENV`, `VITE_TRUSTED_HOSTS`
+or `VITE_SUPABASE_URL`; the canonical compose declares them as **build args**
+(`VITE_APP_ENV: ${VITE_APP_ENV:-production}`), and this release deployed with `--no-build`, so the
+correct values sitting in `.10`'s `.env.lan` could never apply.
+
+**Timeline.** Deploy ~13:13 UTC. Production's last `currency_rates` write was 12:22 and its last
+`audit_logs` write 13:38 — then silence for an hour while staff worked. **Exposure window ≈ 90
+minutes**, 13:13 → 14:45 UTC.
+
+## The rollback
+
+Pre-authorised under decision 5. Executed immediately, no further investigation first.
+
+```
+docker tag afrakala-app:lan-rollback afrakala-app:lan
+docker compose --env-file .env.lan -f docker-compose.yml up -d --no-deps --no-build web
+```
+
+Verified:
+
+```
+APP_GIT_SHA            : d60232f5                      (expected d60232f5)
+afrakala-lan-web       : healthy in 5 s
+db-role-fix            : Exited (0) · every other afrakala-lan-* : Up
+/login                 : 200 in 0.085 s
+/api/healthz           : 200
+LAN origins in the served build:
+  4 x http://192.168.170.10:8000     <- production Kong, restored
+  2 x http://192.168.170.8:11434     <- Ollama on the test box (documented, expected)
+  2 x http://192.168.170.8:8002      <- WhatsApp bridge (documented, expected)
+  0 x http://192.168.170.8:9000      <- the test Kong is gone
+active rate on .10     : 230,000 @ 2026-09-13 12:22:28
+```
+
+**The database was not touched.** All 14 migrations stay applied, ledger stays at 696, and the old
+image ran against the new schema without complaint.
+
+## Evidence preserved
+
+The broken image lost its tag when `:lan` was repointed, leaving it one prune from gone. Tagged and
+exported:
+
+```
+docker tag 296eb4b4899f afrakala-app:broken-3bc526c4-test-kong
+
+lan                        8b04c479e022
+lan-rollback               8b04c479e022
+broken-3bc526c4-test-kong  296eb4b4899f
+
+docker save -> C:\Users\AfRa KaLa\Desktop\broken-3bc526c4-test-kong.tar
+  252,347,904 bytes
+  SHA256 837A9F42A36785E3F9C7A00CFC34747112BB80B55C62931F8FB37372522959CC
+
+copied to \\192.168.170.8\dumps\release-20260913\broken-3bc526c4-test-kong.tar
+  SHA256 837A9F42A36785E3F9C7A00CFC34747112BB80B55C62931F8FB37372522959CC   MATCH
+```
+
+This image is what the next release line must be proven against.
+
+## Blast radius — NOT measured, and why
+
+The owner asked for counts on the test box (`192.168.170.8`, database `afrakala`) for rows created
+between 13:13 UTC and now. **This host cannot reach it:**
+
+```
+192.168.170.8:5432  OPEN, but:
+  FATAL: no pg_hba.conf entry for host "192.168.170.10", user "supabase_admin", database "afrakala"
+192.168.170.8:9000  alive, HTTP 401 — needs a key
+```
+
+The only key within reach is the one baked into the broken image. **It was not extracted and not
+used** — that is a credential decision, not an executor one. The measurement has to run from the
+test-side session. The query is ready:
+
+```sql
+SELECT 'currency_rates' AS t, count(*), min(created_at), max(created_at)
+  FROM public.currency_rates WHERE created_at >= '2026-09-13 13:13:00+00'
+UNION ALL SELECT 'sales_quotes',     count(*), min(created_at), max(created_at) FROM public.sales_quotes     WHERE created_at >= '2026-09-13 13:13:00+00'
+UNION ALL SELECT 'payment_receipts', count(*), min(created_at), max(created_at) FROM public.payment_receipts WHERE created_at >= '2026-09-13 13:13:00+00'
+UNION ALL SELECT 'persons',          count(*), min(created_at), max(created_at) FROM public.persons          WHERE created_at >= '2026-09-13 13:13:00+00'
+UNION ALL SELECT 'sale_lists',       count(*), min(created_at), max(created_at) FROM public.sale_lists       WHERE created_at >= '2026-09-13 13:13:00+00'
+UNION ALL SELECT 'audit_logs',       count(*), min(created_at), max(created_at) FROM public.audit_logs       WHERE created_at >= '2026-09-13 13:13:00+00'
+ ORDER BY 1;
+```
+
+Nothing on the test box was deleted or moved. Recovering those rows is a separate gated decision.
+
+## Executor error, recorded
+
+While reading PostgREST's configuration I masked only the connection URI, and
+**`PGRST_JWT_SECRET` / `PGRST_APP_SETTINGS_JWT_SECRET` were printed in full** into the session
+transcript. CLAUDE.md rule 8 says never print a key; I broke it. The handoff already records that
+this secret is **shared between test and production**, so the exposure is not limited to one
+environment. Rotating it is the owner's decision; nothing was rotated.
+
+## Release-line defects — two more for the next emit
+
+5. **The build must pin the target environment.** `release/build.ps1` passes neither
+   `VITE_SUPABASE_URL`, `VITE_APP_ENV` nor `VITE_TRUSTED_HOSTS`, so an image built on the test box
+   silently carries the test box's identity into production. The build must take the target as an
+   explicit input and fail without it.
+6. **The runbook must assert where the built bundle points, before the deploy is accepted.** Block 31
+   verifies `APP_GIT_SHA` and two HTTP codes — all three passed while every browser call went to the
+   wrong host. A `grep` of the served bundle for the target's own address, asserting it is present and
+   that no other LAN origin's API port appears, would have caught this at the gate.
+   **Both `VITE_APP_ENV` and `VITE_TRUSTED_HOSTS` must be fixed together**: setting only the first
+   swaps the amber "test environment" banner for the red "production on a test address" banner,
+   because `isLocalOrTestHost("192.168.170.10")` is true and the trusted-host list is empty.
