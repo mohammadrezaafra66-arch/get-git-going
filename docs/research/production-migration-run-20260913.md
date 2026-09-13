@@ -265,3 +265,76 @@ blocker lives in the database, not in `.env.lan`.
 7. **Sign-off (Block 33)** — og81 / og102 / og103 and the smoke and cold-gate lines are the owner's
    to tick by hand on the real target. og81's raw result is FAIL **by design** on a target carrying
    OG-J and OG-L; what must hold is the reconciliation, not a raw pass.
+
+---
+
+# Follow-up amendment · 2026-09-13, after the run
+
+## Blocks 3 and 4 — CANCELLED as designed, not deferred
+
+Owner verdict after reading the three findings: repointing the scheduled task is **a green check
+over unchanged behaviour**. The script hardcodes the old tree in three places and would `cd`
+straight back into it, so Block 3's `Expect:` (which reads only the task's `Execute` /
+`WorkingDirectory`) would pass while nothing about the running stack changed. Blocks 3 and 4 are
+cancelled as written.
+
+**The proper fix moves to the scheduler mini-release:** a start script living in `C:\afrakala` with
+no hardcoded paths, `--no-deps`, `-NoProfile`, a real `WorkingDirectory`, and — the part neither
+Block 3 nor Block 4 addressed — an `environment:` block in that tree's compose that actually
+forwards `OLLAMA_*` / `WHATSAPP_*` / `ISSABEL_*` / `GIT_SHA` to the container.
+
+## Correction to an earlier claim in this record
+
+Earlier this record said a reboot "would otherwise revert OCR". **That is not accurate, and the
+measurement is more specific.** The old tree's `docker-compose.yml` has **no `environment:` entries**
+for these keys:
+
+```
+OCR_ENABLED                 in old compose: 1
+OLLAMA_API_URL                            : 0
+OLLAMA_VISION_MODEL                       : 0
+WHATSAPP_PLATFORM_BASE_URL                : 0
+ISSABEL_CDR_HOST                          : 0
+GIT_SHA                                   : 0
+```
+
+So Block 5's append reaches **disk but not the container** on that path. On a reboot driven by the
+old tree, `OCR_ENABLED` survives (it is the one key that compose also names) while `OLLAMA_*` and
+`WHATSAPP_*` are dropped. Block 5 fixed half the drift; the compose half remains.
+
+## The task could not be disabled — same wall as Block 3
+
+```
+schtasks /Change /TN "AfraKala LAN Auto Start" /DISABLE
+ERROR: Access is denied.
+EXITCODE=1
+```
+
+No elevation was attempted and no alternative method was tried, by instruction. **The task is
+untouched: `Ready`, `At logon time`, still pointing at
+`C:\AfraKalaServer\get-git-going01lan\start-afrakala-lan.ps1`.** This session has no write access to
+Task Scheduler; both the repoint and the disable need an elevated shell the owner types.
+
+**Reboot risk as it stands, measured:** all seven services are `unless-stopped`, so the stack returns
+on its own with today's correct configuration and the new image
+(`296eb4b4899f`, `APP_GIT_SHA=3bc526c4`). Forty-five seconds later the logon task runs
+`docker compose --env-file .env.lan up -d` (no `--no-deps`) from the old tree and recreates the web
+container from that tree's compose — same image, but without `OLLAMA_*` and `WHATSAPP_*`.
+**The task rescues nothing; it only overwrites a correct stack with a stale one.**
+
+## NEW open item — the nightly backups are failing
+
+Not acted on tonight, measurement only, for a later session:
+
+```
+AfraKala LAN Nightly Backup        last run 2026-09-13 02:30   result = 1
+AfraKala LAN Weekly Heavy Backup   last run 2026-09-11 03:30   result = 1
+```
+
+Both scripts exist on disk (now also committed at `deploy/lan/scripts/`), so this is not a missing
+file. `AfraKala Auto Backup` and `AfraKala Auto Backup Nightly` both return 0 — but they run the
+**same script at the same minute**, so that pair is one backup run twice, not two backups.
+
+**We may not have a good nightly backup.** The last backup this project can point to with a verified
+checksum is `prod-20260913.dump` (35,424,962 bytes, md5 `6ccd2dbb07a9a4d9bbae4421eb3265e0`), taken
+by hand. Worth measuring before relying on the scheduled ones.
