@@ -28,10 +28,28 @@ param(
     # emitted block can CITE the decision instead of asserting it. Optional, but the script warns
     # if the report contains decided versions and this is not supplied.
     [string]$Decided = "",
-    [string]$D6TargetHost = "192.168.170.10"
+    [string]$D6TargetHost = "192.168.170.10",
+    # C1 (D10): the LIVE site the post-deploy gate reads, and the one supabaseUrl it accepts from it.
+    # The expected value defaults to what D6(iii) injects for the same target.
+    [string]$LiveSiteUrl = "http://192.168.170.10:3000",
+    [string]$ExpectedSupabaseUrl = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($ExpectedSupabaseUrl -eq "") { $ExpectedSupabaseUrl = "http://${D6TargetHost}:8000" }
+# D10 compares the live value to this string exactly, so the string itself must be an address a
+# browser can reach: a compose service name or loopback here would make D10 pass on the incident.
+$expectedHost = ''
+if ($ExpectedSupabaseUrl -cmatch '^https?://([A-Za-z0-9.-]+)(:[0-9]{1,5})?$') { $expectedHost = $Matches[1] }
+if ($expectedHost -eq '' -or $expectedHost -notmatch '\.' -or $expectedHost -match '^(localhost|127\.|0\.0\.0\.0)') {
+    Write-Host "FATAL: -ExpectedSupabaseUrl '$ExpectedSupabaseUrl' is not a browser-reachable origin (scheme://dotted-host[:port], not loopback)." -ForegroundColor Red
+    exit 1
+}
+if ($LiveSiteUrl -cnotmatch '^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$') {
+    Write-Host "FATAL: -LiveSiteUrl '$LiveSiteUrl' is not scheme://host[:port]." -ForegroundColor Red
+    exit 1
+}
 
 if (-not (Test-Path $RehearsalReport)) {
     Write-Host "FATAL: rehearsal report not found: $RehearsalReport" -ForegroundColor Red
@@ -1107,7 +1125,58 @@ Expect: APP_GIT_SHA equals git rev-parse --short HEAD
 Expect: afrakala-lan-db-role-fix = Exited (0); every other afrakala-lan-* = Up
 Expect: /login = 200 under 1 second
 Expect: /api/healthz = 200
+
+D10. What the DEPLOYED site hands to browsers, read from the live site and nothing else.
+D6(iii) and D9 above start their OWN container with SUPABASE_URL set by the probe and check what
+that container serves -- the probe asking itself. REVIEW-2 served http://kong:8000 from a clean
+image with a compose-shaped environment (SUPABASE_URL=http://kong:8000, APP_SUPABASE_PUBLIC_URL
+empty) and that block still printed GATE D9 PASS. The deployment's own environment decides the
+value (src/lib/runtime-config.ts: APP_SUPABASE_PUBLIC_URL, then VITE_SUPABASE_URL, then
+SUPABASE_URL), so it can only be measured AFTER deploy, on the running site. D10 starts no
+container: it reads /login from the live site and requires window.__APP_RUNTIME_CONFIG__.supabaseUrl
+to EQUAL the expected public address -- not contain it, not resemble it.
 '@)
+Add-Line ""
+Add-Line "    & {   # GATE D10 -- paste from this line to the matching closing brace"
+Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
+Add-Line "    `$site     = '$LiveSiteUrl'"
+Add-Line "    `$expected = '$ExpectedSupabaseUrl'"
+[void]$sb.AppendLine(@'
+    $page = curl.exe -s --max-time 20 "$site/login"
+    $curlExit = $LASTEXITCODE
+    $html = (@($page) | ForEach-Object { [string]$_ }) -join "`n"
+    if ($curlExit -ne 0 -or -not $html) {
+      Write-Host "FAIL D10: could not read $site/login from the live site (curl exit $curlExit). Nothing was measured."
+      $gateWhy = "could not read $site/login (curl exit $curlExit)"
+      Write-Host "GATE D10 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D10'] = $gateWhy; throw "STOPPED at gate D10: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $assignments = [regex]::Matches($html, 'window\.__APP_RUNTIME_CONFIG__\s*=').Count
+    $cfgMatch = [regex]::Match($html, 'window\.__APP_RUNTIME_CONFIG__\s*=\s*(\{[^<]*?\})\s*;?\s*</script>')
+    if ($assignments -ne 1 -or -not $cfgMatch.Success) {
+      Write-Host "FAIL D10: $site/login must carry exactly ONE parseable window.__APP_RUNTIME_CONFIG__; found $assignments assignment(s), parseable=$($cfgMatch.Success)."
+      $gateWhy = "the live /login carries $assignments runtime config assignment(s), parseable=$($cfgMatch.Success)"
+      Write-Host "GATE D10 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D10'] = $gateWhy; throw "STOPPED at gate D10: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $got = $null
+    try { $got = ($cfgMatch.Groups[1].Value | ConvertFrom-Json).supabaseUrl } catch { $got = $null }
+    if ($got -isnot [string] -or $got -cne $expected) {
+      Write-Host "FAIL D10: the LIVE site serves supabaseUrl '$got'; browsers must get exactly '$expected'."
+      Write-Host "          Every staff browser loading $site is being pointed at '$got' right now."
+      $gateWhy = "live supabaseUrl is '$got', not exactly '$expected'"
+      Write-Host "GATE D10 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D10'] = $gateWhy; throw "STOPPED at gate D10: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D10: $site/login serves supabaseUrl '$got' -- exactly the expected public address"
+    $global:AFRAKALA_FAILED_GATES.Remove('D10')
+    Write-Host "GATE D10 PASS"
+    }   # end GATE D10
+'@)
+Add-Line ""
+Add-Line "Expect: OK D10, the live $LiveSiteUrl/login serves supabaseUrl exactly $ExpectedSupabaseUrl"
+Add-Line "Expect: the last line printed is GATE D10 PASS"
+Add-Line "Expect: GATE D10 FAIL means browsers are being sent somewhere else NOW -- run the rollback block below"
 Add-Line ""
 $blockN++
 
