@@ -681,12 +681,31 @@ $d2Snippet = @'
       Write-Host "GATE D2 FAIL $gateWhy"
       $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
+    # C2, 2026-09-14. The comparison above checks the tag against $runningId, the SAME value the
+    # tag was made from, so it cannot notice if that one read was wrong: REVIEW-2 mutant M1 reads
+    # :lan into $runningId and this gate printed PASS while the tag was not the container's image.
+    # So the CONTAINER is asked again, now, after tagging -- nothing held in a variable is trusted.
+    $containerNow = [string](docker inspect afrakala-lan-web --format "{{.Image}}")
+    $containerExit = $LASTEXITCODE
+    if ($containerExit -ne 0 -or $containerNow -notmatch '^sha256:[0-9a-f]{64}$') {
+      Write-Host "FAIL D2: could not re-read the image afrakala-lan-web is running after tagging (exit $containerExit, got '$containerNow')."
+      $gateWhy = "cannot re-read the image afrakala-lan-web is running after tagging"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    if ($rbId -cne $containerNow) {
+      Write-Host "FAIL D2: $rollbackTag is '$rbId' but afrakala-lan-web, re-read after tagging, runs $containerNow."
+      $gateWhy = "rollback tag is '$rbId' but afrakala-lan-web is running $containerNow"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
     Write-Host "OK D2: $rollbackTag = running image $runningId"
     $global:AFRAKALA_FAILED_GATES.Remove('D2')
     Write-Host "GATE D2 PASS"
     }   # end GATE D2
 
-Expect: OK D2, afrakala-app:lan-rollback equal to the running container's full sha256 image id
+Expect: OK D2, afrakala-app:lan-rollback equal to the running container's full sha256 image id,
+Expect: as re-read from the container AFTER the tag was taken
 Expect: the last line printed is GATE D2 PASS
 '@
 if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
