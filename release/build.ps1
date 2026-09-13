@@ -64,6 +64,20 @@ $shortSha = (& git -C $repoRoot rev-parse --short HEAD 2>$null).Trim()
 
 Write-Host "Building $Tag from main @ $shortSha ..." -ForegroundColor Cyan
 
+# --- D7: declare the undeclared prerequisite --------------------------------------------------
+# deploy/lan/build.ps1 builds with `docker compose --env-file deploy/lan/.env.lan`. That file is
+# gitignored, so a fresh clone does not have it. Without this check the release line would run,
+# compose would interpolate every ${...} to empty, and the build would SUCCEED while producing an
+# image whose runtime config is blank -- a wrong image rather than a failed run. Fail here instead.
+$envFile = Join-Path $repoRoot "deploy\lan\.env.lan"
+if (-not (Test-Path $envFile)) {
+    Write-Host "REFUSED: required env file not found: $envFile" -ForegroundColor Red
+    Write-Host "It is gitignored on purpose and is per-host, so a fresh clone never has it." -ForegroundColor Yellow
+    Write-Host "Create it before building a release:" -ForegroundColor Yellow
+    Write-Host "  powershell -ExecutionPolicy Bypass -File deploy\lan\scripts\init-lan.ps1" -ForegroundColor Yellow
+    exit 1
+}
+
 # --- delegate the actual build to the proven script -------------------------------------------
 $existingBuild = Join-Path $repoRoot "deploy\lan\build.ps1"
 if (-not (Test-Path $existingBuild)) {
@@ -99,7 +113,14 @@ Write-Host "Manifest written: $manifestPath" -ForegroundColor Green
 
 # --- save + gzip for transfer -------------------------------------------------------------------
 $tarPath = Join-Path $outDir "afrakala-app-$shortSha.tar.gz"
-Write-Host "docker save $Tag | gzip -6 > $tarPath" -ForegroundColor Cyan
+# D4: save the SHA tag, not $Tag (which defaults to afrakala-app:lan).
+# The emitted runbook does `docker tag afrakala-app:<sha> afrakala-app:lan` after loading, and
+# `docker load` only recreates the tags that were inside the archive. Saving :lan therefore
+# produced an archive in which afrakala-app:<sha> does not exist, so that runbook line failed on a
+# tag that was never there. Saving the sha tag makes the archive self-describing and leaves the
+# runbook line correct. :lan is still applied on the target, by the runbook, after the load.
+$saveTag = "afrakala-app:$shortSha"
+Write-Host "docker save $saveTag | gzip -6 > $tarPath" -ForegroundColor Cyan
 # See release/rehearse.ps1 for why Git Bash must be located explicitly (WSL's bash.exe on PATH
 # cannot see Windows drive-letter paths the way this script needs).
 $gitBashCandidates = @("C:\Program Files\Git\bin\bash.exe", "C:\Program Files\Git\usr\bin\bash.exe")
@@ -113,7 +134,7 @@ if (-not $bashPath) {
     exit 0
 }
 $tarPathUnix = $tarPath.Replace('\', '/')
-& $bashPath -c "docker save '$Tag' | gzip -6 > '$tarPathUnix'"
+& $bashPath -c "docker save '$saveTag' | gzip -6 > '$tarPathUnix'"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "docker save | gzip failed (exit $LASTEXITCODE)." -ForegroundColor Red
     exit $LASTEXITCODE
