@@ -170,12 +170,29 @@ if [ "$RAN_APPLY" != "$DOC_APPLY_COUNT" ] || [ "$RAN_LEDGER" != "$DOC_LEDGER_COU
   exit 1
 fi
 
+# C3, 2026-09-14. This verdict used to read "VERDICT: PASSED". REVIEW-2 ran this engine on a
+# zero-migration document whose Block 0 gate FAILED and whose probe image did not exist, and it
+# printed PASSED, exit 0 -- because this engine never runs Block 0 or any GATE block. A release
+# with no migrations (this one) therefore got a PASSED with no gate behind it. The verdict now says,
+# in its own words, what was NOT run, naming every gate the document contains.
+DOC_GATES=$(grep -oE 'GATE [A-Za-z0-9]+ PASS' "$RELEASE_MD" | awk '{print $2}' | awk '!seen[$0]++' | tr '\n' ' ' | sed 's/ *$//')
+[ -n "$DOC_GATES" ] || DOC_GATES="(this document names no GATE block)"
+not_run_report() {
+  log "    This script ran ONLY pg_is_in_recovery() and the $RAN_APPLY mig_apply + $RAN_LEDGER ledger-row-only"
+  log "    line(s) before '# Phase 5'. It did NOT run Block 0 (D1a checkout = build sha, D1b migration"
+  log "    files on disk) and it did NOT run ANY GATE block. NOT EXECUTED, NOT MEASURED: $DOC_GATES"
+  log "    A human must run each of those blocks and see 'GATE <id> PASS' for every one of them."
+  log "    Until then this release is NOT verified, whatever this line says about migrations."
+}
+
 if [ "$STOPPED_BEFORE_DEPLOY" = "1" ]; then
-  log "=== VERDICT: PASSED (all preflight + migration blocks matched their Expect: lines;"
-  log "    deploy phase was NOT executed -- run it by hand, this script never touches"
-  log "    the running afrakala-lan-web container) ==="
+  log "=== VERDICT: MIGRATION PHASE PASSED -- RELEASE NOT VERIFIED: BLOCK 0 AND ALL GATES NOT RUN ==="
+  not_run_report
+  log "    Deploy was NOT executed -- run it by hand; this script never touches afrakala-lan-web."
   exit 0
 fi
 
-log "=== VERDICT: PASSED (no Phase 5 heading found -- entire document processed) ==="
+log "=== VERDICT: MIGRATION PHASE PASSED -- RELEASE NOT VERIFIED: BLOCK 0 AND ALL GATES NOT RUN ==="
+log "    (no Phase 5 heading found -- the whole document was walked for migration lines only)"
+not_run_report
 exit 0

@@ -1,7 +1,8 @@
 # release/emit-blocks.ps1
 # Generates release/out/RELEASE-<date>.md in BLOCKS.md's own format: one block per unit of work,
-# each with a literal "Expect:" line, so release/validate-blocks.ps1 can check it mechanically and
-# release/apply-release.ps1 can execute it mechanically. ASCII-only, PowerShell 5.1 compatible.
+# each with a literal "Expect:" line, so release/validate-blocks.ps1 can check its shape and
+# release/apply-release.ps1 can execute its migration lines (only those -- Block 0 and every GATE
+# block are run by a human, see the document header). ASCII-only, PowerShell 5.1 compatible.
 #
 # WHY GENERATED, NOT HAND-WRITTEN
 #   docs/research/convergence/R-4-transfer-line.md Task 1.2 found that the 09-12 run's claim of
@@ -261,8 +262,12 @@ Add-Line "Rehearsal restore source: $dumpFile (md5 $dumpMd5)"
 Add-Line ""
 [void]$sb.AppendLine(@'
 Every block below has a literal 'Expect:' line. release/validate-blocks.ps1 checks this
-document mechanically before anyone runs it. release/apply-release.ps1 stops at the FIRST
-block whose live output disagrees with its Expect: line -- exactly BLOCKS.md's own rule.
+document's SHAPE before anyone runs it (files named, versions, an Expect: in every block); it
+runs nothing. release/apply-release.ps1 runs ONLY pg_is_in_recovery() and the mig_apply /
+ledger_insert_only lines before '# Phase 5', stopping on the first that fails; it does not
+compare any other Expect: line. Block 0 and EVERY `GATE` block (D1a, D1b, D2, D3, D6, D9, D10)
+are run by a HUMAN, and no script checks them: a green apply-release.ps1 run says nothing about
+any gate. This release is verified only when a human has seen `GATE <id> PASS` for each one.
 
 HOW TO PASTE A GATE. Every gate, and every region that changes state after a gate, is ONE
 `& { ... }` region: copy it from its `& {` line to its closing `}` line and paste it whole.
