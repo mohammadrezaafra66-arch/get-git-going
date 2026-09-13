@@ -243,17 +243,21 @@ Add-Line "    `$buildSha = '$d1BuildSha'"
     $dirty    = (git status --porcelain)
     if ($headSha -ne $buildSha) {
       Write-Host "FAIL D1a: HEAD is $headSha but this release was built from $buildSha"
+      Write-Host "GATE D1a FAIL HEAD $headSha is not the build sha $buildSha"
       exit 1
     }
     if ($dirty) {
       Write-Host "FAIL D1a: working tree is not clean:"
       $dirty | ForEach-Object { Write-Host "    $_" }
+      Write-Host "GATE D1a FAIL working tree is not clean ($(@($dirty).Count) path(s))"
       exit 1
     }
     Write-Host "OK D1a: HEAD = $headSha, tree clean"
+    Write-Host "GATE D1a PASS"
 '@)
 Add-Line ""
 Add-Line "Expect: OK D1a, HEAD equal to the build sha $d1BuildSha, working tree clean"
+Add-Line "Expect: the last line printed is GATE D1a PASS"
 Add-Line ""
 Add-Line "    # D1(b) -- every migration file in THIS release set must exist on disk."
 Add-Line "    `$expected = @($d1MigList)"
@@ -265,12 +269,15 @@ Add-Line "    `$expected = @($d1MigList)"
     if ($missing.Count -gt 0) {
       Write-Host "FAIL D1b: $($missing.Count) of $($expected.Count) migration file(s) missing:"
       $missing | ForEach-Object { Write-Host "    MISSING $_" }
+      Write-Host "GATE D1b FAIL $($missing.Count) migration file(s) missing: $($missing -join ', ')"
       exit 1
     }
     Write-Host "OK D1b: all $($expected.Count) migration files present"
+    Write-Host "GATE D1b PASS"
 '@)
 Add-Line ""
 Add-Line "Expect: OK D1b, all $d1MigCount migration files present, zero missing"
+Add-Line "Expect: the last line printed is GATE D1b PASS"
 Add-Line ""
 [void]$sb.AppendLine(@'
 ---
@@ -617,6 +624,7 @@ $d2Snippet = @'
     $runningId = [string](docker inspect afrakala-lan-web --format "{{.Image}}")
     if ($LASTEXITCODE -ne 0 -or $runningId -notmatch '^sha256:[0-9a-f]{64}$') {
       Write-Host "FAIL D2: could not read the image afrakala-lan-web is running (got '$runningId')."
+      Write-Host "GATE D2 FAIL cannot read the image afrakala-lan-web is running"
       exit 1
     }
     docker tag $runningId $rollbackTag
@@ -625,16 +633,20 @@ $d2Snippet = @'
       Write-Host "FAIL D2: cannot tag the running image $runningId (docker tag exit $tagExit)."
       Write-Host "         The image is not in this machine's image store, or the tag name is invalid."
       Write-Host "         Either way NO rollback point was taken. Stop."
+      Write-Host "GATE D2 FAIL docker tag of the running image failed, no rollback point taken"
       exit 1
     }
     $rbId = [string](docker image inspect $rollbackTag --format "{{.Id}}")
     if ($tagExit -ne 0 -or $rbId -ne $runningId) {
       Write-Host "FAIL D2: $rollbackTag is '$rbId' but the running image is $runningId (docker tag exit $tagExit)."
+      Write-Host "GATE D2 FAIL rollback tag is '$rbId' but the running image is $runningId"
       exit 1
     }
     Write-Host "OK D2: $rollbackTag = running image $runningId"
+    Write-Host "GATE D2 PASS"
 
 Expect: OK D2, afrakala-app:lan-rollback equal to the running container's full sha256 image id
+Expect: the last line printed is GATE D2 PASS
 '@
 if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     $manifest = Get-Content $BuildManifest -Raw | ConvertFrom-Json
@@ -658,11 +670,14 @@ if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     if ($lanId -eq $rbId) {
       Write-Host "FAIL D3: :lan and :lan-rollback are the same image ($lanId)."
       Write-Host "         Rolling back would change nothing. Stop here."
+      Write-Host "GATE D3 FAIL :lan and :lan-rollback are the same image ($lanId)"
       exit 1
     }
     Write-Host "OK D3: lan=$lanId rollback=$rbId"
+    Write-Host "GATE D3 PASS"
 
 Expect: OK D3, printing two DIFFERENT ids. A match is a hard failure.
+Expect: the last line printed is GATE D3 PASS
 '@)
 } else {
     [void]$sb.AppendLine(@'
@@ -678,11 +693,13 @@ first, then re-generate this document, or fill this block in by hand before appl
     # D3 -- the two names must resolve to DIFFERENT images.
     $lanId = (docker images afrakala-app:lan --format "{{.ID}}")
     $rbId  = (docker images afrakala-app:lan-rollback --format "{{.ID}}")
-    if ($lanId -eq $rbId) { Write-Host "FAIL D3: identical ($lanId)"; exit 1 }
+    if ($lanId -eq $rbId) { Write-Host "FAIL D3: identical ($lanId)"; Write-Host "GATE D3 FAIL :lan and :lan-rollback are the same image ($lanId)"; exit 1 }
     Write-Host "OK D3: lan=$lanId rollback=$rbId"
+    Write-Host "GATE D3 PASS"
 
 Expect: loaded image ID = <fill in from release/out/build-<sha>.json>
 Expect: OK D3, two DIFFERENT ids
+Expect: the last line printed is GATE D3 PASS
 '@)
 }
 Add-Line ""
@@ -722,6 +739,7 @@ Add-Line "    `$target = '$D6TargetHost'"
     # (0) the image must exist, or every check below measures nothing and passes.
     if (-not (docker images -q $img)) {
       Write-Host "FAIL D6(0): image $img does not exist on this machine. Nothing was measured."
+      Write-Host "GATE D6 FAIL image $img does not exist on this machine"
       exit 1
     }
 
@@ -736,6 +754,7 @@ Add-Line "    `$target = '$D6TargetHost'"
     }
     if ($scanExit -ne 0 -or $scanned -lt 1) {
       Write-Host "FAIL D6(i): the scan measured nothing (docker exit $scanExit, $scanned js file(s) read)."
+      Write-Host "GATE D6 FAIL the client bundle scan measured nothing"
       exit 1
     }
     # Backend-SHAPED literals that are not endpoints: exact string -> most occurrences allowed.
@@ -779,6 +798,7 @@ Add-Line "    `$target = '$D6TargetHost'"
       Write-Host "FAIL D6(i): host literal(s) baked into the client bundle ($scanned js files read):"
       $bad | ForEach-Object { Write-Host "    $_" }
       Write-Host "    A host literal here means the image is tied to the machine that built it."
+      Write-Host "GATE D6 FAIL host literal(s) in the client bundle: $(@($bad | ForEach-Object { ($_ -split '  ', 2)[0] }) -join ', ')"
       exit 1
     }
     Write-Host "OK D6(i): no baked host literal in the client bundle ($scanned js files read, $($hits.Count) URL literal(s) classified)"
@@ -788,6 +808,7 @@ Add-Line "    `$target = '$D6TargetHost'"
     if (-not $hasCfg) {
       Write-Host "FAIL D6(ii): __APP_RUNTIME_CONFIG__ is absent from the client bundle."
       Write-Host "    Without it the client has no address at all. Do not deploy this image."
+      Write-Host "GATE D6 FAIL __APP_RUNTIME_CONFIG__ is absent from the client bundle"
       exit 1
     }
     Write-Host "OK D6(ii): runtime config mechanism present"
@@ -800,13 +821,16 @@ Add-Line "    `$target = '$D6TargetHost'"
     $served = [string]$served
     if (-not $served) {
       Write-Host "FAIL D6(iii): the image served no supabaseUrl at all. Nothing was measured."
+      Write-Host "GATE D6 FAIL the image served no supabaseUrl"
       exit 1
     }
     if ($served -notmatch [regex]::Escape($target)) {
       Write-Host "FAIL D6(iii): served config does not name the target $target. Got: $served"
+      Write-Host "GATE D6 FAIL served config does not name the target $target"
       exit 1
     }
     Write-Host "OK D6(iii): served config = $served"
+    Write-Host "GATE D6 PASS"
 
     # D9 -- the served host must be reachable FROM A BROWSER.
     # D6(i)-(iii) all passed on an image whose injected config was
@@ -818,6 +842,7 @@ Add-Line "    `$target = '$D6TargetHost'"
     if ($served -match '"supabaseUrl":"https?://([^/:"]+)') { $servedHost = $Matches[1] }
     if ($servedHost -eq "") {
       Write-Host "FAIL D9: could not parse a host out of the served config: $served"
+      Write-Host "GATE D9 FAIL no host could be parsed from the served config"
       exit 1
     }
     $isIPv4     = $servedHost -match '^\d{1,3}(\.\d{1,3}){3}$'
@@ -826,21 +851,25 @@ Add-Line "    `$target = '$D6TargetHost'"
     if ($isLoopback) {
       Write-Host "FAIL D9: served host '$servedHost' is loopback. Correct inside the container,"
       Write-Host "         unreachable for every browser except one on the server itself."
+      Write-Host "GATE D9 FAIL served host '$servedHost' is loopback"
       exit 1
     }
     if (-not ($isIPv4 -or $isDottedFqdn)) {
       Write-Host "FAIL D9: served host '$servedHost' is a bare name with no dot -- a"
       Write-Host "         compose service name or container alias. SSR resolves it; a browser"
       Write-Host "         cannot. Set APP_SUPABASE_PUBLIC_URL to the address staff type."
+      Write-Host "GATE D9 FAIL served host '$servedHost' is a bare name with no dot"
       exit 1
     }
     Write-Host "OK D9: served host '$servedHost' is browser-reachable"
+    Write-Host "GATE D9 PASS"
 '@)
 Add-Line ""
 Add-Line "Expect: OK D6(i), no baked host literal in the client bundle"
 Add-Line "Expect: OK D6(ii), runtime config mechanism present"
 Add-Line "Expect: OK D6(iii), served config naming $D6TargetHost"
 Add-Line "Expect: OK D9, served host browser-reachable (not a compose service name, not loopback)"
+Add-Line "Expect: GATE D6 PASS, then GATE D9 PASS as the last line printed"
 Add-Line ""
 
 Add-Line "# Phase 6 - deploy"
