@@ -338,3 +338,51 @@ file. `AfraKala Auto Backup` and `AfraKala Auto Backup Nightly` both return 0 �
 **We may not have a good nightly backup.** The last backup this project can point to with a verified
 checksum is `prod-20260913.dump` (35,424,962 bytes, md5 `6ccd2dbb07a9a4d9bbae4421eb3265e0`), taken
 by hand. Worth measuring before relying on the scheduled ones.
+
+## Resolution — the task is DISABLED
+
+The owner ran it in an elevated PowerShell, after this session was denied twice
+(`Set-ScheduledTask` in Block 3, then `schtasks /Change`):
+
+```
+schtasks /Change /TN "AfraKala LAN Auto Start" /DISABLE
+SUCCESS: The parameters of scheduled task "AfraKala LAN Auto Start" have been changed.
+```
+
+Verified read-only from this session:
+
+```
+TaskName              : \AfraKala LAN Auto Start
+Status                : Disabled
+Scheduled Task State  : Disabled
+Task To Run           : powershell.exe -ExecutionPolicy Bypass -File
+                        "C:\AfraKalaServer\get-git-going01lan\start-afrakala-lan.ps1"
+Last Run Time         : 2026-09-12 16:42:29     (unchanged — it has not run since)
+```
+
+Exactly one task changed. The other four are untouched and `Ready`:
+`AfraKala Auto Backup`, `AfraKala Auto Backup Nightly`, `AfraKala LAN Nightly Backup`,
+`AfraKala LAN Weekly Heavy Backup`. The task was **disabled, not deleted**, and its command line was
+not rewritten — so nothing about the old tree was touched either.
+
+### The reboot risk is CLOSED
+
+All seven services carry `unless-stopped`, so on the next boot the stack returns **on its own**, with
+today's configuration and today's image (`296eb4b4899f`, `APP_GIT_SHA=3bc526c4`). With the logon task
+disabled, **nothing overwrites that stack forty-five seconds later.** The one mechanism that could
+silently undo this release is off.
+
+### Re-enabling the task is NOT safe yet
+
+Do not re-enable it until the scheduler mini-release ships a start script that has:
+
+- **no hardcoded paths** — the current one `cd`s to `C:\AfraKalaServer\get-git-going01lan\deploy\lan`
+  and writes its status file there, so repointing the *task* alone changes nothing;
+- **`--no-deps`** on the compose line — without it `up -d` pulls the one-shot `db-role-fix` container
+  into the start-up graph (CLAUDE.md OG-68);
+- **`-NoProfile`** and a real `WorkingDirectory` on the task action;
+- and — the part neither Block 3 nor Block 4 addressed — an **`environment:` block in that tree's
+  compose** forwarding `OLLAMA_*`, `WHATSAPP_*`, `ISSABEL_*` and `GIT_SHA`. Without it the keys sit
+  on disk in `.env.lan` and never reach the container.
+
+Until all four hold, the task being disabled is the correct state, not a temporary workaround.
