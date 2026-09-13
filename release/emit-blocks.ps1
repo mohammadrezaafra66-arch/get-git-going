@@ -51,13 +51,35 @@ $reportLines = Get-Content -Path $RehearsalReport -Encoding UTF8
 # For that document the final verdict genuinely is PASS, so it is still accepted -- but only
 # because the LAST one is checked now. A check that can pass without being true is the exact
 # defect class this pipeline exists to stop.
-$verdictLines = @($reportLines | Where-Object { $_ -match "^\s*#*\s*VERDICT:" })
+#
+# B2, 2026-09-14. The previous pattern `^\s*#*\s*VERDICT:` made the `#` optional, so a column-0
+# PROSE line ("VERDICT: PASS is the outcome we were hoping for, but it did not happen.") written
+# after a real `## VERDICT: FAIL` counted as the last verdict and a release document was written.
+# A verdict is now only a line the rehearsal engine itself writes -- release/lib/rehearse-engine.sh
+# echoes exactly "## VERDICT: PASS" or "## VERDICT: FAIL" with an optional " (reason)" -- and only
+# outside a fenced code block. Anything that looks like a verdict heading but is not in that form
+# is refused rather than guessed at.
+$verdictLines = @()
+$malformedVerdicts = @()
+$inFence = $false
+for ($i = 0; $i -lt $reportLines.Count; $i++) {
+    $l = $reportLines[$i]
+    if ($l -match '^\s{0,3}(```|~~~)') { $inFence = -not $inFence; continue }
+    if ($inFence) { continue }
+    if ($l -cmatch '^## VERDICT: (PASS|FAIL)( \(.*\))?\s*$') { $verdictLines += ":$($i + 1)  $l" }
+    elseif ($l -match '^\s{0,3}#{1,6}\s*VERDICT') { $malformedVerdicts += ":$($i + 1)  $l" }
+}
+if ($malformedVerdicts.Count -gt 0) {
+    Write-Host "FATAL: rehearsal report has verdict-like heading(s) the rehearsal engine never writes:" -ForegroundColor Red
+    $malformedVerdicts | ForEach-Object { Write-Host "    $_" }
+    exit 1
+}
 if ($verdictLines.Count -eq 0) {
-    Write-Host "FATAL: rehearsal report contains no VERDICT: line at all." -ForegroundColor Red
+    Write-Host "FATAL: rehearsal report contains no '## VERDICT:' heading at all." -ForegroundColor Red
     exit 1
 }
 $finalVerdict = $verdictLines[-1]
-if ($finalVerdict -notmatch "VERDICT:\s*PASS") {
+if ($finalVerdict -cnotmatch '## VERDICT: PASS\s*$') {
     Write-Host "FATAL: the FINAL verdict in the rehearsal report is not PASS." -ForegroundColor Red
     Write-Host "  final  : $finalVerdict" -ForegroundColor Yellow
     Write-Host "  all verdict lines, in order:" -ForegroundColor Yellow
