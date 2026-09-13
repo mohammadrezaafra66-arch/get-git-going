@@ -3,35 +3,32 @@
 **If context was lost or compacted: read this file and `STATE.md` BEFORE acting. Never restate a
 fact from a compacted summary as established — re-measure it.**
 
-Last updated 2026-09-12, at the start of the five-wave close-out chain.
+Last updated 2026-09-12, after E-4 (replacement) was stopped at checkpoint 1.
 
 ---
 
-## THE ONE THING: where the chain is
+## THE ONE THING: exact next command
 
-Stage 2 integration is **built and gated**: `feature/conv-integration`, worktree
-`D:\AfraKalaTest\wt-conv-int`, twelve migrations, full evidence in
-`docs/missions/convergence/INTEGRATION-LOG.md`.
+**Row: E-4, `feature/conv-release-line`.** A fresh replacement agent must be launched from
+`dba17712` + `docs/missions/convergence/RESUME-E4.md` **in that worktree** (not this file).
 
-**Wave A is the next action: launch `dev-code-critic` (V-1) and `dev-security-critic` (V-2) in
-PARALLEL.** They share nothing:
+Its own recorded next command, verbatim:
 
-| resource | owner |
-|---|---|
-| `prod_rehearsal_v1` | V-1 only — psql + source reading, **never a spec run** |
-| `prod_rehearsal_v2` | V-2 only — **owns the Playwright/e2e harness** |
-| browser, web container, `afrakala`, `e2e/auth/*.storage.json` | orchestrator only, Wave B |
-| `prod_rehearsal_e4b…` | E-4 only, Wave D |
+```powershell
+.\release\rehearse.ps1 -Dump D:\AfraKalaTest\dumps\prod-20260913.dump -Date e4b `
+  -KnownLedgerLies release\config\known-ledger-lies.txt
+```
 
-Then Wave B (browser, orchestrator) → Wave C (devil's advocate, verdict, merge) →
-Wave D (E-4 release line) → Wave E (hand to owner).
+**What proves it done:** `release/out/rehearsal-e4b.md` ending in `## VERDICT: PASS`, and
+`prod_rehearsal_e4b` gone afterwards (the engine's cleanup trap drops it either way).
 
-**V-1's brief leads with the four artifacts where the orchestrator was producer AND gate** —
-526's idempotency proof, G-4's fix, migration 537, migration 538 — **requirement only, no
-orchestrator proof, no orchestrator header text.** Two carry a kill switch: 537 is RED unless V-1
-independently counts `214 → 0`; 538 is RED unless it independently counts **36**.
+**Then:** `emit-blocks.ps1` → `validate-blocks.ps1` → `apply-release.ps1` against a scratch DB;
+Persian `docs/runbooks/release-line/README.md`; `docs/research/convergence/E-4-proof.md`
+(**does not exist** — `known-ledger-lies.txt` falsely cites it); commit, push once, PR to
+`staging`, **do not merge**.
 
-**A RED row leaves the release. Including the orchestrator's.**
+**After E-4: Stage 2.** V-1's first task is re-running 526's two-pass proof independently; V-2
+adds an og61 baseline on a clean integration restore.
 
 ---
 
