@@ -602,6 +602,40 @@ Add-Line "# Phase 5 - image"
 Add-Line ""
 Add-Line "### Block $blockN - image transfer"
 Add-Line ""
+# D2, emitted identically whether or not a build manifest was supplied.
+$d2Snippet = @'
+    # D2 -- freeze the CURRENTLY RUNNING image under the rollback name FIRST, before
+    # :lan is repointed. The previous order tagged :lan to the incoming image and only
+    # afterwards ran `docker tag :lan :lan-rollback`, which moved the rollback name onto
+    # the NEW image and left the running-good image with no tag at all. That is a
+    # rollback that rolls forward.
+    # B3, 2026-09-14: the tag is taken from the RUNNING CONTAINER's image id, never from
+    # afrakala-app:lan -- :lan is the name being replaced and need not be what is running.
+    # Measured on the test box: :lan = 296eb4b4899f while afrakala-lan-web ran 0c3106602cc9,
+    # which no tag pointed at. Both ids below are full sha256, so the comparison is exact.
+    $rollbackTag = 'afrakala-app:lan-rollback'
+    $runningId = [string](docker inspect afrakala-lan-web --format "{{.Image}}")
+    if ($LASTEXITCODE -ne 0 -or $runningId -notmatch '^sha256:[0-9a-f]{64}$') {
+      Write-Host "FAIL D2: could not read the image afrakala-lan-web is running (got '$runningId')."
+      exit 1
+    }
+    docker tag $runningId $rollbackTag
+    $tagExit = $LASTEXITCODE
+    if ($tagExit -ne 0) {
+      Write-Host "FAIL D2: cannot tag the running image $runningId (docker tag exit $tagExit)."
+      Write-Host "         The image is not in this machine's image store, or the tag name is invalid."
+      Write-Host "         Either way NO rollback point was taken. Stop."
+      exit 1
+    }
+    $rbId = [string](docker image inspect $rollbackTag --format "{{.Id}}")
+    if ($tagExit -ne 0 -or $rbId -ne $runningId) {
+      Write-Host "FAIL D2: $rollbackTag is '$rbId' but the running image is $runningId (docker tag exit $tagExit)."
+      exit 1
+    }
+    Write-Host "OK D2: $rollbackTag = running image $runningId"
+
+Expect: OK D2, afrakala-app:lan-rollback equal to the running container's full sha256 image id
+'@
 if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     $manifest = Get-Content $BuildManifest -Raw | ConvertFrom-Json
     Add-Line "Built by release/build.ps1 from main @ $($manifest.git_sha)."
@@ -609,18 +643,7 @@ if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     Add-Line "    # deliver the tarball over the proven LAN channel (SMB share \\192.168.170.8\dumps),"
     Add-Line "    # then on the target machine:"
     Add-Line ""
-    [void]$sb.AppendLine(@'
-    # D2 -- freeze the CURRENTLY RUNNING image under the rollback name FIRST, before
-    # :lan is repointed. The previous order tagged :lan to the incoming image and only
-    # afterwards ran `docker tag :lan :lan-rollback`, which moved the rollback name onto
-    # the NEW image and left the running-good image with no tag at all. That is a
-    # rollback that rolls forward.
-    docker tag afrakala-app:lan afrakala-app:lan-rollback
-    docker inspect afrakala-lan-web --format "{{.Image}}"
-    docker images afrakala-app:lan-rollback --format "{{.ID}}"
-
-Expect: afrakala-app:lan-rollback resolves to the image the running container is on
-'@)
+    [void]$sb.AppendLine($d2Snippet)
     Add-Line ""
     Add-Line "    gunzip -c afrakala-app-$($manifest.git_sha).tar.gz | docker load"
     Add-Line "    docker tag afrakala-app:$($manifest.git_sha) afrakala-app:lan"
@@ -645,11 +668,9 @@ Expect: OK D3, printing two DIFFERENT ids. A match is a hard failure.
     [void]$sb.AppendLine(@'
 No build manifest was supplied to emit-blocks.ps1 (-BuildManifest). Run release/build.ps1
 first, then re-generate this document, or fill this block in by hand before applying:
-
-    # D2 -- freeze the running image under the rollback name BEFORE :lan moves.
-    docker tag afrakala-app:lan afrakala-app:lan-rollback
-    docker images afrakala-app:lan-rollback --format "{{.ID}}"
-
+'@)
+    [void]$sb.AppendLine($d2Snippet)
+    [void]$sb.AppendLine(@'
     gunzip -c afrakala-app-<sha>.tar.gz | docker load
     docker tag afrakala-app:<sha> afrakala-app:lan
     docker images afrakala-app:lan --format "{{.ID}}"
