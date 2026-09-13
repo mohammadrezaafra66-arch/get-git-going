@@ -661,3 +661,322 @@ RLS ۱۳ یا ۰ می‌دهد، هرگز ۸). خوش‌خیم و بی‌ربط 
    پیش‌فرضِ `D6TargetHost=192.168.170.10`، خالی‌گذریِ D1b با مجموعهٔ تهی، aliasِ نقطه‌دارِ D9،
    `appEnv`ِ غلط‌تایپ‌شده، و جملهٔ سرِ سندِ emit‌شده («apply-release.ps1 stops at the FIRST block
    whose live output disagrees») که با دامنهٔ واقعیِ engine (بخش ۴) نمی‌خواند.
+
+---
+
+# پیوست ۴ — بستنِ شش بازدارندهٔ بازبینیِ دوم (۲۰۲۶-۰۹-۱۴)
+
+مبنا: `REVIEW-2-20260913.md` (commit `f46c0e20`) — حکم REJECT. شاخه `fix/release-line-runtime-config`
+روی `f46c0e20` (کدِ بازبینی‌شده `88997bd6`)، پایه `origin/main` @ `9bc8d554`، باکسِ تست
+`D:\AfraKalaTest\app` (`192.168.170.8`). فقط همین شش مورد لمس شد؛ فایل‌های تغییرکرده:
+`release/emit-blocks.ps1`، `release/lib/apply-release-engine.sh`، `release/apply-release.ps1`.
+**این پیوست حکم نمی‌دهد و شاخه را تأییدشده اعلام نمی‌کند** — بازبین حکم می‌دهد.
+
+روش (همان قراردادِ بازبینی): هر بلوک از سندی که **emitterِ همان commit** تولید کرد عیناً بیرون
+کشیده شد (de-indent + جایگزینیِ صریحِ نام‌ها به فضای‌نامِ `c6fix-*`، هر جایگزینی چاپ شد)؛ با
+`powershell.exe -File` (Windows PowerShell **5.1.26100.9278**، مرجع) و `pwsh.exe -File` (7.6.4،
+ثانوی) اجرا شد؛ exit code با `> file 2>&1` و سپس `$LASTEXITCODE` در دستورِ جدا خوانده شد، نه از
+pipe. paste = نوشتنِ key eventها با `AttachConsole` + `WriteConsoleInputW` در input bufferِ
+**همان** پنجرهٔ تست (conhost یا Windows Terminal)، بعد خواندنِ screen buffer، transcriptِ خودِ shell،
+و یک فرمانِ پیگیری (`Write-Host ("ALIVE-PROMPT-" + $PID)`) برای اثباتِ زنده‌بودنِ همان shell.
+تولیدِ production روی `.10` = Windows PowerShell 5.1.26100.9444 (به گفتهٔ مالک، اندازه‌گیری‌شده) —
+هیچ gateی `&&`، `||`، ternary یا `??` ندارد؛ `$LASTEXITCODE` صریح خوانده می‌شود؛ هیچ `"` داخلِ
+آرگومانِ `sh -c` نیست.
+
+imageهای آزمایشی (از `git archive f46c0e20`، `docker build`، هرگز compose): `c6fix-afrakala:clean`
+= `909189f7d233`؛ `c6fix-afrakala:evasion` = `f4aa0b98432b` — کاشت در **source**
+(`src/routes/__root.tsx`) تا از Vite بگذرد؛ bundleِ واقعی، شمارشِ مستقل: `const Bz="192.168.170.8:9000"`،
+`__r2e="http://"+Bz`، `__r2a="HTTP://192.168.170.8:9000"`، `__r2b="//kong:8000"`، `__r2c="kong:8000"`
+(همان شکلِ imageِ `evasion`ِ بازبین)؛ `c6fix-afrakala:fakeserver` (FROM clean، سروری که env را
+نادیده می‌گیرد و `supabaseUrl` ثابت سرو می‌کند). هیچ کانتینری `SUPABASE_URL` به `.10` نداشت.
+
+## ۰. پیش از اصلاح — هر شش بازدارنده بازتولید شد (`measured`)
+
+| # | ورودی | خروجی (emitterِ `f46c0e20`) | exit 5.1 / 7 |
+|---|---|---|---|
+| C1 | کانتینرِ `clean` با `SUPABASE_URL=http://kong:8000`، `APP_SUPABASE_PUBLIC_URL=` روی `127.0.0.1:38431` | `/login` سرو کرد `window.__APP_RUNTIME_CONFIG__={"supabaseUrl":"http://kong:8000"}`؛ بلوکِ D6+D9 روی **همان image** → `GATE D6 PASS` · `GATE D9 PASS`؛ خطوطِ پس از بلوکِ deploy که config سرو‌شده را بخوانند: **۰** | `0` / `0` |
+| C2 | mutant M1 (`$runningId` از `docker image inspect c6fix-d2:lan`) روی کانتینرِ `c6fix-d2-web` (alpine `28bd5fe8`) و `:lan` فریب (`cd17e2ac`) | `OK D2: … = running image sha256:cd17e2ac…` · `GATE D2 PASS`؛ oracle: rollback=`cd17e2ac` ≠ container=`28bd5fe8` | `0` / `0` |
+| C3 | سندِ صفر-migration (e4b با FINALِ خالی، build sha `deadbeef`) روی `postgres:16` یک‌بارمصرف (`c6fix-pg`/`c6fix_apply_probe`) | `=== VERDICT: PASSED (all preflight + migration blocks matched…` · `PASSED. Log: …`؛ همان سند: `GATE D1a FAIL HEAD f46c0e20 is not the build sha deadbeef` (exit 1)؛ `afrakala-app:deadbeef` → `No such image` | `0` |
+| C4 | D1a با sha اشتباه، paste در conhost 5.1 و Windows Terminal 5.1 | conhost: `shell_alive=False window_exists=False` (transcript: `GATE D1a FAIL …` چاپ شد، سپس پنجره رفت)؛ WT: `alive=False`، پنجره ماند با `[process exited with code 1 (0x00000001)]` | — |
+| C5 | e4b + `` ``` `` + متن + `## VERDICT: FAIL …` (fenceِ باز) و e4b + `` ``` `` / `~~~` / `` ``` `` / `## VERDICT: FAIL …` | هر دو: `Written: …RELEASE-….md` | `0` / `0` |
+| C6 | imageِ `evasion`؛ و `fakeserver` (سرو `10.99.99.99`) با `$target='10.99.99.9'` | هر دو: `GATE D6 PASS` · `GATE D9 PASS` (کنترلِ `clean`: همان، `176 URL literal(s)`) | `0` / `0` |
+
+## ۱. C1 — D9 استقرارِ واقعی را هرگز نمی‌دید (`90a754c1`)
+
+**آنچه واقعاً غلط بود.** D6(iii) و D9 کانتینرِ **خودشان** را با `-e SUPABASE_URL="http://${target}:8000"`
+بالا می‌آورند و همان را می‌سنجند — probe از خودش می‌پرسد. مقدارِ سرو‌شده را محیطِ **استقرار** تعیین
+می‌کند (`src/lib/runtime-config.ts`: `APP_SUPABASE_PUBLIC_URL`، بعد `VITE_SUPABASE_URL`، بعد
+`SUPABASE_URL`) و هیچ gateی پس از deploy آن را نمی‌خواند؛ بلوکِ verify فقط کدِ HTTP می‌گرفت.
+
+**چه عوض شد.** gateِ تازهٔ **D10** داخلِ بلوکِ verify (پس از deploy؛ شمارهٔ بلوک‌ها و ارجاعِ
+rollback تغییری نکرد). بدونِ هیچ کانتینرِ خودی: `curl.exe -s --max-time 20 "$site/login"`
+(exit code صریح)، دقیقاً **یک** انتسابِ `window.__APP_RUNTIME_CONFIG__` در صفحه، parse با
+`ConvertFrom-Json`، و `supabaseUrl -cne $expected` → FAIL. پارامترهای تازهٔ emitter:
+`-LiveSiteUrl` (پیش‌فرض `http://192.168.170.10:3000`) و `-ExpectedSupabaseUrl` (پیش‌فرض
+`http://<D6TargetHost>:8000`)؛ emitter آدرسِ انتظاریِ بی‌نقطه یا loopback را رد می‌کند
+(`kong`، `localhost`، `127.0.0.1`، `0.0.0.0`، بی‌scheme → `FATAL`، exit 1، سندی نوشته نشد — اندازه‌گیری
+شد؛ نسخهٔ اولِ همین بررسی `127.0.0.1` را می‌پذیرفت چون `-notmatch` دومی `$Matches` را بازنویسی
+کرد؛ پیش از commit گرفته و اصلاح شد). probeهای پیش از deploy (D6/D9) دست نخوردند.
+
+**اثبات، دو جهت** — «استقرار» = کانتینرهای یک‌بارمصرف روی `127.0.0.1:3843x`؛ oracleِ مستقل (curl +
+regex، نه gate) پیش از اجرا مقدارِ سرو‌شدهٔ هرکدام را چاپ کرد:
+
+| استقرار (`127.0.0.1:…`) | oracle: `supabaseUrl` سرو‌شده | باید | `-File` 5.1 / 7 | paste conhost 5.1 / 7 |
+|---|---|---|---|---|
+| `:38431` clean، `SUPABASE_URL=http://kong:8000`، `APP_SUPABASE_PUBLIC_URL=` (شکلِ compose) | `http://kong:8000` | FAIL | `GATE D10 FAIL live supabaseUrl is 'http://kong:8000', not exactly 'http://10.99.99.99:8000'` · `1` / `1` | FAIL / FAIL |
+| `:38433` clean، `APP_SUPABASE_PUBLIC_URL=http://192.168.170.8:9000` (نتیجهٔ حادثه) | `http://192.168.170.8:9000` | FAIL | `… is 'http://192.168.170.8:9000' …` · `1` / `1` | FAIL / FAIL |
+| `:38436` fakeserver | `http://10.99.99.99:8000.attacker.example` | FAIL | `… is 'http://10.99.99.99:8000.attacker.example', not exactly …` · `1` / `1` | FAIL / FAIL |
+| `:38435` fakeserver، دو انتسابِ config | `10.99.99.99:8000` ‖ `kong:8000` | FAIL | `GATE D10 FAIL the live /login carries 2 runtime config assignment(s), parseable=True` · `1` / `1` | FAIL / FAIL |
+| `:38434` fakeserver | `http://10.99.99.99:8000/` | FAIL | `… is 'http://10.99.99.99:8000/', not exactly …` · `1` / `1` (فقط `-File`، commit) | — |
+| `:38437` هیچ‌چیز گوش نمی‌دهد | — | FAIL | `GATE D10 FAIL could not read http://127.0.0.1:38437/login (curl exit 7)` · `1` / `1` (فقط `-File`، commit) | — |
+| `:38432` clean، `APP_SUPABASE_PUBLIC_URL=http://10.99.99.99:8000` | `http://10.99.99.99:8000` | **PASS** | `OK D10: … serves supabaseUrl 'http://10.99.99.99:8000' -- exactly the expected public address` · `GATE D10 PASS` · `0` / `0` | PASS / PASS |
+
+و کلاسی که D10 برایش ساخته شد، هنوز زنده در probeهای پیش از deploy (عمداً دست نخورد): بلوکِ D6+D9 روی
+**همان** image ِ `clean` → `GATE D6 PASS` · `GATE D9 PASS`، `0` / `0`.
+
+## ۲. C2 — D2 می‌توانست بی‌آنکه درست باشد PASS بدهد (`47054bce`)
+
+**آنچه واقعاً غلط بود.** «حقیقت» (`$runningId`) و «موضوع» (`$rbId`) هر دو از **یک** خواندن
+می‌آمدند؛ مقایسهٔ `$rbId -ne $runningId` نمی‌توانست غلط‌بودنِ همان یک خواندن را ببیند.
+
+**چه عوض شد.** پس از `docker tag`، کانتینر **دوباره** خوانده می‌شود
+(`docker inspect afrakala-lan-web --format "{{.Image}}"`، `$LASTEXITCODE` صریح، شکلِ
+`sha256:<64 hex>` الزامی) و `$rbId -cne $containerNow` → FAIL. هیچ مقداری که از قبل در متغیر است
+مبنای مقایسه نیست.
+
+**اثبات، دو جهت** (کانتینرِ `c6fix-d2-web` روی alpine `28bd5fe8`، فریبِ `c6fix-d2:lan` = `cd17e2ac`):
+
+| ورودی | باید | خروجی (5.1 و 7 یکسان) | exit 5.1 / 7 | paste 5.1 / 7 | oracle (`docker image inspect` تگ ↔ `docker inspect` کانتینر) |
+|---|---|---|---|---|---|
+| gateِ درست | PASS | `OK D2: c6fix-d2:lan-rollback = running image sha256:28bd5fe8…` · `GATE D2 PASS` | `0` / `0` | PASS / PASS | rollback=`28bd5fe8b56d` = container=`28bd5fe8b56d` ✔ |
+| **M1** — `$runningId` از `docker image inspect c6fix-d2:lan` (پیش از اصلاح: PASS) | FAIL | `FAIL D2: … is 'sha256:cd17e2ac…' but c6fix-d2-web, re-read after tagging, runs sha256:28bd5fe8….` · `GATE D2 FAIL rollback tag is 'sha256:cd17e2ac…' but c6fix-d2-web is running sha256:28bd5fe8…` | `1` / `1` | FAIL / FAIL | rollback=`cd17e2ac9824` ≠ container=`28bd5fe8b56d` |
+| **M2** — `docker tag c6fix-d2:lan $rollbackTag` | FAIL | `GATE D2 FAIL rollback tag is 'sha256:cd17e2ac…' but the running image is sha256:28bd5fe8…` | `1` / `1` | FAIL / FAIL | rollback=`cd17e2ac9824` ≠ container |
+| کانتینرِ ناموجود | FAIL | `GATE D2 FAIL cannot read the image c6fix-d2-nonexistent is running` | `1` / `1` | FAIL / FAIL | — |
+
+## ۳. C3 — `apply-release.ps1` با gateهای FAIL می‌گفت PASSED (`a9b58b71`)
+
+**آنچه واقعاً غلط بود.** engine فقط `pg_is_in_recovery()` و خطوطِ `mig_apply`/`ledger_insert_only`
+پیش از `# Phase 5` را اجرا می‌کند؛ Block 0 و هیچ بلوکِ `GATE` را نه. برای releaseِ صفر-migration
+(همین release) یعنی `PASSED` بی هیچ gateی پشتش؛ و سرِ سند ادعای خلاف داشت.
+
+**چه عوض شد.** حکمِ engine: `=== VERDICT: MIGRATION PHASE PASSED -- RELEASE NOT VERIFIED: BLOCK 0 AND ALL GATES NOT RUN ===`
+و فهرستِ gateهایی که **از خودِ سند** استخراج می‌شود: `NOT EXECUTED, NOT MEASURED: D1a D1b D2 D3 D6 D9 D10`؛
+خطِ پایانیِ wrapper هم همان را می‌گوید (زرد، نه سبز). exit codeها دست نخوردند (`0` migration سالم،
+`1` STOP). جملهٔ سرِ سندِ emit‌شده جایگزین شد: validate فقط **شکل** را می‌سنجد و چیزی اجرا نمی‌کند؛
+apply-release فقط همان خطوطِ migration را؛ Block 0 و هر gate را **انسان** اجرا می‌کند و هیچ
+اسکریپتی آن‌ها را نمی‌سنجد.
+
+**اثبات، دو جهت** (سناریوی بازبین: سندِ صفر-migration، D1aِ Block 0 = FAIL، imageِ probe ناموجود):
+
+| سند | باید | خروجی | exit 5.1 / 7 | خطوطِ `PASSED`ِ بی‌قید |
+|---|---|---|---|---|
+| صفر-migration، D1a=FAIL، image ناموجود | حکمِ مقید، نه PASSED | `=== VERDICT: MIGRATION PHASE PASSED -- RELEASE NOT VERIFIED: BLOCK 0 AND ALL GATES NOT RUN ===` · `… NOT EXECUTED, NOT MEASURED: D1a D1b D2 D3 D6 D9 D10` · `MIGRATION PHASE PASSED -- release NOT verified: Block 0 and every GATE block were NOT run by this script. Log: …` | `0` / `0` | **۰** / **۰** (پیش از اصلاح: ۲) |
+| همان سند، Block 0 به دستِ انسان | FAIL | `GATE D1a FAIL HEAD f46c0e20 is not the build sha deadbeef`؛ `docker image inspect afrakala-app:deadbeef` → exit `1` | `1` / `1` | — |
+| سندِ e4b (۱۵ `mig_apply`) روی DBِ خالی — جهتِ دیگر | STOP | `FATAL: block for 20260828000000 (…411….sql) did not match its Expect: line. STOP.` · `executed: 1 of 15` · `=== VERDICT: STOP (a migration block failed its Expect:) ===` | `1` / `1` | ۰ / ۰ |
+
+## ۴. C4 — `exit 1` دلیل را در پنجرهٔ تعاملی نابود می‌کرد (`27659650`)
+
+**آنچه واقعاً غلط بود.** `exit` در shellِ تعاملی خودِ shell را می‌بندد: conhost پنجره و دلیل را با
+هم برد؛ WT دلیل را نگه داشت ولی session مرد.
+
+**چه عوض شد.** هر gate یک ناحیهٔ `& { … }` است که به‌جای `exit 1` با `throw` تمام می‌شود:
+باقیِ ناحیه اجرا نمی‌شود، shell زنده می‌ماند، خطِ `GATE <id> FAIL <reason>` روی صفحه می‌ماند و
+**دلیل در متنِ خطا تکرار می‌شود** (`STOPPED at gate D1a: HEAD … -- nothing after it in this region ran; this shell is still open`)
+تا در 5.1 که خطا چند خط است، دلیل از دید خارج نشود؛ `powershell -File` همچنان exit `1` می‌دهد
+(`-Command` هم `1`، اندازه‌گیری شد). **پیامدِ زنده‌ماندنِ shell که باید بسته می‌شد:** paste ِ بعدی
+حالا اجرا می‌شود (اندازه‌گیری شد: فرمانی بعد از `}` در همان paste اجرا شد)؛ `exit` این را با کشتنِ
+shell جلوگیری می‌کرد. پس هر FAIL در `$global:AFRAKALA_FAILED_GATES` ثبت می‌شود و سه ناحیهٔ
+تغییردهندهٔ حالت (retagِ `:lan`، prune ِ تگ‌های rollback، deploy) با guard شروع می‌شوند:
+`NOT RUN: gate(s) FAILED earlier in this shell …: GATE D1a FAIL HEAD …` + throw؛ PASS ِ همان gate
+آن را پاک می‌کند. بلوکِ rollback عمداً guard ندارد. سرِ سند نحوهٔ paste را توضیح می‌دهد.
+
+**اثبات، دو جهت** — D1a (sha اشتباه / درست) در یک cloneِ خصوصی، به‌علاوهٔ ناحیهٔ guardِ deploy
+(سرِ آن عیناً از سند، بدنه با `Write-Host "STATE-CHANGE-REGION-RAN …"` جایگزین شد — فرمان‌های
+واقعیِ deploy هرگز paste نشد):
+
+| سناریو (`-File`) | باید | خروجی | exit 5.1 / 7 |
+|---|---|---|---|
+| D1a، sha اشتباه | FAIL | `GATE D1a FAIL HEAD f46c0e20 is not the build sha deadbeef` · خطا: `STOPPED at gate D1a: HEAD f46c0e20 is not the build sha deadbeef -- nothing after it in this region ran; this shell is still open` | `1` / `1` |
+| D1a، sha درست، درختِ تمیز | PASS | `OK D1a: HEAD = f46c0e20, tree clean` · `GATE D1a PASS` | `0` / `0` |
+
+paste — ۱۲ اجرا، هرکدام پنجرهٔ تازه؛ «ترتیب» از transcriptِ خودِ shell؛ «پیگیری» = `ALIVE-PROMPT-<PID همان shell>` چاپ شد؛ «دلیل روی صفحه» = متنِ `GATE D1a FAIL HEAD …` در سطرهای **داخلِ پنجرهٔ دیده‌شده** (سطرهای wrap‌شده به هم پیوسته):
+
+| میزبان | shell | paste | shell زنده | پنجره | پیگیری | دلیل روی صفحه | ترتیبِ خروجی (transcript) |
+|---|---|---|---|---|---|---|---|
+| conhost | 5.1 | D1a-FAIL + ناحیهٔ guard | True | True | True | True | `FAIL D1a` › `GATE D1a FAIL` › `NOT RUN: gate(s)` (بدنهٔ guard اجرا نشد) |
+| conhost | 5.1 | D1a-PASS + guard | True | True | True | — | `OK D1a` › `GATE D1a PASS` › `STATE-CHANGE-REGION-RAN` |
+| conhost | 5.1 | FAIL + guard + PASS + guard | True | True | True | — | `FAIL D1a` › `GATE D1a FAIL` › `NOT RUN` › `OK D1a` › `GATE D1a PASS` › `STATE-CHANGE-REGION-RAN` |
+| conhost | 7 | همان سه | True | True | True | True (FAIL) | همان سه ترتیب |
+| Windows Terminal | 5.1 | همان سه | True | True | True | True (FAIL) | همان سه ترتیب |
+| Windows Terminal | 7 | همان سه | True | True | True | True (FAIL) | همان سه ترتیب |
+
+پیش از اصلاح (همان روش): conhost 5.1 → `alive=False window=False`؛ WT 5.1 → `alive=False`، `[process exited with code 1 (0x00000001)]`.
+یک اجرای paste (conhost/7/recover) نامعتبر بود: یک کاراکترِ فارسی (`ز`، چیدمانِ کیبوردِ `fa` روی باکس) پیش از `& {` تزریق شد و ناحیهٔ اول اصلاً gate نبود؛ با بررسیِ اعتبارِ transcript گرفته شد، harness یک Enterِ گرم‌کننده گرفت، و آن اجرا تکرار شد (معتبر، ترتیبِ درست). در فاز ۳ هر ۴۸ paste `injection_valid=True`.
+
+## ۵. C5 — D8 گزارشی با حکمِ نهاییِ FAIL را می‌پذیرفت (`271b044f`)
+
+**آنچه واقعاً غلط بود.** هر خطِ `` ``` `` یا `~~~` وضعیتِ fence را **toggle** می‌کرد: fenceِ باز تا
+پایانِ فایل همه‌چیز را می‌بلعید، و `~~~` داخلِ `` ``` `` پاریته را برمی‌گرداند.
+
+**چه عوض شد.** fence فقط با خطی از **همان کاراکتر**، دست‌کم به طولِ بازکننده، و بی هیچ متنِ دیگر بسته
+می‌شود (CommonMark)؛ fenceِ باز در پایانِ فایل → `FATAL: rehearsal report ends inside a code fence opened at :N … never closed`، exit 1.
+
+**اثبات، دو جهت** (emitter با `-File` زیرِ 5.1 و 7؛ «نوشته شد؟» با `Test-Path`):
+
+| ورودی | باید | خروجی (5.1 و 7 یکسان) | exit 5.1 / 7 | نوشته شد؟ |
+|---|---|---|---|---|
+| e4b + `` ``` `` + متن + `## VERDICT: FAIL (replay stopped early)` (fenceِ باز) | REJECT | `FATAL: rehearsal report ends inside a code fence opened at :2048 ('```') that is never closed.` | `1` / `1` | خیر |
+| e4b + `` ``` `` / `~~~` / `` ``` `` / `## VERDICT: FAIL …` | REJECT | `FATAL: the FINAL verdict … is not PASS.` · `final  : :2051  ## VERDICT: FAIL (replay stopped early)` | `1` / `1` | خیر |
+| `rehearsal-e4b.md` بدونِ تغییر | ACCEPT | `Written: …` (حکم‌ها همچنان `:878 FAIL`، `:2047 PASS`) | `0` / `0` | بله |
+| e4b + `~~~` / `` ``` `` / `## VERDICT: FAIL …` / `~~~` (CommonMark: FAIL داخلِ fence) | ACCEPT | `Written: …` | `0` / `0` | بله |
+| e4b + ` ````text ` / `` ``` `` / `## VERDICT: FAIL …` / ` ```` ` | ACCEPT | `Written: …` | `0` / `0` | بله |
+
+## ۶. C6 — D6 میزبانِ ساخته‌شده با الحاق را نمی‌دید و مقایسه substring بود (`d3a5ea65`)
+
+**آنچه واقعاً غلط بود.** (i) فقط literalهای `scheme://` با schemeِ کوچک را می‌خواند؛ `host:port`ِ
+بی‌scheme — خودِ `192.168.170.8:9000`ِ حادثه وقتی کد `"http://"+host` می‌نویسد — دیده نمی‌شد.
+(iii) `$served -notmatch [regex]::Escape($target)` بود (`.10` داخلِ `.100`). و — یافتهٔ تازه در
+همین کار — مقایسه‌های allowlist هم دقیق نبودند: کلیدِ hashtable، `-contains` و `Group-Object` در
+PowerShell پیش‌فرض case-insensitive‌اند، پس `HTTP://LOCALHOST:9999` سهمیهٔ `http://localhost:9999` را
+قرض می‌گرفت.
+
+**چه عوض شد.** scheme با `grep -i`؛ grep سوم هر نامزدِ `host:port` را با یک کاراکتر زمینه در هر طرف
+برمی‌گرداند و PowerShell طبقه‌بندی می‌کند: IPv4:port هر جا (مگر پس از `scheme://` که مالِ scanِ URL
+است)؛ `//name:port`؛ و نام فقط وقتی **کلِ** string literal باشد (`"kong:8000"`، `"kong:8000/…"`) —
+با همان قاعدهٔ default-deny (پورتِ صریح ⇒ FAIL مگر literalِ دقیق روی فهرست). جفتِ فقط‌رقمی (زمان/نسبت)
+آدرس نیست. **نسخهٔ اولِ استخراج over-reject کرد و نگه داشته نشد:** روی bundleِ تمیز
+`"2026-04-26T10:00:00Z"`، `T23:59:59`، `font-weight:700;`، `box-shadow:0 0 5px`، `"valueformat:1:text-wiki"`
+را host:port خواند (`GATE D6 FAIL`، ۱۵ literal) — زمینهٔ واقعیِ هرکدام اندازه گرفته شد و قاعدهٔ مرز
+(پس از پورت نه `:`/حرف/رقم؛ نام فقط بینِ دو quote یا quote و `/`) از آن استخراج شد، و پیش از ویرایشِ
+emitter روی سه bundle آفلاین آزموده شد (clean: `[]`، evasion: دقیقاً سه کاشتِ بی‌scheme، incident: `[]`).
+همهٔ مقایسه‌ها case-sensitive: `@($allowExact.Keys) -ccontains`، `-ccontains`، `Group-Object -CaseSensitive`؛
+(iii): `supabaseUrl` باید **برابرِ** `http://<target>:8000` باشد. یافته‌ها مرتب می‌شوند چون
+`Group-Object` در 5.1 و 7 ترتیبِ متفاوت می‌دهد (اندازه‌گیری شد: خطِ `GATE D6 FAIL` در دو shell ترتیبِ
+متفاوت داشت؛ پس از مرتب‌سازی خطوطِ خروجیِ gate در دو shell بایت‌به‌بایت یکسان‌اند).
+
+**اثبات، دو جهت:**
+
+| ورودی | باید | خروجی (5.1 و 7 یکسان) | exit 5.1 / 7 | paste 5.1 / 7 |
+|---|---|---|---|---|
+| imageِ `evasion` | FAIL | `192.168.170.8:9000  (scheme-less host:port, explicit port, IP literal)` · `//kong:8000  (… bare name with no dot)` · `kong:8000  (…)` · `HTTP://192.168.170.8:9000  (explicit port, IP literal)` · `GATE D6 FAIL host literal(s) in the client bundle: //kong:8000, 192.168.170.8:9000, kong:8000, HTTP://192.168.170.8:9000` | `1` / `1` | FAIL / FAIL |
+| `fakeserver` (سرو `10.99.99.99`) با `$target='10.99.99.9'` | FAIL | `GATE D6 FAIL served supabaseUrl 'http://10.99.99.99:8000' is not exactly http://10.99.99.9:8000` | `1` / `1` | FAIL / FAIL |
+| imageِ حادثه `afrakala-app:3bc526c4` (= `296eb4b4899f`) | FAIL | `GATE D6 FAIL host literal(s) in the client bundle: http://192.168.170.8:9000` | `1` / `1` | FAIL / FAIL |
+| **bundleِ مشروعِ فعلی** (`clean`) | **PASS** | `OK D6(i): … (475 js files read, 176 URL literal(s) and 0 scheme-less host:port literal(s) classified)` · `OK D6(ii)` · `OK D6(iii): served config = "supabaseUrl":"http://10.99.99.99:8000"` · `GATE D6 PASS` · `GATE D9 PASS` — همان ۱۷۶ پیش از اصلاح، یعنی `grep -i` چیزِ تازه‌ای در bundleِ تمیز نیافت | `0` / `0` | PASS / PASS |
+| `fakeserver` با `$target='10.99.99.99'` (برابرِ دقیق) | PASS | `GATE D6 PASS` · `GATE D9 PASS` (commit) | `0` / `0` | — |
+
+## ۷. فاز ۳ — کلِ مجموعه روی `a9b58b71`، هر دو جهت، هر دو shell، `-File` و paste
+
+همهٔ ردیف‌ها از **یک** سند (`emit-blocks.ps1` @ `a9b58b71`، `-D6TargetHost 10.99.99.99 -LiveSiteUrl http://127.0.0.1:38432 -ExpectedSupabaseUrl http://10.99.99.99:8000`)؛
+هر ۹ ناحیهٔ `& { }` با parserِ 5.1 و 7 بی‌خطا parse شد؛ `validate-blocks.ps1` → `blocks found : 35` · `PASSED`، exit `0`.
+«نتیجه» = (exit `0` و آخرین خطِ `GATE` = `GATE <id> PASS`) → PASS؛ (exit≠0 و آخرین خط `GATE … FAIL …`) → FAIL؛ هر ترکیبِ دیگر = ناسازگار (هیچ‌کدام رخ نداد).
+paste = conhost، پنجرهٔ تازه برای هر اجرا، نتیجه از آخرین خطِ `GATE` در transcript؛ در هر ۴۸ paste: shell زنده + فرمانِ پیگیری اجرا شد + آن خط داخلِ پنجرهٔ دیده‌شده بود + تزریق معتبر.
+
+| # | ردیف | مورد | باید | `-File` 5.1 | `-File` 7 | paste 5.1 | paste 7 | آخرین خطِ GATE (5.1، برابر با 7) |
+|---|---|---|---|---|---|---|---|---|
+| 1 | D1a sha اشتباه | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D1a FAIL HEAD f46c0e20 is not the build sha deadbeef` |
+| 2 | D1a فایلِ untracked | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D1a FAIL working tree is not clean (1 path(s))` |
+| 3 | D1a فایلِ tracked تغییرکرده | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D1a FAIL working tree is not clean (1 path(s))` |
+| 4 | D1a تمیز | verified / C4 | PASS | PASS `0` | PASS `0` | PASS | PASS | `GATE D1a PASS` |
+| 5 | D1b، ۵۳۳ غایب | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D1b FAIL 1 migration file(s) missing: 20260913101000_533_pg_cron_http_scheduler.sql` |
+| 6 | D1b، هر ۱۵ | verified | PASS | PASS `0` | PASS `0` | PASS | PASS | `GATE D1b PASS` |
+| 7 | D2 درست | C2 | PASS | PASS `0` | PASS `0` | PASS | PASS | `GATE D2 PASS` (oracle: `28bd5fe8b56d` = `28bd5fe8b56d`) |
+| 8 | D2 M1 | C2 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D2 FAIL rollback tag is 'sha256:cd17e2ac…' but c6fix-d2-web is running sha256:28bd5fe8…` |
+| 9 | D2 M2 | C2 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D2 FAIL rollback tag is 'sha256:cd17e2ac…' but the running image is sha256:28bd5fe8…` |
+| 10 | D2 کانتینرِ ناموجود | C2 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D2 FAIL cannot read the image c6fix-d2-nonexistent is running` |
+| 11 | D3 یک image | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D3 FAIL :lan and :lan-rollback are the same image (28bd5fe8b56d)` |
+| 12 | D3 دو image | verified | PASS | PASS `0` | PASS `0` | PASS | PASS | `GATE D3 PASS` |
+| 13 | D6 evasion | C6 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D6 FAIL host literal(s) in the client bundle: //kong:8000, 192.168.170.8:9000, kong:8000, HTTP://192.168.170.8:9000` |
+| 14 | D6 substring | C6 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D6 FAIL served supabaseUrl 'http://10.99.99.99:8000' is not exactly http://10.99.99.9:8000` |
+| 15 | D6 imageِ حادثه | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D6 FAIL host literal(s) in the client bundle: http://192.168.170.8:9000` |
+| 16 | D6 image ناموجود | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D6 FAIL image c6fix-afrakala:does-not-exist does not exist on this machine` |
+| 17 | D6+D9 bundleِ فعلی | C6 / verified | PASS | PASS `0` | PASS `0` | PASS | PASS | `GATE D9 PASS` |
+| 18 | D9 `$target='kong'` | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D9 FAIL served host 'kong' is a bare name with no dot` |
+| 19 | D9 `$target='localhost'` | verified | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D9 FAIL served host 'localhost' is loopback` |
+| 20 | D10 kong زنده | C1 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D10 FAIL live supabaseUrl is 'http://kong:8000', not exactly 'http://10.99.99.99:8000'` |
+| 21 | D10 شکلِ حادثه | C1 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D10 FAIL live supabaseUrl is 'http://192.168.170.8:9000', not exactly …` |
+| 22 | D10 superstring | C1 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D10 FAIL live supabaseUrl is 'http://10.99.99.99:8000.attacker.example', not exactly …` |
+| 23 | D10 دو config | C1 | FAIL | FAIL `1` | FAIL `1` | FAIL | FAIL | `GATE D10 FAIL the live /login carries 2 runtime config assignment(s), parseable=True` |
+| 24 | D10 آدرسِ انتظاری | C1 | PASS | PASS `0` | PASS `0` | PASS | PASS | `GATE D10 PASS` |
+
+D8 (emitter با `-File`؛ «پذیرفت» = exit `0` و سند نوشته شد، «رد» = exit `1` و نوشته نشد):
+
+| ردیف | ورودی | باید | 5.1 | 7 |
+|---|---|---|---|---|
+| 1.9 | e4b + `## VERDICT: FAIL …` در انتها | رد | رد `1` | رد `1` |
+| 1.10 | e4b + `## VERDICT: FAIL` + نثرِ ستون-۰ `VERDICT: PASS is the outcome…` | رد | رد `1` | رد `1` |
+| 1.11 | خطِ `:2047` → `` ``` `` / `## VERDICT: PASS` / `` ``` `` | رد (`final : :878`) | رد `1` | رد `1` |
+| 1.11b | همان با `~~~` | رد | رد `1` | رد `1` |
+| 1.12 ×5 | `## verdict: pass` · `##VERDICT: PASS` · `### VERDICT: PASS` · `## VERDICT: Pass` · `## VERDICT:PASS` | رد | رد `1` ×5 | رد `1` ×5 |
+| C5-a | fenceِ باز | رد | رد `1` | رد `1` |
+| C5-b | `~~~` داخلِ `` ``` `` | رد | رد `1` | رد `1` |
+| 1.13 | **`rehearsal-e4b.md` بدونِ تغییر** | پذیرفت | پذیرفت `0` | پذیرفت `0` |
+| — | `~~~` دورِ `` ``` `` | پذیرفت | پذیرفت `0` | پذیرفت `0` |
+| — | ` ```` ` دورِ `` ``` `` | پذیرفت | پذیرفت `0` | پذیرفت `0` |
+
+سندِ emit‌شده از e4b زیرِ 5.1 و زیرِ 7 (به‌جز خطِ عنوان که `-Date` را دارد) بایت‌به‌بایت یکسان.
+C3 (زیرِ 5.1 و 7): ردیف‌های جدولِ بخشِ ۳، هر دو shell یکسان.
+
+```
+BROKEN_PROBES   = 0   (۲۴ ردیفِ gate + ۱۴ ردیفِ D8 + ۲ ردیفِ C3؛ هر ردیف ×2 shell؛ gateها ×2 paste)
+OVER_REJECTIONS = 0
+اختلافِ رفتاری بینِ 5.1 و 7 = 0   (یافته و بسته‌شده در C6: ترتیبِ Group-Object در خطِ GATE D6 FAIL؛
+                                  تنها اختلافِ باقی قالبِ نمایشِ خودِ خطای PowerShell است، نه خروجیِ gate)
+```
+
+## ۸. typecheck
+
+```
+npm run typecheck > typecheck.log 2>&1 ; $LASTEXITCODE   (یک بار، بدونِ pipe)
+NPM_EXIT=2
+error TS count : 70
+distinct files : 6   (products.index 18 · sales-reminders 15 · accounting/functions 13 · invoices/functions 13 · audit/index 6 · admin.automation 5)
+```
+هیچ فایلِ TypeScript در این دور تغییر نکرد.
+
+## ۹. پاک‌سازی و سلامتِ stack
+
+```
+docker rm -f c6fix-deploy-{kong,good,testkong,slash,twice,super} c6fix-pg c6fix-d2-web      -> exit 0
+docker rmi c6fix-d2:lan c6fix-d3:lan c6fix-d3:lan-rollback                                 -> exit 0
+docker rmi c6fix-afrakala:{fakeserver,evasion,clean}                                      -> exit 0
+docker rmi afrakala-app:rc-{realpath,browser,banner,key,pilot}   (بازبین نام برده بود؛ هیچ کانتینری از آن‌ها استفاده نمی‌کرد) -> exit 0
+image idها 909189f7d233 f4aa0b98432b bfe9c9d4a2d4 404ecc35ed29 ae5722e8bfc6 4da37c3a0591 b1d5d1b6adc0 d0a6f7c7da4c -> هیچ‌کدام حاضر نیست
+release/runs: ۸ logِ اجرای apply-release خودم حذف شد (gitignored)
+afrakala-app tags: 3bc526c4=296eb4b4899f, lan=296eb4b4899f, rollback-9c113aac=d953490abc5f, local=427aacd91600
+afrakala-app:lan   sha256:296eb4b4899f…   (بدون تغییر)
+afrakala-lan-web   Image=sha256:0c3106602cc9…  StartedAt=2026-09-12T17:46:06.169711504Z  Restarts=0  Health=healthy
+afrakala-app:lan-rollback  ساخته نشد (D2 هرگز روی stackِ زنده اجرا نشد)
+پنجره‌های آزمایشیِ C6FIX-*: همه بسته؛ shellِ باقی‌مانده: 0
+```
+هیچ خواندن یا نوشتنی روی `192.168.170.10`؛ هیچ deploy، restart یا `compose build`؛ هیچ `docker commit`/`pause`؛
+هیچ کانتینری با `SUPABASE_URL` به `.10`؛ `:lan` جابه‌جا نشد؛ هیچ `npm run build` بیرون از Docker؛ هیچ فرمانِ واقعیِ
+deploy یا retag در هیچ paste. push به main/staging: خیر. PR: خیر.
+
+## ۱۰. commitها
+
+`27659650` C4 · `47054bce` C2 · `271b044f` C5 · `d3a5ea65` C6 · `90a754c1` C1 · `a9b58b71` C3 · و همین پیوست.
+
+## ۱۱. تأیید نشده
+
+۱. **هیچ‌چیز روی `192.168.170.10`.** D10 روی production اجرا نشد. آدرسِ انتظاریِ پیش‌فرض
+   `http://192.168.170.10:8000` استنتاج است (پیش‌فرضِ `D6TargetHost` + طولِ ۲۶ِ `VITE_SUPABASE_URL` در
+   `env-parity-20260913.md`)، نه اندازه‌گیری. **پیامدِ مستقیم:** اگر یافتهٔ بازبین درست باشد (`.env.lan`ِ production
+   کلیدِ `APP_SUPABASE_PUBLIC_URL` را ندارد و `SUPABASE_URL` = `http://kong:8000`)، D10 روی production پس از deploy
+   **FAIL** می‌دهد و release آن‌طور که نوشته شده به بلوکِ rollback می‌رسد — gate کارش را می‌کند، ولی پیش‌شرطِ
+   runbook («`APP_SUPABASE_PUBLIC_URL` در `.env.lan` هدف») در این دور اضافه نشد چون جزوِ شش مورد نبود.
+۲. نسخهٔ 5.1 ِ اینجا `5.1.26100.9278` است؛ production `5.1.26100.9444` (به گفتهٔ مالک). آن build آزموده نشد.
+۳. **paste واقعی با Ctrl+V یا کلیکِ راست** آزموده نشد — key eventها مستقیم در input bufferِ console نوشته شد (همان
+   روشِ بازبین). مسیرِ bracketed paste ِ Windows Terminal اندازه‌گیری نشد. در فاز ۳ همهٔ gateها در **conhost** paste
+   شدند؛ Windows Terminal فقط برای سناریوهای C4 (D1a + guard، ۶ اجرا در هر shell) و بازتولیدِ پیش از اصلاح.
+۴. **حدودِ guardِ C4:** رکوردِ شکست فقط در همان shell است (پنجرهٔ تازه = بی‌حافظه). ناحیه‌ای که به دلیلی **غیر از gate**
+   خطا بدهد (مثلاً paste ِ خراب — یک بار دیده شد) شکستی ثبت نمی‌کند و guard ناحیهٔ بعدی را متوقف نمی‌کند. فقط سه ناحیه
+   guard دارند (retagِ `:lan`، prune، deploy)؛ بلوک‌های فاز ۳ ِ handoff و rollback ندارند (rollback عمداً).
+۵. **حدودِ استخراجِ C6:** `name:port` داخلِ template literal (`` `${x}:8000` ``)، پس از کاراکتری غیر از quote، یا داخلِ
+   رشتهٔ بلندتر (`"kong:8000;…"`) دیده نمی‌شود؛ IPv4:port هر جا دیده می‌شود. پایداریِ قاعده روی bundleهای آینده
+   تضمینی ندارد — اگر روزی رشته‌ای دقیقاً به شکلِ `"name:NN"` در bundle بیاید، بلند FAIL می‌دهد (over-rejection پرصدا، نه عبورِ خاموش).
+۶. imageِ `evasion` بازسازیِ من از توصیفِ بازبین است؛ imageِ خودِ بازبین پاک شده بود. شکلِ bundle با متنِ بازبینی می‌خواند.
+۷. pwsh 7.0–7.2 آزموده نشد.
+۸. یافته‌های غیرِبازدارندهٔ بازبین که عمداً دست نخوردند: شمارهٔ تکراریِ Block، D1b روی مجموعهٔ تهی، D3 بدونِ تگِ
+   rollback، پیش‌فرضِ `D6TargetHost=192.168.170.10`، سقف‌نداشتنِ میزبان‌های allowlist (`get-git-going.lovable.app`)،
+   `OK D6(i)` با grepِ شکسته، `bun install` بدونِ lockfile، و D2 روی stackِ زنده (imageِ در حال اجرا در store نیست — بخشِ ۴.۱ بازبینی؛ همچنان بازدارندهٔ **اجرای** release).
+۹. guardِ `REFUSED: 'afrakala' is a real database` در engine و رفتارش روی نامِ دیتابیسِ production سنجیده نشد.
