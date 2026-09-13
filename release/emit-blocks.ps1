@@ -42,10 +42,26 @@ if (-not (Test-Path $RehearsalReport)) {
 $report = Get-Content -Path $RehearsalReport -Encoding UTF8 -Raw
 $reportLines = Get-Content -Path $RehearsalReport -Encoding UTF8
 
-if ($report -notmatch "## VERDICT: PASS") {
-    Write-Host "FATAL: rehearsal report does not say 'VERDICT: PASS'." -ForegroundColor Red
-    Write-Host "Found instead:" -ForegroundColor Yellow
-    $reportLines | Where-Object { $_ -match "VERDICT" } | ForEach-Object { Write-Host "  $_" }
+# D8 -- the LAST verdict decides, not any occurrence anywhere in the document.
+# The old test was `$report -notmatch "## VERDICT: PASS"`, a substring match over the whole
+# file. A rehearsal that FAILED and was then narrated ("...if it had passed, VERDICT: PASS...")
+# would satisfy it. Measured on a real report: rehearsal-e4b.md carries
+#   :878  ## VERDICT: FAIL (replay stopped early)
+#   :2047 ## VERDICT: PASS
+# For that document the final verdict genuinely is PASS, so it is still accepted -- but only
+# because the LAST one is checked now. A check that can pass without being true is the exact
+# defect class this pipeline exists to stop.
+$verdictLines = @($reportLines | Where-Object { $_ -match "^\s*#*\s*VERDICT:" })
+if ($verdictLines.Count -eq 0) {
+    Write-Host "FATAL: rehearsal report contains no VERDICT: line at all." -ForegroundColor Red
+    exit 1
+}
+$finalVerdict = $verdictLines[-1]
+if ($finalVerdict -notmatch "VERDICT:\s*PASS") {
+    Write-Host "FATAL: the FINAL verdict in the rehearsal report is not PASS." -ForegroundColor Red
+    Write-Host "  final  : $finalVerdict" -ForegroundColor Yellow
+    Write-Host "  all verdict lines, in order:" -ForegroundColor Yellow
+    $verdictLines | ForEach-Object { Write-Host "    $_" }
     exit 1
 }
 
@@ -679,11 +695,40 @@ Add-Line "    `$target = '$D6TargetHost'"
       exit 1
     }
     Write-Host "OK D6(iii): served config = $served"
+
+    # D9 -- the served host must be reachable FROM A BROWSER.
+    # D6(i)-(iii) all passed on an image whose injected config was
+    # {"supabaseUrl":"http://kong:8000"} -- the compose-internal service name. The bundle was
+    # clean, the mechanism was present, and one image still served two different values. SSR
+    # resolves "kong"; a browser never can. The artifact probe structurally cannot see this,
+    # because the value is correct-looking and only arrives at runtime.
+    $servedHost = ""
+    if ($served -match '"supabaseUrl":"https?://([^/:"]+)') { $servedHost = $Matches[1] }
+    if ($servedHost -eq "") {
+      Write-Host "FAIL D9: could not parse a host out of the served config: $served"
+      exit 1
+    }
+    $isIPv4     = $servedHost -match '^\d{1,3}(\.\d{1,3}){3}$'
+    $isDottedFqdn = $servedHost -match '^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$'
+    $isLoopback = $servedHost -in @("localhost", "127.0.0.1", "0.0.0.0", "::1")
+    if ($isLoopback) {
+      Write-Host "FAIL D9: served host '$servedHost' is loopback. Correct inside the container,"
+      Write-Host "         unreachable for every browser except one on the server itself."
+      exit 1
+    }
+    if (-not ($isIPv4 -or $isDottedFqdn)) {
+      Write-Host "FAIL D9: served host '$servedHost' is a bare name with no dot -- a"
+      Write-Host "         compose service name or container alias. SSR resolves it; a browser"
+      Write-Host "         cannot. Set APP_SUPABASE_PUBLIC_URL to the address staff type."
+      exit 1
+    }
+    Write-Host "OK D9: served host '$servedHost' is browser-reachable"
 '@)
 Add-Line ""
 Add-Line "Expect: OK D6(i), no baked host literal in the client bundle"
 Add-Line "Expect: OK D6(ii), runtime config mechanism present"
 Add-Line "Expect: OK D6(iii), served config naming $D6TargetHost"
+Add-Line "Expect: OK D9, served host browser-reachable (not a compose service name, not loopback)"
 Add-Line ""
 
 Add-Line "# Phase 6 - deploy"
