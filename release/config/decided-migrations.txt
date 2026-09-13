@@ -66,3 +66,26 @@
 # would be a schema mutation nobody asked for. If the guard does NOT return 0, the premise behind
 # the decision is untrue of this target and the engine STOPS — it does not warn and continue.
 20260822210000|LEDGER_ONLY|OG-C|SELECT count(*) FROM pg_default_acl WHERE defaclacl::text LIKE '%anon%'|0| 373 close anon default privileges. Effect already present when the guard reads 0; the row makes the ledger true instead of false. Never re-run.
+
+# ---------------------------------------------------------------------------------------------
+# OG-L - 533 and 534 are DEFERRED from the 2026-09-13 release. This is NOT OG-J: they are not
+# permanently skipped and they are not accepted divergence. They come back tomorrow behind their
+# own mini-gate.
+#
+# WHY. 533's http-install branch is guarded on current_database() = 'postgres'. Every rehearsal
+# database here is named prod_rehearsal_*, so the branch is FALSE in rehearsal and TRUE on
+# production - the one place it has never executed. Block 14's Expect lines were therefore
+# derived from a run in which the branch never fired, and they named prod_rehearsal_e4b. An
+# expectation measured on the path NOT taken is not an expectation. UNVERIFIED does not ship.
+#
+# THE FIX, for tomorrow: guard on a session GUC instead of the database name - e.g.
+# app.release_target - which release/rehearse.ps1 SETs on the scratch database and
+# release/apply-release.ps1 SETs on production. The install branch then executes in rehearsal,
+# the Expects are measured on the path production will actually take, and the guard still
+# refuses to fire anywhere nobody set the GUC. Then its own mini-gate.
+#
+# 534 (cron_run_log) is deferred with it because it exists only to serve 533. Deferring it also
+# moves 537's count back to 214 - cron_run_log is not created, so there is one fewer table to
+# revoke TRUNCATE on. That number is re-derived by the rehearsal, never edited by hand.
+20260913101000|SKIP|OG-L||| 533 pg_cron/http scheduler. DEFERRED from this release: the http-install branch is guarded on current_database()='postgres', so it is false in every rehearsal and true only on production, where it has never run. Expectations measured on the path not taken do not ship. Returns tomorrow behind a session-GUC guard and its own mini-gate.
+20260913102000|SKIP|OG-L||| 534 cron_run_log. DEFERRED with 533; it exists only to serve it. Its absence returns 537's revoke count to 214.

@@ -60,6 +60,16 @@ $dumpMd5 = ($reportLines | Where-Object { $_ -match '^md5 \(host\)\s*:' } | Sele
 $ledgerBefore = Get-ValueAfter -Lines $reportLines -Marker "ledger_rows|ledger_min|ledger_max"
 $preflight = Get-ValueAfter -Lines $reportLines -Marker "is_replica|db_size|anon_default_acl_count"
 
+# The rehearsal reports is_replica|db_size|anon_default_acl_count as one field. Split it: the
+# two catalogue facts are checkable expectations, the physical size is NOT. A live database is
+# always larger than a restore of it, and on 2026-09-13 that difference (467 MB vs 351 MB, with
+# the ledger matching exactly) stopped a correct production run at Block 1.
+$preflightParts   = @($preflight -split '\|')
+$preflightSize    = if ($preflightParts.Count -ge 2) { $preflightParts[1].Trim() } else { 'unknown' }
+$preflightChecked = if ($preflightParts.Count -ge 3) {
+    ($preflightParts[0].Trim() + '|' + $preflightParts[2].Trim())
+} else { $preflight }
+
 # --- parse the machine-readable classification block --------------------------------------------
 # Prefer the FINAL (post-replay overrides) block if the rehearsal report has one -- it downgrades
 # any version that failed replay under a declared shape tolerance from APPLY to SHAPE_TOLERATED
@@ -181,17 +191,26 @@ block whose live output disagrees with its Expect: line -- exactly BLOCKS.md's o
 '@)
 Add-Line ""
 [void]$sb.AppendLine(@'
-    docker exec afrakala-lan-db psql -U supabase_admin -d postgres -tAc \
-      "SELECT pg_is_in_recovery() || '|' || pg_size_pretty(pg_database_size(current_database())) || '|' ||
-       (SELECT count(*) FROM pg_default_acl WHERE defaclacl::text LIKE '%anon%');"
+    docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql --no-psqlrc -U supabase_admin -d postgres -tAc "SELECT pg_is_in_recovery() || ''|'' || (SELECT count(*) FROM pg_default_acl WHERE defaclacl::text LIKE ''%anon%'');"'
 '@)
 Add-Line ""
-Add-Line "Expect: is_replica|db_size|anon_default_acl_count = $preflight"
+Add-Line "Expect: is_replica|anon_default_acl_count = $preflightChecked"
 Add-Line "Expect: pg_is_in_recovery() = f (a replica must STOP this run immediately)"
 Add-Line ""
 [void]$sb.AppendLine(@'
-    docker exec afrakala-lan-db psql -U supabase_admin -d postgres -tAc \
-      "SELECT count(*) || '|' || min(version) || '|' || max(version) FROM supabase_migrations.schema_migrations;"
+    docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql --no-psqlrc -U supabase_admin -d postgres -tAc "SELECT pg_size_pretty(pg_database_size(current_database()));"'
+'@)
+Add-Line ""
+Add-Line "INFO (not an Expect): the rehearsal restore measured $preflightSize."
+[void]$sb.AppendLine(@'
+      A live database is ALWAYS larger than a restore of it -- bloat, dead tuples and index
+      padding that a fresh pg_restore does not reproduce. On 2026-09-13 production read 467 MB
+      against the restore's 351 MB while the ledger matched EXACTLY, and treating that gap as a
+      failed expectation stopped a correct run at Block 1. Physical size is context, never a gate.
+'@)
+Add-Line ""
+[void]$sb.AppendLine(@'
+    docker exec afrakala-lan-db sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql --no-psqlrc -U supabase_admin -d postgres -tAc "SELECT count(*) || ''|'' || min(version) || ''|'' || max(version) FROM supabase_migrations.schema_migrations;"'
 '@)
 Add-Line ""
 Add-Line "Expect: ledger_rows|ledger_min|ledger_max = $ledgerBefore"
@@ -417,8 +436,7 @@ automatic block -- do not run mig_apply for this version from this document as w
 '@)
     Add-Line ""
     Add-Line "    # DO NOT RUN AUTOMATICALLY. First confirm on the real target:"
-    Add-Line "    docker exec afrakala-lan-db psql -U supabase_admin -d postgres -tAc \"
-    [void]$sb.AppendLine("      ""SELECT version FROM supabase_migrations.schema_migrations WHERE version = '$($m.Version)';""")
+    Add-Line "    docker exec afrakala-lan-db sh -c 'PGPASSWORD=""`$POSTGRES_PASSWORD"" psql --no-psqlrc -U supabase_admin -d postgres -tAc ""SELECT version FROM supabase_migrations.schema_migrations WHERE version = ''$($m.Version)'';""'"
     Add-Line ""
     Add-Line "Expect: HUMAN REVIEW REQUIRED before this version is applied anywhere -- confirm"
     Add-Line "Expect: whether the target already has the object this migration alters, then either"
@@ -447,8 +465,7 @@ not a warning: it means the premise the decision rested on is not true here.
 '@)
     Add-Line ""
     if ($d -and $d.GuardSql -ne "") {
-        Add-Line "    docker exec afrakala-lan-db psql -U supabase_admin -d postgres -tAc \"
-        [void]$sb.AppendLine("      ""$($d.GuardSql);""")
+        Add-Line "    docker exec afrakala-lan-db sh -c 'PGPASSWORD=""`$POSTGRES_PASSWORD"" psql --no-psqlrc -U supabase_admin -d postgres -tAc ""$($d.GuardSql -replace "'", "''");""'"
         Add-Line ""
         Add-Line "Expect: $($d.GuardExpect)"
         Add-Line "Expect: any other value = STOP. Do not write the ledger row; escalate."
@@ -488,8 +505,7 @@ docs/missions/convergence/INTEGRATION-LOG.md (Decision 4, OG-J) and STATE.md.
 
     # Nothing to run. Confirm only that the decision still holds -- the row must NOT be there:
 '@)
-    Add-Line "    docker exec afrakala-lan-db psql -U supabase_admin -d postgres -tAc \"
-    [void]$sb.AppendLine("      ""SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version = '$($m.Version)';""")
+    Add-Line "    docker exec afrakala-lan-db sh -c 'PGPASSWORD=""`$POSTGRES_PASSWORD"" psql --no-psqlrc -U supabase_admin -d postgres -tAc ""SELECT count(*) FROM supabase_migrations.schema_migrations WHERE version = ''$($m.Version)'';""'"
     Add-Line ""
     Add-Line "Expect: 0 (no ledger row, permanently, by decision $did)"
     Add-Line "Expect: do NOT run mig_apply for this version, and do NOT insert the row"
