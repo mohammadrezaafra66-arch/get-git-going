@@ -161,3 +161,7 @@ release/runs/
 # release/runs/e4b/progress.txt, is a bare counter rewritten by EVERY replay batch -- it is the
 # single file that made the tree dirty after each checkpoint, which is the noise this rule exists
 # to remove -- so it was untracked with `git rm --cached` (the file itself is untouched on disk).
+
+# Status file written next to deploy/lan/scripts/start-afrakala-lan.ps1 on every autostart run.
+# Machine-local runtime output (docker ps table, check results); never commit it.
+deploy/lan/scripts/last-autostart-status.txt
