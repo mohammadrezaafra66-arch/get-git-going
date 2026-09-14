@@ -860,6 +860,15 @@ under the same default-deny rules -- it always has an explicit port, so it alway
 is on the exact-literal list. Digits-only pairs ("18:52", a time) are not addresses. Every host
 comparison here is exact: (iii) requires the served supabaseUrl to EQUAL http://<target>:8000,
 where it used to accept any value merely containing the target (.10 inside .100).
+
+C7, 2026-09-14. REVIEW-3 built an image whose bundle held `const $w="192.168.170.8"` and
+`"http://"+$w+":9000"` -- the incident's host with NO port, joined to scheme and port at runtime --
+and D6 and D9 both passed it: every read above needed a scheme or a port. (i) now also reads every
+QUOTED IPv4 literal, with or without a port: a dotted quad that opens a string literal and ends it
+(or is followed by : or /). It is default-deny like the rest, so it fails unless it is on the exact
+list below, measured in the clean bundle. What (i) does NOT read, named so nobody assumes it does:
+an IPv4 in the middle of a longer string, a dotless name with no port, an IPv6 literal outside a
+scheme:// URL, and any other spelling of an address (decimal 3232279048, hex 0xC0A8AA08).
 '@)
 Add-Line ""
 Add-Line "    & {   # GATE D6 + D9 -- paste from this line to the matching closing brace"
@@ -876,15 +885,17 @@ Add-Line "    `$target = '$D6TargetHost'"
     }
 
     # (i) no host literal in the CLIENT bundle
-    $scan = docker run --rm --entrypoint sh $img -c "find /app/.output/public -type f -name '*.js' | wc -l | sed 's/^/SCANNED /'; grep -rhoiE '(https?|wss?):(//|\\/\\/)[][:alnum:]._~%:@-]*' /app/.output/public; grep -rhoE '[a-z0-9]{20}\.supabase\.(co|in)' /app/.output/public; grep -rhoE '.?(//|\\/\\/)?[A-Za-z0-9][A-Za-z0-9._-]*:[0-9]{1,5}.?' /app/.output/public | sed 's/^/BARE /'; true"
+    $scan = docker run --rm --entrypoint sh $img -c "find /app/.output/public -type f -name '*.js' | wc -l | sed 's/^/SCANNED /'; grep -rhoiE '(https?|wss?):(//|\\/\\/)[][:alnum:]._~%:@-]*' /app/.output/public; grep -rhoE '[a-z0-9]{20}\.supabase\.(co|in)' /app/.output/public; grep -rhoE '.?(//|\\/\\/)?[A-Za-z0-9][A-Za-z0-9._-]*:[0-9]{1,5}.?' /app/.output/public | sed 's/^/BARE /'; grep -rhoE '.?[0-9]{1,3}([.][0-9]{1,3}){3}(:[0-9]{1,5})?.?' /app/.output/public | sed 's/^/IP4 /'; true"
     $scanExit = $LASTEXITCODE
     $scanned = 0
     $hits = @()
     $bareRaw = @()
+    $ip4Raw = @()
     foreach ($l in @($scan)) {
       $s = ([string]$l).Trim()
       if ($s -match '^SCANNED\s+(\d+)$') { $scanned = [int]$Matches[1] }
       elseif (([string]$l).StartsWith('BARE ')) { $bareRaw += ([string]$l).Substring(5) }
+      elseif (([string]$l).StartsWith('IP4 ')) { $ip4Raw += ([string]$l).Substring(4) }
       elseif ($s) { $hits += ($s -replace '\\/', '/') }
     }
     # C6 -- scheme-less host:port. Each raw candidate carries one character of context either side.
@@ -904,6 +915,19 @@ Add-Line "    `$target = '$D6TargetHost'"
         if (-not ($pre -ne '' -and $quoteChars.Contains($pre) -and ($post -eq '/' -or ($post -ne '' -and $quoteChars.Contains($post))))) { continue }
       }
       $bareLits += $(if ($sl) { '//' } else { '' }) + "$hn`:$port"
+    }
+    # C7 -- a QUOTED IPv4 literal with no port: const h="192.168.170.8"; "http://"+h+":9000".
+    # IPv4:port is already read above, anywhere; this adds the port-less form, but only as a whole
+    # string literal (a quote before it; a quote, : or / after it). Measured on the clean bundle,
+    # every other dotted quad has no quote before it: SVG numbers (" 19.148.924.383") and versions.
+    $ip4Lits = @()
+    foreach ($c in $ip4Raw) {
+      if ($c -cnotmatch '^(?<pre>.?)(?<ip>[0-9]{1,3}(\.[0-9]{1,3}){3})(?<port>:[0-9]{1,5})?(?<post>.?)$') { continue }
+      if ($Matches['port']) { continue }                        # IPv4:port -- the scheme-less scan above reads it
+      $pre = $Matches['pre']; $post = $Matches['post']
+      if (-not ($pre -ne '' -and $quoteChars.Contains($pre))) { continue }
+      if ($post -ne '' -and -not ($quoteChars.Contains($post) -or $post -eq ':' -or $post -eq '/')) { continue }
+      $ip4Lits += $Matches['ip']
     }
     if ($scanExit -ne 0 -or $scanned -lt 1) {
       Write-Host "FAIL D6(i): the scan measured nothing (docker exit $scanExit, $scanned js file(s) read)."
@@ -965,6 +989,21 @@ Add-Line "    `$target = '$D6TargetHost'"
       if ($why.Count -eq 0) { $why += 'host not on the reviewed list' }
       $bad += "$lit  ($($why -join ', '))"
     }
+    # Port-less quoted IPv4 literals that are comparisons, not endpoints -- exact string -> most
+    # occurrences allowed, measured 2026-09-14 on a clean build of this branch. Do not raise a count
+    # to get a green gate: find what put the new occurrence in the bundle first.
+    $allowIp4 = @{
+      '127.0.0.1' = 3  # html2canvas-pro esm:10193 SSRF check; @supabase/supabase-js index.mjs:243 target list; src/routes/__root.tsx:324
+      '0.0.0.0'   = 1  # src/routes/__root.tsx:325 -- isLocalOrTestHost comparison
+    }
+    foreach ($g in @($ip4Lits | Group-Object -CaseSensitive | Sort-Object -Property Name -CaseSensitive)) {
+      $lit = $g.Name
+      if (@($allowIp4.Keys) -ccontains $lit) {
+        if ($g.Count -gt $allowIp4[$lit]) { $bad += "$lit  (allowed $($allowIp4[$lit])x as a comparison, found $($g.Count)x)" }
+        continue
+      }
+      $bad += "$lit  (quoted IPv4 literal with no port, IP literal)"
+    }
     if ($bad.Count -gt 0) {
       Write-Host "FAIL D6(i): host literal(s) baked into the client bundle ($scanned js files read):"
       $bad | ForEach-Object { Write-Host "    $_" }
@@ -973,7 +1012,7 @@ Add-Line "    `$target = '$D6TargetHost'"
       Write-Host "GATE D6 FAIL $gateWhy"
       $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
     }
-    Write-Host "OK D6(i): no baked host literal in the client bundle ($scanned js files read, $($hits.Count) URL literal(s) and $($bareLits.Count) scheme-less host:port literal(s) classified)"
+    Write-Host "OK D6(i): no baked host literal in the client bundle ($scanned js files read, $($hits.Count) URL literal(s), $($bareLits.Count) scheme-less host:port literal(s) and $($ip4Lits.Count) quoted port-less IPv4 literal(s) classified)"
 
     # (ii) the runtime mechanism must actually be present in the bundle
     $hasCfg = docker run --rm --entrypoint sh $img -c "grep -rl __APP_RUNTIME_CONFIG__ /app/.output/public 2>/dev/null | head -1"
