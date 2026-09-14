@@ -1,7 +1,8 @@
 # release/emit-blocks.ps1
 # Generates release/out/RELEASE-<date>.md in BLOCKS.md's own format: one block per unit of work,
-# each with a literal "Expect:" line, so release/validate-blocks.ps1 can check it mechanically and
-# release/apply-release.ps1 can execute it mechanically. ASCII-only, PowerShell 5.1 compatible.
+# each with a literal "Expect:" line, so release/validate-blocks.ps1 can check its shape and
+# release/apply-release.ps1 can execute its migration lines (only those -- Block 0 and every GATE
+# block are run by a human, see the document header). ASCII-only, PowerShell 5.1 compatible.
 #
 # WHY GENERATED, NOT HAND-WRITTEN
 #   docs/research/convergence/R-4-transfer-line.md Task 1.2 found that the 09-12 run's claim of
@@ -27,10 +28,29 @@ param(
     # It carries the DECISION_ID, the guard and the reason behind every decided version, so an
     # emitted block can CITE the decision instead of asserting it. Optional, but the script warns
     # if the report contains decided versions and this is not supplied.
-    [string]$Decided = ""
+    [string]$Decided = "",
+    [string]$D6TargetHost = "192.168.170.10",
+    # C1 (D10): the LIVE site the post-deploy gate reads, and the one supabaseUrl it accepts from it.
+    # The expected value defaults to what D6(iii) injects for the same target.
+    [string]$LiveSiteUrl = "http://192.168.170.10:3000",
+    [string]$ExpectedSupabaseUrl = ""
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($ExpectedSupabaseUrl -eq "") { $ExpectedSupabaseUrl = "http://${D6TargetHost}:8000" }
+# D10 compares the live value to this string exactly, so the string itself must be an address a
+# browser can reach: a compose service name or loopback here would make D10 pass on the incident.
+$expectedHost = ''
+if ($ExpectedSupabaseUrl -cmatch '^https?://([A-Za-z0-9.-]+)(:[0-9]{1,5})?$') { $expectedHost = $Matches[1] }
+if ($expectedHost -eq '' -or $expectedHost -notmatch '\.' -or $expectedHost -match '^(localhost|127\.|0\.0\.0\.0)') {
+    Write-Host "FATAL: -ExpectedSupabaseUrl '$ExpectedSupabaseUrl' is not a browser-reachable origin (scheme://dotted-host[:port], not loopback)." -ForegroundColor Red
+    exit 1
+}
+if ($LiveSiteUrl -cnotmatch '^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$') {
+    Write-Host "FATAL: -LiveSiteUrl '$LiveSiteUrl' is not scheme://host[:port]." -ForegroundColor Red
+    exit 1
+}
 
 if (-not (Test-Path $RehearsalReport)) {
     Write-Host "FATAL: rehearsal report not found: $RehearsalReport" -ForegroundColor Red
@@ -41,10 +61,71 @@ if (-not (Test-Path $RehearsalReport)) {
 $report = Get-Content -Path $RehearsalReport -Encoding UTF8 -Raw
 $reportLines = Get-Content -Path $RehearsalReport -Encoding UTF8
 
-if ($report -notmatch "## VERDICT: PASS") {
-    Write-Host "FATAL: rehearsal report does not say 'VERDICT: PASS'." -ForegroundColor Red
-    Write-Host "Found instead:" -ForegroundColor Yellow
-    $reportLines | Where-Object { $_ -match "VERDICT" } | ForEach-Object { Write-Host "  $_" }
+# D8 -- the LAST verdict decides, not any occurrence anywhere in the document.
+# The old test was `$report -notmatch "## VERDICT: PASS"`, a substring match over the whole
+# file. A rehearsal that FAILED and was then narrated ("...if it had passed, VERDICT: PASS...")
+# would satisfy it. Measured on a real report: rehearsal-e4b.md carries
+#   :878  ## VERDICT: FAIL (replay stopped early)
+#   :2047 ## VERDICT: PASS
+# For that document the final verdict genuinely is PASS, so it is still accepted -- but only
+# because the LAST one is checked now. A check that can pass without being true is the exact
+# defect class this pipeline exists to stop.
+#
+# B2, 2026-09-14. The previous pattern `^\s*#*\s*VERDICT:` made the `#` optional, so a column-0
+# PROSE line ("VERDICT: PASS is the outcome we were hoping for, but it did not happen.") written
+# after a real `## VERDICT: FAIL` counted as the last verdict and a release document was written.
+# A verdict is now only a line the rehearsal engine itself writes -- release/lib/rehearse-engine.sh
+# echoes exactly "## VERDICT: PASS" or "## VERDICT: FAIL" with an optional " (reason)" -- and only
+# outside a fenced code block. Anything that looks like a verdict heading but is not in that form
+# is refused rather than guessed at.
+#
+# C5, 2026-09-14. Every ``` or ~~~ line used to TOGGLE the fence state, so REVIEW-2 hid a real final
+# `## VERDICT: FAIL` two ways and a release document was written: (1) a fence left open, which
+# silently swallowed everything after it; (2) a `~~~` line inside a ``` fence, which flipped the
+# state so the FAIL after the real closing fence counted as "inside". A fence now closes only on a
+# line of the SAME character, at least as long as the opener, with nothing else on it (CommonMark),
+# and a fence still open at end of file is refused: what follows it cannot be read as verdicts.
+$verdictLines = @()
+$malformedVerdicts = @()
+$fenceChar = ''          # '' = not inside a fence; otherwise the character that opened it
+$fenceLen = 0
+$fenceOpenedAt = 0
+for ($i = 0; $i -lt $reportLines.Count; $i++) {
+    $l = $reportLines[$i]
+    if ($fenceChar -eq '') {
+        if ($l -match '^\s{0,3}(`{3,}|~{3,})') {
+            $fenceChar = $Matches[1].Substring(0, 1); $fenceLen = $Matches[1].Length; $fenceOpenedAt = $i + 1
+            continue
+        }
+    } else {
+        if ($l -match '^\s{0,3}(`{3,}|~{3,})\s*$' -and $Matches[1].Substring(0, 1) -ceq $fenceChar -and $Matches[1].Length -ge $fenceLen) {
+            $fenceChar = ''
+        }
+        continue
+    }
+    if ($l -cmatch '^## VERDICT: (PASS|FAIL)( \(.*\))?\s*$') { $verdictLines += ":$($i + 1)  $l" }
+    elseif ($l -match '^\s{0,3}#{1,6}\s*VERDICT') { $malformedVerdicts += ":$($i + 1)  $l" }
+}
+if ($fenceChar -ne '') {
+    Write-Host "FATAL: rehearsal report ends inside a code fence opened at :$fenceOpenedAt ('$($fenceChar * $fenceLen)') that is never closed." -ForegroundColor Red
+    Write-Host "  Everything after that line is unreadable as a verdict, so the final verdict cannot be established." -ForegroundColor Yellow
+    exit 1
+}
+if ($malformedVerdicts.Count -gt 0) {
+    Write-Host "FATAL: rehearsal report has verdict-like heading(s) the rehearsal engine never writes:" -ForegroundColor Red
+    $malformedVerdicts | ForEach-Object { Write-Host "    $_" }
+    exit 1
+}
+if ($verdictLines.Count -eq 0) {
+    Write-Host "FATAL: rehearsal report contains no '## VERDICT:' heading at all." -ForegroundColor Red
+    exit 1
+}
+$finalVerdict = $verdictLines[-1]
+if ($finalVerdict -cnotmatch '## VERDICT: PASS\s*$') {
+    Write-Host "FATAL: the FINAL verdict in the rehearsal report is not PASS." -ForegroundColor Red
+    Write-Host "  final  : $finalVerdict" -ForegroundColor Yellow
+    Write-Host "  all verdict lines, in order:" -ForegroundColor Yellow
+    $verdictLines | ForEach-Object { Write-Host "    $_" }
     exit 1
 }
 
@@ -165,6 +246,15 @@ $outFile = Join-Path $outDir "RELEASE-$Date.md"
 $sb = New-Object System.Text.StringBuilder
 function Add-Line([string]$s) { [void]$sb.AppendLine($s) }
 
+# --- D1 inputs: the build sha and the migration set, resolved before the document is written ---
+$d1BuildSha = "<sha: supply -BuildManifest>"
+if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
+    $d1BuildSha = (Get-Content $BuildManifest -Raw | ConvertFrom-Json).git_sha
+}
+$d1MigCount = $applyList.Count
+$d1MigList = ($applyList | ForEach-Object { "'" + $_.File + "'" }) -join ", "
+if ($d1MigList -eq "") { $d1MigList = "" }
+
 Add-Line "# RELEASE-$Date"
 Add-Line ""
 Add-Line "Generated by release/emit-blocks.ps1 from a PASSED rehearsal: $RehearsalReport"
@@ -172,9 +262,89 @@ Add-Line "Rehearsal restore source: $dumpFile (md5 $dumpMd5)"
 Add-Line ""
 [void]$sb.AppendLine(@'
 Every block below has a literal 'Expect:' line. release/validate-blocks.ps1 checks this
-document mechanically before anyone runs it. release/apply-release.ps1 stops at the FIRST
-block whose live output disagrees with its Expect: line -- exactly BLOCKS.md's own rule.
+document's SHAPE before anyone runs it (files named, versions, an Expect: in every block); it
+runs nothing. release/apply-release.ps1 runs ONLY pg_is_in_recovery() and the mig_apply /
+ledger_insert_only lines before '# Phase 5', stopping on the first that fails; it does not
+compare any other Expect: line. Block 0 and EVERY `GATE` block (D1a, D1b, D2, D3, D6, D9, D10)
+are run by a HUMAN, and no script checks them: a green apply-release.ps1 run says nothing about
+any gate. This release is verified only when a human has seen `GATE <id> PASS` for each one.
 
+HOW TO PASTE A GATE. Every gate, and every region that changes state after a gate, is ONE
+`& { ... }` region: copy it from its `& {` line to its closing `}` line and paste it whole.
+A failing gate prints `GATE <id> FAIL <reason>` and then stops with a red error. It does NOT
+close the window or end the shell, so the reason stays on screen. The failure is also recorded
+in this shell, and every later region that changes state (:lan retag, rollback-tag prune, deploy)
+refuses to run and prints NOT RUN while any gate has failed and has not since printed PASS. That
+record lives only in THIS shell: in a new window, re-run the gates first.
+
+---
+
+### Block 0 - checkout state (run BEFORE anything else in this document)
+'@)
+Add-Line ""
+[void]$sb.AppendLine(@'
+D1. On 2026-09-13 a release run reached Block 6 before anyone noticed that eleven of the
+fourteen migration files in its set were not on disk, and nothing had asserted that the
+checkout was even the commit the image was built from. Both facts are provable in one
+second and neither was proved. This block proves them, and it is deliberately placed
+before the first Expect: in the document so nothing else can run first.
+'@)
+Add-Line ""
+Add-Line "    & {   # GATE D1a -- paste from this line to the matching closing brace"
+Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
+Add-Line "    # D1(a) -- the checkout must BE the commit this release was built from."
+Add-Line "    `$buildSha = '$d1BuildSha'"
+[void]$sb.AppendLine(@'
+    $headSha  = (git rev-parse --short HEAD)
+    $dirty    = (git status --porcelain)
+    if ($headSha -ne $buildSha) {
+      Write-Host "FAIL D1a: HEAD is $headSha but this release was built from $buildSha"
+      $gateWhy = "HEAD $headSha is not the build sha $buildSha"
+      Write-Host "GATE D1a FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D1a'] = $gateWhy; throw "STOPPED at gate D1a: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    if ($dirty) {
+      Write-Host "FAIL D1a: working tree is not clean:"
+      $dirty | ForEach-Object { Write-Host "    $_" }
+      $gateWhy = "working tree is not clean ($(@($dirty).Count) path(s))"
+      Write-Host "GATE D1a FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D1a'] = $gateWhy; throw "STOPPED at gate D1a: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D1a: HEAD = $headSha, tree clean"
+    $global:AFRAKALA_FAILED_GATES.Remove('D1a')
+    Write-Host "GATE D1a PASS"
+    }   # end GATE D1a
+'@)
+Add-Line ""
+Add-Line "Expect: OK D1a, HEAD equal to the build sha $d1BuildSha, working tree clean"
+Add-Line "Expect: the last line printed is GATE D1a PASS"
+Add-Line ""
+Add-Line "    & {   # GATE D1b -- paste from this line to the matching closing brace"
+Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
+Add-Line "    # D1(b) -- every migration file in THIS release set must exist on disk."
+Add-Line "    `$expected = @($d1MigList)"
+[void]$sb.AppendLine(@'
+    $missing = @()
+    foreach ($f in $expected) {
+      if (-not (Test-Path (Join-Path "supabase/migrations" $f))) { $missing += $f }
+    }
+    if ($missing.Count -gt 0) {
+      Write-Host "FAIL D1b: $($missing.Count) of $($expected.Count) migration file(s) missing:"
+      $missing | ForEach-Object { Write-Host "    MISSING $_" }
+      $gateWhy = "$($missing.Count) migration file(s) missing: $($missing -join ', ')"
+      Write-Host "GATE D1b FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D1b'] = $gateWhy; throw "STOPPED at gate D1b: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D1b: all $($expected.Count) migration files present"
+    $global:AFRAKALA_FAILED_GATES.Remove('D1b')
+    Write-Host "GATE D1b PASS"
+    }   # end GATE D1b
+'@)
+Add-Line ""
+Add-Line "Expect: OK D1b, all $d1MigCount migration files present, zero missing"
+Add-Line "Expect: the last line printed is GATE D1b PASS"
+Add-Line ""
+[void]$sb.AppendLine(@'
 ---
 
 ### Block 1 - Preflight
@@ -504,27 +674,151 @@ Add-Line "# Phase 5 - image"
 Add-Line ""
 Add-Line "### Block $blockN - image transfer"
 Add-Line ""
+# C4, 2026-09-14. A gate used to end with `exit 1`. Measured by REVIEW-2 section 2.2 and again here:
+# pasted into a console-host window, `exit 1` closes the window and the GATE ... FAIL line goes with
+# it; in Windows Terminal the text stays but the shell is dead and Enter starts a fresh one. The
+# owner PASTES these blocks. So every gate is now one `& { ... }` region that ends in `throw`: the
+# rest of the region does not run, the shell and the reason stay, and `powershell -File` still
+# exits 1. Because the shell now survives, a region pasted AFTER a failed gate would run -- `exit`
+# used to prevent that by killing the shell -- so each state-changing region opens with this guard.
+$stateGuardOpen = @'
+    & {   # <what> -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -is [hashtable] -and $global:AFRAKALA_FAILED_GATES.Count -gt 0) {
+      $failedNow = @($global:AFRAKALA_FAILED_GATES.GetEnumerator() | ForEach-Object { "GATE $($_.Key) FAIL $($_.Value)" }) -join ' | '
+      Write-Host "NOT RUN: gate(s) FAILED earlier in this shell and have not printed PASS since: $failedNow"
+      throw "NOT RUN -- nothing in this region ran. Failed earlier in this shell: $failedNow"
+    }
+'@
+# D2, emitted identically whether or not a build manifest was supplied.
+$d2Snippet = @'
+    & {   # GATE D2 -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
+    # D2 -- freeze the CURRENTLY RUNNING image under the rollback name FIRST, before
+    # :lan is repointed. The previous order tagged :lan to the incoming image and only
+    # afterwards ran `docker tag :lan :lan-rollback`, which moved the rollback name onto
+    # the NEW image and left the running-good image with no tag at all. That is a
+    # rollback that rolls forward.
+    # B3, 2026-09-14: the tag is taken from the RUNNING CONTAINER's image id, never from
+    # afrakala-app:lan -- :lan is the name being replaced and need not be what is running.
+    # Measured on the test box: :lan = 296eb4b4899f while afrakala-lan-web ran 0c3106602cc9,
+    # which no tag pointed at. Both ids below are full sha256, so the comparison is exact.
+    $rollbackTag = 'afrakala-app:lan-rollback'
+    $runningId = [string](docker inspect afrakala-lan-web --format "{{.Image}}")
+    if ($LASTEXITCODE -ne 0 -or $runningId -notmatch '^sha256:[0-9a-f]{64}$') {
+      Write-Host "FAIL D2: could not read the image afrakala-lan-web is running (got '$runningId')."
+      $gateWhy = "cannot read the image afrakala-lan-web is running"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    docker tag $runningId $rollbackTag
+    $tagExit = $LASTEXITCODE
+    if ($tagExit -ne 0) {
+      Write-Host "FAIL D2: cannot tag the running image $runningId (docker tag exit $tagExit)."
+      Write-Host "         The image is not in this machine's image store, or the tag name is invalid."
+      Write-Host "         Either way NO rollback point was taken. Stop."
+      $gateWhy = "docker tag of the running image failed, no rollback point taken"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $rbId = [string](docker image inspect $rollbackTag --format "{{.Id}}")
+    if ($tagExit -ne 0 -or $rbId -ne $runningId) {
+      Write-Host "FAIL D2: $rollbackTag is '$rbId' but the running image is $runningId (docker tag exit $tagExit)."
+      $gateWhy = "rollback tag is '$rbId' but the running image is $runningId"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    # C2, 2026-09-14. The comparison above checks the tag against $runningId, the SAME value the
+    # tag was made from, so it cannot notice if that one read was wrong: REVIEW-2 mutant M1 reads
+    # :lan into $runningId and this gate printed PASS while the tag was not the container's image.
+    # So the CONTAINER is asked again, now, after tagging -- nothing held in a variable is trusted.
+    $containerNow = [string](docker inspect afrakala-lan-web --format "{{.Image}}")
+    $containerExit = $LASTEXITCODE
+    if ($containerExit -ne 0 -or $containerNow -notmatch '^sha256:[0-9a-f]{64}$') {
+      Write-Host "FAIL D2: could not re-read the image afrakala-lan-web is running after tagging (exit $containerExit, got '$containerNow')."
+      $gateWhy = "cannot re-read the image afrakala-lan-web is running after tagging"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    if ($rbId -cne $containerNow) {
+      Write-Host "FAIL D2: $rollbackTag is '$rbId' but afrakala-lan-web, re-read after tagging, runs $containerNow."
+      $gateWhy = "rollback tag is '$rbId' but afrakala-lan-web is running $containerNow"
+      Write-Host "GATE D2 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D2'] = $gateWhy; throw "STOPPED at gate D2: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D2: $rollbackTag = running image $runningId"
+    $global:AFRAKALA_FAILED_GATES.Remove('D2')
+    Write-Host "GATE D2 PASS"
+    }   # end GATE D2
+
+Expect: OK D2, afrakala-app:lan-rollback equal to the running container's full sha256 image id,
+Expect: as re-read from the container AFTER the tag was taken
+Expect: the last line printed is GATE D2 PASS
+'@
 if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     $manifest = Get-Content $BuildManifest -Raw | ConvertFrom-Json
     Add-Line "Built by release/build.ps1 from main @ $($manifest.git_sha)."
     Add-Line ""
     Add-Line "    # deliver the tarball over the proven LAN channel (SMB share \\192.168.170.8\dumps),"
     Add-Line "    # then on the target machine:"
+    Add-Line ""
+    [void]$sb.AppendLine($d2Snippet)
+    Add-Line ""
+    [void]$sb.AppendLine($stateGuardOpen.Replace('<what>', ':lan retag'))
     Add-Line "    gunzip -c afrakala-app-$($manifest.git_sha).tar.gz | docker load"
     Add-Line "    docker tag afrakala-app:$($manifest.git_sha) afrakala-app:lan"
     [void]$sb.AppendLine('    docker images afrakala-app:lan --format "{{.ID}}"')
+    Add-Line "    }   # end :lan retag"
     Add-Line ""
     Add-Line "Expect: loaded image ID = $($manifest.image_id)"
+    Add-Line ""
+    [void]$sb.AppendLine(@'
+    & {   # GATE D3 -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
+    # D3 -- the two names MUST now resolve to DIFFERENT images.
+    $lanId = (docker images afrakala-app:lan --format "{{.ID}}")
+    $rbId  = (docker images afrakala-app:lan-rollback --format "{{.ID}}")
+    if ($lanId -eq $rbId) {
+      Write-Host "FAIL D3: :lan and :lan-rollback are the same image ($lanId)."
+      Write-Host "         Rolling back would change nothing. Stop here."
+      $gateWhy = ":lan and :lan-rollback are the same image ($lanId)"
+      Write-Host "GATE D3 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D3'] = $gateWhy; throw "STOPPED at gate D3: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D3: lan=$lanId rollback=$rbId"
+    $global:AFRAKALA_FAILED_GATES.Remove('D3')
+    Write-Host "GATE D3 PASS"
+    }   # end GATE D3
+
+Expect: OK D3, printing two DIFFERENT ids. A match is a hard failure.
+Expect: the last line printed is GATE D3 PASS
+'@)
 } else {
     [void]$sb.AppendLine(@'
 No build manifest was supplied to emit-blocks.ps1 (-BuildManifest). Run release/build.ps1
 first, then re-generate this document, or fill this block in by hand before applying:
-
+'@)
+    [void]$sb.AppendLine($d2Snippet)
+    [void]$sb.AppendLine($stateGuardOpen.Replace('<what>', ':lan retag'))
+    [void]$sb.AppendLine(@'
     gunzip -c afrakala-app-<sha>.tar.gz | docker load
     docker tag afrakala-app:<sha> afrakala-app:lan
     docker images afrakala-app:lan --format "{{.ID}}"
+    }   # end :lan retag
+
+    & {   # GATE D3 -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
+    # D3 -- the two names must resolve to DIFFERENT images.
+    $lanId = (docker images afrakala-app:lan --format "{{.ID}}")
+    $rbId  = (docker images afrakala-app:lan-rollback --format "{{.ID}}")
+    if ($lanId -eq $rbId) { Write-Host "FAIL D3: identical ($lanId)"; $gateWhy = ":lan and :lan-rollback are the same image ($lanId)"; Write-Host "GATE D3 FAIL $gateWhy"; $global:AFRAKALA_FAILED_GATES['D3'] = $gateWhy; throw "STOPPED at gate D3: $gateWhy -- nothing after it in this region ran; this shell is still open" }
+    Write-Host "OK D3: lan=$lanId rollback=$rbId"
+    $global:AFRAKALA_FAILED_GATES.Remove('D3')
+    Write-Host "GATE D3 PASS"
+    }   # end GATE D3
 
 Expect: loaded image ID = <fill in from release/out/build-<sha>.json>
+Expect: OK D3, two DIFFERENT ids
+Expect: the last line printed is GATE D3 PASS
 '@)
 }
 Add-Line ""
@@ -532,6 +826,276 @@ $blockN++
 
 Add-Line "---"
 Add-Line ""
+$blockN++
+
+Add-Line "### Block $blockN - artifact probe (D6)"
+Add-Line ""
+[void]$sb.AppendLine(@'
+D6. On 2026-09-13 the env file on production was CORRECT for the whole incident. The artifact
+was not. Every VITE_* value was a build arg, the deploy used --no-build, so the correct env file
+never applied and nothing ever looked at what was actually inside the image. This block looks at
+the served bundle and nothing else. An env-file check would have passed that day.
+
+Under runtime configuration the client bundle must contain NO host literal: the address arrives
+at runtime from the container environment. So the probe is not "does it contain the right host"
+-- it is "does it contain ANY host", which is a stronger and simpler property.
+
+B1, 2026-09-14. The first version of (i) matched only http(s)://IPv4:port, so a bundle carrying
+http://kong:8000 or https://<ref>.supabase.co passed. (i) is now DEFAULT-DENY: every URL literal
+in the client bundle is either on a reviewed list or a failure. A minified bundle cannot tell a
+fetch base from help text -- both are string literals -- so the probe does not guess intent:
+  - an IP literal, an explicit port, a dotless name (kong, localhost), a private suffix
+  (.local/.lan/.internal/...) or a Supabase host ALWAYS fails, whatever list a host is on;
+  - illustrative text of that shape is allowed only as that EXACT literal and only up to the
+  number of times it was measured in the bundle, so reusing it as a real endpoint fails;
+  - any other host must be a reviewed public third party (links, placeholders, schema ids).
+A new third-party host fails loudly and by name; the fix is one reviewed line in this emitter.
+
+C6, 2026-09-14. REVIEW-2 built an image whose bundle held `Bz="192.168.170.8:9000"` and
+`"http://"+Bz` -- the incident's own host:port, joined to its scheme at runtime -- plus
+`HTTP://192.168.170.8:9000` and `"//kong:8000"`, and D6 and D9 both passed it: (i) only saw
+lower-case `scheme://` literals. (i) now also reads the scheme case-insensitively, and reads every
+SCHEME-LESS host:port literal (a full IPv4:port anywhere; a name:port inside quotes or after //)
+under the same default-deny rules -- it always has an explicit port, so it always fails unless it
+is on the exact-literal list. Digits-only pairs ("18:52", a time) are not addresses. Every host
+comparison here is exact: (iii) requires the served supabaseUrl to EQUAL http://<target>:8000,
+where it used to accept any value merely containing the target (.10 inside .100).
+
+C7, 2026-09-14. REVIEW-3 built an image whose bundle held `const $w="192.168.170.8"` and
+`"http://"+$w+":9000"` -- the incident's host with NO port, joined to scheme and port at runtime --
+and D6 and D9 both passed it: every read above needed a scheme or a port. (i) now also reads every
+QUOTED IPv4 literal, with or without a port: a dotted quad that opens a string literal and ends it
+(or is followed by : or /). It is default-deny like the rest, so it fails unless it is on the exact
+list below, measured in the clean bundle. What (i) does NOT read, named so nobody assumes it does:
+an IPv4 in the middle of a longer string, a dotless name with no port, an IPv6 literal outside a
+scheme:// URL, and any other spelling of an address (decimal 3232279048, hex 0xC0A8AA08).
+'@)
+Add-Line ""
+Add-Line "    & {   # GATE D6 + D9 -- paste from this line to the matching closing brace"
+Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
+Add-Line "    `$img    = 'afrakala-app:$d1BuildSha'"
+Add-Line "    `$target = '$D6TargetHost'"
+[void]$sb.AppendLine(@'
+    # (0) the image must exist, or every check below measures nothing and passes.
+    if (-not (docker images -q $img)) {
+      Write-Host "FAIL D6(0): image $img does not exist on this machine. Nothing was measured."
+      $gateWhy = "image $img does not exist on this machine"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+
+    # (i) no host literal in the CLIENT bundle
+    $scan = docker run --rm --entrypoint sh $img -c "find /app/.output/public -type f -name '*.js' | wc -l | sed 's/^/SCANNED /'; grep -rhoiE '(https?|wss?):(//|\\/\\/)[][:alnum:]._~%:@-]*' /app/.output/public; grep -rhoE '[a-z0-9]{20}\.supabase\.(co|in)' /app/.output/public; grep -rhoE '.?(//|\\/\\/)?[A-Za-z0-9][A-Za-z0-9._-]*:[0-9]{1,5}.?' /app/.output/public | sed 's/^/BARE /'; grep -rhoE '.?[0-9]{1,3}([.][0-9]{1,3}){3}(:[0-9]{1,5})?.?' /app/.output/public | sed 's/^/IP4 /'; true"
+    $scanExit = $LASTEXITCODE
+    $scanned = 0
+    $hits = @()
+    $bareRaw = @()
+    $ip4Raw = @()
+    foreach ($l in @($scan)) {
+      $s = ([string]$l).Trim()
+      if ($s -match '^SCANNED\s+(\d+)$') { $scanned = [int]$Matches[1] }
+      elseif (([string]$l).StartsWith('BARE ')) { $bareRaw += ([string]$l).Substring(5) }
+      elseif (([string]$l).StartsWith('IP4 ')) { $ip4Raw += ([string]$l).Substring(4) }
+      elseif ($s) { $hits += ($s -replace '\\/', '/') }
+    }
+    # C6 -- scheme-less host:port. Each raw candidate carries one character of context either side.
+    $quoteChars = [string][char]34 + [char]39 + [char]96
+    $bareLits = @()
+    foreach ($c in $bareRaw) {
+      if ($c -cnotmatch '^(?<pre>[^A-Za-z0-9._-]?)(?<sl>//|\\/\\/)?(?<hn>[A-Za-z0-9][A-Za-z0-9._-]*):(?<port>[0-9]{1,5})(?<post>.?)$') { continue }
+      $pre = $Matches['pre']; $sl = $Matches['sl']; $hn = $Matches['hn']; $port = $Matches['port']; $post = $Matches['post']
+      if ($post -match '[A-Za-z0-9_:]') { continue }           # runs on ("T23:59:59", "valueformat:1:text"): not host:port
+      if ($sl -and $pre -eq ':') { continue }                   # scheme://host:port -- the URL scan above classifies it
+      $isIp = $hn -match '^\d{1,3}(\.\d{1,3}){3}$'
+      if (-not $isIp -and -not $sl) {
+        # A NAME without // counts only as a whole string literal: "kong:8000" or "kong:8000/rest".
+        # Measured on the clean bundle, everything else of that shape is CSS or a time:
+        # {box-shadow:0 0 5px ...}, ;font-weight:700;, "2026-04-26T10:00:00Z".
+        if ($hn -cnotmatch '[A-Za-z]') { continue }
+        if (-not ($pre -ne '' -and $quoteChars.Contains($pre) -and ($post -eq '/' -or ($post -ne '' -and $quoteChars.Contains($post))))) { continue }
+      }
+      $bareLits += $(if ($sl) { '//' } else { '' }) + "$hn`:$port"
+    }
+    # C7 -- a QUOTED IPv4 literal with no port: const h="192.168.170.8"; "http://"+h+":9000".
+    # IPv4:port is already read above, anywhere; this adds the port-less form, but only as a whole
+    # string literal (a quote before it; a quote, : or / after it). Measured on the clean bundle,
+    # every other dotted quad has no quote before it: SVG numbers (" 19.148.924.383") and versions.
+    $ip4Lits = @()
+    foreach ($c in $ip4Raw) {
+      if ($c -cnotmatch '^(?<pre>.?)(?<ip>[0-9]{1,3}(\.[0-9]{1,3}){3})(?<port>:[0-9]{1,5})?(?<post>.?)$') { continue }
+      if ($Matches['port']) { continue }                        # IPv4:port -- the scheme-less scan above reads it
+      $pre = $Matches['pre']; $post = $Matches['post']
+      if (-not ($pre -ne '' -and $quoteChars.Contains($pre))) { continue }
+      if ($post -ne '' -and -not ($quoteChars.Contains($post) -or $post -eq ':' -or $post -eq '/')) { continue }
+      $ip4Lits += $Matches['ip']
+    }
+    if ($scanExit -ne 0 -or $scanned -lt 1) {
+      Write-Host "FAIL D6(i): the scan measured nothing (docker exit $scanExit, $scanned js file(s) read)."
+      $gateWhy = "the client bundle scan measured nothing"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    # Backend-SHAPED literals that are not endpoints: exact string -> most occurrences allowed.
+    $allowExact = @{
+      'http://192.168.170.8:11434' = 1  # src/routes/_app.admin.ai-providers.tsx:95 -- help text shown to an operator
+      'http://localhost:9999'      = 1  # @supabase/auth-js GOTRUE_URL -- default used only when no url is given
+      'http://localhost'           = 1  # router origin fallback when window.origin is "null"
+      'http://macVmlSchemaUri'     = 1  # xlsx XML namespace identifier, never fetched
+    }
+    # Reviewed public third-party hosts (links, input placeholders, XML/JSON-schema ids).
+    $allowHosts = @('www.w3.org', 'schemas.openxmlformats.org', 'sheetjs.openxmlformats.org',
+      'schemas.microsoft.com', 'purl.org', 'purl.oclc.org', 'openoffice.org', 'docs.oasis-open.org',
+      'json-schema.org', 'schema.org', 'jspdf.default.namespaceuri', 'github.com', 'shahabyazdi.github.io',
+      'momentjs.com', 'react.dev', 'fb.me', 'cdnjs.cloudflare.com', 'example.com', 'api.example.com',
+      'api.openai.com', 'ai.gateway.lovable.dev', 'get-git-going.lovable.app',
+      'pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev', 'myafrakala.ir', 'torob.com', 'app.didar.me',
+      'wa.me', 'chat.whatsapp.com', 'eitaa.com', 'rubika.ir', 'ble.ir')
+    $bad = @()
+    # Exact, case-sensitive comparisons only: a PowerShell hashtable key lookup, -contains and
+    # Group-Object all ignore case by default, so 'HTTP://LOCALHOST:9999' would have borrowed the
+    # allowance of 'http://localhost:9999'. Sorted, because Group-Object orders groups differently in
+    # Windows PowerShell 5.1 and pwsh 7 and the GATE line must read the same in both.
+    foreach ($g in @($bareLits | Group-Object -CaseSensitive | Sort-Object -Property Name -CaseSensitive)) {
+      $lit = $g.Name
+      if (@($allowExact.Keys) -ccontains $lit) {
+        if ($g.Count -gt $allowExact[$lit]) { $bad += "$lit  (allowed $($allowExact[$lit])x as illustrative text, found $($g.Count)x)" }
+        continue
+      }
+      $name = ($lit -replace '^//', '') -replace ':[0-9]+$', ''
+      $why = @('scheme-less host:port', 'explicit port')
+      if ($name -match '^\d{1,3}(\.\d{1,3}){3}$') { $why += 'IP literal' } elseif ($name -notmatch '\.') { $why += 'bare name with no dot' }
+      if ($name -match '\.(local|localdomain|lan|internal|intranet|home|corp|test|arpa)$') { $why += 'private suffix' }
+      if ($name -match '(^|\.)supabase\.(co|in)$') { $why += 'Supabase host' }
+      $bad += "$lit  ($($why -join ', '))"
+    }
+    foreach ($g in @($hits | Group-Object -CaseSensitive | Sort-Object -Property Name -CaseSensitive)) {
+      $lit = $g.Name
+      if ($lit -notmatch '://') { $bad += "$lit  (Supabase project host)"; continue }
+      $auth = ($lit -split '://', 2)[1] -replace '^[^@]*@', ''
+      if ($auth -notmatch '[A-Za-z0-9]') { continue }   # "https://" prefix tests, "https://..." prose
+      if (@($allowExact.Keys) -ccontains $lit) {
+        if ($g.Count -gt $allowExact[$lit]) { $bad += "$lit  (allowed $($allowExact[$lit])x as illustrative text, found $($g.Count)x)" }
+        continue
+      }
+      $name = $auth; $port = ''
+      if ($auth -match '^(\[[^\]]*\]?)(:.*)?$' -or $auth -match '^([^:]*)(:.*)?$') { $name = $Matches[1]; $port = $Matches[2] }
+      $why = @()
+      if ($port) { $why += 'explicit port' }
+      if ($name -match '^\[' -or $name -match '^\d{1,3}(\.\d{1,3}){3}$') { $why += 'IP literal' }
+      elseif ($name -notmatch '\.') { $why += 'bare name with no dot' }
+      if ($name -match '\.(local|localdomain|lan|internal|intranet|home|corp|test|arpa)$') { $why += 'private suffix' }
+      if ($name -match '(^|\.)supabase\.(co|in)$') { $why += 'Supabase host' }
+      if ($why.Count -eq 0 -and $allowHosts -ccontains $name) { continue }
+      if ($why.Count -eq 0) { $why += 'host not on the reviewed list' }
+      $bad += "$lit  ($($why -join ', '))"
+    }
+    # Port-less quoted IPv4 literals that are comparisons, not endpoints -- exact string -> most
+    # occurrences allowed, measured 2026-09-14 on a clean build of this branch. Do not raise a count
+    # to get a green gate: find what put the new occurrence in the bundle first.
+    $allowIp4 = @{
+      '127.0.0.1' = 3  # html2canvas-pro esm:10193 SSRF check; @supabase/supabase-js index.mjs:243 target list; src/routes/__root.tsx:324
+      '0.0.0.0'   = 1  # src/routes/__root.tsx:325 -- isLocalOrTestHost comparison
+    }
+    foreach ($g in @($ip4Lits | Group-Object -CaseSensitive | Sort-Object -Property Name -CaseSensitive)) {
+      $lit = $g.Name
+      if (@($allowIp4.Keys) -ccontains $lit) {
+        if ($g.Count -gt $allowIp4[$lit]) { $bad += "$lit  (allowed $($allowIp4[$lit])x as a comparison, found $($g.Count)x)" }
+        continue
+      }
+      $bad += "$lit  (quoted IPv4 literal with no port, IP literal)"
+    }
+    if ($bad.Count -gt 0) {
+      Write-Host "FAIL D6(i): host literal(s) baked into the client bundle ($scanned js files read):"
+      $bad | ForEach-Object { Write-Host "    $_" }
+      Write-Host "    A host literal here means the image is tied to the machine that built it."
+      $gateWhy = "host literal(s) in the client bundle: $(@($bad | ForEach-Object { ($_ -split '  ', 2)[0] }) -join ', ')"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D6(i): no baked host literal in the client bundle ($scanned js files read, $($hits.Count) URL literal(s), $($bareLits.Count) scheme-less host:port literal(s) and $($ip4Lits.Count) quoted port-less IPv4 literal(s) classified)"
+
+    # (ii) the runtime mechanism must actually be present in the bundle
+    $hasCfg = docker run --rm --entrypoint sh $img -c "grep -rl __APP_RUNTIME_CONFIG__ /app/.output/public 2>/dev/null | head -1"
+    if (-not $hasCfg) {
+      Write-Host "FAIL D6(ii): __APP_RUNTIME_CONFIG__ is absent from the client bundle."
+      Write-Host "    Without it the client has no address at all. Do not deploy this image."
+      $gateWhy = "__APP_RUNTIME_CONFIG__ is absent from the client bundle"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D6(ii): runtime config mechanism present"
+
+    # (iii) this image, given THIS target's environment, must serve THIS target's address.
+    # No double quote inside the sh -c argument: Windows PowerShell 5.1 does not escape an embedded
+    # " when calling a native exe, so sh received a cut string, $served came back $null, and
+    # `$null -notmatch` is False -- this check printed OK having measured nothing (B1, 2026-09-14).
+    $served = docker run --rm --entrypoint sh -e SUPABASE_URL="http://${target}:8000" $img -c 'node .output/server/index.mjs >/dev/null 2>&1 & for i in $(seq 1 45); do wget -qO- http://127.0.0.1:3000/login >/dev/null 2>&1 && break; sleep 1; done; wget -qO- http://127.0.0.1:3000/login 2>/dev/null | grep -oE ''.supabaseUrl.:.[^,}]*'' | head -1'
+    $served = ([string]$served).Trim()
+    if (-not $served) {
+      Write-Host "FAIL D6(iii): the image served no supabaseUrl at all. Nothing was measured."
+      $gateWhy = "the image served no supabaseUrl"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    # C6: EXACT equality with the value this probe injected, never a substring (.10 is inside .100).
+    $servedUrl = ''
+    if ($served -cmatch '^"supabaseUrl":"([^"]*)"$') { $servedUrl = $Matches[1] }
+    $expectedServed = "http://${target}:8000"
+    if ($servedUrl -cne $expectedServed) {
+      Write-Host "FAIL D6(iii): served supabaseUrl is not exactly $expectedServed. Got: $served"
+      $gateWhy = "served supabaseUrl '$servedUrl' is not exactly $expectedServed"
+      Write-Host "GATE D6 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D6'] = $gateWhy; throw "STOPPED at gate D6: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D6(iii): served config = $served"
+    $global:AFRAKALA_FAILED_GATES.Remove('D6')
+    Write-Host "GATE D6 PASS"
+
+    # D9 -- the served host must be reachable FROM A BROWSER.
+    # D6(i)-(iii) all passed on an image whose injected config was
+    # {"supabaseUrl":"http://kong:8000"} -- the compose-internal service name. The bundle was
+    # clean, the mechanism was present, and one image still served two different values. SSR
+    # resolves "kong"; a browser never can. The artifact probe structurally cannot see this,
+    # because the value is correct-looking and only arrives at runtime.
+    $servedHost = ""
+    if ($served -match '"supabaseUrl":"https?://([^/:"]+)') { $servedHost = $Matches[1] }
+    if ($servedHost -eq "") {
+      Write-Host "FAIL D9: could not parse a host out of the served config: $served"
+      $gateWhy = "no host could be parsed from the served config"
+      Write-Host "GATE D9 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D9'] = $gateWhy; throw "STOPPED at gate D9: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $isIPv4     = $servedHost -match '^\d{1,3}(\.\d{1,3}){3}$'
+    $isDottedFqdn = $servedHost -match '^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$'
+    $isLoopback = $servedHost -in @("localhost", "127.0.0.1", "0.0.0.0", "::1")
+    if ($isLoopback) {
+      Write-Host "FAIL D9: served host '$servedHost' is loopback. Correct inside the container,"
+      Write-Host "         unreachable for every browser except one on the server itself."
+      $gateWhy = "served host '$servedHost' is loopback"
+      Write-Host "GATE D9 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D9'] = $gateWhy; throw "STOPPED at gate D9: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    if (-not ($isIPv4 -or $isDottedFqdn)) {
+      Write-Host "FAIL D9: served host '$servedHost' is a bare name with no dot -- a"
+      Write-Host "         compose service name or container alias. SSR resolves it; a browser"
+      Write-Host "         cannot. Set APP_SUPABASE_PUBLIC_URL to the address staff type."
+      $gateWhy = "served host '$servedHost' is a bare name with no dot"
+      Write-Host "GATE D9 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D9'] = $gateWhy; throw "STOPPED at gate D9: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D9: served host '$servedHost' is browser-reachable"
+    $global:AFRAKALA_FAILED_GATES.Remove('D9')
+    Write-Host "GATE D9 PASS"
+    }   # end GATE D6 + D9
+'@)
+Add-Line ""
+Add-Line "Expect: OK D6(i), no baked host literal in the client bundle"
+Add-Line "Expect: OK D6(ii), runtime config mechanism present"
+Add-Line "Expect: OK D6(iii), served supabaseUrl exactly http://${D6TargetHost}:8000"
+Add-Line "Expect: OK D9, served host browser-reachable (not a compose service name, not loopback)"
+Add-Line "Expect: GATE D6 PASS, then GATE D9 PASS as the last line printed"
+Add-Line ""
+
 Add-Line "# Phase 6 - deploy"
 Add-Line ""
 Add-Line "### Block $blockN - rollback tag"
@@ -555,11 +1119,18 @@ remained -- a check that passes without being true, which is the defect this pip
 stop. The prune below matches any tag containing 'rollback' EXCEPT the one agreed name, which
 covers every convention observed (lan-rollback-<reason>, rollback-<sha>, and the unnamed one).
 
-    docker tag afrakala-app:lan afrakala-app:lan-rollback
+'@)
+[void]$sb.AppendLine($stateGuardOpen.Replace('<what>', 'rollback-tag prune'))
+[void]$sb.AppendLine(@'
+    # D2: the `docker tag afrakala-app:lan afrakala-app:lan-rollback` line that used to
+    # sit here is DELETED. It ran AFTER :lan had already been repointed at the incoming
+    # image, so it pointed the rollback name at the new image. The rollback tag is now
+    # taken in the image-transfer block, before :lan moves.
     docker images afrakala-app --format "{{.Repository}}:{{.Tag}}" |
       Where-Object { $_ -match 'rollback' -and $_ -ne 'afrakala-app:lan-rollback' } |
       ForEach-Object { docker rmi $_ }
     docker images afrakala-app --format "{{.Repository}}:{{.Tag}}`t{{.CreatedAt}}"
+    }   # end rollback-tag prune
 
 Expect: afrakala-app:lan-rollback present
 Expect: no OTHER tag whose name contains 'rollback' remains (any convention, not just lan-*)
@@ -569,12 +1140,14 @@ $blockN++
 
 Add-Line "### Block $blockN - deploy"
 Add-Line ""
+[void]$sb.AppendLine($stateGuardOpen.Replace('<what>', 'deploy'))
 [void]$sb.AppendLine(@'
     $env:GIT_SHA = (git rev-parse --short HEAD)
     $env:BUILD_TIME = (Get-Date -Format o)
     docker compose --env-file deploy/lan/.env.lan -f deploy/lan/docker-compose.yml `
       up -d --no-deps --no-build web
     docker restart afrakala-lan-rest
+    }   # end deploy
 
 Expect: --no-deps present (its absence takes the whole app down, CLAUDE.md OG-68)
 Expect: GIT_SHA set on the command line (its absence silently mislabels the running image)
@@ -596,7 +1169,58 @@ Expect: APP_GIT_SHA equals git rev-parse --short HEAD
 Expect: afrakala-lan-db-role-fix = Exited (0); every other afrakala-lan-* = Up
 Expect: /login = 200 under 1 second
 Expect: /api/healthz = 200
+
+D10. What the DEPLOYED site hands to browsers, read from the live site and nothing else.
+D6(iii) and D9 above start their OWN container with SUPABASE_URL set by the probe and check what
+that container serves -- the probe asking itself. REVIEW-2 served http://kong:8000 from a clean
+image with a compose-shaped environment (SUPABASE_URL=http://kong:8000, APP_SUPABASE_PUBLIC_URL
+empty) and that block still printed GATE D9 PASS. The deployment's own environment decides the
+value (src/lib/runtime-config.ts: APP_SUPABASE_PUBLIC_URL, then VITE_SUPABASE_URL, then
+SUPABASE_URL), so it can only be measured AFTER deploy, on the running site. D10 starts no
+container: it reads /login from the live site and requires window.__APP_RUNTIME_CONFIG__.supabaseUrl
+to EQUAL the expected public address -- not contain it, not resemble it.
 '@)
+Add-Line ""
+Add-Line "    & {   # GATE D10 -- paste from this line to the matching closing brace"
+Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
+Add-Line "    `$site     = '$LiveSiteUrl'"
+Add-Line "    `$expected = '$ExpectedSupabaseUrl'"
+[void]$sb.AppendLine(@'
+    $page = curl.exe -s --max-time 20 "$site/login"
+    $curlExit = $LASTEXITCODE
+    $html = (@($page) | ForEach-Object { [string]$_ }) -join "`n"
+    if ($curlExit -ne 0 -or -not $html) {
+      Write-Host "FAIL D10: could not read $site/login from the live site (curl exit $curlExit). Nothing was measured."
+      $gateWhy = "could not read $site/login (curl exit $curlExit)"
+      Write-Host "GATE D10 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D10'] = $gateWhy; throw "STOPPED at gate D10: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $assignments = [regex]::Matches($html, 'window\.__APP_RUNTIME_CONFIG__\s*=').Count
+    $cfgMatch = [regex]::Match($html, 'window\.__APP_RUNTIME_CONFIG__\s*=\s*(\{[^<]*?\})\s*;?\s*</script>')
+    if ($assignments -ne 1 -or -not $cfgMatch.Success) {
+      Write-Host "FAIL D10: $site/login must carry exactly ONE parseable window.__APP_RUNTIME_CONFIG__; found $assignments assignment(s), parseable=$($cfgMatch.Success)."
+      $gateWhy = "the live /login carries $assignments runtime config assignment(s), parseable=$($cfgMatch.Success)"
+      Write-Host "GATE D10 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D10'] = $gateWhy; throw "STOPPED at gate D10: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $got = $null
+    try { $got = ($cfgMatch.Groups[1].Value | ConvertFrom-Json).supabaseUrl } catch { $got = $null }
+    if ($got -isnot [string] -or $got -cne $expected) {
+      Write-Host "FAIL D10: the LIVE site serves supabaseUrl '$got'; browsers must get exactly '$expected'."
+      Write-Host "          Every staff browser loading $site is being pointed at '$got' right now."
+      $gateWhy = "live supabaseUrl is '$got', not exactly '$expected'"
+      Write-Host "GATE D10 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['D10'] = $gateWhy; throw "STOPPED at gate D10: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK D10: $site/login serves supabaseUrl '$got' -- exactly the expected public address"
+    $global:AFRAKALA_FAILED_GATES.Remove('D10')
+    Write-Host "GATE D10 PASS"
+    }   # end GATE D10
+'@)
+Add-Line ""
+Add-Line "Expect: OK D10, the live $LiveSiteUrl/login serves supabaseUrl exactly $ExpectedSupabaseUrl"
+Add-Line "Expect: the last line printed is GATE D10 PASS"
+Add-Line "Expect: GATE D10 FAIL means browsers are being sent somewhere else NOW -- run the rollback block below"
 Add-Line ""
 $blockN++
 

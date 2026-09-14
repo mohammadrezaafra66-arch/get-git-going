@@ -14,6 +14,11 @@ import { AuthProvider } from "@/lib/auth/AuthProvider";
 import { logAuthDiagnostic } from "@/lib/auth/diagnostics";
 import { initCacheBuster, forceHardReload } from "@/lib/cache-buster";
 import { registerServiceWorker } from "@/lib/pwa/register-sw";
+import {
+  getRuntimeConfig,
+  RUNTIME_CONFIG_GLOBAL,
+  serializeRuntimeConfig,
+} from "@/lib/runtime-config";
 
 import appCss from "../styles.css?url";
 import { BRANDING, getPageTitle } from "@/config/branding";
@@ -266,9 +271,23 @@ export const Route = createRootRoute({
 });
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  // پیکربندی زمان اجرا. روی سرور از `process.env` خوانده می‌شود و اینجا داخل HTML
+  // سرو‌شده می‌نشیند؛ در مرورگر همان مقدار از `window` خوانده می‌شود، پس دو سمت
+  // یکی‌اند و hydration اختلاف نمی‌بیند.
+  //
+  // چرا در <head> و پیش از <HeadContent />: این script باید **پیش از** هر chunk
+  // ماژول Vite اجرا شود، وگرنه ممکن است `@supabase/supabase-js` زودتر ارزیابی شود
+  // و مقدار را نبیند — همان دلیلی که polyfill مربوط به crypto.randomUUID هم در
+  // همین نقطه می‌نشیند.
+  const runtimeConfig = getRuntimeConfig();
   return (
     <html lang="fa" dir="rtl">
       <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.${RUNTIME_CONFIG_GLOBAL}=${serializeRuntimeConfig(runtimeConfig)};`,
+          }}
+        />
         <HeadContent />
       </head>
       <body className="font-sans">
@@ -292,7 +311,7 @@ function normalizeEnvironmentName(value: unknown) {
 // machine that matters. Set VITE_TRUSTED_HOSTS at build time (comma-separated)
 // to tell the bundle which hostnames are legitimate for it.
 function getTrustedHosts() {
-  return String(import.meta.env.VITE_TRUSTED_HOSTS ?? "")
+  return String(getRuntimeConfig().trustedHosts ?? "")
     .split(",")
     .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean);
@@ -312,9 +331,10 @@ function isLocalOrTestHost(hostname: string) {
 }
 
 function EnvironmentSafetyBanner() {
-  const appEnv = normalizeEnvironmentName(
-    import.meta.env.VITE_APP_ENV ?? import.meta.env.VITE_ENVIRONMENT_NAME ?? import.meta.env.MODE,
-  );
+  // از پیکربندی زمان اجرا، نه از literalِ پخته‌شده در build. تا ۲۰۲۶-۰۹-۱۳ این مقدار
+  // در build ثابت می‌شد، پس image ساخته‌شده روی باکس تست حتی روی production هم
+  // خودش را «test» می‌دانست.
+  const appEnv = normalizeEnvironmentName(getRuntimeConfig().appEnv ?? import.meta.env.MODE);
   const bannerEnabled =
     normalizeEnvironmentName(import.meta.env.VITE_SHOW_ENVIRONMENT_BANNER) === "true";
   const configuredBannerText = String(import.meta.env.VITE_ENVIRONMENT_BANNER_TEXT ?? "").trim();

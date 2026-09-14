@@ -7,17 +7,31 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
-const cloudUrl =
-  process.env.VITE_SUPABASE_URL ??
-  process.env.SUPABASE_URL ??
-  "https://kwwkppkcihrbeurwudjh.supabase.co";
+// آدرس Supabase عمداً اینجا نیست.
+//
+// تا ۲۰۲۶-۰۹-۱۳ یک `cloudUrl` اینجا بود که در `define` پایین به یک string literal
+// تبدیل می‌شد. یعنی آدرسِ ماشینی که build را اجرا می‌کرد داخل bundle پخته می‌شد و
+// image به آن میزبان گره می‌خورد. نتیجه‌اش این شد که یک image ساخته‌شده روی باکس
+// تست، روی production نشست و همهٔ فراخوانی‌ها به Kong تست رفت.
+//
+// حالا آدرس در زمان اجرا از محیطِ کانتینر خوانده می‌شود:
+//   `src/lib/runtime-config.ts`  ← خواندن
+//   `src/routes/__root.tsx`      ← تزریق در <head> پیش از chunkهای Vite
+//
+// **هیچ مقدار وابسته به میزبان را دوباره به `define` اضافه نکنید.** آزمونِ آرتیفکت
+// در خط release این را می‌سنجد و build را رد می‌کند.
 
-const cloudPublishableKey =
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.SUPABASE_PUBLISHABLE_KEY ??
-  process.env.VITE_SUPABASE_ANON_KEY ??
-  process.env.SUPABASE_ANON_KEY ??
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt3d2twcGtjaWhyYmV1cnd1ZGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwMzU5MTUsImV4cCI6MjA5MjYxMTkxNX0.oowSHbrAEL04u9DwGjyPYIlCc8MSL0c00Odv6UvM4bE";
+// کلید anon عمداً اینجا نیست — و با هیچ literal دیگری جایگزین نشده است.
+//
+// N1 (حادثهٔ ۲۰۲۶-۰۹-۱۳): اینجا یک کلید anon ابری به‌صورت هاردکد در source بود که
+// به‌عنوان آخرین fallback در `define` می‌نشست. دو پیامد داشت:
+//   ۱. اگر متغیرهای محیطی خالی بودند، build **بی‌صدا** یک پروژهٔ سومِ اشتباه را
+//      به bundle می‌بست.
+//   ۲. یک کلید در تاریخچهٔ گیت ماند.
+// حالا کلید در زمان اجرا از محیط کانتینر می‌آید (`src/lib/runtime-config.ts`).
+//
+// چرخاندنِ کلیدِ حذف‌شده هنوز لازم است و **تصمیم مالک** است: حذف از کد آن را از
+// تاریخچهٔ گیت پاک نمی‌کند.
 
 const cloudProjectId =
   process.env.VITE_SUPABASE_PROJECT_ID ?? process.env.SUPABASE_PROJECT_ID ?? "kwwkppkcihrbeurwudjh";
@@ -54,8 +68,6 @@ export default defineConfig({
   vite: {
     plugins: disableLovableMcp ? [] : [mcpPlugin()],
     define: {
-      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(cloudUrl),
-      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(cloudPublishableKey),
       "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(cloudProjectId),
       "import.meta.env.VITE_BUILD_ID": JSON.stringify(buildId || "dev"),
     },

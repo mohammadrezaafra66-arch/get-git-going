@@ -101,7 +101,8 @@ $code = $LASTEXITCODE
 
 Write-Host ""
 if ($code -eq 0) {
-    Write-Host "PASSED. Log: $logPath" -ForegroundColor Green
+    # C3: never an unqualified PASSED -- this script does not run Block 0 or any GATE block.
+    Write-Host "MIGRATION PHASE PASSED -- release NOT verified: Block 0 and every GATE block were NOT run by this script. Log: $logPath" -ForegroundColor Yellow
 } else {
     Write-Host "STOP (exit $code). Log: $logPath" -ForegroundColor Red
 }
