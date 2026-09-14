@@ -1150,3 +1150,126 @@ build cache ِ دو build در Docker ماند (image نیست؛ prune نکرد�
    دیگر بیاورد و gate **بلند** FAIL می‌دهد. پاسخِ درست پیدا کردنِ منبع است، نه بالا بردنِ عدد — این جمله در خودِ کد هم نوشته شد.
 
 «تأیید نشده» — این پیوست گزارشِ پیاده‌ساز است، نه حکمِ بازبینی.
+
+---
+
+# پیوست ۶ — بستنِ F1 ِ بازبینیِ چهارم: `"//IP"` با پورتِ جدا (۲۰۲۶-۰۹-۱۴)
+
+ورودی: `REVIEW-4-20260914.md` (`cb97cc99`)، یافتهٔ غیرِبازدارندهٔ F1. دامنه: **فقط** همین probe. هیچ‌چیزِ دیگری
+که چهار بازبینی تأیید کرده‌اند لمس نشد. شاخه `fix/d6-slash-prefix-ip` از `origin/main` = `0b7e175e`، در worktree ِ
+جدا (`D:/AfraKalaTest/wt-d6-slash`)، چون درختِ اصلی فایل‌های untracked ِ agentهای دیگر را داشت. **PR باز نشد.**
+
+## ۰. پیش از اصلاح — بازتولید (`measured`)
+
+- image از `git archive origin/main` (`0b7e175e`) در scratchpad با `docker build` (هرگز compose):
+  `d6slash-afrakala:clean` = `694870070cd6`، و `protorel` با کاشت در source (`src/routes/__root.tsx`، فقط در کپیِ scratchpad):
+  `const F1_HOST = "//192.168.170.8"` و `window.location.protocol + F1_HOST + ":" + String(port)`، از `useEffect` صدا زده
+  می‌شود تا tree-shake نشود. پس از minifier عیناً در bundle ماند:
+  `const Gz="//192.168.170.8";function Kz(e){return window.location.…` — و هیچ `192.168.170.8:<port>`ی جز help text ِ
+  مجازِ `:11434` در bundle نبود، یعنی پورت واقعاً جدا بود. `BUILD_EXIT=0` هر سه build.
+- ناحیهٔ `& { # GATE D6 + D9 … }` با **اجرای خودِ کدِ emitter** (`Add-Line` و here-string ِ همان فایل، با `$sb` ِ محلی)
+  استخراج شد و فقط خطِ `$img` جایگزین شد؛ بدنهٔ استخراج‌شده با خطوطِ here-string ِ emitter مقایسه شد: ۲۱۱ خط، ۰ اختلاف
+  (پیش و پس از اصلاح). `-File`، خروجی به فایل، `$LASTEXITCODE` بلافاصله — بدونِ pipe. هدف `10.99.99.99`.
+
+```
+OK D6(i): no baked host literal in the client bundle (475 js files read, 176 URL literal(s), 0 scheme-less host:port literal(s) and 4 quoted port-less IPv4 literal(s) classified)
+OK D6(ii): runtime config mechanism present
+OK D6(iii): served config = "supabaseUrl":"http://10.99.99.99:8000"
+GATE D6 PASS
+OK D9: served host '10.99.99.99' is browser-reachable
+GATE D9 PASS
+EXIT 5.1 = 0     EXIT 7 = 0
+```
+
+**F1 بازتولید شد.**
+
+## ۱. چه غلط بود
+
+خواندنِ C7 (IPv4 ِ بی‌پورت) نامزد را فقط وقتی می‌شمرد که کاراکترِ **پیش** از dotted quad یک quote باشد. در
+`"//192.168.170.8"` آن کاراکتر `/` است، پس نامزد دور ریخته می‌شد؛ scanِ بی‌scheme ِ C6 هم پورت لازم دارد و URL scan
+scheme. هیچ خواندنی باقی نمی‌ماند.
+
+## ۲. چه عوض شد — یک commit، `d85e907a`، فقط `release/emit-blocks.ps1` (+11/−3)
+
+1. شرطِ کاراکترِ پیش: `quote` → `quote یا /`. شرطِ کاراکترِ پس (quote، `:`، `/`، پایان) دست نخورد.
+2. نامزدِ `/`‌دار با نامِ `/<ip>` ثبت می‌شود، نه `<ip>` — تا هرگز از سهمیهٔ `allowIp4` (`"127.0.0.1"`×۳، `"0.0.0.0"`×۱،
+   که همه quote‌دار اندازه‌گیری شدند) قرض نگیرد. دلیلِ FAIL: `IPv4 literal after / with no port, IP literal`.
+3. متنِ بلوک یک بندِ F1 گرفت. فهرستِ `allowIp4` **گشاد نشد**. حلقه‌های URL، بی‌scheme، D6(ii)، D6(iii) و D9 دست نخوردند.
+
+## ۳. allowlist — دوباره شمرده شد روی `clean` ِ خودم (`measured`)
+
+همهٔ نامزدهای IPv4‌شکل (یک کاراکتر زمینه در هر طرف، `sort | uniq -c`):
+
+```
+3 "127.0.0.1"   1 "0.0.0.0"
+1 /192.168.170.8:11434                      <- پورت دارد
+1  16.148.924.383"  1  19.148.924.383"  1 -1.5.75.75   1 -3.676.56.56   1 .476.233.31.949-
+```
+
+**شمارشِ من = `"127.0.0.1"` ×۳ و `"0.0.0.0"` ×۱ — برابرِ اندازه‌گیریِ قبلی.** تنها dotted quad ِ `/`‌دار
+`…شبیه http://192.168.170.8:11434` است که پورت دارد، پس گسترش به `/` امروز روی bundle ِ مشروع صفر over-rejection دارد —
+و این در ردیفِ 3.5 با اجرای gate هم دیده شد، نه فقط با grep.
+
+## ۴. اثباتِ دوطرفه — فاز ۳ (`measured`؛ همهٔ 5.1 اول، سپس همهٔ 7)
+
+5.1 = `5.1.26100.9278`، 7 = `7.6.4`. «خطوطِ gate» (`OK`/`FAIL`/`GATE` و خطوطِ نامِ literal) برای هر ۶ ورودی در دو shell
+**بایت‌به‌بایت یکسان** (`cmp`، پس از `iconv` از UTF-16). تنها تفاوت نمایشِ exception ِ `throw` است.
+
+| # | ورودی | باید | خروجی (یکسان در هر دو shell) | exit 5.1 | exit 7 |
+|---|---|---|---|---|---|
+| 3.1 | `protorel` (کاشتِ source، `"//192.168.170.8"` + پورتِ جدا) | FAIL | `/192.168.170.8  (IPv4 literal after / with no port, IP literal)` · `GATE D6 FAIL host literal(s) in the client bundle: /192.168.170.8` | `1` | `1` |
+| 3.2 | imageِ واقعیِ حادثه `296eb4b4899f` (تگِ `afrakala-app:3bc526c4`، فقط خواندن) | FAIL | `http://192.168.170.8:9000  (explicit port, IP literal)` · `GATE D6 FAIL …: http://192.168.170.8:9000` | `1` | `1` |
+| 3.3 | `quoted` = clean + `const c7q="192.168.170.8";…"http://"+c7q+":"+String(p)` (`9d746aae315f`) | FAIL | `192.168.170.8  (quoted IPv4 literal with no port, IP literal)` · `GATE D6 FAIL …: 192.168.170.8` — C7 پس‌رفت نکرد | `1` | `1` |
+| 3.4 | `kong` = clean + `var d6k="http://kong:8000";var d6b="kong:8000"` (`a6e19e31c1f4`) | FAIL | `kong:8000  (scheme-less host:port, explicit port, bare name with no dot)` · `http://kong:8000  (explicit port, bare name with no dot)` · `GATE D6 FAIL …: kong:8000, http://kong:8000` | `1` | `1` |
+| 3.5 | **bundleِ مشروعِ فعلی** (`clean`، `694870070cd6`) | **PASS** | `OK D6(i): … (475 js files read, 176 URL literal(s), 0 scheme-less host:port literal(s) and 4 quoted port-less IPv4 literal(s) classified)` · `OK D6(ii)` · `OK D6(iii): served config = "supabaseUrl":"http://10.99.99.99:8000"` · `GATE D6 PASS` · `OK D9` · `GATE D9 PASS` | `0` | `0` |
+| 3.6 | `tmpl` (کاشتِ source، `` `${p}//192.168.170.8:${port}` ``) | (گزارش) | `/192.168.170.8  (IPv4 literal after / with no port, IP literal)` · `GATE D6 FAIL …: /192.168.170.8` | `1` | `1` |
+
+**3.1 FAIL و literal را نام می‌برد؛ 3.5 PASS — هر دو زیرِ 5.1 و 7.** اختلافی بینِ دو shell در محتوای gate: هیچ.
+
+## ۵. پاسخِ 3.6 — `` `${p}//IP:${port}` ``: **پس از اصلاح گرفته می‌شود** (`measured`)
+
+- minifier template را نگه داشت: `` function Gz(e,t){return`${e}//192.168.170.8:${t}`} ``. نامزدِ grep: `/192.168.170.8:`
+  — کاراکترِ پیش `/`، پورتِ رقمی ندارد، کاراکترِ پس `:` (که از C7 مجاز بود).
+- **پیش از اصلاح** (emitter ِ `0b7e175e`) روی همان image: `GATE D6 PASS` · `GATE D9 PASS`، exit `0` / `0` — یعنی F1 ِ
+  REVIEW-4 برای شکلِ template هم درست بود (آنجا `assertion`، اینجا `measured`).
+- **پس از اصلاح**: FAIL، `1` / `1` (ردیفِ 3.6).
+- مرز، صادقانه: این فقط وقتی گرفته می‌شود که بلافاصله پس از IP یکی از `quote`، `:`، `/` یا پایانِ خط بیاید. شکل‌هایی که
+  **نسنجیدم و گرفته نمی‌شوند** (`assertion` از regex): IP با پیشوندِ غیرِ `/` و غیرِ quote وسطِ رشته (`"x192.168.170.8"`،
+  `` `${h}192.168.170.8` ``)، و IP ِ دنبال‌شده با `${` بی‌واسطه (`` `//192.168.170.8${port}` ``). decimal / hex / octal ِ
+  REVIEW-4 (F2) بدونِ تغییر باز است.
+
+## ۶. typecheck (یک بار)
+
+`npm run typecheck > typecheck.log 2>&1` روی همین شاخه (node_modules از طریقِ junction ِ موقت به درختِ اصلی، پس از اجرا
+حذف شد؛ خودِ `node_modules` دست نخورد) → `NPM_EXIT=2`، `70` خطا در `6` فایل
+(products.index 18 · sales-reminders 15 · accounting/functions 13 · invoices/functions 13 · audit/index 6 · admin.automation 5). baseline بدونِ تغییر.
+
+## ۷. پاک‌سازی و سلامتِ stack (`measured`، پایانِ کار)
+
+```
+docker rmi d6slash-afrakala:{tmpl,protorel,quoted,kong,clean}   -> RMI_EXIT=0
+d6slash images left: 0 · d6slash containers left: 0   (همهٔ اجراهای gate با docker run --rm؛ هیچ پورتی publish نشد)
+694870070cd6 / 9d746aae315f / a6e19e31c1f4 -> image inspect exit 1
+afrakala-app:lan           296eb4b4899f   (بدون تغییر)
+afrakala-lan-web           Image=sha256:0c3106602cc9…  StartedAt=2026-09-12T17:46:06.169711504Z  Restarts=0  Health=healthy
+```
+
+id ِ imageهای `protorel` و `tmpl` پیش از حذف ثبت نشد (فقط با تگ حذف شدند؛ شمارشِ باقی‌مانده ۰).
+build cache ماند (مشترکِ agentهای دیگر؛ prune نشد). هیچ خواندن یا نوشتنی روی `192.168.170.10`؛ هیچ deploy، restart یا
+`compose build` روی stack ِ در حال اجرا؛ هیچ `docker commit`/`pause`؛ `:lan` جابه‌جا نشد؛ هیچ `npm run build` بیرون از
+Docker؛ push به main/staging: خیر؛ PR: خیر.
+
+## ۸. commitها
+
+`d85e907a` اصلاحِ F1 · و همین پیوست.
+
+## ۹. تأیید نشده
+
+۱. **fetch ِ واقعیِ مرورگر** برای `protorel` و `tmpl` — مقصد استنتاج از bundle است؛ مرورگر باز نشد.
+۲. **هیچ‌چیز روی `192.168.170.10`.**
+۳. نسخهٔ 5.1 ِ اینجا `5.1.26100.9278` است؛ production `5.1.26100.9444`. آن build آزموده نشد.
+۴. اجرا با `-File`؛ paste در پنجرهٔ تعاملی آزموده نشد.
+۵. `/`‌دارِ **مشروع** در آینده (مثلاً مسیرِ `/1.2.3.4/` در یک وابستگی) gate را **بلند** FAIL می‌کند با نامِ `/<ip>`؛ پاسخِ
+   درست پیدا کردنِ منبع است، نه گشادکردنِ فهرست.
+
+«تأیید نشده» — این پیوست گزارشِ پیاده‌ساز است، نه حکمِ بازبینی.
