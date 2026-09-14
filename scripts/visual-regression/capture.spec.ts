@@ -13,18 +13,29 @@ const readOnlyRpcs = new Set<string>(
   JSON.parse(fs.readFileSync(path.join(OUT, "readonly-rpcs.json"), "utf8")),
 );
 
-type PageSpec = { name: string; path: string; auth: boolean; mask: string[] };
+type PageSpec = { name: string; path: string; auth: boolean; ready: string; mask: string[] };
 
 // Why these: /login is the one page anyone sees without a session; the other three are the
 // authenticated pages people open all day — a KPI dashboard and the two largest lists.
+// `ready` is a selector that exists only once the page is hydrated and its data is on screen.
+// networkidle is NOT enough: /login was once captured with its pre-hydration button
+// («در حال آماده‌سازی...»), which is stable for two frames and so passes toHaveScreenshot.
 // `mask` lists selectors whose content legitimately changes between two captures of the
 // same image (see README "Masking"). Empty means the self-comparison needed none.
 const PAGES: PageSpec[] = [
-  { name: "login", path: "/login", auth: false, mask: [] },
-  { name: "dashboard", path: "/dashboard", auth: true, mask: [] },
-  { name: "products", path: "/products", auth: true, mask: [] },
-  { name: "persons", path: "/persons", auth: true, mask: [] },
+  {
+    name: "login",
+    path: "/login",
+    auth: false,
+    ready: 'button[type="submit"][aria-busy="false"]',
+    mask: [],
+  },
+  { name: "dashboard", path: "/dashboard", auth: true, ready: "h1", mask: [] },
+  { name: "products", path: "/products", auth: true, ready: "table tbody tr", mask: [] },
+  { name: "persons", path: "/persons", auth: true, ready: "table tbody tr", mask: [] },
 ];
+
+const LOADING_TEXT = ["در حال آماده‌سازی", "در حال بارگذاری"];
 
 const SUPABASE_PATH = /^\/(rest|auth|storage|realtime|functions|graphql)\/v1\//;
 
@@ -93,6 +104,15 @@ for (const spec of PAGES) {
       await page.evaluate(() => document.fonts.ready);
       // A failed session would silently capture /login on both sides and report "identical".
       if (spec.auth) await expect(page).toHaveURL(new RegExp(`${spec.path}(\\?|$)`));
+      await page.locator(spec.ready).first().waitFor({ state: "visible", timeout: 30_000 });
+      // Nothing may still be loading. A page stuck loading fails here, loudly, on both sides.
+      await page.waitForFunction(
+        (loading) =>
+          !document.querySelector('[aria-busy="true"]') &&
+          !loading.some((t) => document.body.innerText.includes(t)),
+        LOADING_TEXT,
+        { timeout: 30_000 },
+      );
 
       const options = {
         fullPage: true,

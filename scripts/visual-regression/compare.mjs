@@ -13,7 +13,8 @@
  *     --out <dir outside any git repo>
  *     [--supabase-url http://192.168.170.8:9000] [--app-env production]
  *
- * Exit: 0 no page differs · 1 at least one page differs · 2 the tool itself failed.
+ * Exit: 0 nothing differs · 1 a page differs OR the images contacted different/unconfigured hosts
+ *       · 2 the tool itself failed (or a page could not be compared).
  * Full guide: docs/runbooks/visual-regression/README.md
  */
 import { execFileSync, spawnSync } from "node:child_process";
@@ -79,18 +80,23 @@ async function waitHealthy(url, seconds = 120) {
   // Docker Desktop's port proxy accepts the TCP connection before the app listens, and a
   // pending fetch does not keep Node's event loop alive — without this explicit (ref'd)
   // timeout the process silently exited 0 mid-wait.
+  let last = "no response";
   for (let i = 0; i < seconds; i++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 2000);
     try {
-      if ((await fetch(url, { signal: controller.signal })).ok) return;
+      const res = await fetch(url, { signal: controller.signal });
+      if (res.ok) return;
+      // healthz checks the database FROM INSIDE the container: 503 here usually means
+      // --supabase-url is not reachable from the container (e.g. 127.0.0.1).
+      last = `HTTP ${res.status} ${(await res.text()).slice(0, 200)}`;
     } catch {
     } finally {
       clearTimeout(timer);
     }
     await new Promise((r) => setTimeout(r, 1000));
   }
-  throw new Error(`not healthy after ${seconds}s: ${url}`);
+  throw new Error(`not healthy after ${seconds}s: ${url} (last: ${last})`);
 }
 
 function imageId(image) {
@@ -220,11 +226,18 @@ function collectResults() {
       page: s.title,
       status,
       pixels: pixels ? Number(pixels[1]) : 0,
-      ratio: pixels ? Number(pixels[2]) : 0,
+      // Playwright rounds its ratio to two decimals; recompute against the after image's area.
+      ratio: pixels ? Number(pixels[1]) / pngArea(path.join(out, "after", `${s.title}.png`)) : 0,
       size: size ? `${size[1]} -> ${size[2]}` : "",
       error: status.startsWith("ERROR") ? message.split("\n").slice(0, 3).join(" ") : "",
     };
   });
+}
+
+function pngArea(file) {
+  // PNG IHDR: width and height are big-endian uint32 at bytes 16 and 20.
+  const header = fs.readFileSync(file).subarray(0, 24);
+  return header.readUInt32BE(16) * header.readUInt32BE(20);
 }
 
 function walkFiles(dir) {
@@ -275,7 +288,29 @@ function writeSummary(rows, ids) {
         `  ${r.page}: before [${network("before", r.page).hosts.join(", ")}]  after [${network("after", r.page).hosts.join(", ")}]`,
     ),
   );
-  const blocked = (side) => [...new Set(rows.flatMap((r) => network(side, r.page).blocked))].sort();
+  // The 2026-09-13 class: an image that talks to a host other than the one it was configured
+  // with. Pixels cannot see this when both hosts serve the same data; the request log can.
+  const expectedHost = new URL(supabaseUrl).host;
+  const unexpected = ["before", "after"].flatMap((side) => {
+    const hosts = [...new Set(rows.flatMap((r) => network(side, r.page).hosts))].filter(
+      (h) => h !== "<app>" && h !== expectedHost,
+    );
+    return hosts.length
+      ? [`  ${side}: [${hosts.join(", ")}] — configured was ${expectedHost}`]
+      : [];
+  });
+  lines.push(
+    unexpected.length === 0
+      ? `unconfigured hosts: none (every request went to the app or ${expectedHost})`
+      : "unconfigured hosts: FOUND — an image is not using the runtime Supabase address",
+    ...unexpected,
+  );
+  // Compare method + path only: the host part legitimately differs when the hosts do.
+  const blocked = (side) =>
+    [...new Set(rows.flatMap((r) => network(side, r.page).blocked))]
+      .map((b) => b.replace(/^(\S+) [^/]*\//, "$1 /"))
+      .filter((b, i, all) => all.indexOf(b) === i)
+      .sort();
   lines.push(
     `writes blocked by read-only guard: before ${blocked("before").length}, after ${blocked("after").length}` +
       ` (same set: ${blocked("before").join() === blocked("after").join() ? "yes" : "NO"}) — see network/`,
@@ -283,7 +318,8 @@ function writeSummary(rows, ids) {
   const text = lines.join("\n") + "\n";
   fs.writeFileSync(path.join(out, "SUMMARY.txt"), text);
   console.log("\n" + text);
-  return errors.length ? 2 : differ.length ? 1 : 0;
+  if (errors.length) return 2;
+  return differ.length || hostDiffs.length || unexpected.length ? 1 : 0;
 }
 
 async function main() {
