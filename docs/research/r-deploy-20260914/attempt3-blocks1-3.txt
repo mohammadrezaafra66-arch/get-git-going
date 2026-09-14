@@ -1,0 +1,30 @@
+===== REGION GATE_D1a =====
+OK D1a: HEAD = a935be0b, tree clean
+GATE D1a PASS
+===== REGION GATE_L1 =====
+OK L1: database postgres, not a replica, ledger 697 rows, top 20260914130000
+GATE L1 PASS
+===== REGION GATE_TAR_handcopy =====
+NOTE TAR: copy step SKIPPED -- the tarball and .sha256 were hand-copied to C:\afrakala-release\20260914 by the operator (share copy threw Invalid Signature); .sha256 read LOCALLY
+OK TAR: C:\afrakala-release\20260914\afrakala-app-a935be0b.tar.gz sha256 f9e6af1eaa61f4062249f220a49f848f8e6d517fef39201067f63ac64d4a7d73
+GATE TAR PASS
+===== REGION GATE_D2 =====
+OK D2: afrakala-app:lan-rollback = running image sha256:8b04c479e022db24fc1e91ab7639d7c80b23c4a934419eca48c50323f2620635
+GATE D2 PASS
+===== REGION _lan_retag =====
+Loaded image: afrakala-app:a935be0b
+OK LOAD: afrakala-app:a935be0b carries APP_GIT_SHA=a935be0b and is now afrakala-app:lan
+b67d27106ce4
+GATE LOAD PASS
+===== REGION GATE_D3 =====
+OK D3: lan=b67d27106ce4 rollback=8b04c479e022
+GATE D3 PASS
+===== REGION GATE_D6_D9 =====
+OK D6(i): no baked host literal in the client bundle (475 js files read, 176 URL literal(s), 0 scheme-less host:port literal(s) and 4 quoted port-less IPv4 literal(s) classified)
+OK D6(ii): runtime config mechanism present
+OK D6(iii): served config = "supabaseUrl":"http://192.168.170.10:8000"
+GATE D6 PASS
+OK D9: served host '192.168.170.10' is browser-reachable
+GATE D9 PASS
+===== BLOCKS 1-3 COMPLETE =====
+FAILED_GATES_COUNT=0

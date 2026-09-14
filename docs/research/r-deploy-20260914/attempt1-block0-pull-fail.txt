@@ -1,0 +1,22 @@
+===== REGION checkout_pull =====
+    ?? docs/research/asan-code-samples-20260913.md
+    ?? docs/research/env-parity-20260913.md
+    ?? docs/research/owner-prep-20260913.md
+GATE PULL FAIL working tree is not clean (3 path(s)) -- nothing was pulled
+powershell.exe : STOPPED at gate PULL: working tree is not clean (3 path(s)) -- nothing was pulled -- nothing after it 
+in this region 
+At line:9 char:1
++ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$sp\blocks0t ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (STOPPED at gate...in this region :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ran; this shell is still open
+At C:\Users\AfRa 
+KaLa\AppData\Local\Temp\claude\C--afrakala\f384cf7f-de27-4814-b948-a1b1a0de8d45\scratchpad\blocks0to3.ps1:28 char:53
++ ... = $gateWhy; throw "STOPPED at gate PULL: $gateWhy -- nothing after it ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (STOPPED at gate...l is still open:String) [], RuntimeException
+    + FullyQualifiedErrorId : STOPPED at gate PULL: working tree is not clean (3 path(s)) -- nothing was pulled -- not 
+   hing after it in this region ran; this shell is still open
+ 

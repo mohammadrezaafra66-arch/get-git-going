@@ -1,0 +1,72 @@
+===== REGION checkout_pull =====
+powershell.exe : From https://github.com/mohammadrezaafra66-arch/get-git-going
+At line:24 char:1
++ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$run\blocks0 ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (From https://gi...h/get-git-going:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ * branch              main       -> FETCH_HEAD
+   c8035d5f..a935be0b  main       -> origin/main
+Updating 9bc8d554..a935be0b
+Fast-forward
+ Dockerfile                                         |   21 +-
+ PROGRESS.md                                        |    1 +
+ deploy/lan/docker-compose.yml                      |   18 +-
+ .../local-snapshot-20260912-2153/README.md         |   31 +
+ .../local-snapshot-20260912-2153/RESUME.md         |   85 ++
+ .../local-snapshot-20260912-2153/STATE.md          |  669 ++++++++++
+ docs/research/release-line/REVIEW-2-20260913.md    |  357 ++++++
+ docs/research/release-line/REVIEW-20260913.md      |  397 ++++++
+ docs/research/release-line/REVIEW-3-20260914.md    |  285 +++++
+ docs/research/release-line/REVIEW-4-20260914.md    |  195 +++
+ .../release-line/probe-falsification-20260913.md   |   42 +
+ .../runtime-config-completion-20260913.md          | 1275 ++++++++++++++++++++
+ .../security/security-fix-542-2026-09-14.md        |  275 +++++
+ release/apply-release.ps1                          |    3 +-
+ release/build.ps1                                  |   25 +-
+ release/emit-blocks.ps1                            |  654 +++++++++-
+ release/lib/apply-release-engine.sh                |   25 +-
+ release/out/RELEASE-20260913-d6test.md             |  793 ++++++++++++
+ src/integrations/supabase/client.ts                |   25 +-
+ src/lib/runtime-config.ts                          |  126 ++
+ src/lib/storage/upload-with-progress.ts            |    9 +-
+ src/routes/__root.tsx                              |   28 +-
+ ...definer_views_shop_secret_inactive_profiles.sql |  432 +++++++
+ vite.config.ts                                     |   36 +-
+ 24 files changed, 5747 insertions(+), 60 deletions(-)
+ create mode 100644 docs/missions/convergence/local-snapshot-20260912-2153/README.md
+ create mode 100644 docs/missions/convergence/local-snapshot-20260912-2153/RESUME.md
+ create mode 100644 docs/missions/convergence/local-snapshot-20260912-2153/STATE.md
+ create mode 100644 docs/research/release-line/REVIEW-2-20260913.md
+ create mode 100644 docs/research/release-line/REVIEW-20260913.md
+ create mode 100644 docs/research/release-line/REVIEW-3-20260914.md
+ create mode 100644 docs/research/release-line/REVIEW-4-20260914.md
+ create mode 100644 docs/research/release-line/probe-falsification-20260913.md
+ create mode 100644 docs/research/release-line/runtime-config-completion-20260913.md
+ create mode 100644 docs/research/security/security-fix-542-2026-09-14.md
+ create mode 100644 release/out/RELEASE-20260913-d6test.md
+ create mode 100644 src/lib/runtime-config.ts
+ create mode 100644 supabase/migrations/20260914130000_542_close_definer_views_shop_secret_inactive_profiles.sql
+OK PULL: HEAD = a935be0bb7e51c4abfd3ed8086c57f54f820766d; compose passes VITE_APP_ENV at runtime (line 55)
+GATE PULL PASS
+===== REGION GATE_D1a =====
+OK D1a: HEAD = a935be0b, tree clean
+GATE D1a PASS
+===== REGION GATE_L1 =====
+OK L1: database postgres, not a replica, ledger 697 rows, top 20260914130000
+GATE L1 PASS
+===== REGION GATE_TAR =====
+GATE TAR FAIL could not copy or hash the tarball: Invalid Signature.
+
+STOPPED at gate TAR: could not copy or hash the tarball: Invalid Signature.
+ -- nothing after it in this region ran; this shell is still open
+At C:\Users\AfRa 
+KaLa\AppData\Local\Temp\claude\C--afrakala\f384cf7f-de27-4814-b948-a1b1a0de8d45\scratchpad\run2\blocks0to3.ps1:139 
+char:52
++ ... = $gateWhy; throw "STOPPED at gate TAR: $gateWhy -- nothing after it  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : OperationStopped: (STOPPED at gate...l is still open:String) [], RuntimeException
+    + FullyQualifiedErrorId : STOPPED at gate TAR: could not copy or hash the tarball: Invalid Signature.
+ -- nothing after it in this region ran; this shell is still open
+ 

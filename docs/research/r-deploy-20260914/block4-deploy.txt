@@ -1,0 +1,49 @@
+===== REGION GATE_D1a =====
+OK D1a: HEAD = a935be0b, tree clean
+GATE D1a PASS
+===== REGION GATE_L1 =====
+OK L1: database postgres, not a replica, ledger 697 rows, top 20260914130000
+GATE L1 PASS
+===== REGION GATE_D3 =====
+OK D3: lan=b67d27106ce4 rollback=8b04c479e022
+GATE D3 PASS
+===== PRE-DEPLOY STATE =====
+WEB IMAGE BEFORE = sha256:8b04c479e022db24fc1e91ab7639d7c80b23c4a934419eca48c50323f2620635
+inspect exit 0
+WEB APP_GIT_SHA BEFORE: APP_GIT_SHA=d60232f5
+BEFORE 5f776768e259  afrakala-lan-web  created=2026-09-13 18:12:54 +0330 +0330  Up 22 hours (healthy)
+BEFORE 06940c326059  afrakala-lan-kong  created=2026-09-10 09:58:33 +0330 +0330  Up 47 hours (healthy)
+BEFORE dfbd8bb6f12f  afrakala-lan-auth  created=2026-09-10 09:58:33 +0330 +0330  Up 47 hours
+BEFORE 4e56b3132fa8  afrakala-lan-db-role-fix  created=2026-09-10 09:58:33 +0330 +0330  Exited (0) 47 hours ago
+BEFORE 7c6552237387  afrakala-lan-db  created=2026-09-10 09:58:17 +0330 +0330  Up 47 hours (healthy)
+BEFORE 8c715c8b4715  afrakala-lan-storage  created=2026-08-13 11:57:50 +0330 +0330  Up 47 hours
+BEFORE be1396bb5691  afrakala-lan-rest  created=2026-08-13 11:57:50 +0330 +0330  Up 3 hours
+BEFORE 6bddcbe07542  afrakala-lan-meta  created=2026-08-11 16:02:42 +0330 +0330  Up 47 hours (healthy)
+ps exit 0
+===== REGION deploy =====
+powershell.exe :  Container afrakala-lan-web Recreate 
+At line:3 char:1
++ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$run4\deploy ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ( Container afrakala-lan-web Recreate :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ Container afrakala-lan-web Recreated 
+ Container afrakala-lan-web Starting 
+ Container afrakala-lan-web Started 
+COMPOSE EXIT = 0
+afrakala-lan-rest
+RESTART EXIT = 0
+===== POST-DEPLOY CONTAINER STATE =====
+AFTER  ce08935bd576  afrakala-lan-web  created=2026-09-14 15:52:44 +0330 +0330  Up Less than a second (health: starting)
+AFTER  06940c326059  afrakala-lan-kong  created=2026-09-10 09:58:33 +0330 +0330  Up 47 hours (healthy)
+AFTER  dfbd8bb6f12f  afrakala-lan-auth  created=2026-09-10 09:58:33 +0330 +0330  Up 47 hours
+AFTER  4e56b3132fa8  afrakala-lan-db-role-fix  created=2026-09-10 09:58:33 +0330 +0330  Exited (0) 47 hours ago
+AFTER  7c6552237387  afrakala-lan-db  created=2026-09-10 09:58:17 +0330 +0330  Up 47 hours (healthy)
+AFTER  8c715c8b4715  afrakala-lan-storage  created=2026-08-13 11:57:50 +0330 +0330  Up 47 hours
+AFTER  be1396bb5691  afrakala-lan-rest  created=2026-08-13 11:57:50 +0330 +0330  Up Less than a second
+AFTER  6bddcbe07542  afrakala-lan-meta  created=2026-08-11 16:02:42 +0330 +0330  Up 47 hours (healthy)
+ps exit 0
+WEB IMAGE AFTER = sha256:b67d27106ce4a308097031a459a87e38733fc6afee9ee259aaa7bad73aab27f4
+inspect exit 0
+===== BLOCK 4 COMPLETE =====

@@ -1,0 +1,2 @@
+OK D10: http://192.168.170.10:3000/login serves supabaseUrl 'http://192.168.170.10:8000' -- exactly the expected public address
+GATE D10 PASS
