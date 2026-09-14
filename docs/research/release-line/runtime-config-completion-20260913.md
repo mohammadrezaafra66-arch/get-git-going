@@ -980,3 +980,173 @@ deploy یا retag در هیچ paste. push به main/staging: خیر. PR: خیر.
    rollback، پیش‌فرضِ `D6TargetHost=192.168.170.10`، سقف‌نداشتنِ میزبان‌های allowlist (`get-git-going.lovable.app`)،
    `OK D6(i)` با grepِ شکسته، `bun install` بدونِ lockfile، و D2 روی stackِ زنده (imageِ در حال اجرا در store نیست — بخشِ ۴.۱ بازبینی؛ همچنان بازدارندهٔ **اجرای** release).
 ۹. guardِ `REFUSED: 'afrakala' is a real database` در engine و رفتارش روی نامِ دیتابیسِ production سنجیده نشد.
+
+---
+
+# پیوست ۵ — بستنِ C7 ِ بازبینیِ سوم: D6(i) و IPv4 ِ بی‌پورت (۲۰۲۶-۰۹-۱۴)
+
+ورودی: `REVIEW-3-20260914.md` (`408fc1ca`)، حکم REJECT، `BROKEN_PROBES=1`. دامنه: **فقط** همین probe. هیچ‌چیزِ دیگری
+که سه بازبینی تأیید کرده‌اند لمس نشد. سطوحِ شاهد مثلِ پیوستِ ۴.
+
+## ۰. پیش از اصلاح — بازتولید (`measured`)
+
+- image از `git archive 408fc1ca` در scratchpad با `docker build` (هرگز compose): `c7fix-afrakala:clean` = `5cccea965f7a`،
+  `c7fix-afrakala:attack` = `f517f8466172`؛ هر دو `BUILD_EXIT=0`.
+- کاشت در **source** (`src/routes/__root.tsx`، فقط در کپیِ scratchpad): `const C7_INCIDENT_HOST = "192.168.170.8"` و
+  `"http://" + C7_INCIDENT_HOST + ":" + String(port)`. پس از Vite/minifier عیناً در bundle ماند:
+  `const FE="192.168.170.8";function Hz(e){return"http://"+FE+":"+String(e)}` — و هیچ `192.168.170.8:<port>`ی جز
+  help textِ مجازِ `:11434` در bundle نبود، یعنی کاشت واقعاً بی‌پورت بود.
+- سندِ release با emitterِ **پیش از اصلاح** (کپیِ `release/` از `408fc1ca`، `-D6TargetHost 10.99.99.99`) تولید شد؛
+  ناحیهٔ `& { # GATE D6 + D9 … }` عیناً استخراج و de-indent شد و **فقط** خطِ `$img` جایگزین شد (diff چاپ شد).
+  اجرا با `-File`، خروجی به فایل، exit بلافاصله با `$?` — بدونِ pipe.
+
+```
+OK D6(i): no baked host literal in the client bundle (475 js files read, 177 URL literal(s) and 0 scheme-less host:port literal(s) classified)
+OK D6(ii): runtime config mechanism present
+OK D6(iii): served config = "supabaseUrl":"http://10.99.99.99:8000"
+GATE D6 PASS
+OK D9: served host '10.99.99.99' is browser-reachable
+GATE D9 PASS
+EXIT 5.1 = 0     EXIT 7 = 0
+```
+
+**C7 بازتولید شد.**
+
+## ۱. چه غلط بود
+
+(i) سه خواندن داشت و هر سه scheme یا پورت لازم داشتند: URLِ `scheme://`، میزبانِ `*.supabase.co`، و `host:port`ِ
+بی‌scheme (`…:[0-9]{1,5}` اجباری). IPv4ای که **بی‌پورت** در یک literal ِ جدا نشسته و در زمانِ اجرا به scheme و پورت
+چسبانده می‌شود از هر سه عبور می‌کرد. متنِ خودِ بلوک («an IP literal … ALWAYS fails») این را نقض می‌کرد.
+
+## ۲. چه عوض شد — یک commit، `67931fc3`، فقط `release/emit-blocks.ps1` (+41/−2)
+
+1. یک grepِ چهارم در همان `docker run`ِ (i): `'.?[0-9]{1,3}([.][0-9]{1,3}){3}(:[0-9]{1,5})?.?'` با پیشوندِ `IP4 `
+   (بدونِ double quote داخلِ `sh -c`، سازگار با 5.1).
+2. طبقه‌بندی: نامزد فقط وقتی شمرده می‌شود که **پورت نداشته باشد** (IPv4:port همچنان کارِ scanِ بی‌schemeِ C6 است، پس
+   دوبار گزارش نمی‌شود)، کاراکترِ **پیش** از آن quote باشد (`"` `'` `` ` ``) و کاراکترِ **پس** از آن quote، `:`، `/` یا
+   پایانِ خط.
+3. همان default-deny: هر literalی که روی فهرستِ دقیق نیست FAIL، با نامِ خودش:
+   `192.168.170.8  (quoted IPv4 literal with no port, IP literal)`.
+4. فهرستِ دقیق (رشته ← حداکثر تعداد)، **اندازه‌گیری‌شده و منبع‌دار، گشاد نشده**: بخشِ ۳.
+5. خطِ OK شمارشِ جدید را هم چاپ می‌کند: `…, 0 scheme-less host:port literal(s) and 4 quoted port-less IPv4 literal(s) classified`.
+6. متنِ بلوک یک بندِ C7 گرفت که صریحاً می‌گوید (i) **چه چیزی را نمی‌خواند** (بخشِ ۵).
+
+کدِ حلقه‌های URL و بی‌schemeِ C6، D6(ii)، D6(iii)، D9 و بقیهٔ سند دست نخورد (بخشِ ۶: diffِ کلِ سند).
+
+## ۳. allowlist — دوباره اندازه‌گیری روی imageی که خودم ساختم (`measured`)
+
+همهٔ نامزدهای IPv4‌شکل در `c7fix-afrakala:clean` (با یک کاراکترِ زمینه در هر طرف، `sort | uniq -c`، ۱۰ خط):
+
+```
+3 "127.0.0.1"
+1 "0.0.0.0"
+1 /192.168.170.8:11434        <- پورت دارد: کارِ scanِ C6/URL، و روی فهرستِ exactِ موجود
+1 .476.233.31.949-  ·  1 -3.676.56.56   ·  1 -1.5.75.75   ·  1  19.148.924.383"  ·  1  16.148.924.383"
+                              <- هیچ‌کدام quote پیش از خود ندارد (عددِ SVG/نسخه)
+```
+
+**شمارشِ من با بازبین یکی است**: `"127.0.0.1"` ×۳ و `"0.0.0.0"` ×۱. منبعِ هرکدام پیش از افزودن پیدا شد — همه مقایسه‌اند، هیچ‌کدام endpoint نیست:
+
+| literal | منبع | نقش |
+|---|---|---|
+| `"127.0.0.1"` | `node_modules/html2canvas-pro/dist/html2canvas-pro.esm.js:10193` | بررسیِ SSRF: `hostname === '127.0.0.1'` |
+| `"127.0.0.1"` | `node_modules/@supabase/supabase-js/dist/index.mjs:243` | `targets.push("localhost", "127.0.0.1", "[::1]")` |
+| `"127.0.0.1"` | `src/routes/__root.tsx:324` | `isLocalOrTestHost` |
+| `"0.0.0.0"` | `src/routes/__root.tsx:325` | `isLocalOrTestHost` |
+
+## ۴. اثباتِ دوطرفه — فاز ۳ (`measured`؛ همهٔ 5.1 اول، سپس همهٔ 7)
+
+emitterِ **پس از** اصلاح در کپیِ scratchpad → سندِ `RELEASE-c7post.md` (`EMIT_EXIT=0`) → همان استخراج. هدف `10.99.99.99`.
+«خطوطِ gate» = خطوطِ `OK`/`FAIL`/`GATE` و خطوطِ نامِ literal؛ برای هر ۶ ورودی در 5.1 و 7 **بایت‌به‌بایت یکسان** (`cmp`).
+تنها تفاوتِ دو shell نحوهٔ نمایشِ exceptionِ `throw` است (5.1 متنِ ساده، 7 با رنگ و `Line |`)، نه محتوای gate.
+
+| # | ورودی | باید | خروجی (یکسان در هر دو shell) | exit 5.1 | exit 7 |
+|---|---|---|---|---|---|
+| 3.1 | `attack` (`f517f8466172`) | FAIL | `192.168.170.8  (quoted IPv4 literal with no port, IP literal)` · `GATE D6 FAIL host literal(s) in the client bundle: 192.168.170.8` | `1` | `1` |
+| 3.2 | imageِ واقعیِ حادثه `296eb4b4899f` (با تگِ `afrakala-app:3bc526c4`، فقط خواندن) | FAIL | `http://192.168.170.8:9000  (explicit port, IP literal)` · `GATE D6 FAIL host literal(s) in the client bundle: http://192.168.170.8:9000` | `1` | `1` |
+| 3.3 | `kong` = clean + فایلِ JS با `var c7k="http://kong:8000";var c7b="kong:8000"` | FAIL | `kong:8000  (scheme-less host:port, explicit port, bare name with no dot)` · `http://kong:8000  (explicit port, bare name with no dot)` · `GATE D6 FAIL host literal(s) in the client bundle: kong:8000, http://kong:8000` | `1` | `1` |
+| 3.4 | **bundleِ مشروعِ فعلی** (`clean`، `5cccea965f7a`) | **PASS** | `OK D6(i): … (475 js files read, 176 URL literal(s), 0 scheme-less host:port literal(s) and 4 quoted port-less IPv4 literal(s) classified)` · `OK D6(ii)` · `OK D6(iii): served config = "supabaseUrl":"http://10.99.99.99:8000"` · `GATE D6 PASS` · `OK D9` · `GATE D9 PASS` | `0` | `0` |
+| 3.5a | `zeropad` = clean + `const c7z="192.168.170.008";…"http://"+c7z+":"+String(9000)` | (گزارش) | `192.168.170.008  (quoted IPv4 literal with no port, IP literal)` · `GATE D6 FAIL …: 192.168.170.008` | `1` | `1` |
+| 3.5b | `decimal` = clean + `const c7d="3232279048";…"http://"+c7d+":"+String(9000)` | (گزارش) | `OK D6(i): … (476 js files read, 177 URL literal(s), 0 … and 4 quoted port-less IPv4 literal(s) classified)` · `GATE D6 PASS` · `GATE D9 PASS` | `0` | `0` |
+
+**3.1 FAIL و literal را نام می‌برد؛ 3.4 PASS — هر دو زیرِ 5.1 و 7.** over-rejection روی bundleِ مشروع: صفر.
+
+## ۵. فاز ۳.۵ — پاسخِ صادقانه: یک شکافِ واقعی باقی است
+
+شکلِ دیگرِ همان آدرس با parserِ WHATWG ِ Node ِ داخلِ همان image (همان parserی که مرورگر دارد) `measured`:
+
+```
+http://192.168.170.008:9000 -> ERR_INVALID_URL
+http://3232279048:9000      -> 192.168.170.8:9000
+http://0xC0A8AA08:9000      -> 192.168.170.8:9000
+```
+
+- **zero-padded (`192.168.170.008`): گرفته شد** — ولی فقط چون شکلِ dotted-quad دارد؛ این شکل در مرورگر اصلاً URLِ
+  معتبر نیست (octet ِ `008` octal ِ نامعتبر است)، پس خطرِ واقعی نبود.
+- **decimal (`3232279048`): گرفته نشد — `GATE D6 PASS`، `GATE D9 PASS`، exit `0` در هر دو shell.** و مرورگر آن را
+  دقیقاً به `192.168.170.8:9000` resolve می‌کند. یعنی imageی که میزبانِ حادثه را به‌صورتِ عددِ دهدهی نگه دارد و در زمانِ
+  اجرا scheme و پورت بچسباند، هنوز از هر gateِ پیش از deploy عبور می‌کند. گرفتنِ «هر رشتهٔ ده‌رقمی» در bundleِ minified
+  over-reject می‌کند؛ در این دور بسته نشد و **بسته‌شده ادعا نمی‌شود**.
+- **hex (`0xC0A8AA08`)**: parser آن را هم resolve می‌کند؛ gate را روی آن اجرا نکردم — از ساختارِ regex (`[0-9]` و نقطه)
+  نتیجه می‌گیرم که گرفته نمی‌شود (`assertion`).
+- شکاف‌های دیگری که قاعدهٔ جدید عمداً نمی‌خواند و متنِ بلوک اکنون نامشان را می‌برد: IPv4 **وسطِ** یک رشتهٔ بلندتر
+  (از جمله `"//192.168.170.8"`، کاراکترِ پیش `/` است نه quote) یا پس از `${…}` در template literal؛ نامِ بی‌نقطهٔ
+  بی‌پورت؛ IPv6 بیرون از URLِ `scheme://`. هیچ‌کدام را با image نسنجیدم.
+
+## ۶. فاز ۴ — چیزِ دیگری نشکست (`measured`)
+
+- **diffِ کلِ سند** (`RELEASE-c7pre.md` ↔ `RELEASE-c7post.md`، پس از یکسان‌کردنِ برچسبِ تاریخ): همهٔ hunkها در خطوطِ
+  `625–774`، داخلِ بلوکِ D6 (`593` تا `848`). هیچ بلوکِ دیگری تغییر نکرد.
+- `release/validate-blocks.ps1` (بدونِ تغییر) روی هر دو سند: `PASSED — no problems found.`، exit `0` / `0`.
+- D6+D9 یک بار با emitterِ **نهایی**، زیرِ 5.1: clean → `GATE D6 PASS` · `GATE D9 PASS`، exit `0`؛ incident →
+  `GATE D6 FAIL host literal(s) in the client bundle: http://192.168.170.8:9000`، exit `1` (D9 به‌درستی اجرا نشد).
+- **typecheck (یک بار):** `npm run typecheck > typecheck.log 2>&1` → `NPM_EXIT=2`، `70` خطا در `6` فایل
+  (products.index 18 · sales-reminders 15 · accounting/functions 13 · invoices/functions 13 · audit/index 6 · admin.automation 5). baseline بدونِ تغییر.
+- یک خطای خودم، پیش از commit اصلاح شد: عددِ دهدهیِ اولیه‌ام `3232278024` بود که parser آن را `192.168.166.8` خواند
+  (محاسبهٔ غلط). متنِ emitter و imageِ `decimal` با مقدارِ درست `3232279048` بازسازی و هر دو shell دوباره اجرا شد؛
+  ردیفِ 3.5b همان اجرای دوم است. ناحیهٔ کدِ gate بینِ دو emit یکسان ماند (`diff` بدونِ خطِ `$img` خالی).
+
+## ۷. یافته‌های غیرِبازدارندهٔ بازبینیِ سوم — **نام برده، اصلاح نشده**
+
+تا دورِ بعد از یک فهرست شروع کند، نه از حافظه:
+
+1. **D10، صفحه‌ای که config ِ درست را بازنویسی می‌کند** — `<script>` دومی با
+   `window.__APP_RUNTIME_CONFIG__.supabaseUrl="http://192.168.170.8:9000"`، یا انتساب با `window["__APP_RUNTIME_CONFIG__"]={…}`
+   → `GATE D10 PASS`. شمارشِ انتساب فقط شکلِ `window.__APP_RUNTIME_CONFIG__\s*=` را می‌بیند (REVIEW-3 §۶ حملهٔ ۳).
+2. **D10، کلید با حروفِ متفاوت** — `{"SUPABASEURL":"http://10.99.99.99:8000"}` → `GATE D10 PASS`، چون دسترسیِ property در
+   PowerShell به حروف حساس نیست (حملهٔ ۴).
+3. **D8، fenceِ غیرِ CommonMark** — خطِ fence با تورفتگیِ tab در دو طرفِ یک `## VERDICT: FAIL`، یا fenceی که info string ِ آن
+   backtick دارد (`` ```a`b ``)، FAIL را پنهان می‌کند و سند نوشته می‌شود؛ پس ادعای «CommonMark» در `release/emit-blocks.ps1:85-86` دقیق نیست (حملهٔ ۶).
+4. **D3 بدونِ تگِ rollback** — وقتی `:lan-rollback` وجود ندارد، `OK D3: lan=… rollback=` و `GATE D3 PASS` (حملهٔ ۸).
+
+## ۸. پاک‌سازی و سلامتِ stack (`measured`، پایانِ کار)
+
+```
+docker rmi c7fix-afrakala:{decimal,zeropad,kong,attack,clean}   -> RMI_EXIT=0
+c7fix images left: 0 · c7fix containers left: 0   (همهٔ اجراهای gate با docker run --rm؛ هیچ پورتی publish نشد)
+imageِ decimal ِ اول (bc086655ab41): No such image
+afrakala-app:lan           296eb4b4899f   (بدون تغییر)
+afrakala-lan-web           Image=sha256:0c3106602cc9…  StartedAt=2026-09-12T17:46:06.169711504Z  Restarts=0  Health=healthy
+```
+build cache ِ دو build در Docker ماند (image نیست؛ prune نکردم چون cache مشترکِ agentهای دیگرِ این باکس است).
+هیچ خواندن یا نوشتنی روی `192.168.170.10`؛ هیچ deploy، restart یا `compose build` روی stackِ در حال اجرا؛ هیچ
+`docker commit`/`pause`؛ هیچ کانتینری با `SUPABASE_URL` به `.10` (فقط `http://10.99.99.99:8000`)؛ `:lan` جابه‌جا نشد؛
+هیچ `npm run build` بیرون از Docker؛ push به main/staging: خیر؛ PR: خیر.
+
+## ۹. commitها
+
+`67931fc3` اصلاحِ C7 · و همین پیوست.
+
+## ۱۰. تأیید نشده
+
+۱. **fetch ِ واقعیِ مرورگر** برای imageِ `attack` یا `decimal` — اینکه کدِ کاشته‌شده به `192.168.170.8:9000` می‌رود استنتاج
+   از bundle و parserِ Node است؛ مرورگر باز نشد.
+۲. **هیچ‌چیز روی `192.168.170.10`.**
+۳. نسخهٔ 5.1 ِ اینجا `5.1.26100.9278` است؛ production `5.1.26100.9444`. آن build آزموده نشد.
+۴. شاخهٔ «بیش از سهمیه» (`"127.0.0.1"` ×۴ → `allowed 3x as a comparison, found 4x`) با image آزموده نشد؛ همان الگوی
+   `allowExact` ِ C6 است که بازبین تأیید کرده، ولی برای `allowIp4` جداگانه اندازه‌گیری نشد.
+۵. hex، IPv6، IPv4 ِ وسطِ رشته و پس از `${…}` با image آزموده نشدند (بخشِ ۵).
+۶. پایداریِ سهمیهٔ `127.0.0.1`×۳ / `0.0.0.0`×۱ روی bundleهای آینده تضمینی ندارد؛ افزایشِ هر وابستگی ممکن است یک مقایسهٔ
+   دیگر بیاورد و gate **بلند** FAIL می‌دهد. پاسخِ درست پیدا کردنِ منبع است، نه بالا بردنِ عدد — این جمله در خودِ کد هم نوشته شد.
+
+«تأیید نشده» — این پیوست گزارشِ پیاده‌ساز است، نه حکمِ بازبینی.
