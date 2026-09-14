@@ -869,6 +869,11 @@ QUOTED IPv4 literal, with or without a port: a dotted quad that opens a string l
 list below, measured in the clean bundle. What (i) does NOT read, named so nobody assumes it does:
 an IPv4 in the middle of a longer string, a dotless name with no port, an IPv6 literal outside a
 scheme:// URL, and any other spelling of an address (decimal 3232279048, hex 0xC0A8AA08).
+
+F1, 2026-09-14. REVIEW-4 showed `"//192.168.170.8"` with the port joined at runtime passing D6 and
+D9: the character before the quad was /, not a quote. (i) now also accepts / there, and names the
+literal as /192.168.170.8 so it never borrows the quoted comparisons' allowance. Measured on the
+clean bundle, the only /-prefixed quad is /192.168.170.8:11434, which has a port.
 '@)
 Add-Line ""
 Add-Line "    & {   # GATE D6 + D9 -- paste from this line to the matching closing brace"
@@ -924,10 +929,12 @@ Add-Line "    `$target = '$D6TargetHost'"
     foreach ($c in $ip4Raw) {
       if ($c -cnotmatch '^(?<pre>.?)(?<ip>[0-9]{1,3}(\.[0-9]{1,3}){3})(?<port>:[0-9]{1,5})?(?<post>.?)$') { continue }
       if ($Matches['port']) { continue }                        # IPv4:port -- the scheme-less scan above reads it
-      $pre = $Matches['pre']; $post = $Matches['post']
-      if (-not ($pre -ne '' -and $quoteChars.Contains($pre))) { continue }
+      $pre = $Matches['pre']; $post = $Matches['post']; $ip = $Matches['ip']
+      # F1: "//192.168.170.8" (protocol-relative, port joined at runtime) has / before the quad, not a
+      # quote. Kept as '/'+ip so it never borrows the quoted comparisons' allowance below.
+      if (-not ($pre -ne '' -and ($quoteChars.Contains($pre) -or $pre -eq '/'))) { continue }
       if ($post -ne '' -and -not ($quoteChars.Contains($post) -or $post -eq ':' -or $post -eq '/')) { continue }
-      $ip4Lits += $Matches['ip']
+      $ip4Lits += $(if ($pre -eq '/') { '/' } else { '' }) + $ip
     }
     if ($scanExit -ne 0 -or $scanned -lt 1) {
       Write-Host "FAIL D6(i): the scan measured nothing (docker exit $scanExit, $scanned js file(s) read)."
@@ -1002,6 +1009,7 @@ Add-Line "    `$target = '$D6TargetHost'"
         if ($g.Count -gt $allowIp4[$lit]) { $bad += "$lit  (allowed $($allowIp4[$lit])x as a comparison, found $($g.Count)x)" }
         continue
       }
+      if ($lit.StartsWith('/')) { $bad += "$lit  (IPv4 literal after / with no port, IP literal)"; continue }
       $bad += "$lit  (quoted IPv4 literal with no port, IP literal)"
     }
     if ($bad.Count -gt 0) {
