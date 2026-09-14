@@ -20,7 +20,9 @@
 #       [-BuildManifest release\out\build-<sha>.json] [-Tarball release\out\afrakala-app-<sha>.tar.gz]
 
 param(
-    [Parameter(Mandatory = $true)][string]$RehearsalReport,
+    # Required unless -ImageOnly. Was [Parameter(Mandatory)]; the check is now explicit below so that
+    # -ImageOnly can run without one. The normal path still refuses without it.
+    [string]$RehearsalReport = "",
     [Parameter(Mandatory = $true)][string]$Date,
     [string]$BuildManifest = "",
     [string]$Tarball = "",
@@ -33,7 +35,27 @@ param(
     # C1 (D10): the LIVE site the post-deploy gate reads, and the one supabaseUrl it accepts from it.
     # The expected value defaults to what D6(iii) injects for the same target.
     [string]$LiveSiteUrl = "http://192.168.170.10:3000",
-    [string]$ExpectedSupabaseUrl = ""
+    [string]$ExpectedSupabaseUrl = "",
+    # IMAGE-ONLY MODE -- added 2026-09-14 for release-20260914. NEW RELEASE-LINE CODE, NOT
+    # INDEPENDENTLY REVIEWED. For a release whose migration set is already applied on the target, so
+    # there is nothing to rehearse. Instead of a rehearsal it takes the target's RECORDED ledger
+    # (-LedgerEvidence, one 14-digit version per line) and refuses unless (1) that file agrees with
+    # the independently recorded row count and top version, (2) every migration file on disk either
+    # has a ledger row or a recorded disposition, and (3) no ledger row lacks a file. It emits no
+    # migration block and no ledger write of any kind. Everything below that is gated by
+    # `if ($ImageOnly)` is this mode; the normal path is byte-identical to before (proved by diff in
+    # docs/research/release-line/RELEASE-READY-20260914.md).
+    [switch]$ImageOnly,
+    [string]$LedgerEvidence = "",
+    [int]$ExpectLedgerRows = -1,
+    [string]$ExpectLedgerMax = "",
+    [string]$ShapeTolerant = "",
+    [string]$Withheld = "",
+    [string]$TargetDb = "postgres",
+    [string]$PackageShare = "",
+    [string]$TarballSha256 = "",
+    # UTF-8 text reproduced verbatim near the top of an image-only document (what staff are told).
+    [string]$StaffNotes = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -52,7 +74,99 @@ if ($LiveSiteUrl -cnotmatch '^https?://[A-Za-z0-9.-]+(:[0-9]{1,5})?$') {
     exit 1
 }
 
-if (-not (Test-Path $RehearsalReport)) {
+if ($ImageOnly) {
+    # --- IMAGE-ONLY refusals (NEW 2026-09-14, not independently reviewed) -----------------------
+    # Every refusal prints "REFUSED -ImageOnly: <reason>" and exits 1. There is no rehearsal here, so
+    # these checks are the only thing standing between a stale ledger reading and a runbook that
+    # claims there is nothing to apply.
+    function Stop-ImageOnly([string]$why) {
+        Write-Host "REFUSED -ImageOnly: $why" -ForegroundColor Red
+        exit 1
+    }
+    if ($RehearsalReport -ne "") { Stop-ImageOnly "-RehearsalReport was also given; an image-only release has no rehearsal, pick one mode" }
+    foreach ($pair in @(@('-LedgerEvidence', $LedgerEvidence), @('-BuildManifest', $BuildManifest), @('-Decided', $Decided),
+                        @('-ShapeTolerant', $ShapeTolerant), @('-Withheld', $Withheld))) {
+        if ($pair[1] -eq "" -or -not (Test-Path -LiteralPath $pair[1])) { Stop-ImageOnly "$($pair[0]) is required and must exist (got '$($pair[1])')" }
+    }
+    if ($ExpectLedgerRows -lt 0) { Stop-ImageOnly "-ExpectLedgerRows is required: the target's RECORDED ledger row count, from its own run record" }
+    if ($ExpectLedgerMax -cnotmatch '^\d{14}$') { Stop-ImageOnly "-ExpectLedgerMax must be the target's RECORDED top version, 14 digits (got '$ExpectLedgerMax')" }
+    if ($PackageShare -cnotmatch '^\\\\[^\\]+\\.+[^\\]$') { Stop-ImageOnly "-PackageShare must be a UNC folder with no trailing backslash (got '$PackageShare')" }
+    if ($TarballSha256 -cnotmatch '^[0-9a-f]{64}$') { Stop-ImageOnly "-TarballSha256 must be 64 lower-case hex characters (got '$TarballSha256')" }
+    if ($TargetDb -cnotmatch '^[a-z_][a-z0-9_]*$') { Stop-ImageOnly "-TargetDb '$TargetDb' is not a plain database name" }
+
+    # (1) the evidence file itself: one 14-digit version per line, no duplicates, and it must agree
+    #     with the independently recorded row count and top version.
+    $evidence = New-Object System.Collections.Generic.HashSet[string]
+    $ln = 0
+    foreach ($raw in (Get-Content -LiteralPath $LedgerEvidence -Encoding UTF8)) {
+        $ln++
+        $v = $raw.Trim()
+        if ($v -eq "" -or $v.StartsWith("#")) { continue }
+        if ($v -cnotmatch '^\d{14}$') { Stop-ImageOnly "$LedgerEvidence line $ln is not a 14-digit version: '$v'" }
+        if (-not $evidence.Add($v)) { Stop-ImageOnly "$LedgerEvidence lists version $v twice (line $ln)" }
+    }
+    $evMax = ($evidence | Sort-Object | Select-Object -Last 1)
+    if ($evidence.Count -ne $ExpectLedgerRows) { Stop-ImageOnly "ledger evidence has $($evidence.Count) rows but the target's recorded ledger has $ExpectLedgerRows -- the evidence does not describe the target" }
+    if ($evMax -cne $ExpectLedgerMax) { Stop-ImageOnly "ledger evidence tops out at '$evMax' but the target's recorded top version is $ExpectLedgerMax -- the evidence does not describe the target" }
+
+    # (2) dispositions, each remembered with the file that records it
+    $migDirIo = Join-Path (Split-Path $PSScriptRoot -Parent) "supabase\migrations"
+    $onDisk = @{}
+    foreach ($f in (Get-ChildItem -LiteralPath $migDirIo -Filter *.sql | Sort-Object Name)) {
+        if ($f.Name -cmatch '^(\d{14})_') {
+            if ($onDisk.ContainsKey($Matches[1])) { Stop-ImageOnly "two migration files share version $($Matches[1]): $($onDisk[$Matches[1]]) and $($f.Name)" }
+            $onDisk[$Matches[1]] = $f.Name
+        }
+    }
+    $dispSkip = @{}; $dispLedgerOnly = @{}; $dispShape = @{}; $dispWithheld = @{}
+    foreach ($dl in (Get-Content -LiteralPath $Decided -Encoding UTF8)) {
+        if ($dl.Trim() -eq "" -or $dl.TrimStart().StartsWith("#")) { continue }
+        $f = $dl -split '\|', 6
+        if ($f.Count -lt 6) { continue }
+        if ($f[1] -ceq 'SKIP') { $dispSkip[$f[0]] = $f[2] } elseif ($f[1] -ceq 'LEDGER_ONLY') { $dispLedgerOnly[$f[0]] = $f[2] }
+    }
+    foreach ($sl in (Get-Content -LiteralPath $ShapeTolerant -Encoding UTF8)) {
+        if ($sl.Trim() -eq "" -or $sl.TrimStart().StartsWith("#")) { continue }
+        $f = $sl -split '\|', 2
+        if ($f[0] -cmatch '^\d{14}$') { $dispShape[$f[0]] = $true }
+    }
+    $targetKey = "$TargetDb@$D6TargetHost"
+    foreach ($wl in (Get-Content -LiteralPath $Withheld -Encoding UTF8)) {
+        if ($wl.Trim() -eq "" -or $wl.TrimStart().StartsWith("#")) { continue }
+        $f = $wl -split '\|', 4
+        if ($f.Count -ge 4 -and $f[0] -cmatch '^\d{14}$' -and $f[1] -ceq $targetKey) { $dispWithheld[$f[0]] = $f[2] }
+    }
+
+    # (3) every file on disk: a ledger row, or a recorded disposition -- never neither
+    $withRow = 0; $accepted = @(); $unexplained = @()
+    foreach ($ver in ($onDisk.Keys | Sort-Object)) {
+        $file = $onDisk[$ver]
+        if ($evidence.Contains($ver)) {
+            if ($dispSkip.ContainsKey($ver)) { Stop-ImageOnly "$file has a ledger row on the target, but $Decided records it SKIP ($($dispSkip[$ver])) -- a row for a never-run migration" }
+            $withRow++
+            continue
+        }
+        if ($dispLedgerOnly.ContainsKey($ver)) { Stop-ImageOnly "$file has NO ledger row on the target, but $Decided records it LEDGER_ONLY ($($dispLedgerOnly[$ver])) -- that row must exist" }
+        if ($dispSkip.ContainsKey($ver)) { $accepted += "ACCEPTED $file -- no ledger row; disposition SKIP by decision $($dispSkip[$ver]), recorded in $Decided" }
+        elseif ($dispShape.ContainsKey($ver)) { $accepted += "ACCEPTED $file -- no ledger row; disposition SHAPE_TOLERATED, recorded in $ShapeTolerant" }
+        elseif ($dispWithheld.ContainsKey($ver)) { $accepted += "ACCEPTED $file -- no ledger row; disposition WITHHELD from $targetKey, recorded in $Withheld (source $($dispWithheld[$ver]))" }
+        else { $unexplained += $file }
+    }
+    $orphans = @($evidence | Where-Object { -not $onDisk.ContainsKey($_) } | Sort-Object)
+    $accepted | ForEach-Object { Write-Host $_ }
+    if ($unexplained.Count -gt 0) {
+        Stop-ImageOnly "$($unexplained.Count) migration file(s) have no ledger row on $targetKey and no recorded disposition: $($unexplained -join ', ')"
+    }
+    if ($orphans.Count -gt 0) {
+        Stop-ImageOnly "$($orphans.Count) ledger row(s) on $targetKey have no migration file on disk: $($orphans -join ', ')"
+    }
+    Write-Host "OK -ImageOnly: evidence $($evidence.Count) rows, top $evMax (equal to the recorded $ExpectLedgerRows / $ExpectLedgerMax); $($onDisk.Count) files on disk, $withRow with a row, $($accepted.Count) accepted by recorded disposition, 0 unexplained, 0 orphan rows" -ForegroundColor Cyan
+    $applyList = @(); $ledgerOnlyList = @(); $shapeTolerantList = @(); $decisionSkippedList = @(); $decidedLedgerOnlyList = @()
+    $dumpFile = ''; $dumpMd5 = ''
+} else {
+# Normal path. Everything from here to the matching `}   # end normal-path rehearsal parsing` is
+# unchanged from before -ImageOnly existed; it is deliberately NOT re-indented, so the diff stays small.
+if ($RehearsalReport -eq "" -or -not (Test-Path $RehearsalReport)) {
     Write-Host "FATAL: rehearsal report not found: $RehearsalReport" -ForegroundColor Red
     Write-Host "A RELEASE document is never generated without a rehearsal behind it." -ForegroundColor Yellow
     exit 1
@@ -238,6 +352,7 @@ if ($Decided -ne "" -and (Test-Path $Decided)) {
 }
 
 Write-Host "Parsed rehearsal: $($applyList.Count) APPLY, $($ledgerOnlyList.Count) LEDGER_ONLY, $($shapeTolerantList.Count) SHAPE_TOLERATED, $($decisionSkippedList.Count) DECISION_SKIPPED, $($decidedLedgerOnlyList.Count) DECIDED_LEDGER_ONLY" -ForegroundColor Cyan
+}   # end normal-path rehearsal parsing
 
 $outDir = Join-Path $PSScriptRoot "out"
 if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir | Out-Null }
@@ -257,6 +372,128 @@ if ($d1MigList -eq "") { $d1MigList = "" }
 
 Add-Line "# RELEASE-$Date"
 Add-Line ""
+if ($ImageOnly) {
+    # IMAGE-ONLY header, Block 0 heading and the pull region. The D1 prose and GATE D1a that follow
+    # are the normal path's own lines, unchanged.
+    $ioManifest = Get-Content $BuildManifest -Raw | ConvertFrom-Json
+    $ioSha = [string]$ioManifest.git_sha
+    # Same text as $stateGuardOpen further down (C4). Repeated rather than moved, so the normal
+    # path's source order is untouched.
+    $stateGuardOpenIo = @'
+    & {   # <what> -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -is [hashtable] -and $global:AFRAKALA_FAILED_GATES.Count -gt 0) {
+      $failedNow = @($global:AFRAKALA_FAILED_GATES.GetEnumerator() | ForEach-Object { "GATE $($_.Key) FAIL $($_.Value)" }) -join ' | '
+      Write-Host "NOT RUN: gate(s) FAILED earlier in this shell and have not printed PASS since: $failedNow"
+      throw "NOT RUN -- nothing in this region ran. Failed earlier in this shell: $failedNow"
+    }
+'@
+    Add-Line "Generated by release/emit-blocks.ps1 -ImageOnly. There is NO rehearsal behind this document, by design:"
+    Add-Line "the target's database already carries this release's migration set, so this release ships an IMAGE and nothing else."
+    Add-Line "Ledger evidence: $LedgerEvidence ($ExpectLedgerRows rows, top $ExpectLedgerMax), checked against every migration file on disk."
+    Add-Line ""
+    $ioHeader = @'
+IMAGE-ONLY RELEASE. This document applies NO migration and writes NO ledger row. If you find a
+database write anywhere in it, STOP: the document is wrong, not the database.
+
+NEW, UNREVIEWED GENERATOR CODE. The blocks marked [image-only] below were produced by the
+-ImageOnly mode of release/emit-blocks.ps1, written on 2026-09-14 and not independently reviewed.
+Every other gate (D1a, D2, D3, D6, D9, D10) is the release line's reviewed code, emitted unchanged.
+
+HOW TO RUN IT. Open ONE Windows PowerShell window, `cd C:\afrakala`, and run every block below in
+order in that same window. Block 0 comes first, before anything else, including before reading
+the ledger or loading the image.
+
+Every gate, and every region that changes state after a gate, is ONE `& { ... }` region: copy it
+from its `& {` line to its closing `}` line and paste it whole. A failing gate prints
+`GATE <id> FAIL <reason>` and then stops with a red error. It does NOT close the window, so the
+reason stays on screen. The failure is recorded in this shell, and every later region that changes
+state (:lan retag, deploy) refuses to run and prints NOT RUN while any gate has failed and has not
+since printed PASS. That record lives only in THIS shell: in a new window, re-run the gates first.
+
+'@
+    [void]$sb.AppendLine($ioHeader)
+    if ($StaffNotes -ne "" -and (Test-Path -LiteralPath $StaffNotes)) {
+        Add-Line "## What this release delivers (for staff)"
+        Add-Line ""
+        foreach ($snl in (Get-Content -LiteralPath $StaffNotes -Encoding UTF8)) { Add-Line $snl }
+        Add-Line ""
+    }
+    Add-Line "---"
+    Add-Line ""
+    Add-Line "### Block 0 - checkout: bring C:\afrakala to the build sha $ioSha, then prove it (D1)  [pull region: image-only]"
+    Add-Line ""
+    $ioPull = @'
+PREREQUISITE, BEFORE ANY BUILD OR UP: the checkout must be pulled to main's build sha first.
+Production's checkout 9bc8d554 carries a compose file that passes VITE_APP_ENV and
+VITE_TRUSTED_HOSTS only as BUILD args (deploy/lan/docker-compose.yml:38-39 at 9bc8d554). Main's
+compose passes them at RUNTIME (deploy/lan/docker-compose.yml:55-56 at <<SHA>>). This release never
+builds on production: it loads a pre-built image. A container created from the OLD compose file
+therefore receives neither value, and even the correct image renders the amber test banner and
+the wrong trusted-host list. The pull is what makes the correct image behave correctly.
+
+The pull below is a fast-forward to exactly <<SHA>>, not to whatever main is by the time you run
+it: if main has moved on, the checkout still stops at the commit this image was built from.
+
+<<GUARD>>
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
+    $buildSha = '<<SHA>>'
+    if (-not (Test-Path 'deploy\lan\docker-compose.yml') -or -not (Test-Path '.git')) {
+      $gateWhy = "not in the repository root (expected C:\afrakala, got $((Get-Location).Path))"
+      Write-Host "GATE PULL FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['PULL'] = $gateWhy; throw "STOPPED at gate PULL: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $branch = (git rev-parse --abbrev-ref HEAD)
+    $branchExit = $LASTEXITCODE
+    if ($branchExit -ne 0 -or $branch -ne 'main') {
+      $gateWhy = "checkout is on '$branch' (git exit $branchExit), not main"
+      Write-Host "GATE PULL FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['PULL'] = $gateWhy; throw "STOPPED at gate PULL: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $dirty = (git status --porcelain)
+    if ($dirty) {
+      $dirty | ForEach-Object { Write-Host "    $_" }
+      $gateWhy = "working tree is not clean ($(@($dirty).Count) path(s)) -- nothing was pulled"
+      Write-Host "GATE PULL FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['PULL'] = $gateWhy; throw "STOPPED at gate PULL: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    git fetch origin main
+    $fetchExit = $LASTEXITCODE
+    if ($fetchExit -ne 0) {
+      $gateWhy = "git fetch origin main failed (exit $fetchExit)"
+      Write-Host "GATE PULL FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['PULL'] = $gateWhy; throw "STOPPED at gate PULL: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    git merge --ff-only $buildSha
+    $mergeExit = $LASTEXITCODE
+    if ($mergeExit -ne 0) {
+      $gateWhy = "git merge --ff-only $buildSha failed (exit $mergeExit) -- the checkout is not an ancestor of the build sha"
+      Write-Host "GATE PULL FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['PULL'] = $gateWhy; throw "STOPPED at gate PULL: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $full = [string](git rev-parse HEAD)
+    $revExit = $LASTEXITCODE
+    if ($revExit -ne 0 -or -not $full.StartsWith($buildSha)) {
+      $gateWhy = "after the pull HEAD is '$full' (git exit $revExit), not $buildSha"
+      Write-Host "GATE PULL FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['PULL'] = $gateWhy; throw "STOPPED at gate PULL: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    # the compose file must now pass VITE_APP_ENV at RUNTIME: 6-space indent = web.environment,
+    # 8-space indent = web.build.args (the old place).
+    $runtimeLine = @(Select-String -Path 'deploy\lan\docker-compose.yml' -Pattern '^      VITE_APP_ENV:' -CaseSensitive)
+    $buildArgLine = @(Select-String -Path 'deploy\lan\docker-compose.yml' -Pattern '^        VITE_APP_ENV:' -CaseSensitive)
+    if ($runtimeLine.Count -ne 1 -or $buildArgLine.Count -ne 0) {
+      $gateWhy = "compose passes VITE_APP_ENV at runtime $($runtimeLine.Count) time(s) and as a build arg $($buildArgLine.Count) time(s); expected 1 and 0"
+      Write-Host "GATE PULL FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['PULL'] = $gateWhy; throw "STOPPED at gate PULL: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK PULL: HEAD = $full; compose passes VITE_APP_ENV at runtime (line $($runtimeLine[0].LineNumber))"
+    $global:AFRAKALA_FAILED_GATES.Remove('PULL')
+    Write-Host "GATE PULL PASS"
+    }   # end checkout pull
+
+'@
+    [void]$sb.Append($ioPull.Replace('<<GUARD>>', $stateGuardOpenIo.Replace('<what>', 'checkout pull').TrimEnd("`r", "`n")).Replace('<<SHA>>', $ioSha))
+} else {
 Add-Line "Generated by release/emit-blocks.ps1 from a PASSED rehearsal: $RehearsalReport"
 Add-Line "Rehearsal restore source: $dumpFile (md5 $dumpMd5)"
 Add-Line ""
@@ -281,6 +518,7 @@ record lives only in THIS shell: in a new window, re-run the gates first.
 
 ### Block 0 - checkout state (run BEFORE anything else in this document)
 '@)
+}   # end header (normal path)
 Add-Line ""
 [void]$sb.AppendLine(@'
 D1. On 2026-09-13 a release run reached Block 6 before anyone noticed that eleven of the
@@ -319,6 +557,62 @@ Add-Line ""
 Add-Line "Expect: OK D1a, HEAD equal to the build sha $d1BuildSha, working tree clean"
 Add-Line "Expect: the last line printed is GATE D1a PASS"
 Add-Line ""
+if ($ImageOnly) {
+    Add-Line "Expect: GATE PULL PASS printed by the pull region above, BEFORE GATE D1a ran"
+    Add-Line "Expect: (D1b is not emitted: this release names no migration file, so there is nothing for it to find)"
+    Add-Line ""
+    Add-Line "---"
+    Add-Line ""
+    Add-Line "### Block 1 - preflight: the target ledger must still be exactly what this document was emitted against  [image-only]"
+    Add-Line ""
+    $ioLedger = @'
+This release is safe to run WITHOUT a migration step only while the target's ledger is still
+<<ROWS>> rows with top version <<MAX>> and the database is not a replica. Those numbers come from
+<<EVIDENCE>>, which the generator checked row-for-row against every migration file on disk
+before writing this document. Any other value means something changed the database after this
+document was written: STOP and do not load the image.
+
+Read-only. The SQL is ASCII and goes to psql on stdin; the password is read inside the container
+from its own POSTGRES_PASSWORD and is never printed.
+
+    & {   # GATE L1 -- paste from this line to the matching closing brace
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
+    $expectRows = '<<ROWS>>'
+    $expectMax  = '<<MAX>>'
+    $db         = '<<DB>>'
+    $sql = 'SELECT concat_ws(chr(124), pg_is_in_recovery(), count(*), max(version)) FROM supabase_migrations.schema_migrations;'
+    $shCmd = 'PGPASSWORD=$POSTGRES_PASSWORD psql -X -q -t -A -v ON_ERROR_STOP=1 -U supabase_admin -d ' + $db
+    $raw = $sql | docker exec -i afrakala-lan-db sh -c $shCmd
+    $psqlExit = $LASTEXITCODE
+    $got = (@($raw) | ForEach-Object { ([string]$_).Trim() } | Where-Object { $_ }) -join ' '
+    if ($psqlExit -ne 0 -or $got -cnotmatch '^(t|f|true|false)\|([0-9]+)\|([0-9]{14})$') {
+      $gateWhy = "could not read the ledger of database $db (psql exit $psqlExit, got '$got')"
+      Write-Host "GATE L1 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['L1'] = $gateWhy; throw "STOPPED at gate L1: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    $replica = $Matches[1]; $rows = $Matches[2]; $max = $Matches[3]
+    if ($replica -eq 't' -or $replica -eq 'true') {
+      $gateWhy = "database $db is a replica (pg_is_in_recovery = $replica)"
+      Write-Host "GATE L1 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['L1'] = $gateWhy; throw "STOPPED at gate L1: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    if ($rows -cne $expectRows -or $max -cne $expectMax) {
+      $gateWhy = "ledger is $rows rows / top $max, this document was emitted against $expectRows rows / top $expectMax"
+      Write-Host "GATE L1 FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['L1'] = $gateWhy; throw "STOPPED at gate L1: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK L1: database $db, not a replica, ledger $rows rows, top $max"
+    $global:AFRAKALA_FAILED_GATES.Remove('L1')
+    Write-Host "GATE L1 PASS"
+    }   # end GATE L1
+
+'@
+    [void]$sb.AppendLine($ioLedger.Replace('<<ROWS>>', [string]$ExpectLedgerRows).Replace('<<MAX>>', $ExpectLedgerMax).Replace('<<DB>>', $TargetDb).Replace('<<EVIDENCE>>', $LedgerEvidence))
+    Add-Line "Expect: OK L1: database $TargetDb, not a replica, ledger $ExpectLedgerRows rows, top $ExpectLedgerMax"
+    Add-Line "Expect: the last line printed is GATE L1 PASS"
+    Add-Line ""
+    $blockN = 2
+} else {
 Add-Line "    & {   # GATE D1b -- paste from this line to the matching closing brace"
 Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
 Add-Line "    # D1(b) -- every migration file in THIS release set must exist on disk."
@@ -667,6 +961,7 @@ docs/missions/convergence/INTEGRATION-LOG.md (Decision 4, OG-J) and STATE.md.
     Add-Line ""
     $blockN++
 }
+}   # end D1b / Block 1 / Phase 3 / Phase 4 (normal path)
 
 Add-Line "---"
 Add-Line ""
@@ -758,12 +1053,94 @@ if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     $manifest = Get-Content $BuildManifest -Raw | ConvertFrom-Json
     Add-Line "Built by release/build.ps1 from main @ $($manifest.git_sha)."
     Add-Line ""
+    if ($ImageOnly) {
+    $ioTar = @'
+[image-only] GATE TAR copies the tarball from the package share to this laptop and proves it is
+byte-for-byte the file this document was emitted for, against BOTH the hash written below and the
+.sha256 file beside it on the share. Nothing is loaded into Docker until it passes.
+
+<<GUARD>>
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
+    $share  = '<<SHARE>>'
+    $local  = 'C:\afrakala-release\<<DATE>>'
+    $file   = 'afrakala-app-<<SHA>>.tar.gz'
+    $expect = '<<HASH>>'
+    try {
+      New-Item -ItemType Directory -Force -Path $local | Out-Null
+      Copy-Item -LiteralPath (Join-Path $share $file) -Destination (Join-Path $local $file) -Force -ErrorAction Stop
+      $side = ((Get-Content -LiteralPath (Join-Path $share ($file + '.sha256')) -Raw -ErrorAction Stop).Trim() -split '\s+')[0].ToLower()
+      $got = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $local $file) -ErrorAction Stop).Hash.ToLower()
+    } catch {
+      $gateWhy = "could not copy or hash the tarball: $($_.Exception.Message)"
+      Write-Host "GATE TAR FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['TAR'] = $gateWhy; throw "STOPPED at gate TAR: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    if ($side -cne $expect) {
+      $gateWhy = "the .sha256 on the share says $side, this document says $expect"
+      Write-Host "GATE TAR FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['TAR'] = $gateWhy; throw "STOPPED at gate TAR: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    if ($got -cne $expect) {
+      $gateWhy = "the copied tarball hashes to $got, expected $expect"
+      Write-Host "GATE TAR FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['TAR'] = $gateWhy; throw "STOPPED at gate TAR: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK TAR: $local\$file sha256 $got"
+    $global:AFRAKALA_FAILED_GATES.Remove('TAR')
+    Write-Host "GATE TAR PASS"
+    }   # end GATE TAR
+
+Expect: OK TAR, sha256 <<HASH>>
+Expect: the last line printed is GATE TAR PASS
+
+GATE D2 below freezes the image production is RUNNING under the rollback name, BEFORE :lan moves.
+
+'@
+    [void]$sb.AppendLine($ioTar.Replace('<<GUARD>>', $stateGuardOpenIo.Replace('<what>', 'GATE TAR').TrimEnd("`r", "`n")).Replace('<<SHARE>>', $PackageShare).Replace('<<DATE>>', $Date).Replace('<<SHA>>', [string]$manifest.git_sha).Replace('<<HASH>>', $TarballSha256))
+    } else {
     Add-Line "    # deliver the tarball over the proven LAN channel (SMB share \\192.168.170.8\dumps),"
     Add-Line "    # then on the target machine:"
     Add-Line ""
+    }
     [void]$sb.AppendLine($d2Snippet)
     Add-Line ""
     [void]$sb.AppendLine($stateGuardOpen.Replace('<what>', ':lan retag'))
+    if ($ImageOnly) {
+    $ioLoad = @'
+    if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
+    # [image-only] docker load -i reads the .tar.gz itself. No gunzip, and no PowerShell pipe, which
+    # in Windows PowerShell 5.1 carries text between native programs and corrupts a binary stream.
+    $sha = '<<SHA>>'
+    docker load -i "C:\afrakala-release\<<DATE>>\afrakala-app-$sha.tar.gz"
+    $loadExit = $LASTEXITCODE
+    $envLines = docker image inspect "afrakala-app:$sha" --format "{{range .Config.Env}}{{println .}}{{end}}"
+    $inspectExit = $LASTEXITCODE
+    $stamp = @(@($envLines) | Where-Object { ([string]$_).Trim() -ceq "APP_GIT_SHA=$sha" })
+    if ($loadExit -ne 0 -or $inspectExit -ne 0 -or $stamp.Count -ne 1) {
+      $gateWhy = "docker load exit $loadExit, inspect exit $inspectExit, APP_GIT_SHA=$sha found $($stamp.Count) time(s) -- :lan NOT moved"
+      Write-Host "GATE LOAD FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['LOAD'] = $gateWhy; throw "STOPPED at gate LOAD: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    docker tag "afrakala-app:$sha" afrakala-app:lan
+    $tagExit = $LASTEXITCODE
+    if ($tagExit -ne 0) {
+      $gateWhy = "docker tag afrakala-app:$sha afrakala-app:lan failed (exit $tagExit)"
+      Write-Host "GATE LOAD FAIL $gateWhy"
+      $global:AFRAKALA_FAILED_GATES['LOAD'] = $gateWhy; throw "STOPPED at gate LOAD: $gateWhy -- nothing after it in this region ran; this shell is still open"
+    }
+    Write-Host "OK LOAD: afrakala-app:$sha carries APP_GIT_SHA=$sha and is now afrakala-app:lan"
+    docker images afrakala-app:lan --format "{{.ID}}"
+    $global:AFRAKALA_FAILED_GATES.Remove('LOAD')
+    Write-Host "GATE LOAD PASS"
+'@
+    [void]$sb.AppendLine($ioLoad.Replace('<<SHA>>', [string]$manifest.git_sha).Replace('<<DATE>>', $Date))
+    Add-Line "    }   # end :lan retag"
+    Add-Line ""
+    Add-Line "Expect: OK LOAD, afrakala-app:$($manifest.git_sha) carries APP_GIT_SHA=$($manifest.git_sha), then GATE LOAD PASS"
+    Add-Line "Expect: the id printed is $($manifest.image_id) on a containerd image store (the build machine's); a classic image store prints"
+    Add-Line "Expect: a different 12-character id for the same image. The APP_GIT_SHA check above is what proves the content."
+    Add-Line ""
+    } else {
     Add-Line "    gunzip -c afrakala-app-$($manifest.git_sha).tar.gz | docker load"
     Add-Line "    docker tag afrakala-app:$($manifest.git_sha) afrakala-app:lan"
     [void]$sb.AppendLine('    docker images afrakala-app:lan --format "{{.ID}}"')
@@ -771,6 +1148,7 @@ if ($BuildManifest -ne "" -and (Test-Path $BuildManifest)) {
     Add-Line ""
     Add-Line "Expect: loaded image ID = $($manifest.image_id)"
     Add-Line ""
+    }
     [void]$sb.AppendLine(@'
     & {   # GATE D3 -- paste from this line to the matching closing brace
     if ($global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { $global:AFRAKALA_FAILED_GATES = @{} }
@@ -826,7 +1204,8 @@ $blockN++
 
 Add-Line "---"
 Add-Line ""
-$blockN++
+# Normal path skips a block number here (and reuses one after D6). -ImageOnly numbers contiguously.
+if (-not $ImageOnly) { $blockN++ }
 
 Add-Line "### Block $blockN - artifact probe (D6)"
 Add-Line ""
@@ -1106,6 +1485,12 @@ Add-Line ""
 
 Add-Line "# Phase 6 - deploy"
 Add-Line ""
+if ($ImageOnly) {
+    # The normal path's next block ("rollback tag") reuses D6's number and prunes every other
+    # *rollback* tag with docker rmi. An image-only release needs neither: D2 already took the one
+    # rollback tag, and deleting tags on production is not part of shipping an image.
+    $blockN++
+} else {
 Add-Line "### Block $blockN - rollback tag"
 Add-Line ""
 [void]$sb.AppendLine(@'
@@ -1145,6 +1530,7 @@ Expect: no OTHER tag whose name contains 'rollback' remains (any convention, not
 '@)
 Add-Line ""
 $blockN++
+}   # end rollback-tag prune (normal path)
 
 Add-Line "### Block $blockN - deploy"
 Add-Line ""
@@ -1189,6 +1575,19 @@ container: it reads /login from the live site and requires window.__APP_RUNTIME_
 to EQUAL the expected public address -- not contain it, not resemble it.
 '@)
 Add-Line ""
+if ($ImageOnly) {
+    [void]$sb.AppendLine(@'
+[image-only] D10 IS EXPECTED TO FAIL IF IT RUNS BEFORE THE DEPLOY BLOCK ABOVE, AND THAT IS CORRECT.
+The container running before this release was created from the old compose file, and compose freezes
+a container's environment when the container is created: APP_SUPABASE_PUBLIC_URL was added to
+.env.lan on 2026-09-14, but that container still has it empty, and its image carries no runtime
+config at all. So D10 against the old container prints GATE D10 FAIL. That red gate is doing its
+job, not reporting a broken release. D10 can only PASS after the deploy block has RECREATED
+afrakala-lan-web from the pulled compose file with the new image.
+AFTER the deploy, a D10 FAIL is real: browsers are being sent somewhere wrong -> run the rollback line.
+'@)
+    Add-Line ""
+}
 Add-Line "    & {   # GATE D10 -- paste from this line to the matching closing brace"
 Add-Line "    if (`$global:AFRAKALA_FAILED_GATES -isnot [hashtable]) { `$global:AFRAKALA_FAILED_GATES = @{} }"
 Add-Line "    `$site     = '$LiveSiteUrl'"
@@ -1236,6 +1635,68 @@ Add-Line "---"
 Add-Line ""
 Add-Line "# Rollback"
 Add-Line ""
+if ($ImageOnly) {
+    Add-Line "### Block $blockN - rollback  [image-only]"
+    Add-Line ""
+    $ioRollback = @'
+IMAGE ROLLBACK IS PRE-AUTHORISED. DATABASE ROLLBACK NEVER IS.
+
+- Image rollback: you may run the one line below WITHOUT asking anyone, at any moment after GATE D2
+  printed PASS -- in particular if the verify block, GATE D10, or a smoke check below fails.
+- Database rollback is NEVER pre-authorised. This release changed no database object and wrote no
+  ledger row, so there is nothing in the database to roll back. If anyone proposes a restore, a
+  migration, or a ledger edit "to undo this release", STOP: that needs the owner's explicit approval.
+
+The rollback line -- ONE line, paste it whole, from C:\afrakala:
+
+    docker tag afrakala-app:lan-rollback afrakala-app:lan; docker compose --env-file deploy/lan/.env.lan -f deploy/lan/docker-compose.yml up -d --no-deps --no-build web
+
+Then confirm (read-only):
+
+    docker inspect afrakala-lan-web --format "{{.Image}}"
+    docker image inspect afrakala-app:lan-rollback --format "{{.Id}}"
+    curl.exe -s -o NUL -w "%{http_code}`n" http://192.168.170.10:3000/login
+
+Expect: the two sha256 ids printed are IDENTICAL (the container runs the rollback image)
+Expect: /login = 200
+Expect: the checkout stays at the pulled commit. The rollback runs the previous image under the pulled
+Expect: compose file, which adds only VITE_APP_ENV and VITE_TRUSTED_HOSTS to the container environment.
+Expect: That combination was not rehearsed. If anything looks wrong after rollback, report it; do not
+Expect: edit files on the laptop.
+'@
+    [void]$sb.AppendLine($ioRollback)
+    Add-Line ""
+    $blockN++
+    Add-Line "---"
+    Add-Line ""
+    Add-Line "# Sign-off"
+    Add-Line ""
+    Add-Line "### Block $blockN - sign-off  [image-only]"
+    Add-Line ""
+    $ioSign = @'
+By hand, in a browser on a staff machine, at http://192.168.170.10:3000 (NOT on the laptop itself):
+
+- [ ] the login page loads, and NO banner shows -- neither the amber test banner nor the red safety banner
+- [ ] sign in works (proves the browser reaches the database address D10 checked)
+- [ ] the financial centre opens and its account-distribution page loads
+- [ ] the receivables page loads and shows the sales-representative column
+- [ ] numbers on the dashboard and receivables pages are in Persian digits
+- [ ] an inactive or role-less account still sees no bank balances (542, already live in the database)
+- [ ] NOT expected to work, do not report as a fault: OCR of bank slips
+
+Executor: ______________     Date/time: ______________
+
+Expect: every box above ticked except the OCR line, which stays unticked by design
+Expect: any failure other than OCR -> run the rollback line in the block above, then report
+Expect: customer credit ceilings are NOT expected to change today; they move at the next daily_capital_settings snapshot
+'@
+    [void]$sb.AppendLine($ioSign)
+    Add-Line ""
+    Add-Line "Overall: PASSED / STOP  (circle one; STOP means Block $($blockN - 1)'s rollback was used)"
+    $sb.ToString() | Set-Content -Path $outFile -Encoding UTF8
+    Write-Host "Written: $outFile" -ForegroundColor Green
+    exit 0
+}
 Add-Line "### Block $blockN - rollback (run this instead of Block $($blockN - 2) if Block $($blockN - 1) fails)"
 Add-Line ""
 [void]$sb.AppendLine(@'

@@ -1,0 +1,23 @@
+# release/config/withheld-migrations.txt
+# Migrations that exist on disk, are NOT applied on a named target, carry NO ledger row there, and
+# are deliberately not part of the release being emitted. Read only by release/emit-blocks.ps1
+# -ImageOnly. ASCII-only.
+#
+# WHY THIS FILE EXISTS
+#   -ImageOnly refuses to emit a runbook while any on-disk migration lacks a ledger row on the target
+#   without a RECORDED disposition. decided-migrations.txt records OG-J / OG-C, and
+#   known-shape-tolerant-migrations.txt records 336/343. 533 and 534 were recorded only in prose
+#   (docs/runbooks/gap-close-afrakala-20260914.md, on staging at edd55fb9, lines 35-36). This file
+#   makes that record machine-readable. It is not a decision; it points at the one that was made.
+#
+#   A line here does NOT say the migration is unimportant. It says: this release does not apply it,
+#   and the image this release ships does not depend on anything it creates (checked 2026-09-14:
+#   cron_run_log and generate_birthday_notifications_worker have no reference under src/ or server/;
+#   generate_birthday_notifications has existed since migration 220 and src/routes/_app.dashboard.tsx
+#   is unchanged between production's checkout 9bc8d554 and main a935be0b).
+#
+# FORMAT: version|target|source|reason
+#   target  -- the database this holds for (production = postgres on 192.168.170.10)
+#   source  -- where the disposition is recorded, commit:path:lines
+20260913101000|postgres@192.168.170.10|edd55fb9:docs/runbooks/gap-close-afrakala-20260914.md:35|533 pg_cron_http_scheduler: owner-gated (installs http); not on production's ledger; recorded decision is that production does not have it
+20260913102000|postgres@192.168.170.10|edd55fb9:docs/runbooks/gap-close-afrakala-20260914.md:36|534 cron_run_log: depends on 533's scheduler; not on production
