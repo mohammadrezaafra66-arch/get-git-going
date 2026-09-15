@@ -1,0 +1,99 @@
+    db    |      usr       
+----------+----------------
+ afrakala | supabase_admin
+(1 row)
+
+              proname              |                                                                                                args                                                                                                 | security_definer |                                                          proacl                                                          |        config        |     owner      
+-----------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------------+--------------------------------------------------------------------------------------------------------------------------+----------------------+----------------
+ notify_sales_interaction_assigned |                                                                                                                                                                                                     | t                | {postgres=X/supabase_admin,supabase_admin=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin} | {search_path=public} | supabase_admin
+ sales_interaction_create          | p_person_id uuid, p_kind text, p_body text, p_title text, p_customer_id uuid, p_salesperson_id uuid, p_call_log_id uuid, p_next_follow_up_at timestamp with time zone, p_source text, p_status text | t                | {postgres=X/supabase_admin,supabase_admin=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin} | {search_path=public} | supabase_admin
+ sales_interaction_set_follow_up   | p_id uuid, p_next_follow_up_at timestamp with time zone, p_followed_up_at timestamp with time zone                                                                                                  | t                | {postgres=X/supabase_admin,supabase_admin=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin} | {search_path=public} | supabase_admin
+ sales_interaction_update_status   | p_id uuid, p_status text, p_outcome_note text                                                                                                                                                       | t                | {postgres=X/supabase_admin,supabase_admin=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin} | {search_path=public} | supabase_admin
+ sales_my_month_stats              |                                                                                                                                                                                                     | t                | {postgres=X/supabase_admin,supabase_admin=X/supabase_admin,authenticated=X/supabase_admin,service_role=X/supabase_admin} | {search_path=public} | supabase_admin
+(5 rows)
+
+    grantee     |                          privs                          
+----------------+---------------------------------------------------------
+ authenticated  | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,UPDATE
+ postgres       | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+ service_role   | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+ supabase_admin | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+(4 rows)
+
+     role      |    priv    | ok 
+---------------+------------+----
+ anon          | DELETE     | f
+ anon          | INSERT     | f
+ anon          | REFERENCES | f
+ anon          | SELECT     | f
+ anon          | TRIGGER    | f
+ anon          | TRUNCATE   | f
+ anon          | UPDATE     | f
+ authenticated | DELETE     | t
+ authenticated | INSERT     | t
+ authenticated | REFERENCES | t
+ authenticated | SELECT     | t
+ authenticated | TRIGGER    | t
+ authenticated | TRUNCATE   | f
+ authenticated | UPDATE     | t
+(14 rows)
+
+ relrowsecurity | relforcerowsecurity 
+----------------+---------------------
+ t              | f
+(1 row)
+
+             polname             | polcmd |                                                                                                                     using_expr                                                                                                                      |                                                       with_check                                                        
+---------------------------------+--------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------
+ sales_interactions_insert_staff | a      |                                                                                                                                                                                                                                                     | (has_any_role(uid(), ARRAY['sales'::text, 'admin'::text, 'manager'::text, 'accountant'::text]) AND (author_id = uid()))
+ sales_interactions_select_staff | r      | (has_any_role(uid(), ARRAY['admin'::text, 'manager'::text]) OR (has_any_role(uid(), ARRAY['sales'::text, 'admin'::text, 'manager'::text, 'accountant'::text]) AND ((author_id = uid()) OR (salesperson_id = uid()) OR (customer_id IN ( SELECT c.id+| 
+                                 |        |    FROM customers c                                                                                                                                                                                                                                +| 
+                                 |        |   WHERE (c.responsible_id = uid()))))))                                                                                                                                                                                                             | 
+ sales_interactions_update_staff | w      | (has_any_role(uid(), ARRAY['admin'::text, 'manager'::text]) OR (author_id = uid()) OR (salesperson_id = uid()))                                                                                                                                     | (has_any_role(uid(), ARRAY['admin'::text, 'manager'::text]) OR (author_id = uid()) OR (salesperson_id = uid()))
+(3 rows)
+
+ delete_policies 
+-----------------
+               0
+(1 row)
+
+                                         f                                          | anon_exec | auth_exec 
+------------------------------------------------------------------------------------+-----------+-----------
+ sales_interaction_create(uuid,text,text,text,uuid,uuid,uuid,timestamptz,text,text) | f         | t
+ sales_interaction_update_status(uuid,text,text)                                    | f         | t
+ sales_interaction_set_follow_up(uuid,timestamptz,timestamptz)                      | f         | t
+ sales_my_month_stats()                                                             | f         | t
+ notify_sales_interaction_assigned()                                                | f         | t
+(5 rows)
+
+                tgname                 | tgenabled |                                                                                             def                                                                                              
+---------------------------------------+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ trg_notify_sales_interaction_assigned | O         | CREATE TRIGGER trg_notify_sales_interaction_assigned AFTER INSERT OR UPDATE OF salesperson_id ON public.sales_interactions FOR EACH ROW EXECUTE FUNCTION notify_sales_interaction_assigned()
+ trg_sales_interactions_updated_at     | O         | CREATE TRIGGER trg_sales_interactions_updated_at BEFORE UPDATE ON public.sales_interactions FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+(2 rows)
+
+    version     
+----------------
+ 20260916030000
+ 20260916031000
+ 20260916032000
+(3 rows)
+
+    grantee    |                          privs                          
+---------------+---------------------------------------------------------
+ authenticated | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,UPDATE
+ postgres      | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+ service_role  | DELETE,INSERT,REFERENCES,SELECT,TRIGGER,TRUNCATE,UPDATE
+(3 rows)
+
+ anon_ins | auth_ins | auth_sel 
+----------+----------+----------
+ f        | t        | t
+(1 row)
+
+        polname         | polcmd |                      using_expr                       |    with_check     
+------------------------+--------+-------------------------------------------------------+-------------------
+ nq_select_own_or_admin | r      | ((user_id = uid()) OR has_role(uid(), 'admin'::text)) | 
+ nq_update_own          | w      | (user_id = uid())                                     | (user_id = uid())
+(2 rows)
+
