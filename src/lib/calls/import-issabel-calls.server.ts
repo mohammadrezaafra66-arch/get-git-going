@@ -13,6 +13,15 @@
  * بازمحاسبهٔ امتیاز (کاری که C-1 دسته‌ای کرد) **یک بار در پایان** صدا زده
  * می‌شود، نه به ازای هر ردیف. شمارندهٔ فراخوانی در خروجی برمی‌گردد تا این
  * ادعا قابل اندازه‌گیری باشد و فقط ادعا نماند.
+ *
+ * Need 3 · بعد از درج موفق، `derive_staff_call_metrics(_for_date)` برای هر روز
+ * تقویمیِ متمایزِ تهران در بچِ واردشده صدا زده می‌شود (GRANT فقط service_role —
+ * همین‌جاست که `supabaseAdmin` درست است). خطای derive واردسازی را fail نمی‌کند؛
+ * در فیلدهای نتیجه جمع می‌شود.
+ *
+ * اگر env/پیکربندی Issabel غایب باشد، importer با `config_missing` برمی‌گردد و
+ * `call_logs` خالی می‌ماند — UI میز فروش همچنان از مسیر دستی
+ * `sales_interaction_create` قابل استفاده است.
  */
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
@@ -83,7 +92,31 @@ export type ImportIssabelCallsResult = {
   /** باید همیشه ۱ باشد — اثبات اینکه بازمحاسبه یک بار در پایان اجرا شد، نه به ازای هر ردیف. */
   recompute_invocations: number;
   recompute_result: unknown;
+  /** روزهای تقویمی تهران که برایشان `derive_staff_call_metrics` صدا زده شد. */
+  derive_days: string[];
+  derive_invocations: number;
+  derive_results: unknown[];
+  /** خطاهای soft — واردسازی موفق مانده؛ UI می‌تواند هشدار نشان دهد. */
+  derive_errors: { day: string; message: string }[];
 };
+
+const TEHRAN_DAY_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Asia/Tehran",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** روز تقویمی تهران از `started_at` — هم‌تراز با `(started_at AT TIME ZONE 'Asia/Tehran')::date`. */
+export function tehranCalendarDaysFromStartedAts(startedAts: string[]): string[] {
+  const days = new Set<string>();
+  for (const iso of startedAts) {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) continue;
+    days.add(TEHRAN_DAY_FMT.format(d));
+  }
+  return [...days].sort();
+}
 
 export type ImportIssabelCallsFailure = {
   ok: false;
@@ -255,6 +288,10 @@ export async function importIssabelCalls(
       reached_cap: false,
       recompute_invocations: 0,
       recompute_result: null,
+      derive_days: [],
+      derive_invocations: 0,
+      derive_results: [],
+      derive_errors: [],
     };
   }
 
@@ -383,6 +420,38 @@ export async function importIssabelCalls(
     }
   }
 
+  // ── Need 3 · استخراج آمار تماس به ازای هر روز متمایز بچ (soft-fail) ─────
+  // `derive_staff_call_metrics` فقط به service_role داده شده؛ admin client درست است.
+  // شکست derive واردسازی را fail نمی‌کند — UI با sales_interaction_create هم کار می‌کند.
+  const deriveDays =
+    inserted > 0
+      ? tehranCalendarDaysFromStartedAts(rows.map((r) => r.started_at))
+      : [];
+  let deriveInvocations = 0;
+  const deriveResults: unknown[] = [];
+  const deriveErrors: { day: string; message: string }[] = [];
+  for (const day of deriveDays) {
+    deriveInvocations += 1;
+    try {
+      const { data, error } = await untypedDb.rpc("derive_staff_call_metrics", {
+        _for_date: day,
+      });
+      if (error) {
+        console.error(
+          `[import-issabel] derive_staff_call_metrics failed for ${day}:`,
+          error.message,
+        );
+        deriveErrors.push({ day, message: error.message });
+      } else {
+        deriveResults.push(data);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[import-issabel] derive_staff_call_metrics threw for ${day}:`, message);
+      deriveErrors.push({ day, message });
+    }
+  }
+
   return {
     ok: true,
     window: { since: sinceUtc.toISOString(), until: untilUtc.toISOString() },
@@ -396,6 +465,10 @@ export async function importIssabelCalls(
     reached_cap: fetched.reachedCap,
     recompute_invocations: recomputeInvocations,
     recompute_result: recomputeResult,
+    derive_days: deriveDays,
+    derive_invocations: deriveInvocations,
+    derive_results: deriveResults,
+    derive_errors: deriveErrors,
   };
 }
 

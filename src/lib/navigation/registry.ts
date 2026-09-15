@@ -559,6 +559,22 @@ const NAVIGATION_SEEDS = [
 
   // ۶) عملیات داخلی
   {
+    // F1 sales-desk — میز تماس فروش (AC5/AC8)
+    to: "/operations/sales-desk",
+    label: "میز فروش",
+    icon: PhoneCall,
+    module: "sales",
+    group: "operations",
+  },
+  {
+    // Wave 6 call-activity existed as route but was missing from nav (orphan caution).
+    to: "/operations/call-activity",
+    label: "فعالیت تلفنی",
+    icon: Activity,
+    module: "sales",
+    group: "operations",
+  },
+  {
     to: "/operations/tasks",
     label: "برد وظایف",
     icon: CheckSquare,
@@ -1304,6 +1320,7 @@ const KEYWORDS_BY_ROUTE: Record<string, string[]> = {
 const BADGE_SOURCE_BY_ROUTE: Record<string, NavigationEntry["badgeSource"]> = {
   "/users": { id: "pending-users" },
   "/pricing/recompute-prices": { id: "pricing-recompute-queue" },
+  "/persons/merge": { id: "person-merge-pending" },
 };
 
 const ACTION_BY_ROUTE: Partial<Record<string, NavigationEntry["permission"]["action"]>> = {
@@ -1398,6 +1415,9 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/presence": ["admin"],
   "/admin/system-health": ["admin"],
   "/operations/purchase-advisor": ["admin", "manager"],
+  // _app.operations.sales-desk.tsx / call-activity — requireAnyRole(admin,manager,sales)
+  "/operations/sales-desk": ["admin", "manager", "sales"],
+  "/operations/call-activity": ["admin", "manager", "sales"],
   "/gamification/achievements": [
     "admin",
     "manager",
