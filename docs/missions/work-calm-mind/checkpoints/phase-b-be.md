@@ -1,11 +1,12 @@
-﻿# Phase B BE — classify + intake + API
+# Phase B BE — classify + intake + API
 
 **Agent:** dev-backend-engineer  
 **Branch:** `feature/work-calm-mind`  
 **Worktree:** `d:\AfraKalaTest\wt-work-calm`  
 **HEAD_start:** `6c717ecc281edcdc67ee3916ac6f87dcd60e4a59`  
 **deadline_at:** 2026-09-16T04:00:00+05:00  
-**status:** COMPLETE (pending commit SHA fill)
+**status:** COMPLETE  
+**commit:** `75b639629a2a5afc6de9b96423d29d819ade93cb`
 
 ## Heartbeat
 - 02:59 — verified HEAD @ 6c717ecc; read types / ai-chat / index
@@ -96,8 +97,8 @@ Evidence: `_phase-b-be-typecheck-after.txt`
 `npx @tanstack/router-cli@1.167.36 generate` EXIT=0; `routeTree.gen.ts` contains `/api/work/classify` and `/api/work/intake-summary`.
 
 ## Commit / push
-- commit SHA: _(filled after commit)_
-- push: _(filled after push)_
+- commit SHA: `75b639629a2a5afc6de9b96423d29d819ade93cb`
+- push: OK — `6c717ecc..75b63962 HEAD -> feature/work-calm-mind` (PUSH_EXIT=0)
 
 ## Untouched (forbidden)
 - `public.tasks` — not modified
