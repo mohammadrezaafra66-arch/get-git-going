@@ -6,7 +6,7 @@
 **HEAD_start:** `17ff53dd90c83cadf30e35751fe0122d2d0a8f34`  
 **deadline_at:** 2026-09-16T04:30:00+05:00  
 **status:** COMPLETE  
-**commit:** _(pending — filled after commit)_
+**commit:** `368b7e332894a0435739bb7d8035012656ce9843`
 
 ## Heartbeat
 - 03:11 — verified HEAD @ 17ff53dd; CreateWorkDialog still used from WorkBoardPage L417; baseline typecheck EXIT=2 (pre-existing; no owned-file hits yet)
