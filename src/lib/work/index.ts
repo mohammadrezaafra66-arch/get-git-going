@@ -32,6 +32,14 @@ export {
   updateWorkItem,
 } from "./items";
 
+export {
+  submitTestReport,
+  listTestReports,
+  type WorkTestVerdict,
+  type WorkTestReport,
+  type SubmitTestReportInput,
+} from "./testReports";
+
 export { getMorningSummary } from "./summary";
 
 export { setDecisionBucket } from "./decision";

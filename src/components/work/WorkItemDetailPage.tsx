@@ -26,6 +26,7 @@ import {
   type WorkTopic,
 } from "@/lib/work";
 import { CalmMindPanel, type CalmMindDraft } from "./CalmMindPanel";
+import { TestReportPanel } from "./TestReportPanel";
 import {
   ALL_KINDS,
   ALL_PRIORITIES,
@@ -392,6 +393,10 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
             });
           }}
         />
+
+        {(status === "testing" || item.status === "testing") && (
+          <TestReportPanel item={item} onSubmitted={() => void load()} />
+        )}
       </div>
     </div>
   );

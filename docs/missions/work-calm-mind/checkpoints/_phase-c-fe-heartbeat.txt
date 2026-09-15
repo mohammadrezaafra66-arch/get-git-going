@@ -1,0 +1,4 @@
+03:26 — start; HEAD c698d2cd; reading patterns + baseline
+03:29 — baseline TSC_EXIT=2; implementing testReports + TestReportPanel
+03:29 — wired TestReportPanel into detail; running typecheck after
+03:30 — waiting typecheck-after; grepped testids present
