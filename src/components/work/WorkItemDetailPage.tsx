@@ -198,7 +198,7 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
         <p className="text-sm text-rose-700">{error ?? "کار یافت نشد."}</p>
         <Button variant="outline" asChild>
           <Link to="/operations/work">
-            <ArrowRight className="ml-1.5 h-4 w-4" />
+            <ArrowRight className="h-4 w-4" />
             بازگشت به تابلو
           </Link>
         </Button>
@@ -215,7 +215,7 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" asChild>
             <Link to="/operations/work">
-              <ArrowRight className="ml-1 h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
               تابلو
             </Link>
           </Button>
@@ -230,9 +230,9 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
           actions={
             <Button size="sm" disabled={saving} onClick={() => void save()}>
               {saving ? (
-                <Loader2 className="ml-1.5 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Save className="ml-1.5 h-4 w-4" />
+                <Save className="h-4 w-4" />
               )}
               ذخیره
             </Button>

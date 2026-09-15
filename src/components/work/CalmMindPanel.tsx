@@ -158,6 +158,8 @@ export function CalmMindPanel({
           <Input
             id="claimed_due_at"
             type="datetime-local"
+            dir="ltr"
+            className="text-start"
             value={draft.claimed_due_at}
             onChange={(e) => onChange({ claimed_due_at: e.target.value })}
           />

@@ -251,7 +251,7 @@ export function WorkBoardPage() {
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
                 <Link to="/operations/work/topics">
-                  <FolderKanban className="ml-1.5 h-4 w-4" />
+                  <FolderKanban className="h-4 w-4" />
                   موضوع‌ها
                 </Link>
               </Button>
@@ -260,11 +260,11 @@ export function WorkBoardPage() {
                 size="sm"
                 onClick={() => void refreshAll()}
               >
-                <RefreshCw className="ml-1.5 h-4 w-4" />
+                <RefreshCw className="h-4 w-4" />
                 تازه‌سازی
               </Button>
               <Button size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="ml-1.5 h-4 w-4" />
+                <Plus className="h-4 w-4" />
                 کار جدید
               </Button>
             </div>
@@ -381,7 +381,7 @@ export function WorkBoardPage() {
                   <Link
                     to="/operations/work/$itemId"
                     params={{ itemId: item.id }}
-                    className="font-medium text-slate-800 hover:text-teal-800"
+                    className="block truncate font-medium text-slate-800 hover:text-teal-800"
                   >
                     {item.title}
                   </Link>

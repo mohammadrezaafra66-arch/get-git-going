@@ -135,18 +135,18 @@ export function CreateWorkFromMessageButton({
           disabled={disabled || !(messageText ?? "").trim()}
           onClick={openDialog}
         >
-          <ClipboardList className="ml-1.5 h-4 w-4" />
+          <ClipboardList className="h-4 w-4" />
           ثبت کار از این پیام
         </Button>
       )}
 
       <Dialog open={open} onOpenChange={(v) => !saving && setOpen(v)}>
         <DialogContent dir="rtl" className="max-w-md">
-          <DialogHeader>
+          <DialogHeader className="text-right sm:text-right">
             <DialogTitle>ثبت کار از این پیام</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground line-clamp-4 whitespace-pre-wrap">
+            <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground line-clamp-4 whitespace-pre-wrap text-right">
               {(messageText ?? "").trim()}
             </div>
             <div className="space-y-1.5">
@@ -186,7 +186,7 @@ export function CreateWorkFromMessageButton({
               />
             </div>
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 sm:space-x-0">
             <Button
               variant="outline"
               disabled={saving}
@@ -195,7 +195,7 @@ export function CreateWorkFromMessageButton({
               انصراف
             </Button>
             <Button disabled={saving} onClick={() => void submit()}>
-              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               ثبت کار
             </Button>
           </DialogFooter>

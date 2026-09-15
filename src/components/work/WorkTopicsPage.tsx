@@ -80,7 +80,7 @@ export function WorkTopicsPage() {
       <div className="container max-w-3xl space-y-5 py-6">
         <Button variant="ghost" size="sm" asChild>
           <Link to="/operations/work">
-            <ArrowRight className="ml-1 h-4 w-4" />
+            <ArrowRight className="h-4 w-4" />
             بازگشت به تابلو
           </Link>
         </Button>
@@ -90,7 +90,7 @@ export function WorkTopicsPage() {
           description="گروه‌بندی کارهای مرتبط زیر یک موضوع مشترک"
           actions={
             <Button size="sm" onClick={() => setCreateOpen(true)}>
-              <Plus className="ml-1.5 h-4 w-4" />
+              <Plus className="h-4 w-4" />
               موضوع جدید
             </Button>
           }
@@ -123,7 +123,7 @@ export function WorkTopicsPage() {
                 <Link
                   to="/operations/work/topics/$topicId"
                   params={{ topicId: t.id }}
-                  className="font-medium text-slate-800 hover:text-teal-800"
+                  className="block truncate font-medium text-slate-800 hover:text-teal-800"
                 >
                   {t.title}
                 </Link>
@@ -141,7 +141,7 @@ export function WorkTopicsPage() {
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent dir="rtl" className="max-w-md">
-          <DialogHeader>
+          <DialogHeader className="text-right sm:text-right">
             <DialogTitle>موضوع جدید</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
@@ -163,12 +163,12 @@ export function WorkTopicsPage() {
               />
             </div>
           </div>
-          <DialogFooter className="gap-2">
+          <DialogFooter className="gap-2 sm:space-x-0">
             <Button variant="outline" onClick={() => setCreateOpen(false)}>
               انصراف
             </Button>
             <Button disabled={saving} onClick={() => void submit()}>
-              {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               ایجاد
             </Button>
           </DialogFooter>

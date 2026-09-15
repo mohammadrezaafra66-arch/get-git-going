@@ -111,7 +111,7 @@ export function CreateWorkDialog({
       }}
     >
       <DialogContent dir="rtl" className="max-w-lg">
-        <DialogHeader>
+        <DialogHeader className="text-right sm:text-right">
           <DialogTitle>ثبت کار جدید</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
@@ -218,7 +218,7 @@ export function CreateWorkDialog({
             />
           </div>
         </div>
-        <DialogFooter className="gap-2 sm:gap-2">
+        <DialogFooter className="gap-2 sm:gap-2 sm:space-x-0">
           <Button
             variant="outline"
             disabled={saving}
@@ -227,7 +227,7 @@ export function CreateWorkDialog({
             انصراف
           </Button>
           <Button disabled={saving} onClick={() => void submit()}>
-            {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             ثبت کار
           </Button>
         </DialogFooter>

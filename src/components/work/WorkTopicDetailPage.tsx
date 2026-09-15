@@ -192,7 +192,7 @@ export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
         <div className="flex flex-wrap gap-2">
           <Button variant="ghost" size="sm" asChild>
             <Link to="/operations/work/topics">
-              <ArrowRight className="ml-1 h-4 w-4" />
+              <ArrowRight className="h-4 w-4" />
               فهرست موضوع‌ها
             </Link>
           </Button>
@@ -207,9 +207,9 @@ export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
           actions={
             <Button size="sm" disabled={saving} onClick={() => void save()}>
               {saving ? (
-                <Loader2 className="ml-1.5 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Save className="ml-1.5 h-4 w-4" />
+                <Save className="h-4 w-4" />
               )}
               ذخیره
             </Button>
@@ -259,9 +259,9 @@ export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
               onClick={() => void runSuggest()}
             >
               {suggesting ? (
-                <Loader2 className="ml-1.5 h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Sparkles className="ml-1.5 h-4 w-4" />
+                <Sparkles className="h-4 w-4" />
               )}
               پیشنهاد عنوان از کارهای انتخاب‌شده
             </Button>
@@ -304,7 +304,7 @@ export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
                   disabled={busyItem === item.id}
                   onClick={() => void unlink(item.id)}
                 >
-                  <Unlink className="ml-1 h-3.5 w-3.5" />
+                  <Unlink className="h-3.5 w-3.5" />
                   جدا کردن
                 </Button>
               </li>

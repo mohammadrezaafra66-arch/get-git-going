@@ -75,7 +75,11 @@ export function MergePanel({
                       params={{ itemId: s.source_item_id }}
                       className="text-teal-800 hover:underline"
                     >
-                      {s.sourceTitle ?? s.source_item_id.slice(0, 8)}
+                      {s.sourceTitle ?? (
+                        <span dir="ltr" className="font-mono text-xs">
+                          {s.source_item_id.slice(0, 8)}
+                        </span>
+                      )}
                     </Link>
                   </p>
                   <p>
@@ -85,7 +89,11 @@ export function MergePanel({
                       params={{ itemId: s.target_item_id }}
                       className="text-teal-800 hover:underline"
                     >
-                      {s.targetTitle ?? s.target_item_id.slice(0, 8)}
+                      {s.targetTitle ?? (
+                        <span dir="ltr" className="font-mono text-xs">
+                          {s.target_item_id.slice(0, 8)}
+                        </span>
+                      )}
                     </Link>
                   </p>
                   <p className="text-xs text-slate-500">
@@ -107,7 +115,8 @@ export function MergePanel({
               <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
                 <label className="text-xs text-slate-600">کدام بماند؟</label>
                 <select
-                  className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                  dir="rtl"
+                  className="h-9 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm"
                   value={keep}
                   disabled={busy}
                   onChange={(e) =>
@@ -126,7 +135,7 @@ export function MergePanel({
                   disabled={busy}
                   onClick={() => onAccept(s.id, keep)}
                 >
-                  {busy ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : null}
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
                   تأیید ادغام
                 </Button>
               </div>
