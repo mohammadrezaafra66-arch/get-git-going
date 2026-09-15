@@ -53,6 +53,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/collaboration",
       "/operations/tasks",
       "/operations/work",
+      "/operations/work/settings",
       "/operations/daily-mood",
     ],
   },

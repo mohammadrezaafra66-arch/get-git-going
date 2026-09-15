@@ -96,3 +96,15 @@ export {
   type IntakeAnswer,
   type SummarizeIntakeOptions,
 } from "./intake";
+
+export {
+  listActiveTaxonomies,
+  listTaxonomies,
+  createTaxonomy,
+  updateTaxonomy,
+  softDeleteTaxonomy,
+  type WorkTaxonomyKind,
+  type WorkTaxonomy,
+  type CreateWorkTaxonomyInput,
+  type UpdateWorkTaxonomyPatch,
+} from "./taxonomies";

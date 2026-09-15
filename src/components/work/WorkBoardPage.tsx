@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Loader2, Plus, FolderKanban, RefreshCw } from "lucide-react";
+import { Loader2, Plus, FolderKanban, RefreshCw, Settings2 } from "lucide-react";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,7 @@ import {
   acceptMerge,
   dismissMerge,
   getMorningSummary,
+  listActiveTaxonomies,
   listMergeSuggestions,
   listWorkItems,
   setDecisionBucket,
@@ -52,6 +54,9 @@ function todayTehran(): string {
 }
 
 export function WorkBoardPage() {
+  const { roles } = useAuth();
+  const canManageTaxonomies =
+    roles.includes("admin") || roles.includes("manager");
   const [createOpen, setCreateOpen] = useState(false);
   const [group, setGroup] = useState(ALL);
   const [status, setStatus] = useState<string>(ALL);
@@ -59,6 +64,7 @@ export function WorkBoardPage() {
   const [bucket, setBucket] = useState<string>(ALL);
   const [workMode, setWorkMode] = useState<string>(ALL);
   const [search, setSearch] = useState("");
+  const [taxonomyGroups, setTaxonomyGroups] = useState<string[]>([]);
 
   const [summary, setSummary] = useState<WorkMorningSummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(true);
@@ -179,8 +185,23 @@ export function WorkBoardPage() {
     void loadItems();
   }, [loadItems]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const rows = await listActiveTaxonomies("group");
+        if (!cancelled) setTaxonomyGroups(rows.map((r) => r.name));
+      } catch {
+        if (!cancelled) setTaxonomyGroups([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const groupOptions = useMemo(() => {
-    const set = new Set<string>();
+    const set = new Set<string>(taxonomyGroups);
     for (const i of items) {
       if (i.group_name) set.add(i.group_name);
     }
@@ -188,7 +209,7 @@ export function WorkBoardPage() {
       if (i.group_name) set.add(i.group_name);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, "fa"));
-  }, [items, queue]);
+  }, [items, queue, taxonomyGroups]);
 
   async function handleQueueBucket(
     itemId: string,
@@ -255,6 +276,14 @@ export function WorkBoardPage() {
                   موضوع‌ها
                 </Link>
               </Button>
+              {canManageTaxonomies ? (
+                <Button variant="outline" size="sm" asChild>
+                  <Link to="/operations/work/settings">
+                    <Settings2 className="h-4 w-4" />
+                    طبقه‌بندی
+                  </Link>
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 size="sm"

@@ -27,6 +27,7 @@ import {
   buildIntakeTranscript,
   classifyWorkItem,
   createWorkItem,
+  listActiveTaxonomies,
   listMergeSuggestions,
   summarizeIntake,
   type ClassifyWorkResult,
@@ -46,6 +47,7 @@ import {
   MODE_LABELS,
   PRIORITY_LABELS,
 } from "./labels";
+import { TaxonomySelect } from "./TaxonomySelect";
 
 const NONE = "__none__";
 const CLASSIFY_DEBOUNCE_MS = 300;
@@ -157,6 +159,27 @@ export function CreateWorkWizard({
 
   const [saving, setSaving] = useState(false);
   const [preparingConfirm, setPreparingConfirm] = useState(false);
+
+  const { data: taxonomyGroups = [] } = useQuery({
+    queryKey: ["work-taxonomies", "group", "active"],
+    queryFn: () => listActiveTaxonomies("group"),
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const { data: taxonomySections = [] } = useQuery({
+    queryKey: ["work-taxonomies", "section", "active"],
+    queryFn: () => listActiveTaxonomies("section"),
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const groupOptions = useMemo(
+    () => taxonomyGroups.map((t) => t.name),
+    [taxonomyGroups],
+  );
+  const sectionOptions = useMemo(
+    () => taxonomySections.map((t) => t.name),
+    [taxonomySections],
+  );
 
   const { data: staffProfiles = [] } = useQuery({
     queryKey: ["work-create-staff-profiles"],
@@ -601,24 +624,28 @@ export function CreateWorkWizard({
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="work-wizard-group">گروه</Label>
-                <Input
-                  id="work-wizard-group"
-                  value={groupName}
-                  onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="مثلاً فروش یا انبار"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="work-wizard-section">بخش</Label>
-                <Input
-                  id="work-wizard-section"
-                  value={section}
-                  onChange={(e) => setSection(e.target.value)}
-                  placeholder="اختیاری"
-                />
-              </div>
+              <TaxonomySelect
+                id="work-wizard-group"
+                label="گروه"
+                value={groupName}
+                onChange={setGroupName}
+                options={groupOptions}
+                placeholder="مثلاً فروش یا انبار"
+                emptyLabel="بدون گروه"
+                otherPlaceholder="گروه دلخواه"
+                data-testid="work-wizard-group"
+              />
+              <TaxonomySelect
+                id="work-wizard-section"
+                label="بخش"
+                value={section}
+                onChange={setSection}
+                options={sectionOptions}
+                placeholder="اختیاری"
+                emptyLabel="بدون بخش"
+                otherPlaceholder="بخش دلخواه"
+                data-testid="work-wizard-section"
+              />
             </div>
             {canAssign ? (
               <div className="space-y-1.5">

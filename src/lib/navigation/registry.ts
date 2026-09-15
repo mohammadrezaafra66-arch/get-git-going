@@ -574,6 +574,14 @@ const NAVIGATION_SEEDS = [
     group: "operations",
   },
   {
+    to: "/operations/work/settings",
+    label: "طبقه‌بندی کار",
+    icon: Settings,
+    module: "invoices",
+    group: "operations",
+    adminOnly: true,
+  },
+  {
     to: "/operations/daily-mood",
     label: "حال‌وهوای امروز",
     icon: Heart,
@@ -1409,6 +1417,7 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   // Calm Mind work board — mirrors route requireAnyRole(admin|manager|sales|accountant)
   "/operations/work": ["admin", "manager", "sales", "accountant"],
   "/operations/work/topics": ["admin", "manager", "sales", "accountant"],
+  "/operations/work/settings": ["admin", "manager"],
   "/gamification/achievements": [
     "admin",
     "manager",

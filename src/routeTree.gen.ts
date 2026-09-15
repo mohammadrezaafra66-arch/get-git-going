@@ -198,6 +198,7 @@ import { Route as AppGamificationAdminPurchaseSettingsRouteImport } from './rout
 import { Route as AppGamificationAdminRewardsRouteImport } from './routes/_app.gamification.admin.rewards'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppOperationsWorkItemIdRouteImport } from './routes/_app.operations.work_.$itemId'
+import { Route as AppOperationsWorkSettingsRouteImport } from './routes/_app.operations.work_.settings'
 import { Route as AppOperationsWorkTopicsRouteImport } from './routes/_app.operations.work_.topics'
 import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.persons_.$personId_.edit'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
@@ -1226,6 +1227,12 @@ const AppOperationsWorkItemIdRoute = AppOperationsWorkItemIdRouteImport.update({
   path: '/operations/work/$itemId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsWorkSettingsRoute =
+  AppOperationsWorkSettingsRouteImport.update({
+    id: '/operations/work_/settings',
+    path: '/operations/work/settings',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppOperationsWorkTopicsRoute = AppOperationsWorkTopicsRouteImport.update({
   id: '/operations/work_/topics',
   path: '/operations/work/topics',
@@ -1587,6 +1594,7 @@ export interface FileRoutesByFullPath {
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/operations/work/$itemId': typeof AppOperationsWorkItemIdRoute
+  '/operations/work/settings': typeof AppOperationsWorkSettingsRoute
   '/operations/work/topics': typeof AppOperationsWorkTopicsRoute
   '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
@@ -1804,6 +1812,7 @@ export interface FileRoutesByTo {
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/operations/work/$itemId': typeof AppOperationsWorkItemIdRoute
+  '/operations/work/settings': typeof AppOperationsWorkSettingsRoute
   '/operations/work/topics': typeof AppOperationsWorkTopicsRoute
   '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
@@ -2026,6 +2035,7 @@ export interface FileRoutesById {
   '/_app/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/_app/operations/work_/$itemId': typeof AppOperationsWorkItemIdRoute
+  '/_app/operations/work_/settings': typeof AppOperationsWorkSettingsRoute
   '/_app/operations/work_/topics': typeof AppOperationsWorkTopicsRoute
   '/_app/persons_/$personId_/edit': typeof AppPersonsPersonIdEditRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
@@ -2248,6 +2258,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
     | '/operations/work/$itemId'
+    | '/operations/work/settings'
     | '/operations/work/topics'
     | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
@@ -2465,6 +2476,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
     | '/operations/work/$itemId'
+    | '/operations/work/settings'
     | '/operations/work/topics'
     | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
@@ -2686,6 +2698,7 @@ export interface FileRouteTypes {
     | '/_app/gamification/admin/rewards'
     | '/_app/operations/daily-mood/admin'
     | '/_app/operations/work_/$itemId'
+    | '/_app/operations/work_/settings'
     | '/_app/operations/work_/topics'
     | '/_app/persons_/$personId_/edit'
     | '/_app/pricing/sale-lists_/$listId'
@@ -4078,6 +4091,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsWorkItemIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/work_/settings': {
+      id: '/_app/operations/work_/settings'
+      path: '/operations/work/settings'
+      fullPath: '/operations/work/settings'
+      preLoaderRoute: typeof AppOperationsWorkSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/work_/topics': {
       id: '/_app/operations/work_/topics'
       path: '/operations/work/topics'
@@ -4611,6 +4631,7 @@ interface AppRouteChildren {
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
   AppAccountingReceiptsTrainingRoute: typeof AppAccountingReceiptsTrainingRoute
   AppOperationsWorkItemIdRoute: typeof AppOperationsWorkItemIdRoute
+  AppOperationsWorkSettingsRoute: typeof AppOperationsWorkSettingsRoute
   AppOperationsWorkTopicsRoute: typeof AppOperationsWorkTopicsRoute
   AppPersonsPersonIdEditRoute: typeof AppPersonsPersonIdEditRoute
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
@@ -4762,6 +4783,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
   AppAccountingReceiptsTrainingRoute: AppAccountingReceiptsTrainingRoute,
   AppOperationsWorkItemIdRoute: AppOperationsWorkItemIdRoute,
+  AppOperationsWorkSettingsRoute: AppOperationsWorkSettingsRoute,
   AppOperationsWorkTopicsRoute: AppOperationsWorkTopicsRoute,
   AppPersonsPersonIdEditRoute: AppPersonsPersonIdEditRoute,
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
