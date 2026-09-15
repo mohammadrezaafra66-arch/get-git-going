@@ -108,6 +108,7 @@ import { Route as AppPersonsMergeRouteImport } from './routes/_app.persons_.merg
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppPersonsPersonIdRouteImport } from './routes/_app.persons_.$personId'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
+import { Route as AppOperationsSalesDeskRouteImport } from './routes/_app.operations.sales-desk'
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
 import { Route as AppOperationsDidarRouteImport } from './routes/_app.operations.didar'
 import { Route as AppOperationsDailyMoodRouteImport } from './routes/_app.operations.daily-mood'
@@ -213,6 +214,7 @@ import { Route as ApiPublicBotProductsProductIdRouteImport } from './routes/api.
 import { Route as ApiPublicBotMarketMatchesResolveRouteImport } from './routes/api.public.bot.market-matches.resolve'
 import { Route as ApiAdminAutomationTorobEnqueueRouteImport } from './routes/api.admin.automation.torob.enqueue'
 import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_app.sales_.customers_.$customerId.edit'
+import { Route as AppSalesCustomersCustomerIdDossierRouteImport } from './routes/_app.sales_.customers_.$customerId.dossier'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists_.$listId.publish'
 import { Route as AppGamificationAdminManualMetricsGuideRouteImport } from './routes/_app.gamification_.admin_.manual-metrics_.guide'
@@ -729,6 +731,11 @@ const AppPersonsPersonIdRoute = AppPersonsPersonIdRouteImport.update({
 const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
   id: '/operations/tasks',
   path: '/operations/tasks',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperationsSalesDeskRoute = AppOperationsSalesDeskRouteImport.update({
+  id: '/operations/sales-desk',
+  path: '/operations/sales-desk',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOperationsPurchaseAdvisorRoute =
@@ -1307,6 +1314,12 @@ const AppSalesCustomersCustomerIdEditRoute =
     path: '/sales/customers/$customerId/edit',
     getParentRoute: () => AppRoute,
   } as any)
+const AppSalesCustomersCustomerIdDossierRoute =
+  AppSalesCustomersCustomerIdDossierRouteImport.update({
+    id: '/sales_/customers_/$customerId/dossier',
+    path: '/sales/customers/$customerId/dossier',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSalesCustomersCustomerIdCreditRoute =
   AppSalesCustomersCustomerIdCreditRouteImport.update({
     id: '/sales_/customers_/$customerId/credit',
@@ -1474,6 +1487,7 @@ export interface FileRoutesByFullPath {
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
+  '/operations/sales-desk': typeof AppOperationsSalesDeskRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
@@ -1566,6 +1580,7 @@ export interface FileRoutesByFullPath {
   '/gamification/admin/manual-metrics/guide': typeof AppGamificationAdminManualMetricsGuideRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
+  '/sales/customers/$customerId/dossier': typeof AppSalesCustomersCustomerIdDossierRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/admin/automation/torob/enqueue': typeof ApiAdminAutomationTorobEnqueueRoute
   '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
@@ -1686,6 +1701,7 @@ export interface FileRoutesByTo {
   '/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/operations/didar': typeof AppOperationsDidarRoute
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
+  '/operations/sales-desk': typeof AppOperationsSalesDeskRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
   '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
@@ -1777,6 +1793,7 @@ export interface FileRoutesByTo {
   '/gamification/admin/manual-metrics/guide': typeof AppGamificationAdminManualMetricsGuideRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
+  '/sales/customers/$customerId/dossier': typeof AppSalesCustomersCustomerIdDossierRoute
   '/sales/customers/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/admin/automation/torob/enqueue': typeof ApiAdminAutomationTorobEnqueueRoute
   '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
@@ -1901,6 +1918,7 @@ export interface FileRoutesById {
   '/_app/operations/daily-mood': typeof AppOperationsDailyMoodRouteWithChildren
   '/_app/operations/didar': typeof AppOperationsDidarRoute
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
+  '/_app/operations/sales-desk': typeof AppOperationsSalesDeskRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
   '/_app/persons_/$personId': typeof AppPersonsPersonIdRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
@@ -1993,6 +2011,7 @@ export interface FileRoutesById {
   '/_app/gamification_/admin_/manual-metrics_/guide': typeof AppGamificationAdminManualMetricsGuideRoute
   '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
+  '/_app/sales_/customers_/$customerId/dossier': typeof AppSalesCustomersCustomerIdDossierRoute
   '/_app/sales_/customers_/$customerId/edit': typeof AppSalesCustomersCustomerIdEditRoute
   '/api/admin/automation/torob/enqueue': typeof ApiAdminAutomationTorobEnqueueRoute
   '/api/public/bot/market-matches/resolve': typeof ApiPublicBotMarketMatchesResolveRoute
@@ -2117,6 +2136,7 @@ export interface FileRouteTypes {
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
+    | '/operations/sales-desk'
     | '/operations/tasks'
     | '/persons/$personId'
     | '/persons/create'
@@ -2209,6 +2229,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/manual-metrics/guide'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
+    | '/sales/customers/$customerId/dossier'
     | '/sales/customers/$customerId/edit'
     | '/api/admin/automation/torob/enqueue'
     | '/api/public/bot/market-matches/resolve'
@@ -2329,6 +2350,7 @@ export interface FileRouteTypes {
     | '/operations/daily-mood'
     | '/operations/didar'
     | '/operations/purchase-advisor'
+    | '/operations/sales-desk'
     | '/operations/tasks'
     | '/persons/$personId'
     | '/persons/create'
@@ -2420,6 +2442,7 @@ export interface FileRouteTypes {
     | '/gamification/admin/manual-metrics/guide'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
+    | '/sales/customers/$customerId/dossier'
     | '/sales/customers/$customerId/edit'
     | '/api/admin/automation/torob/enqueue'
     | '/api/public/bot/market-matches/resolve'
@@ -2543,6 +2566,7 @@ export interface FileRouteTypes {
     | '/_app/operations/daily-mood'
     | '/_app/operations/didar'
     | '/_app/operations/purchase-advisor'
+    | '/_app/operations/sales-desk'
     | '/_app/operations/tasks'
     | '/_app/persons_/$personId'
     | '/_app/persons_/create'
@@ -2635,6 +2659,7 @@ export interface FileRouteTypes {
     | '/_app/gamification_/admin_/manual-metrics_/guide'
     | '/_app/pricing/sale-lists_/$listId/publish'
     | '/_app/sales_/customers_/$customerId/credit'
+    | '/_app/sales_/customers_/$customerId/dossier'
     | '/_app/sales_/customers_/$customerId/edit'
     | '/api/admin/automation/torob/enqueue'
     | '/api/public/bot/market-matches/resolve'
@@ -3373,6 +3398,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsTasksRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/sales-desk': {
+      id: '/_app/operations/sales-desk'
+      path: '/operations/sales-desk'
+      fullPath: '/operations/sales-desk'
+      preLoaderRoute: typeof AppOperationsSalesDeskRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/purchase-advisor': {
       id: '/_app/operations/purchase-advisor'
       path: '/operations/purchase-advisor'
@@ -4108,6 +4140,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCustomersCustomerIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales_/customers_/$customerId/dossier': {
+      id: '/_app/sales_/customers_/$customerId/dossier'
+      path: '/sales/customers/$customerId/dossier'
+      fullPath: '/sales/customers/$customerId/dossier'
+      preLoaderRoute: typeof AppSalesCustomersCustomerIdDossierRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales_/customers_/$customerId/credit': {
       id: '/_app/sales_/customers_/$customerId/credit'
       path: '/sales/customers/$customerId/credit'
@@ -4449,6 +4488,7 @@ interface AppRouteChildren {
   AppOperationsDailyMoodRoute: typeof AppOperationsDailyMoodRouteWithChildren
   AppOperationsDidarRoute: typeof AppOperationsDidarRoute
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
+  AppOperationsSalesDeskRoute: typeof AppOperationsSalesDeskRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
   AppPersonsPersonIdRoute: typeof AppPersonsPersonIdRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
@@ -4501,6 +4541,7 @@ interface AppRouteChildren {
   AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
   AppGamificationAdminManualMetricsGuideRoute: typeof AppGamificationAdminManualMetricsGuideRoute
   AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
+  AppSalesCustomersCustomerIdDossierRoute: typeof AppSalesCustomersCustomerIdDossierRoute
   AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
 }
 
@@ -4596,6 +4637,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsDailyMoodRoute: AppOperationsDailyMoodRouteWithChildren,
   AppOperationsDidarRoute: AppOperationsDidarRoute,
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
+  AppOperationsSalesDeskRoute: AppOperationsSalesDeskRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
   AppPersonsPersonIdRoute: AppPersonsPersonIdRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
@@ -4651,6 +4693,8 @@ const AppRouteChildren: AppRouteChildren = {
     AppGamificationAdminManualMetricsGuideRoute,
   AppSalesCustomersCustomerIdCreditRoute:
     AppSalesCustomersCustomerIdCreditRoute,
+  AppSalesCustomersCustomerIdDossierRoute:
+    AppSalesCustomersCustomerIdDossierRoute,
   AppSalesCustomersCustomerIdEditRoute: AppSalesCustomersCustomerIdEditRoute,
 }
 
