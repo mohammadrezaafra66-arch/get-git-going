@@ -18,20 +18,26 @@ Migration 543 states the new tables are intentionally separate and do not `ALTER
 | Table | `public.work_items` | `…543_work_calm_mind.sql:69` |
 | Table | `public.work_merge_suggestions` | `…543_work_calm_mind.sql:184` |
 | Trigger fn | `public.work_items_before_write` | `…543_work_calm_mind.sql:126` |
-| Helper | `public.work_can_see_item(uuid)` | `…543_work_calm_mind.sql:219` |
+| Helper | `public.work_can_see_item(uuid)` | `…543_work_calm_mind.sql:219`; allowlist added in `…544….sql:19-39` |
 | RPC | `public.work_morning_summary()` | `…543_work_calm_mind.sql:396` |
 | RPC | `public.work_set_decision_bucket(uuid, text, date)` | `…543_work_calm_mind.sql:487` |
 | RPC | `public.work_create_item(...)` | `…543_work_calm_mind.sql:555` |
 | RPC | `public.work_scan_merge_suggestions(uuid)` | `…543_work_calm_mind.sql:635` |
-| RPC | `public.work_accept_merge(uuid, uuid)` | `…543_work_calm_mind.sql:762` |
-| RPC | `public.work_dismiss_merge(uuid)` | `…543_work_calm_mind.sql:895` |
+| RPC | `public.work_accept_merge(uuid, uuid)` | `…543_work_calm_mind.sql:762` (redefined + merge-RPC gate in 544) |
+| RPC | `public.work_dismiss_merge(uuid)` | `…543_work_calm_mind.sql:895` (redefined + merge-RPC gate in 544) |
+| Migration 544 | `supabase/migrations/20260916001500_544_work_calm_mind_rls_role_gate.sql` | role allowlist on RLS + `work_can_see_item` + merge status guard (`…544….sql:3-11`, `:19-39`, `:49-246`, `:252-273`) |
+| Trigger fn (544) | `public.work_merge_suggestions_status_guard` | `…544….sql:252-273` — status only if `work.merge_rpc=1` |
+| Reverse 544 | `docs/verification/544-down.sql` | cited `…544….sql:11`; checkpoint `p1-data-rls-fix.md:21` |
 
 Checkpoint p1-data lists the same tables/RPCs after apply (`docs/missions/work-calm-mind/checkpoints/p1-data.md:16-32`). Similarity scan in SQL is title-token Jaccard with threshold `0.35` and reason `jaccard_title=…` (`…543_work_calm_mind.sql:672-738`; `docs/missions/work-calm-mind/checkpoints/p1-data.md:30`).
 
 `role_permissions` module key is `work`, seeded for every existing role (`…543_work_calm_mind.sql:19-34`; `docs/missions/work-calm-mind/checkpoints/p1-data.md:39-40`).
 
-Reverse-only script (copy DB): `docs/verification/543-down.sql` (cited from migration header `…543_work_calm_mind.sql:9-11`).
+Reverse-only script for 543 (copy DB): `docs/verification/543-down.sql` (cited from migration header `…543_work_calm_mind.sql:9-11`).
 
+### Security glance → migration 544
+
+Independent security glance on post-543 RLS returned **FAIL**: policies checked identity but not the work role allowlist, so any authenticated role could PostgREST-insert own rows; merge `status` could also be updated without accept/dismiss RPCs (`docs/missions/work-calm-mind/checkpoints/sec-rls.md:10-12`, `:37-38`, `:51`, `:62-63`; commit `581d2e2b`). Forward repair is migration **544** (do not edit 543): RLS SELECT/INSERT/UPDATE require allowlist `admin|manager|sales|accountant|viewer` **AND** prior identity rules; `work_can_see_item` gains the same allowlist; merge status changes require `current_setting('work.merge_rpc')` set by `work_accept_merge` / `work_dismiss_merge` (`…544_work_calm_mind_rls_role_gate.sql:5-11`, `:30-33`, `:53-74`, `:248-273`, `:397`, `:450`; `checkpoints/p1-data-rls-fix.md:10-32`; commit `00d89363`).
 ## URLs
 
 | Surface | Path | Route file |
@@ -45,7 +51,9 @@ Primary-module path includes `/operations/work` next to `/operations/tasks` (`sr
 
 ## Roles
 
-Route gates use `requireAnyRole(["admin","manager","sales","accountant"])` on the board (`src/routes/_app.operations.work.tsx:5-10`) and topics (`src/routes/_app.operations.work_.topics.tsx:5-10`). Nav allowlist matches those four roles for `/operations/work` and `/operations/work/topics` (`src/lib/navigation/registry.ts:1409-1411`). DB RLS helper treats `admin`/`manager` as all-rows and others via `creator_id` or `assignee_id` (`…543_work_calm_mind.sql:230-234`). Mission contracts lock the same route gate (`docs/missions/work-calm-mind/CONTRACTS.md:16-19`). Module `work` in `role_permissions` also grants view/create/update to `viewer` at the DB permission-seed layer (`…543_work_calm_mind.sql:23-25`; `p1-data.md:40`) while the FE route gate does **not** include `viewer` (`_app.operations.work.tsx:5`).
+Route gates use `requireAnyRole(["admin","manager","sales","accountant"])` on the board (`src/routes/_app.operations.work.tsx:5-10`) and topics (`src/routes/_app.operations.work_.topics.tsx:5-10`). Nav allowlist matches those four roles for `/operations/work` and `/operations/work/topics` (`src/lib/navigation/registry.ts:1409-1411`). Mission contracts lock the same route gate (`docs/missions/work-calm-mind/CONTRACTS.md:16-19`).
+
+After 544, table RLS + `work_can_see_item` require role allowlist `admin|manager|sales|accountant|viewer` **and** identity (`admin`/`manager` all-rows, else creator/assignee/owner) (`…544….sql:30-61`, `:53-61`). **`viewer` remains DB-allowed** on that allowlist and in `role_permissions` module `work` (`…544….sql:32`, `:55`; `…543….sql:23-25`; `p1-data-rls-fix.md:32`) while **UI routes still exclude `viewer`** (`_app.operations.work.tsx:5`; `registry.ts:1410`).
 
 ## How to run locally + e2e command
 
@@ -88,6 +96,8 @@ From `git log` on `feature/work-calm-mind` (measured HEAD `51f98fdf`):
 | `b539fccf` | feat(work): UI فاز ۱–۳ دستیار کار / آرامش ذهن |
 | `0313c362` | fix(work): اصلاح RTL عنصر‌به‌عنصر دستیار کار |
 | `51f98fdf` | test(work): e2e آرامش ذهن — fail-first سپس ۸ سبز روی Vite محلی |
+| `581d2e2b` | docs(work): checkpoint sec-rls — FAIL با شواهد artifact-positive |
+| `00d89363` | fix(work): گیت نقش RLS برای work_* (۵۴۴) |
 
 ## Remaining optional work
 
