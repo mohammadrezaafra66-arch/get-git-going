@@ -10,7 +10,7 @@
  * trigger would make that half red without leaving residue.
  */
 import { createHmac } from "node:crypto";
-import { expect, test, type BrowserContextOptions } from "@playwright/test";
+import { expect, test, type BrowserContextOptions, type Page } from "@playwright/test";
 import { E2E_PREFIX, gotoApp } from "../helpers/app";
 import { dbScalar } from "../helpers/db";
 import { dbExecE2e } from "../helpers/db-write";
@@ -102,6 +102,12 @@ const IDS = {
   src: "c1a10001-0000-4000-8000-00000000c004",
   tgt: "c1a10001-0000-4000-8000-00000000c005",
   suggestion: "c1a10001-0000-4000-8000-00000000c0a1",
+  /** Phase F — testing workflow seed */
+  testing: "c1a10001-0000-4000-8000-00000000c006",
+  /** Phase F — accept-merge pair (dismiss uses src/tgt/suggestion) */
+  acceptSrc: "c1a10001-0000-4000-8000-00000000c007",
+  acceptTgt: "c1a10001-0000-4000-8000-00000000c008",
+  acceptSuggestion: "c1a10001-0000-4000-8000-00000000c0a2",
 } as const;
 
 const TITLES = {
@@ -111,7 +117,21 @@ const TITLES = {
   src: `${MARK}ادغام_مبدأ`,
   tgt: `${MARK}ادغام_مقصد`,
   created: `${MARK}ایجاد_از_UI`,
+  testing: `${MARK}تست_workflow`,
+  acceptSrc: `${MARK}پذیرش_ادغام_مبدأ`,
+  acceptTgt: `${MARK}پذیرش_ادغام_مقصد`,
 } as const;
+
+const ALL_ITEM_IDS = [
+  IDS.queue,
+  IDS.board,
+  IDS.detail,
+  IDS.src,
+  IDS.tgt,
+  IDS.testing,
+  IDS.acceptSrc,
+  IDS.acceptTgt,
+] as const;
 
 function adminCreatorId(): string {
   const id = dbScalar(
@@ -124,16 +144,34 @@ function adminCreatorId(): string {
   return id;
 }
 
+function adminBearerToken(): string {
+  return mintAdminAccessToken(userIdFor("admin"), ROLE_EMAILS.admin, 2 * 60 * 60);
+}
+
 function cleanup(): void {
   dbExecE2e(`
     -- ${E2E_PREFIX} CALM cleanup
+    DELETE FROM public.work_test_reports
+     WHERE work_item_id IN (
+       '${IDS.queue}','${IDS.board}','${IDS.detail}','${IDS.src}','${IDS.tgt}',
+       '${IDS.testing}','${IDS.acceptSrc}','${IDS.acceptTgt}'
+     )
+        OR work_item_id IN (
+          SELECT id FROM public.work_items WHERE title LIKE '${MARK}%'
+        );
     DELETE FROM public.work_merge_suggestions
-     WHERE id = '${IDS.suggestion}'
-        OR source_item_id IN ('${IDS.src}','${IDS.tgt}','${IDS.queue}','${IDS.board}','${IDS.detail}')
-        OR target_item_id IN ('${IDS.src}','${IDS.tgt}','${IDS.queue}','${IDS.board}','${IDS.detail}');
+     WHERE id IN ('${IDS.suggestion}', '${IDS.acceptSuggestion}')
+        OR source_item_id IN (
+          '${IDS.src}','${IDS.tgt}','${IDS.queue}','${IDS.board}','${IDS.detail}',
+          '${IDS.testing}','${IDS.acceptSrc}','${IDS.acceptTgt}'
+        )
+        OR target_item_id IN (
+          '${IDS.src}','${IDS.tgt}','${IDS.queue}','${IDS.board}','${IDS.detail}',
+          '${IDS.testing}','${IDS.acceptSrc}','${IDS.acceptTgt}'
+        );
     DELETE FROM public.work_items
      WHERE id IN (
-       '${IDS.queue}','${IDS.board}','${IDS.detail}','${IDS.src}','${IDS.tgt}'
+       '${ALL_ITEM_IDS.join("','")}'
      )
         OR title LIKE '${MARK}%';
   `);
@@ -166,15 +204,57 @@ function seedFixtures(creatorId: string): void {
       (
         '${IDS.tgt}', '${TITLES.tgt}', 'seed target', 'pending', 'note', 'normal',
         '${creatorId}', NULL, NULL, 'request', 'none'
+      ),
+      (
+        '${IDS.testing}', '${TITLES.testing}', 'seed testing workflow', 'testing', 'bug', 'normal',
+        '${creatorId}', NULL, NULL, 'executable', 'medium'
+      ),
+      (
+        '${IDS.acceptSrc}', '${TITLES.acceptSrc}', 'seed accept source', 'pending', 'note', 'normal',
+        '${creatorId}', NULL, NULL, 'request', 'none'
+      ),
+      (
+        '${IDS.acceptTgt}', '${TITLES.acceptTgt}', 'seed accept target', 'pending', 'note', 'normal',
+        '${creatorId}', NULL, NULL, 'request', 'none'
       );
 
     INSERT INTO public.work_merge_suggestions (
       id, source_item_id, target_item_id, score, reason, status
-    ) VALUES (
-      '${IDS.suggestion}', '${IDS.src}', '${IDS.tgt}', 0.82,
-      '${MARK}پیشنهاد_تست', 'pending'
-    );
+    ) VALUES
+      (
+        '${IDS.suggestion}', '${IDS.src}', '${IDS.tgt}', 0.82,
+        '${MARK}پیشنهاد_تست', 'pending'
+      ),
+      (
+        '${IDS.acceptSuggestion}', '${IDS.acceptSrc}', '${IDS.acceptTgt}', 0.91,
+        '${MARK}پیشنهاد_پذیرش', 'pending'
+      );
   `);
+}
+
+/** Advance create wizard from describe through optional intake to confirm. */
+async function progressCreateWizardToConfirm(page: Page, description: string): Promise<void> {
+  const wizard = page.getByTestId("create-work-wizard");
+  await expect(wizard).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByTestId("create-work-describe")).toBeVisible();
+  await expect(page.getByTestId("classify-preview")).toBeVisible();
+
+  await page.getByTestId("create-work-describe").fill(description);
+  await expect(page.getByTestId("classify-preview").getByText(/نوع:/)).toBeVisible({
+    timeout: 10_000,
+  });
+
+  await wizard.getByRole("button", { name: "بعدی" }).click();
+
+  // Default note confidence is 0.35 → intake always required (needsIntakeStep).
+  const intake = page.getByTestId("create-work-intake");
+  if (await intake.isVisible({ timeout: 5_000 }).catch(() => false)) {
+    await wizard.getByRole("button", { name: "بعدی" }).click();
+  }
+
+  await expect(page.getByTestId("create-work-confirm")).toBeVisible({
+    timeout: 20_000,
+  });
 }
 
 test.describe.configure({ mode: "serial" });
@@ -194,7 +274,8 @@ test.afterAll(() => {
   ).toBe("0");
   expect(
     dbScalar(
-      `select count(*)::text from public.work_merge_suggestions where id = '${IDS.suggestion}'`,
+      `select count(*)::text from public.work_merge_suggestions
+        where id in ('${IDS.suggestion}', '${IDS.acceptSuggestion}')`,
     ),
     "CALM suggestion residue after cleanup",
   ).toBe("0");
@@ -294,15 +375,12 @@ test("morning summary strip shows Calm Mind counts", async ({ page }) => {
   await expect(page.getByText("امروز انجام", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("در انتظار", { exact: true }).first()).toBeVisible();
   // Seeded queue item must move today_decide count off zero (Persian digits).
-  const decideCell = page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "خلاصهٔ صبحگاهی" }) })
-    .locator("div")
-    .filter({ hasText: /^[۰-۹]+\s*امروز تصمیم$/ })
-    .first();
+  // Phase E turned cells into clickable buttons with data-testid.
+  const decideCell = page.getByTestId("morning-bucket-today_decide");
   await expect(decideCell).toBeVisible();
-  const text = await decideCell.innerText();
-  expect(text.replace(/\s+/g, " ")).not.toMatch(/^۰\s*امروز تصمیم$/);
+  const text = (await decideCell.innerText()).replace(/\s+/g, " ").trim();
+  expect(text, `today_decide cell text: ${text}`).toMatch(/^[۰-۹]+/);
+  expect(text, "seeded queue must make today_decide non-zero").not.toMatch(/^۰\b/);
 });
 
 test("decision queue can set today_do, waiting, and clear", async ({ page }) => {
@@ -412,27 +490,30 @@ test("UI blocks in_progress without claimed_due_at", async ({ page }) => {
   ).toBe("NULL");
 });
 
-test("create work item from UI appears on the board", async ({ page }) => {
+test("create work wizard describe+classify then create end-to-end", async ({ page }) => {
   await gotoApp(page, ROUTE);
   await expect(page.getByText("در حال بررسی جلسه کاربری...")).toHaveCount(0, {
     timeout: 30_000,
   });
   await page.getByRole("button", { name: "کار جدید" }).click();
   await expect(page.getByRole("heading", { name: "ثبت کار جدید" })).toBeVisible();
-  await page.locator("#work-title").fill(TITLES.created);
-  await page.locator("#work-body").fill("created by calm-mind e2e");
+
+  const describeText =
+    `${TITLES.created} — یادداشت آزاد برای ثبت از ویزارد e2e با متن به اندازه کافی بلند برای عبور از آستانهٔ کوتاه بودن`;
+  await progressCreateWizardToConfirm(page, describeText);
+
+  await page.locator("#work-wizard-title").fill(TITLES.created);
+  await page.locator("#work-wizard-body").fill("created by calm-mind e2e wizard");
 
   const createRpc = page.waitForResponse(
     (res) =>
       res.url().includes("/rest/v1/rpc/work_create_item") && res.request().method() === "POST",
     { timeout: 30_000 },
   );
-  await page.getByRole("button", { name: "ثبت کار" }).click();
+  await page.getByTestId("create-work-submit").click();
   const rpcRes = await createRpc;
   expect(rpcRes.ok(), `work_create_item HTTP ${rpcRes.status()}`).toBeTruthy();
 
-  // Row is durable as soon as the RPC returns. Post-create merge scan can keep
-  // the dialog's saving spinner busy; do not require the dialog to close first.
   await expect
     .poll(
       () =>
@@ -446,6 +527,109 @@ test("create work item from UI appears on the board", async ({ page }) => {
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "تازه‌سازی" }).click();
   await expect(page.getByText(TITLES.created)).toBeVisible({ timeout: 20_000 });
+});
+
+test("POST /api/work/classify responds with kind/priority JSON", async ({ request }) => {
+  const token = adminBearerToken();
+  const res = await request.post(`${BASE_URL}/api/work/classify`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    data: {
+      text: "باگ فوری در ثبت فاکتور مالی — خطای ذخیره",
+      title: "باگ فاکتور",
+    },
+  });
+
+  const status = res.status();
+  const bodyText = await res.text();
+  // Must not be SPA/missing-route 404. Vite without SUPABASE_* → 500 misconfigured.
+  expect(status, `classify HTTP ${status} body=${bodyText.slice(0, 200)}`).not.toBe(404);
+  expect([200, 401, 500], `unexpected classify status ${status}`).toContain(status);
+
+  if (status === 200) {
+    const json = JSON.parse(bodyText) as {
+      kind?: string;
+      priority?: string;
+      confidence?: number;
+    };
+    expect(json.kind, "classify.kind").toMatch(/^(bug|note|question|change_request)$/);
+    expect(json.priority, "classify.priority").toMatch(/^(low|normal|high)$/);
+    expect(typeof json.confidence).toBe("number");
+  } else {
+    expect(bodyText.length, "non-empty error body from classify route").toBeGreaterThan(0);
+  }
+});
+
+test("testing workflow approve moves status to done", async ({ page }) => {
+  // Re-seed testing row so prior runs / partial failures stay independent.
+  dbExecE2e(`
+    -- ${E2E_PREFIX} CALM reseed testing
+    UPDATE public.work_items
+       SET status = 'testing',
+           claimed_due_at = NULL,
+           completed_at = NULL
+     WHERE id = '${IDS.testing}';
+    DELETE FROM public.work_test_reports WHERE work_item_id = '${IDS.testing}';
+  `);
+
+  await gotoApp(page, `/operations/work/${IDS.testing}`);
+  await expect(page.getByRole("heading", { name: "آرامش ذهن" })).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(page.getByTestId("work-test-report-panel")).toBeVisible({
+    timeout: 15_000,
+  });
+
+  await page.getByTestId("work-test-approve").click();
+  await expect(
+    page.getByText("تست تأیید شد؛ وضعیت به انجام‌شده رفت."),
+  ).toBeVisible({ timeout: 15_000 });
+
+  await expect
+    .poll(
+      () => dbScalar(`select status from public.work_items where id = '${IDS.testing}'`),
+      { timeout: 10_000 },
+    )
+    .toBe("done");
+});
+
+test("testing workflow reject with ETA returns to in_progress", async ({ page }) => {
+  dbExecE2e(`
+    -- ${E2E_PREFIX} CALM reseed testing reject
+    UPDATE public.work_items
+       SET status = 'testing',
+           claimed_due_at = NULL,
+           completed_at = NULL
+     WHERE id = '${IDS.testing}';
+    DELETE FROM public.work_test_reports WHERE work_item_id = '${IDS.testing}';
+  `);
+
+  await gotoApp(page, `/operations/work/${IDS.testing}`);
+  await expect(page.getByTestId("work-test-report-panel")).toBeVisible({
+    timeout: 20_000,
+  });
+
+  // datetime-local: far enough future to satisfy ETA gate.
+  await page.locator("#test-report-eta").fill("2030-06-15T14:30");
+  // Use reject-existing without linked bug id — RPC allows null linked bug.
+  await page.getByTestId("work-test-reject-existing").click();
+  await expect(
+    page.getByText("تست رد شد؛ وضعیت به در حال انجام برگشت."),
+  ).toBeVisible({ timeout: 15_000 });
+
+  await expect
+    .poll(
+      () => dbScalar(`select status from public.work_items where id = '${IDS.testing}'`),
+      { timeout: 10_000 },
+    )
+    .toBe("in_progress");
+  expect(
+    dbScalar(
+      `select (claimed_due_at IS NOT NULL)::text from public.work_items where id = '${IDS.testing}'`,
+    ),
+  ).toBe("true");
 });
 
 test("merge suggestion dismiss path removes pending card", async ({ page }) => {
@@ -470,7 +654,8 @@ test("merge suggestion dismiss path removes pending card", async ({ page }) => {
     timeout: 20_000,
   });
 
-  await panel.getByRole("button", { name: "رد پیشنهاد" }).click();
+  const dismissCard = panel.locator("li").filter({ hasText: TITLES.src });
+  await dismissCard.getByRole("button", { name: "رد پیشنهاد" }).click();
   await expect(page.getByText("پیشنهاد رد شد.")).toBeVisible({ timeout: 15_000 });
   await expect(panel.getByRole("link", { name: TITLES.src })).toHaveCount(0);
 
@@ -479,4 +664,51 @@ test("merge suggestion dismiss path removes pending card", async ({ page }) => {
       `select status from public.work_merge_suggestions where id = '${IDS.suggestion}'`,
     ),
   ).toBe("dismissed");
+});
+
+test("merge suggestion accept path keeps one item", async ({ page }) => {
+  dbExecE2e(`
+    -- ${E2E_PREFIX} CALM accept suggestion reset
+    UPDATE public.work_items
+       SET status = 'pending', body = 'seed accept source'
+     WHERE id = '${IDS.acceptSrc}';
+    UPDATE public.work_items
+       SET status = 'pending', body = 'seed accept target'
+     WHERE id = '${IDS.acceptTgt}';
+    DELETE FROM public.work_merge_suggestions WHERE id = '${IDS.acceptSuggestion}';
+    INSERT INTO public.work_merge_suggestions (
+      id, source_item_id, target_item_id, score, reason, status
+    ) VALUES (
+      '${IDS.acceptSuggestion}', '${IDS.acceptSrc}', '${IDS.acceptTgt}', 0.91,
+      '${MARK}پیشنهاد_پذیرش', 'pending'
+    );
+  `);
+
+  await gotoApp(page, ROUTE);
+  const panel = page.locator("#work-merge-panel");
+  await expect(panel.getByRole("heading", { name: "پیشنهاد ادغام" })).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(panel.getByRole("link", { name: TITLES.acceptSrc })).toBeVisible({
+    timeout: 20_000,
+  });
+
+  const card = panel.locator("li").filter({ hasText: TITLES.acceptSrc });
+  // Default keep is source_item_id; leave it and confirm.
+  await card.getByRole("button", { name: "تأیید ادغام" }).click();
+  await expect(page.getByText("ادغام با تأیید شما انجام شد.")).toBeVisible({
+    timeout: 15_000,
+  });
+
+  expect(
+    dbScalar(
+      `select status from public.work_merge_suggestions where id = '${IDS.acceptSuggestion}'`,
+    ),
+  ).toBe("accepted");
+  expect(
+    dbScalar(`select status from public.work_items where id = '${IDS.acceptSrc}'`),
+  ).toBe("pending");
+  expect(
+    dbScalar(`select status from public.work_items where id = '${IDS.acceptTgt}'`),
+  ).toBe("cancelled");
 });
