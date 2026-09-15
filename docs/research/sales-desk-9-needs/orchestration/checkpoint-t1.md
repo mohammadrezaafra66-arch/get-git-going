@@ -5,7 +5,10 @@
 | Agent | dev-test-engineer |
 | Branch | `feature/sales-desk` |
 | HEAD start | `b5ee0dc64a75335657936f45f8850ae1e78b1b5a` |
+| HEAD end | `b0dfa94e899db31010e13809bc18575e9a0112e5` |
+| Mid-session note | HEAD moved to `3e7e9e42` (S1 docs) by peer before T1 commit [D-1 observed] |
 | Started | 2026-09-16T03:00+05:00 |
+| Finished | 2026-09-16T03:15+05:00 |
 | Deadline | 2026-09-16T06:45:00+05:00 |
 | Status | **COMPLETE** (spec green on branch Vite; LAN :3100 lacks F1 routes) |
 
@@ -83,4 +86,6 @@ Capture: `docs/research/sales-desk-9-needs/orchestration/_t1_fail_probe.out`
 Many unrelated modified/untracked files in worktree (persons merge, PROGRESS, etc.) — not committed.
 
 ## Commits
-(see git after this checkpoint)
+| SHA | Message |
+|-----|---------|
+| `b0dfa94e` | test(sales-desk): e2e جریان میز فروش ۹ نیاز (AC10) |
