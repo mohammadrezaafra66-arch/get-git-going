@@ -12,6 +12,7 @@ import { AudioPlayer } from "./AudioPlayer";
 import { getExt, getRuleByExtAndMime } from "@/lib/messenger/attachment-rules";
 import { useInquiries } from "@/hooks/messenger/useInquiries";
 import { InquiryCard } from "./InquiryCard";
+import { CreateWorkFromMessageButton } from "@/components/work/CreateWorkFromMessageButton";
 
 function useSenderProfiles(ids: string[]) {
   return useQuery({
@@ -124,12 +125,17 @@ export function MessageList({ messages }: { messages: MessengerMessage[] }) {
                     )}
                   </div>
                 )}
-                <div
-                  className="px-1 text-[10px] text-muted-foreground"
-                  dir="ltr"
-                  title={formatJalaliDateTime(m.created_at)}
-                >
-                  {formatJalaliTime(m.created_at)}
+                <div className="flex items-center gap-1 px-1">
+                  <div
+                    className="text-[10px] text-muted-foreground"
+                    dir="ltr"
+                    title={formatJalaliDateTime(m.created_at)}
+                  >
+                    {formatJalaliTime(m.created_at)}
+                  </div>
+                  {hasText && (
+                    <CreateWorkFromMessageButton messageText={textContent} />
+                  )}
                 </div>
               </div>
             </div>

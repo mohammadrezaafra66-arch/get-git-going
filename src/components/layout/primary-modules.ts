@@ -52,6 +52,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/popup-center",
       "/collaboration",
       "/operations/tasks",
+      "/operations/work",
       "/operations/daily-mood",
     ],
   },

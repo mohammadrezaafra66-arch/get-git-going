@@ -18,6 +18,7 @@ import { preCheckMessengerAttachment } from "@/lib/messenger/upload.functions";
 import { transcribeMessengerAudio } from "@/lib/messenger/transcribe.functions";
 import { generateMessageEmbedding } from "@/lib/messenger/embeddings.functions";
 import { InquiryButton } from "./InquiryButton";
+import { CreateWorkFromMessageButton } from "@/components/work/CreateWorkFromMessageButton";
 
 export function MessageComposer({ groupId }: { groupId: string }) {
   const qc = useQueryClient();
@@ -218,6 +219,11 @@ export function MessageComposer({ groupId }: { groupId: string }) {
               <Paperclip className="h-4 w-4" />
             </Button>
             <InquiryButton groupId={groupId} disabled={disabled} />
+            <CreateWorkFromMessageButton
+              messageText={value}
+              disabled={disabled}
+              variant="icon"
+            />
             <AudioRecorder
               disabled={disabled || !!file || !!value.trim()}
               sending={send.isPending}
