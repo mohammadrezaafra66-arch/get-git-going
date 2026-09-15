@@ -68,3 +68,23 @@ export {
 } from "./intakeFromMessage";
 
 export { suggestTopicTitle } from "./suggestTopic";
+
+export {
+  classifyWorkItem,
+  suggestTitleFromText,
+  type ClassifyWorkInput,
+  type ClassifyWorkResult,
+} from "./classify";
+
+export {
+  INTAKE_OPEN_QUESTIONS,
+  INTAKE_MCQ_QUESTIONS,
+  INTAKE_ALL_QUESTIONS,
+  buildIntakeTranscript,
+  summarizeIntake,
+  type IntakeQuestion,
+  type IntakeQuestionOption,
+  type IntakeQuestionType,
+  type IntakeAnswer,
+  type SummarizeIntakeOptions,
+} from "./intake";

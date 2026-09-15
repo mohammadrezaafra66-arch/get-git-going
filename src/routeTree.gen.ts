@@ -179,6 +179,8 @@ import { Route as AppWarehousesKardexRouteImport } from './routes/_app.warehouse
 import { Route as AppWarehousesTransfersRouteImport } from './routes/_app.warehouses_.transfers'
 import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
 import { Route as ApiPublicProductsRouteImport } from './routes/api/public/products'
+import { Route as ApiWorkClassifyRouteImport } from './routes/api/work/classify'
+import { Route as ApiWorkIntakeSummaryRouteImport } from './routes/api/work/intake-summary'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
 import { Route as AppAcademyCourseIdLessonIdRouteImport } from './routes/_app.academy_.$courseId_.$lessonId'
 import { Route as AppAccountingReceiptsReceiptIdRouteImport } from './routes/_app.accounting.receipts.$receiptId'
@@ -1114,6 +1116,16 @@ const ApiPublicProductsRoute = ApiPublicProductsRouteImport.update({
   path: '/api/public/products',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiWorkClassifyRoute = ApiWorkClassifyRouteImport.update({
+  id: '/api/work/classify',
+  path: '/api/work/classify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkIntakeSummaryRoute = ApiWorkIntakeSummaryRouteImport.update({
+  id: '/api/work/intake-summary',
+  path: '/api/work/intake-summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
   id: '/public/sale-lists/$listId',
   path: '/public/sale-lists/$listId',
@@ -1552,6 +1564,8 @@ export interface FileRoutesByFullPath {
   '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
+  '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
@@ -1767,6 +1781,8 @@ export interface FileRoutesByTo {
   '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
+  '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
@@ -1987,6 +2003,8 @@ export interface FileRoutesById {
   '/_app/warehouses_/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
+  '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
@@ -2207,6 +2225,8 @@ export interface FileRouteTypes {
     | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
+    | '/api/work/classify'
+    | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
@@ -2422,6 +2442,8 @@ export interface FileRouteTypes {
     | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
+    | '/api/work/classify'
+    | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
@@ -2641,6 +2663,8 @@ export interface FileRouteTypes {
     | '/_app/warehouses_/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
+    | '/api/work/classify'
+    | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
@@ -2713,6 +2737,8 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
   ApiPublicProductsRoute: typeof ApiPublicProductsRoute
+  ApiWorkClassifyRoute: typeof ApiWorkClassifyRoute
+  ApiWorkIntakeSummaryRoute: typeof ApiWorkIntakeSummaryRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiAdminCallsImportIssabelRoute: typeof ApiAdminCallsImportIssabelRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
@@ -3919,6 +3945,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/work/classify': {
+      id: '/api/work/classify'
+      path: '/api/work/classify'
+      fullPath: '/api/work/classify'
+      preLoaderRoute: typeof ApiWorkClassifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/work/intake-summary': {
+      id: '/api/work/intake-summary'
+      path: '/api/work/intake-summary'
+      fullPath: '/api/work/intake-summary'
+      preLoaderRoute: typeof ApiWorkIntakeSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/public/sale-lists/$listId': {
       id: '/public/sale-lists/$listId'
       path: '/public/sale-lists/$listId'
@@ -4789,6 +4829,8 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
   ApiPublicProductsRoute: ApiPublicProductsRoute,
+  ApiWorkClassifyRoute: ApiWorkClassifyRoute,
+  ApiWorkIntakeSummaryRoute: ApiWorkIntakeSummaryRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiAdminCallsImportIssabelRoute: ApiAdminCallsImportIssabelRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,
