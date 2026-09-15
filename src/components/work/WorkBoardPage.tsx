@@ -30,7 +30,7 @@ import {
 import { MorningSummaryStrip } from "./MorningSummary";
 import { DecisionQueue } from "./DecisionQueue";
 import { MergePanel, type MergeSuggestionView } from "./MergePanel";
-import { CreateWorkDialog } from "./CreateWorkDialog";
+import { CreateWorkWizard } from "./CreateWorkWizard";
 import {
   ALL_BUCKETS,
   ALL_KINDS,
@@ -414,7 +414,7 @@ export function WorkBoardPage() {
         </section>
       </div>
 
-      <CreateWorkDialog
+      <CreateWorkWizard
         open={createOpen}
         onOpenChange={setCreateOpen}
         onCreated={(_id, pendingMerges) => {
