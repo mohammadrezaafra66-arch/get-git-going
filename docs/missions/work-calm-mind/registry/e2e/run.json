@@ -1,0 +1,15 @@
+{
+  "job_id": "e2e",
+  "state": "done",
+  "attempt": 1,
+  "deadline_at": "2026-09-16T02:30:00+05:00",
+  "budget": { "time_minutes": 50 },
+  "checkpoint_path": "docs/missions/work-calm-mind/checkpoints/e2e.md",
+  "heartbeat_every": 60,
+  "killable": false,
+  "agent": "dev-test-engineer",
+  "next_action": "report_to_orchestrator",
+  "result": "PARTIAL_lan_COMPLETE_local_vite",
+  "exit_pass": 0,
+  "tests_passed": 8
+}

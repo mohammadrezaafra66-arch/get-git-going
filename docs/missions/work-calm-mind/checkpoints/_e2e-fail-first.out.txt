@@ -1,0 +1,52 @@
+
+Running 1 test using 1 worker
+
+
+  x  1 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:200:1 › seeded work item is visible on /operations/work (14.1s)
+
+
+  1) [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:200:1 › seeded work item is visible on /operations/work 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByRole('heading', { name: 'دستیار کار' })
+    Expected: visible
+    Timeout: 10000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 10000ms
+      - waiting for getByRole('heading', { name: 'دستیار کار' })
+
+
+      200 | test("seeded work item is visible on /operations/work", async ({ page }) => {
+      201 |   await gotoApp(page, ROUTE);
+    > 202 |   await expect(page.getByRole("heading", { name: "دستیار کار" })).toBeVisible();
+          |                                                                   ^
+      203 |   await expect(page.getByText("تابلوی آرام برای تصمیم امروز")).toBeVisible();
+      204 |   await expect(page.getByText(TITLES.board)).toBeVisible({ timeout: 20_000 });
+      205 | });
+        at D:\AfraKalaTest\app\e2e\business-flows\calm-mind-work.spec.ts:202:67
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-calm-mind-w-95c0c--visible-on-operations-work-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-calm-mind-w-95c0c--visible-on-operations-work-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\business-flows-calm-mind-w-95c0c--visible-on-operations-work-chromium-admin\error-context.md
+
+    Error Context: test-results\211-218\business-flows-calm-mind-w-95c0c--visible-on-operations-work-chromium-admin\error-context.md
+
+    attachment #5: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-calm-mind-w-95c0c--visible-on-operations-work-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\business-flows-calm-mind-w-95c0c--visible-on-operations-work-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:200:1 › seeded work item is visible on /operations/work 
