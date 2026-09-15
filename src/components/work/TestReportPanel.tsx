@@ -228,6 +228,8 @@ export function TestReportPanel({
           <Input
             id="test-report-eta"
             type="datetime-local"
+            dir="ltr"
+            className="text-start"
             value={claimedDueLocal}
             onChange={(e) => setClaimedDueLocal(e.target.value)}
             disabled={!canSubmit || submitting !== null}

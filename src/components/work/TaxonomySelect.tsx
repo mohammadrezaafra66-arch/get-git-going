@@ -60,7 +60,7 @@ export function TaxonomySelect({
         : undefined;
 
   return (
-    <div className="space-y-1.5">
+    <div className="space-y-1.5" dir="rtl">
       <Label htmlFor={id}>{label}</Label>
       <Select
         value={selectValue}
@@ -82,7 +82,7 @@ export function TaxonomySelect({
         <SelectTrigger id={id} data-testid={testId}>
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent dir="rtl">
           {allowEmpty ? (
             <SelectItem value={EMPTY}>{emptyLabel}</SelectItem>
           ) : null}

@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { toFaDigits } from "@/lib/i18n/formatters";
 import { supabase } from "@/integrations/supabase/client";
 import {
   INTAKE_ALL_QUESTIONS,
@@ -420,7 +421,7 @@ export function CreateWorkWizard({
                         : undefined
                   }
                 >
-                  {i + 1}. {stepLabel(s)}
+                  {toFaDigits(i + 1)}. {stepLabel(s)}
                 </span>
               </span>
             );
@@ -465,7 +466,7 @@ export function CreateWorkWizard({
                   </p>
                   <p>
                     <span className="text-muted-foreground">اطمینان: </span>
-                    {Math.round(preview.confidence * 100)}٪
+                    {toFaDigits(Math.round(preview.confidence * 100))}٪
                   </p>
                   {intakeNeeded ? (
                     <p className="text-xs text-muted-foreground pt-1">
@@ -707,7 +708,7 @@ export function CreateWorkWizard({
           {step !== "confirm" ? (
             <Button disabled={busy} onClick={() => void goNext()}>
               {preparingConfirm ? (
-                <Loader2 className="h-4 w-4 animate-spin ms-1" />
+                <Loader2 className="h-4 w-4 animate-spin me-1" />
               ) : null}
               بعدی
             </Button>
@@ -718,7 +719,7 @@ export function CreateWorkWizard({
               data-testid="create-work-submit"
             >
               {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin ms-1" />
+                <Loader2 className="h-4 w-4 animate-spin me-1" />
               ) : null}
               ثبت کار
             </Button>
