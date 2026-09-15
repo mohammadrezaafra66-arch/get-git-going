@@ -2,78 +2,91 @@
 
 ## چه چیزی تغییر کرد
 
-شاخهٔ `feature/work-calm-mind` (HEAD اندازه‌گیری‌شده `00d89363`) سیستم Calm Mind / «دستیار کار» را اضافه کرد: مهاجرت ۵۴۳ با جداول `work_topics`، `work_items`، `work_merge_suggestions` و RPCهای مرتبط (`git log` subjects `6734c233`…`51f98fdf`; `supabase/migrations/20260915233000_543_work_calm_mind.sql:39-194`, `:396-895`). لایهٔ کلاینت `src/lib/work/**` روی همان جداول/RPCهاست (`docs/missions/work-calm-mind/checkpoints/p1-be.md:8-23`; commit `860a8690`). UI فاز ۱–۳: تابلو، جزئیات، موضوعات، صف تصمیم، خلاصهٔ صبحگاهی، ادغام، ثبت از چت (`checkpoints/p1-fe.md:8-48`; commit `b539fccf`). اصلاح RTL عنصر‌به‌عنصر (`checkpoints/rtl-pass.md`; commit `0313c362`). e2e کسب‌وکار `e2e/business-flows/calm-mind-work.spec.ts` با fail-first روی LAN و پاس روی Vite محلی (`checkpoints/e2e.md:36-39`; commit `51f98fdf`).
+شاخهٔ `feature/work-calm-mind` در بازهٔ `6c717ecc..HEAD` (HEAD این worktree هنگام نوشتن: `98e6f9b53a7ac307e405d1a3e6993a428dbdc6ba`؛ `git rev-parse HEAD` / `git log --oneline 6c717ecc..HEAD`) فازهای **B–F** دستیار کار را روی پایهٔ قبلی Calm Mind تکمیل کرد.
 
-**Security remediation (544):** glance `sec-rls` حکم **FAIL** (RLS بدون allowlist نقش؛ تغییر مستقیم `work_merge_suggestions.status`) سپس مهاجرت `20260916001500_544_work_calm_mind_rls_role_gate.sql` — allowlist روی policies + `work_can_see_item` + گیت status فقط از طریق RPC (`checkpoints/sec-rls.md:10-12`; `…544….sql:3-11`; `checkpoints/p1-data-rls-fix.md:10-32`; commit `00d89363`). **`viewer` هنوز در allowlist DB هست؛ مسیرهای UI همچنان بدون `viewer`** (`…544….sql:32`, `:55`; `_app.operations.work.tsx:5`; `p1-data-rls-fix.md:32`).
+**فاز B — classify + intake + CreateWorkWizard:** طبقه‌بندی قاعده‌محور و پرسش‌نامهٔ ثبت کار با APIهای `POST /api/work/classify` و `POST /api/work/intake-summary` در commit `75b63962` (`checkpoints/phase-b-be.md:8-30`; فایل‌ها `src/lib/work/classify.ts`, `intake.ts`, `intake.server.ts`, `src/routes/api/work/classify.ts`, `intake-summary.ts`) اضافه شد؛ ویزارد سه‌مرحله‌ای ثبت کار در commit `368b7e33` (`checkpoints/phase-b-fe.md:8-31`; `src/components/work/CreateWorkWizard.tsx`) تابلو را از دیالوگ قبلی به ویزارد وصل کرد.
 
-**What shipped (URLs):** `/operations/work`, `/operations/work/$itemId`, `/operations/work/topics`, `/operations/work/topics/$topicId` (`checkpoints/p1-fe.md:10-15`; route files under `src/routes/_app.operations.work*.tsx`).
+**فاز C — TestReportPanel + RPC ۵۵۰:** مهاجرت `supabase/migrations/20260916140000_550_work_test_reports.sql` جدول `public.work_test_reports` و RPC `work_submit_test_report` را تعریف می‌کند (`…550….sql:18`, `:119`; `checkpoints/phase-c-data.md:9-25`; commit `c698d2cd`)؛ پنل UI و کلاینت در commit `def9eb39` (`checkpoints/phase-c-fe.md:8-33`; `TestReportPanel.tsx`, `testReports.ts`, wiring در `WorkItemDetailPage.tsx`) وقتی وضعیت `testing` است نمایش داده می‌شود.
+
+**فاز D — taxonomies ۵۵۱ + settings:** مهاجرت `supabase/migrations/20260916150000_551_work_taxonomies.sql` جدول `public.work_taxonomies` را می‌سازد (`…551….sql:18`; `checkpoints/phase-d-data.md:11-27`; commit `b701fd09`)؛ صفحهٔ تنظیمات در مسیر `/operations/work/settings` با گارد admin|manager در commit `a48b88a5` (`checkpoints/phase-d-fe.md:8-38`; `src/routes/_app.operations.work_.settings.tsx:8-14`; `WorkTaxonomiesSettingsPage.tsx`, `TaxonomySelect.tsx`) اضافه و به ویزارد وصل شد.
+
+**فاز E — board UX + RTL:** بهبود UX تابلو (فیلتر صبح، merge جمع‌شده، chips، empty CTA، FAB) در commit `efa9c841` (`checkpoints/phase-e-fe.md:8-20`; `WorkBoardPage.tsx`, `MorningSummary.tsx`, `MergePanel.tsx`)؛ گذر RTL عنصر‌به‌عنصر در commit `1029d23e` (`checkpoints/phase-e-rtl.md:1-40`; حکم RTL در همان فایل: PARTIAL بدون شاهد رندرشدهٔ مرورگر).
+
+**فاز F — e2e + build:** گسترش suite به ۱۲ تست و اجرای سبز روی Vite محلی + LAN Supabase در commit `8021bfb5` (`checkpoints/phase-f-e2e.md:30-58`, `:87-88`; `_e2e-phase-f.exit.txt` = `0`; `_e2e-phase-f-build.exit.txt` = `0`; `registry/e2e/run.json:13-17`); دستور اجرا و URL پایه `http://127.0.0.1:5199` با LAN Supabase در `checkpoints/e2e.md:12-24` و `phase-f-e2e.md:11-27` ثبت شده است.
+
+**Critic:** حکم مستقل **APPROVE** برای معیارهای B–F در `checkpoints/phase-critic.md:113-116` (HEAD بازبینی‌شدهٔ critic: `8021bfb5`؛ پایه `6c717ecc..HEAD` — `:5-7`) ثبت شد و در commit docs `98e6f9b5` به شاخه اضافه گردید (`git log -1 --oneline 98e6f9b5`).
+
+پایهٔ قبلی (مهاجرت‌های ۵۴۳/۵۴۴ و UI فاز ۱–۳) همچنان در تاریخچهٔ شاخه قبل از `6c717ecc` است و موضوع این HANDOFF نیست مگر به‌عنوان زمینه (`git log --oneline 6c717ecc..HEAD` فقط B–F را فهرست می‌کند).
 
 ## چرا
 
-نیاز محصولی «دستیار کار / آرامش ذهن» داخل اپ موجود، بدون شکستن برد عملیات روی `public.tasks` (`docs/missions/work-calm-mind/LEDGER.md:1-6`; `…543_work_calm_mind.sql:4-7`; cartography `docs/research/work-calm-mind/PROJECT_GROUND_TRUTH.md:82`).
+محصول «دستیار کار / Calm Mind» باید روی جداول/مسیرهای work_* گسترش یابد بدون `ALTER` روی `public.tasks` (`…543_work_calm_mind.sql:6-7`; `phase-c-data.md:20`; `phase-d-data.md:22`; `phase-critic.md:18`, `:41`). فازهای B–F همان محدودیت را نگه داشتند و مسیرهای classify، intake/wizard، تحویل تست، taxonomy قابل‌مدیریت، UX تابلو، RTL، و e2e را طبق معیارهای critic تکمیل کردند (`phase-critic.md:12-18`, `:22-31`).
 
 ## فایل‌ها و خطوط تغییریافته
 
 | Area | Paths | Evidence |
 | --- | --- | --- |
-| Migration 543 | `supabase/migrations/20260915233000_543_work_calm_mind.sql` (980 lines in commit `6734c233`) | `git show --stat 6734c233` |
-| Migration 544 (RLS role gate) | `supabase/migrations/20260916001500_544_work_calm_mind_rls_role_gate.sql` + `docs/verification/544-down.sql` | `git show --stat 00d89363`; `p1-data-rls-fix.md:19-21` |
-| Client lib | `src/lib/work/*` (11 files) | `git show --stat 860a8690`; `p1-be.md:11-23` |
-| UI + routes + nav | `src/components/work/*`, `src/routes/_app.operations.work*.tsx`, `src/lib/navigation/registry.ts`, `src/components/layout/primary-modules.ts`, messenger hooks | `git show --stat b539fccf`; `p1-fe.md:19-56` |
-| RTL | components under `src/components/work/` | `git show --stat 0313c362`; `rtl-pass.md` |
-| e2e | `e2e/business-flows/calm-mind-work.spec.ts` + `checkpoints/e2e.md` + `_e2e-*.txt` | `git show --stat 51f98fdf` |
-| Security glance (FAIL) | `docs/missions/work-calm-mind/checkpoints/sec-rls.md` | commit `581d2e2b` |
-| Docs | `docs/research/work-calm-mind/README.md`, `PROGRESS.md`, this file | amended 2026-09-16 for 544 |
+| Phase B BE | `src/lib/work/classify.ts`, `intake.ts`, `intake.server.ts`, `src/routes/api/work/classify.ts`, `intake-summary.ts` | commit `75b63962`; `phase-b-be.md:20-30` |
+| Phase B FE | `src/components/work/CreateWorkWizard.tsx`, `CreateWorkDialog.tsx`, `WorkBoardPage.tsx` | commit `368b7e33`; `phase-b-fe.md:26-31` |
+| Migration 550 | `supabase/migrations/20260916140000_550_work_test_reports.sql`, `docs/verification/550-down.sql` | commit `c698d2cd`; `phase-c-data.md:22-25` |
+| Phase C FE | `TestReportPanel.tsx`, `testReports.ts`, `WorkItemDetailPage.tsx` | commit `def9eb39`; `phase-c-fe.md:27-33` |
+| Migration 551 | `supabase/migrations/20260916150000_551_work_taxonomies.sql`, `docs/verification/551-down.sql` | commit `b701fd09`; `phase-d-data.md:24-27` |
+| Phase D FE | `WorkTaxonomiesSettingsPage.tsx`, `TaxonomySelect.tsx`, `taxonomies.ts`, `_app.operations.work_.settings.tsx` | commit `a48b88a5`; `phase-d-fe.md:30-38` |
+| Phase E UX | `WorkBoardPage.tsx`, `MorningSummary.tsx`, `MergePanel.tsx` | commit `efa9c841`; `phase-e-fe.md:16-20` |
+| Phase E RTL | work components + `ui/dialog.tsx`, `ui/select.tsx` | commit `1029d23e`; `phase-e-rtl.md:14-26` |
+| Phase F e2e | `e2e/business-flows/calm-mind-work.spec.ts`, `phase-f-e2e.md`, `registry/e2e/run.json` | commit `8021bfb5`; `phase-f-e2e.md:6-7` |
+| Critic | `checkpoints/phase-critic.md` | commit `98e6f9b5`; `phase-critic.md:113` |
 
-## شواهد در دست با سطحشان
+## شواهد در دست با سطحشان   (هر مورد: ادعا | سطح E | دستور یا مسیر:خط)
 
 | ادعا | سطح E | دستور یا مسیر:خط |
 | --- | --- | --- |
-| جداول/RPCهای work_* در مهاجرت ۵۴۳ تعریف شده‌اند | E1/E2 | `…543_work_calm_mind.sql:39`, `:69`, `:184`, `:396`, `:487`, `:555`, `:635`, `:762`, `:895` |
-| `public.tasks` عمداً دست نخورده | E2 | `…543_work_calm_mind.sql:7`, `:972-977`; probe note `checkpoints/p1-data.md:58` |
-| اعمال مهاجرت روی کپی LAN با `supabase_admin` EXIT=0 | E3 (checkpoint) | `checkpoints/p1-data.md:45-46` → `_543-apply2.out.txt` |
-| پروب‌های تریگر ETA / decision_bucket در تراکنش برگشتی PASS | E4 (checkpoint) | `checkpoints/p1-data.md:48-59` → `_543-probes.out.txt` EXIT=0 |
-| گیت نقش مسیر: admin\|manager\|sales\|accountant | E2 | `_app.operations.work.tsx:5-10`; `registry.ts:1409-1411` |
-| e2e روی Vite `:5199`: ۸ تست، EXIT=0 | E3 | `_e2e-pass.out.txt` (`8 passed (25.0s)`); `_e2e-pass.exit.txt` (`EXIT=0`); `e2e.md:39` |
-| e2e روی LAN `:3100` (بدون redeploy): UI fail (heading غایب) | E3/E4 | `_e2e-fail-first.out.txt:10-18`; `e2e.md:38` |
-| حکم رجیستری e2e: PARTIAL LAN / COMPLETE local Vite | E1 | `registry/e2e/run.json:12-14` |
-| Security glance work_*: **FAIL** (RLS بدون allowlist؛ merge status مستقیم) | E1/E2 | `checkpoints/sec-rls.md:10-12`, `:37-38`, `:51` |
-| 544: allowlist روی RLS + گیت status از RPC؛ fail-first سپس DENIED | E3/E4 (checkpoint) | `…544….sql:53-74`, `:252-273`; `p1-data-rls-fix.md:37-52`; commit `00d89363` |
-| `viewer` در DB allowlist ۵۴۴؛ UI بدون viewer | E2 | `…544….sql:32`, `:55`; `_app.operations.work.tsx:5`; `p1-data-rls-fix.md:32` |
+| بازهٔ commitهای B–F روی `feature/work-calm-mind` از `6c717ecc` تا HEAD شامل ۱۸ commit است | E3 | `git log --oneline 6c717ecc..HEAD` (خروجی: `75b63962`…`98e6f9b5`); `git branch --show-current` → `feature/work-calm-mind`; `git rev-parse HEAD` → `98e6f9b5…` |
+| classify + API POST موجود است | E1/E2 | `phase-b-be.md:22-28`; `phase-critic.md:26`; commit `75b63962` |
+| CreateWorkWizard سه‌مرحله‌ای و intake | E1/E2 | `phase-b-fe.md:18-22`, `:28`; `phase-critic.md:27`; commit `368b7e33` |
+| مهاجرت ۵۵۰ روی دیسک و اشیاء جدول/RPC | E1/E2 | `…550….sql:18`, `:119`; `phase-c-data.md:13-18` |
+| اعمال ۵۵۰ روی کپی LAN (نه production) با apply_exit=0 | E3 (checkpoint) | `phase-c-data.md:27-29`, `:56-60` → `_550-apply.out.txt`; `phase-c-data.md:89` |
+| TestReportPanel + RPC کلاینت وقتی testing | E1/E2 | `phase-c-fe.md:20-23`, `:29-33`; `phase-critic.md:28`; commit `def9eb39` |
+| مهاجرت ۵۵۱ روی دیسک | E1/E2 | `…551….sql:18`; `phase-d-data.md:15-20` |
+| اعمال ۵۵۱ روی کپی LAN (نه production) با apply_exit=0 | E3 (checkpoint) | `phase-d-data.md:29-31`, `:47-51` → `_551-apply.out.txt`; `phase-d-data.md:83` |
+| settings در `/operations/work/settings` | E1/E2 | `phase-d-fe.md:22-25`, `:37`; `_app.operations.work_.settings.tsx:8-14`; commit `a48b88a5` |
+| board UX فاز E | E1/E2 | `phase-e-fe.md:14-20`; `phase-critic.md:30`; commit `efa9c841` |
+| RTL pass با حکم PARTIAL (بدون رندر مرورگر) | E1 | `phase-e-rtl.md:10`; commit `1029d23e` |
+| e2e 12/12 EXIT=0 روی Vite محلی + LAN Supabase | E3 | `phase-f-e2e.md:34`, `:56-58`; `_e2e-phase-f.out.txt` (`12 passed (57.6s)`); `_e2e-phase-f.exit.txt` (`0`) |
+| `npm run build` EXIT=0 در فاز F | E3 | `phase-f-e2e.md:35`; `_e2e-phase-f-build.exit.txt` (`0`); `registry/e2e/run.json:15` |
+| دستور UI محلی: Vite `:5199` + LAN Supabase | E1 | `e2e.md:12-24`; `phase-f-e2e.md:11-27` |
+| critic حکم APPROVE برای AC 1–6 | E1/E5 (checkpoint) | `phase-critic.md:113-116`; e2e مجدد critic: `_critic-e2e.exit.txt` (`0`), `_critic-e2e.out.txt` (`12 passed`) |
+| `public.tasks` در diff مهاجرت‌های ۵۵۰/۵۵۱ ALTER نشد | E1/E2 | `phase-critic.md:41`; `phase-c-data.md:20`, `:71`; `phase-d-data.md:22`, `:63` |
 
 ### How to verify
 
-1. Confirm migration objects: names in `checkpoints/p1-data.md:16-32` vs live DB (not re-probed in this docs pass).
-2. Open board at `/operations/work` on a build that includes this branch (local Vite recipe in `checkpoints/e2e.md:12-19`).
-3. Run: `npx playwright test e2e/business-flows/calm-mind-work.spec.ts --reporter=list` with `E2E_BASE_URL=http://127.0.0.1:5199` (`e2e.md:21-24`).
-
-### e2e (honest)
-
-Passed **only** against local Vite `:5199` + LAN Supabase; **not** claimed green on default LAN web `:3100` (`e2e.md:36-39`, `:82`).
+1. `git log --oneline 6c717ecc..HEAD` روی worktree `d:\AfraKalaTest\wt-work-calm` (`git branch --show-current` = `feature/work-calm-mind`).
+2. Vite محلی طبق `checkpoints/e2e.md:12-19` یا `phase-f-e2e.md:11-22` روی `http://127.0.0.1:5199/operations/work`.
+3. Playwright: دستور در `phase-f-e2e.md:24-27`؛ انتظار ۱۲ پاس مطابق `_e2e-phase-f.out.txt`.
 
 ## چه چیزی تأیید نشد
 
-- Production apply of migrations 543 / 544 (LAN copy only — `checkpoints/p1-data.md:6`, `:63`; `p1-data-rls-fix.md:60-61`).
-- Re-run of independent sec-rls glance after 544 (original verdict remains FAIL on pre-544 baseline — `sec-rls.md:10`; remediation evidence is `p1-data-rls-fix.md`, not a second critic pass).
-- e2e green on `http://192.168.170.8:3100` without local Vite (`e2e.md:74-75`, `:82`).
-- Accept-merge UI/path (suite covers dismiss only — `e2e.md:77`).
-- Cold-session RBAC [A-10] (`e2e.md:79`; `p1-fe.md:69`).
-- Embedding-based similarity and morning **push** notification (optional backlog in `TASK-MANAGER-METAPROMPT.md:111`; not present as code under `src/components/work/` for notif).
-- Live re-run of typecheck/build/e2e by this docs-writer session (relies on checkpoint artifacts above; not re-executed here).
-- Push / merge of `feature/work-calm-mind` to shared branches (forbidden without human approval; `CONTRACTS.md:23`).
+- اعمال production مهاجرت‌های ۵۵۰/۵۵۱ (فقط کپی LAN ادعا شده — `phase-c-data.md:29`, `:89`; `phase-d-data.md:31`, `:83`).
+- merge شاخهٔ `feature/work-calm-mind` به `main` (این docs-writer فقط docs را به‌روز می‌کند؛ `git log -1 --format="%H" main` در این worktree روی `a935be0b…` است و با HEAD فیچر یکی نیست — ادغام ادعا نمی‌شود).
+- e2e سبز روی LAN web پیش‌فرض `:3100` بدون Vite محلی (تصویر stale — `e2e.md:10`, `:74-75`, `:82`).
+- شاهد رندرشدهٔ مرورگر برای RTL (حکم PARTIAL — `phase-e-rtl.md:10`).
+- سیم‌کشی TaxonomySelect روی صفحهٔ جزئیات (فقط ویزارد+فیلتر؛ یادداشت critic — `phase-critic.md:29`, `:90`).
+- اجرای مجدد typecheck/build/e2e توسط این جلسهٔ docs-writer (به artifactهای checkpoint و critic اتکا شده؛ اینجا دوباره اجرا نشد).
+- فایل `docs/missions/work-calm-mind/PROGRESS.md` در این worktree وجود ندارد (`Test-Path` → `False`)؛ بنابراین به‌روزرسانی PROGRESS انجام نشد.
 
 ## ریسک‌های باقی‌مانده
 
-- LAN web image stale at `APP_GIT_SHA=a935be0b` ⇒ SPA 404 for `/operations/work` (`e2e.md:10`).
-- Committed `e2e/auth/admin.storage.json` JWT expired; suite mints token instead (`e2e.md:68-70`; spec `calm-mind-work.spec.ts:25-28`).
-- Generated `integrations/supabase/types.ts` still lacks `work_*` — lib casts `(supabase as any)` (`p1-be.md:50-51`).
-- Nav `module` key reused `invoices` (no dedicated `work` ModuleKey) (`registry.ts:572-573`; `p1-fe.md:54`).
-- `viewer` is still in DB RLS allowlist (544) and `role_permissions` module `work`, but UI/nav routes exclude `viewer` (`…544….sql:55`; `…543.sql:23-25`; `_app.operations.work.tsx:5`; `registry.ts:1410`; `p1-data-rls-fix.md:32`).
+- LAN web هنوز redeploy نشده ⇒ مسیر `/operations/work` روی `:3100` ممکن است 404 بماند (`e2e.md:10`, `:74`).
+- Vite cache روی Windows می‌تواند classify را 404 جعلی نشان دهد تا `.vite` پاک شود (`phase-critic.md:45-46`, `:91`).
+- جزئیات کار هنوز Input آزاد برای گروه/بخش دارد نه TaxonomySelect (`phase-critic.md:90`).
+- RTL بدون تأیید بصری مرورگر (`phase-e-rtl.md:10`).
+- `viewer` در الگوی RLS ۵۴۴/۵۵۰ ممکن است با گیت UI فرق داشته باشد (یادداشت critic روی RLS ۵۵۰ — `phase-critic.md:28`).
 
 ## دقیقاً چه چیزی باید بازبینی شود
 
-1. **Next (ops):** redeploy `afrakala-lan-web` from this branch and re-run e2e with default `E2E_BASE_URL=http://192.168.170.8:3100` (`e2e.md:74-75`).
-2. **Next (product, optional):** embedding similarity upgrade; morning notification; reports (`TASK-MANAGER-METAPROMPT.md:111`).
-3. **Review:** accept-merge path + cold RBAC before calling LAN default COMPLETE (`e2e.md:77-79`).
-4. **Out of scope for this mission (do not treat as shipped):** ALTER/`public.tasks` / `/operations/tasks` changes (`LEDGER.md:6`); production migration without owner approval (`p1-data.md:63-64`).
-5. Module README for reviewers: `docs/research/work-calm-mind/README.md`.
+1. **Ops:** redeploy `afrakala-lan-web` از این شاخه و e2e با `E2E_BASE_URL=http://192.168.170.8:3100` (`e2e.md:74-75`).
+2. **Product (اختیاری):** TaxonomySelect روی `WorkItemDetailPage` (`phase-critic.md:99`).
+3. **RTL:** یک پاس بصری مرورگر پس از Vite محلی (`phase-e-rtl.md:10`).
+4. **Production:** اعمال ۵۵۰/۵۵۱ فقط با تأیید صریح مالک DB — الان ادعا نشده (`phase-c-data.md:89`; `phase-d-data.md:83`).
+5. **Merge به main:** فقط پس از تأیید انسان؛ در این HANDOFF ادعا نشده است.
+6. **Critic artifact:** `checkpoints/phase-critic.md` حکم APPROVE — بازبینی مستقل بعدی می‌تواند همان ACها را تکرار کند (`phase-critic.md:113-116`).
