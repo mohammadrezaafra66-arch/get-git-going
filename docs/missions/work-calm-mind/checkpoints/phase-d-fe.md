@@ -5,7 +5,9 @@
 **Worktree:** `d:\AfraKalaTest\wt-work-calm`  
 **HEAD_start:** `16c83608754206c097e27cd898604a468b3315ee`  
 **deadline_at:** 2026-09-16T06:50:00+05:00  
-**status:** COMPLETE (pending commit SHA fill)
+**status:** COMPLETE  
+**commit:** `a48b88a50340d288896a42a42917588839248293`  
+**pushed:** `16c83608..a48b88a5` → `origin/feature/work-calm-mind` (PUSH_EXIT=0)
 
 ## Heartbeat
 - 03:39 — HEAD 16c83608; branch feature/work-calm-mind; migration 551 present (not edited)
@@ -76,5 +78,5 @@
 - Playwright for settings CRUD
 
 ## Commit / push
-- **commit:** _(filled after commit)_
-- **pushed:** _(filled after push)_
+- **commit:** `a48b88a50340d288896a42a42917588839248293`
+- **pushed:** `16c83608..a48b88a5` → `origin/feature/work-calm-mind` (EXIT=0)
