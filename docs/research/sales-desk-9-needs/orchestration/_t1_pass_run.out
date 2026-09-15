@@ -1,0 +1,18 @@
+
+Running 7 tests using 1 worker
+
+(node:27732) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/7] [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:187:3 › sales-desk-9 business flow › 0 · seed fixture customer+person
+[chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:187:3 › sales-desk-9 business flow › 0 · seed fixture customer+person
+
+
+[2/7] [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:197:3 › sales-desk-9 business flow › 0b · source nav registry carries میز فروش + فعالیت تلفنی
+[3/7] [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:208:3 › sales-desk-9 business flow › 1 · nav entries: میز فروش + فعالیت تلفنی under فروش
+[4/7] [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:223:3 › sales-desk-9 business flow › 2 · create request interaction via sales-desk UI / RPC-through-page
+[5/7] [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:264:3 › sales-desk-9 business flow › 3 · set follow-up via RPC through page
+[6/7] [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:283:3 › sales-desk-9 business flow › 4 · open dossier + write note + outcome won
+[7/7] [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:344:3 › sales-desk-9 business flow › 5 · call-activity link from sales-desk header
+  7 passed (28.3s)
