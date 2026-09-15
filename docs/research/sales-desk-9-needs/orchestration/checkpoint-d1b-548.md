@@ -6,8 +6,8 @@
 | **Agent** | dev-data-engineer |
 | **Branch** | `feature/sales-desk` |
 | **HEAD at start** | `04c0268a0154d64123b88abc0866719a6440d363` |
-| **HEAD at end** | `0176dd6cfaed29fa4175dddda6b16569a0167003` |
-| **Commits** | `d088ebce` (548 migration + down + E4 evidence + checkpoint) · `0176dd6c` (SHA note) |
+| **HEAD at end** | `fb9a07205a57ed7eca25df183e446da98cdf9512` |
+| **Commits** | `d088ebce` (548 + evidence) · `0176dd6c` / `fb9a0720` (checkpoint SHA notes) |
 | **Worktree** | `D:\AfraKalaTest\app` |
 | **Deadline** | 2026-09-16T07:00:00+05:00 |
 | **Written** | 2026-09-16 (local) |
