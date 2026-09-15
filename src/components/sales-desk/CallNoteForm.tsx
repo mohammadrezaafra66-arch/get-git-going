@@ -125,6 +125,8 @@ export function CallNoteForm({
         <Input
           id="sd-note-fu"
           type="datetime-local"
+          dir="ltr"
+          className="text-left"
           value={followUpLocal}
           onChange={(e) => setFollowUpLocal(e.target.value)}
         />

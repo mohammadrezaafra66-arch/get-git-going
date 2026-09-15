@@ -6,10 +6,16 @@ import { CalendarClock, Inbox, Loader2, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { supabase } from "@/integrations/supabase/client";
 import type { DossierInteraction } from "@/lib/sales-desk";
 import { OutcomeButtons } from "./OutcomeButtons";
+
+const BADGE_KIND_LABEL: Record<string, string> = {
+  follow: "پیگیری",
+  request: "درخواست",
+  call: "تماس",
+};
 
 type DeskRow = DossierInteraction & {
   person?: { display_name: string } | null;
@@ -208,8 +214,8 @@ function Section({
           {icon}
           {title}
           {!loading && !error ? (
-            <Badge variant="secondary" className="text-[10px]">
-              {rows.length}
+            <Badge variant="secondary" className="text-[10px] tabular-nums">
+              {toFaDigits(rows.length)}
             </Badge>
           ) : null}
         </CardTitle>
@@ -232,7 +238,7 @@ function Section({
               >
                 <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
                   <Badge variant="outline" className="text-[10px]">
-                    {badgeKind}
+                    {BADGE_KIND_LABEL[badgeKind] ?? badgeKind}
                   </Badge>
                   <span className="font-medium">
                     {r.person?.display_name ?? "شخص"}

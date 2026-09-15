@@ -44,7 +44,7 @@ export function OutcomeButtons({
   if (currentStatus && currentStatus !== "open") {
     return (
       <span className="text-xs text-muted-foreground">
-        وضعیت: {statusLabel(currentStatus)}
+        وضعیت: {salesInteractionStatusLabel(currentStatus)}
       </span>
     );
   }
@@ -70,7 +70,8 @@ export function OutcomeButtons({
   );
 }
 
-function statusLabel(s: string): string {
+/** برچسب فارسی وضعیت تعامل — برای تایم‌لاین و دکمه‌ها مشترک. */
+export function salesInteractionStatusLabel(s: string): string {
   switch (s) {
     case "won":
       return "موفق";

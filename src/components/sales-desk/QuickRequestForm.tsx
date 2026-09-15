@@ -167,7 +167,14 @@ export function QuickRequestForm({
       ) : (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/20 px-3 py-2 text-sm">
           <span>
-            شخص: <strong>{personName ?? personId}</strong>
+            شخص:{" "}
+            <strong>
+              {personName ?? (
+                <span dir="ltr" className="inline-block font-mono text-xs">
+                  {personId}
+                </span>
+              )}
+            </strong>
           </span>
           {!initialPersonId ? (
             <Button
@@ -228,6 +235,8 @@ export function QuickRequestForm({
           <Input
             id="sd-req-fu"
             type="datetime-local"
+            dir="ltr"
+            className="text-left"
             value={followUpLocal}
             onChange={(e) => setFollowUpLocal(e.target.value)}
           />

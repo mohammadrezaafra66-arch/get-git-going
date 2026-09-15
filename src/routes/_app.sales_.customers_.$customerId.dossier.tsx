@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { ArrowRight, Loader2, Phone } from "lucide-react";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
@@ -11,6 +12,29 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CallNoteForm, InteractionTimeline } from "@/components/sales-desk";
 import { loadSalesDossier } from "@/lib/sales-desk";
 import { formatDateTimeFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import {
+  SALES_QUOTE_STATUS_LABELS,
+  type SalesQuoteStatus,
+} from "@/lib/sales/quotes";
+
+function callDirectionLabel(direction: string): string {
+  switch (direction) {
+    case "inbound":
+      return "ورودی";
+    case "outbound":
+      return "خروجی";
+    case "internal":
+      return "داخلی";
+    default:
+      return direction;
+  }
+}
+
+function quoteStatusLabel(status: string): string {
+  return (
+    SALES_QUOTE_STATUS_LABELS[status as SalesQuoteStatus] ?? status
+  );
+}
 
 export const Route = createFileRoute("/_app/sales_/customers_/$customerId/dossier")({
   staticData: {
@@ -153,9 +177,13 @@ function CustomerSalesDossierPage() {
                 <Row
                   label="تلفن مشتری"
                   value={
-                    customerQ.data.phone
-                      ? toFaDigits(customerQ.data.phone)
-                      : "—"
+                    customerQ.data.phone ? (
+                      <span dir="ltr" className="inline-block text-right tabular-nums">
+                        {toFaDigits(customerQ.data.phone)}
+                      </span>
+                    ) : (
+                      "—"
+                    )
                   }
                 />
                 {personId ? (
@@ -191,7 +219,14 @@ function CustomerSalesDossierPage() {
                         <div className="font-medium">{c.name ?? c.id.slice(0, 8)}</div>
                         <div className="text-xs text-muted-foreground">
                           مسئول: {c.responsible?.full_name ?? "—"}
-                          {c.phone ? ` · ${toFaDigits(c.phone)}` : ""}
+                          {c.phone ? (
+                            <>
+                              {" · "}
+                              <span dir="ltr" className="inline-block tabular-nums">
+                                {toFaDigits(c.phone)}
+                              </span>
+                            </>
+                          ) : null}
                         </div>
                       </li>
                     ))}
@@ -225,7 +260,11 @@ function CustomerSalesDossierPage() {
                         >
                           {q.quote_number
                             ? toFaDigits(q.quote_number)
-                            : q.id.slice(0, 8)}
+                            : (
+                              <span dir="ltr" className="font-mono text-xs">
+                                {q.id.slice(0, 8)}
+                              </span>
+                            )}
                         </Link>
                         <span className="mr-2 text-xs text-muted-foreground">
                           {formatDateTimeFa(q.created_at)}
@@ -233,7 +272,7 @@ function CustomerSalesDossierPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[10px]">
-                          {q.status}
+                          {quoteStatusLabel(q.status)}
                         </Badge>
                         <span className="tabular-nums">
                           {q.final_amount != null
@@ -276,7 +315,7 @@ function CustomerSalesDossierPage() {
                       >
                         <div className="flex flex-wrap gap-2">
                           <Badge variant="secondary" className="text-[10px]">
-                            {c.direction}
+                            {callDirectionLabel(c.direction)}
                           </Badge>
                           {c.is_missed ? (
                             <Badge variant="outline" className="text-[10px]">
@@ -288,11 +327,26 @@ function CustomerSalesDossierPage() {
                           </span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">
-                          داخلی: {c.extension ? toFaDigits(c.extension) : "—"}
-                          {c.duration_seconds != null
-                            ? ` · ${toFaDigits(c.duration_seconds)}ث`
-                            : ""}
-                          {c.disposition ? ` · ${c.disposition}` : ""}
+                          داخلی:{" "}
+                          <span dir="ltr" className="inline-block tabular-nums">
+                            {c.extension ? toFaDigits(c.extension) : "—"}
+                          </span>
+                          {c.duration_seconds != null ? (
+                            <>
+                              {" · "}
+                              <span className="tabular-nums">
+                                {toFaDigits(c.duration_seconds)}ث
+                              </span>
+                            </>
+                          ) : null}
+                          {c.disposition ? (
+                            <>
+                              {" · "}
+                              <span dir="ltr" className="inline-block font-mono text-[11px]">
+                                {c.disposition}
+                              </span>
+                            </>
+                          ) : null}
                         </p>
                       </li>
                     ))}
@@ -316,7 +370,13 @@ function CustomerSalesDossierPage() {
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({
+  label,
+  value,
+}: {
+  label: string;
+  value: ReactNode;
+}) {
   return (
     <div className="flex flex-wrap justify-between gap-2 border-b border-border/40 py-1.5 last:border-0">
       <dt className="text-muted-foreground">{label}</dt>

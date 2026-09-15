@@ -217,7 +217,10 @@ export function CallerInboundPopup() {
                 ) : null}
                 {active.phoneHint ? (
                   <span className="mt-1 block text-xs">
-                    شماره: {toFaDigits(active.phoneHint)}
+                    شماره:{" "}
+                    <span dir="ltr" className="inline-block tabular-nums">
+                      {toFaDigits(active.phoneHint)}
+                    </span>
                   </span>
                 ) : null}
               </>

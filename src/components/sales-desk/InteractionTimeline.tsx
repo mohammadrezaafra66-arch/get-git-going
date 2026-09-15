@@ -4,7 +4,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DossierInteraction } from "@/lib/sales-desk";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
-import { OutcomeButtons } from "./OutcomeButtons";
+import {
+  OutcomeButtons,
+  salesInteractionStatusLabel,
+} from "./OutcomeButtons";
 
 const KIND_META: Record<string, { label: string; Icon: typeof Phone }> = {
   request: { label: "درخواست", Icon: Inbox },
@@ -63,7 +66,7 @@ export function InteractionTimeline({
                       {meta.label}
                     </Badge>
                     <Badge variant="outline" className="text-[10px]">
-                      {row.status}
+                      {salesInteractionStatusLabel(row.status)}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                       {formatDateTimeFa(row.created_at)}

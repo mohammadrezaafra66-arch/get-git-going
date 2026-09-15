@@ -42,7 +42,10 @@ export function MyMonthStatsCard() {
             <Stat label="ناموفق" value={q.data.lost_count} />
             {q.data.month_start ? (
               <p className="col-span-3 text-xs text-muted-foreground">
-                از {toFaDigits(q.data.month_start.slice(0, 10))}
+                از{" "}
+                <span dir="ltr" className="inline-block tabular-nums">
+                  {toFaDigits(q.data.month_start.slice(0, 10))}
+                </span>
                 {q.data.calls_source === "call_logs" ? " · منبع: تماس‌های ثبت‌شده" : null}
               </p>
             ) : null}
