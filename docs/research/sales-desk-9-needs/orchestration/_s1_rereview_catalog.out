@@ -1,0 +1,45 @@
+    db    |  current_user  
+----------+----------------
+ afrakala | supabase_admin
+(1 row)
+
+    version     
+----------------
+ 20260916033000
+(1 row)
+
+                tgname                 | tgenabled 
+---------------------------------------+-----------
+ trg_sales_interactions_lock_author_id | O
+(1 row)
+
+                                           fndef                                           
+-------------------------------------------------------------------------------------------
+ CREATE OR REPLACE FUNCTION public.tg_sales_interactions_lock_author_id()                 +
+  RETURNS trigger                                                                         +
+  LANGUAGE plpgsql                                                                        +
+  SET search_path TO 'public'                                                             +
+ AS $function$                                                                            +
+ BEGIN                                                                                    +
+   IF NEW.author_id IS DISTINCT FROM OLD.author_id THEN                                   +
+     -- Only gate PostgREST / authenticated sessions. Superuser / service_role /          +
+     -- table-owner sessions (current_user <> 'authenticated') may still repair.          +
+     IF current_user = 'authenticated'                                                    +
+        AND NOT public.has_any_role(auth.uid(), ARRAY['admin', 'manager']::text[])        +
+     THEN                                                                                 +
+       RAISE EXCEPTION                                                                    +
+         'sales_interactions.author_id is immutable for non-admin/manager (migration 548)'+
+         USING ERRCODE = '42501';                                                         +
+     END IF;                                                                              +
+   END IF;                                                                                +
+   RETURN NEW;                                                                            +
+ END;                                                                                     +
+ $function$                                                                               +
+ 
+(1 row)
+
+ authenticated_has_delete 
+--------------------------
+ f
+(1 row)
+

@@ -10,11 +10,14 @@
 | **Scope** | Migrations 545 / 546 / 547 + live LAN db `afrakala` (read-only / `ROLLBACK` only) |
 | **Deadline** | 2026-09-16T06:30:00+05:00 |
 | **Written** | 2026-09-16 |
-| **Verdict** | **REJECT** |
+| **Verdict** | **REJECT** (original S1) → superseded by **RE-REVIEW APPROVE** below for C6 only |
+| **RE-REVIEW** | 2026-09-16 — migration 548; see section at end |
 
 Rule applied: **artifact-positive** — absence of a quoted permission check = unprotected.
 
 Evidence appendix (this session): `_s1_catalog.{sql,out}`, `_s1_ids.{sql,out}`, `_s1_rls_probe.{sql,out}`, `_s1_notify_call.{sql,out}`.
+
+RE-REVIEW evidence: `_s1_rereview_catalog.{sql,out}`, `_s1_rereview_steal.{sql,out}`, runner `_s1_rereview_run.cjs`.
 
 ---
 
@@ -149,3 +152,92 @@ Evidence appendix (this session): `_s1_catalog.{sql,out}`, `_s1_ids.{sql,out}`, 
 - Created gitignored? No — probe SQL/out under `docs/research/.../orchestration/` (tracked if committed).
 - Password never written to repo files.
 - No `git push`. Docs commit of this checkpoint (+ optional `_s1_*` evidence) only if performed after write.
+
+---
+
+## RE-REVIEW — migration 548 `author_id` UPDATE immutability (C6 only)
+
+| Field | Value |
+|---|---|
+| **Agent** | `dev-security-critic` (independent; did **not** author 548) |
+| **Branch** | `feature/sales-desk` |
+| **HEAD at RE-REVIEW start** | `755466cf0a5e185bdb99d1c6d22e91006da7a7d0` |
+| **Scope** | **Only** C6 / `author_id` UPDATE lock after `20260916033000_548_sales_interactions_lock_author_id.sql` on LAN db `afrakala` |
+| **Prior REJECT cause** | C6 `assignee_can_steal_author=t` |
+| **Deadline** | 2026-09-16T07:15:00+05:00 |
+| **Verdict** | **APPROVE** (C6 closed; prior MEDIUM assign-spam still open, out of this re-verify) |
+
+### Artifact مثبت — trigger from migration 548 (E2)
+
+File `supabase/migrations/20260916033000_548_sales_interactions_lock_author_id.sql` lines 22–51:
+
+```sql
+CREATE OR REPLACE FUNCTION public.tg_sales_interactions_lock_author_id()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  IF NEW.author_id IS DISTINCT FROM OLD.author_id THEN
+    IF current_user = 'authenticated'
+       AND NOT public.has_any_role(auth.uid(), ARRAY['admin', 'manager']::text[])
+    THEN
+      RAISE EXCEPTION
+        'sales_interactions.author_id is immutable for non-admin/manager (migration 548)'
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_sales_interactions_lock_author_id
+  BEFORE UPDATE ON public.sales_interactions
+  FOR EACH ROW
+  EXECUTE FUNCTION public.tg_sales_interactions_lock_author_id();
+```
+
+Live catalog match (**E3**, `_s1_rereview_catalog.out`): ledger `20260916033000` present; trigger `trg_sales_interactions_lock_author_id` `tgenabled=O`; live `pg_get_functiondef` body matches the immutability gate + `42501` message; `authenticated_has_delete=f`.
+
+### Behavioral probe [E4] — rolled-back assignee steal
+
+| Phase | Result | Evidence |
+|---|---|---|
+| Before 548 (prior S1) | `assignee_can_steal_author=t` | `_s1_rls_probe.out` / `_s1_steal_before_548.out` |
+| After 548 (this RE-REVIEW) | `assignee_can_steal_author=f` | `_s1_rereview_steal.out` |
+
+Independent probe SQL: `_s1_rereview_steal.sql` (BEGIN → assignee JWT UPDATE `author_id` → nested EXCEPTION → SELECT result → ROLLBACK). Runner exit: `NODE_EXIT=0` / `PSQL … rc= 0` (**E3**, [G-3] via Node `execFileSync` status, no pipe truncation).
+
+Quoted result row from `_s1_rereview_steal.out`:
+
+```
+ assignee_can_steal_author | author_after | author_expected | steal_err | authenticated_has_delete
+ f                         | 00ebe9d3-…   | 00ebe9d3-…      | sales_interactions.author_id is immutable for non-admin/manager (migration 548) | f
+ROLLBACK
+```
+
+(`author_after` = `author_expected`; steal blocked by trigger message naming migration 548.)
+
+### Control C6 after 548
+
+| Control | وضعیت | Artifact |
+|---|---|---|
+| **C6 `author_id` immutable for non-admin/manager on UPDATE** | **برقرار** | Trigger body above (E2) + live def (E3) + `assignee_can_steal_author=f` (E4) |
+
+### Out of this RE-REVIEW (still open from original S1)
+
+| شدت | یادداشت |
+|---|---|
+| **MEDIUM** | Prior salesperson / unbounded `salesperson_id` assign → notify spam — **still open**; not re-probed; not blocking this C6-only APPROVE. |
+| **LOW** | Excess REFERENCES/TRIGGER grants; authz drift on lost sales role — unchanged, out of scope. |
+
+### [C-1] ways this RE-REVIEW could look green but not be
+
+1. **Exception swallowed without checking author unchanged** — countered: result row requires `author_after = author_expected` and raises if not.
+2. **Probe as table owner / not `authenticated`** — countered: `SET LOCAL ROLE authenticated` + JWT `sub` = assignee before steal UPDATE; error text is the 548 gate (not RLS miss).
+3. **548 applied only in files, not live** — countered: ledger version + live `pg_get_functiondef` + behavioral block on LAN `afrakala`.
+
+### حکم RE-REVIEW: **APPROVE**
+
+**APPROVE** for the scoped C6 / `author_id` UPDATE immutability fix after migration 548. Original S1 REJECT cause is closed with E2+E3+E4. Do not treat as blanket approval of all prior MEDIUM/LOW findings.
