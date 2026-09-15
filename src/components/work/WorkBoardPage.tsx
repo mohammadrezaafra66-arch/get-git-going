@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Loader2, Plus, FolderKanban, RefreshCw, Settings2 } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  Plus,
+  FolderKanban,
+  RefreshCw,
+  Settings2,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -15,6 +22,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import {
   acceptMerge,
   dismissMerge,
   getMorningSummary,
@@ -25,11 +38,15 @@ import {
   type WorkDecisionBucket,
   type WorkItem,
   type WorkItemKind,
+  type WorkItemPriority,
   type WorkItemStatus,
   type WorkMode,
   type WorkMorningSummary,
 } from "@/lib/work";
-import { MorningSummaryStrip } from "./MorningSummary";
+import {
+  MorningSummaryStrip,
+  type MorningBucketKey,
+} from "./MorningSummary";
 import { DecisionQueue } from "./DecisionQueue";
 import { MergePanel, type MergeSuggestionView } from "./MergePanel";
 import { CreateWorkWizard } from "./CreateWorkWizard";
@@ -63,7 +80,10 @@ export function WorkBoardPage() {
   const [kind, setKind] = useState<string>(ALL);
   const [bucket, setBucket] = useState<string>(ALL);
   const [workMode, setWorkMode] = useState<string>(ALL);
+  const [priority, setPriority] = useState<string>(ALL);
+  const [openOnly, setOpenOnly] = useState(false);
   const [search, setSearch] = useState("");
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
   const [taxonomyGroups, setTaxonomyGroups] = useState<string[]>([]);
 
   const [summary, setSummary] = useState<WorkMorningSummary | null>(null);
@@ -106,6 +126,9 @@ export function WorkBoardPage() {
         kind: kind === ALL ? undefined : (kind as WorkItemKind),
         decision_bucket:
           bucket === ALL ? undefined : (bucket as WorkDecisionBucket),
+        priority:
+          priority === ALL ? undefined : (priority as WorkItemPriority),
+        openOnly: status === ALL && openOnly ? true : undefined,
         search: search.trim() || undefined,
         limit: 100,
       });
@@ -122,7 +145,7 @@ export function WorkBoardPage() {
     } finally {
       setItemsLoading(false);
     }
-  }, [status, kind, bucket, workMode, group, search]);
+  }, [status, kind, bucket, workMode, group, search, priority, openOnly]);
 
   const loadQueue = useCallback(async () => {
     setQueueLoading(true);
@@ -211,6 +234,54 @@ export function WorkBoardPage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "fa"));
   }, [items, queue, taxonomyGroups]);
 
+  const activeMorningBucket: MorningBucketKey | null = openOnly
+    ? "open"
+    : bucket === "today_decide" ||
+        bucket === "today_do" ||
+        bucket === "waiting"
+      ? bucket
+      : null;
+
+  function handleMorningBucketClick(key: MorningBucketKey) {
+    if (key === "open") {
+      if (openOnly && bucket === ALL) {
+        setOpenOnly(false);
+        return;
+      }
+      setBucket(ALL);
+      setOpenOnly(true);
+      return;
+    }
+    if (bucket === key && !openOnly) {
+      setBucket(ALL);
+      return;
+    }
+    setBucket(key);
+    setOpenOnly(false);
+  }
+
+  function toggleChipOpen() {
+    if (openOnly && status === ALL) {
+      setOpenOnly(false);
+      return;
+    }
+    setStatus(ALL);
+    setOpenOnly(true);
+  }
+
+  function toggleChipTodayDo() {
+    if (bucket === "today_do") {
+      setBucket(ALL);
+      return;
+    }
+    setBucket("today_do");
+    setOpenOnly(false);
+  }
+
+  function toggleChipHighPriority() {
+    setPriority((prev) => (prev === "high" ? ALL : "high"));
+  }
+
   async function handleQueueBucket(
     itemId: string,
     next: "today_do" | "waiting" | null,
@@ -264,7 +335,7 @@ export function WorkBoardPage() {
       className="relative min-h-[70vh] bg-[radial-gradient(ellipse_at_top,_rgba(14,116,144,0.08),_transparent_55%),linear-gradient(180deg,#f8fafc_0%,#f0fdfa_100%)]"
       dir="rtl"
     >
-      <div className="container max-w-5xl space-y-6 py-6">
+      <div className="container max-w-5xl space-y-6 py-6 pb-24 md:pb-6">
         <PageHeader
           title="دستیار کار"
           description="تابلوی آرام برای تصمیم امروز، انجام کار و بستن حلقه — بدون شلوغی."
@@ -272,14 +343,14 @@ export function WorkBoardPage() {
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild>
                 <Link to="/operations/work/topics">
-                  <FolderKanban className="h-4 w-4" />
+                  <FolderKanban className="me-1.5 h-4 w-4" />
                   موضوع‌ها
                 </Link>
               </Button>
               {canManageTaxonomies ? (
                 <Button variant="outline" size="sm" asChild>
                   <Link to="/operations/work/settings">
-                    <Settings2 className="h-4 w-4" />
+                    <Settings2 className="me-1.5 h-4 w-4" />
                     طبقه‌بندی
                   </Link>
                 </Button>
@@ -289,11 +360,15 @@ export function WorkBoardPage() {
                 size="sm"
                 onClick={() => void refreshAll()}
               >
-                <RefreshCw className="h-4 w-4" />
+                <RefreshCw className="me-1.5 h-4 w-4" />
                 تازه‌سازی
               </Button>
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
-                <Plus className="h-4 w-4" />
+              <Button
+                size="sm"
+                className="hidden md:inline-flex"
+                onClick={() => setCreateOpen(true)}
+              >
+                <Plus className="me-1.5 h-4 w-4" />
                 کار جدید
               </Button>
             </div>
@@ -304,6 +379,8 @@ export function WorkBoardPage() {
           summary={summary}
           loading={summaryLoading}
           error={summaryError}
+          activeBucket={activeMorningBucket}
+          onBucketClick={handleMorningBucketClick}
         />
 
         <DecisionQueue
@@ -324,66 +401,121 @@ export function WorkBoardPage() {
         />
 
         <section className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[8rem] flex-1 space-y-1">
-              <label className="text-xs text-slate-500">جستجو</label>
-              <Input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="عنوان…"
-              />
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-end gap-2">
+              <div className="min-w-[8rem] flex-1 space-y-1">
+                <label className="text-xs text-slate-500">جستجو</label>
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="عنوان…"
+                />
+              </div>
+              <div className="flex flex-wrap gap-1.5 pb-0.5">
+                <FilterChip
+                  active={openOnly && status === ALL}
+                  onClick={toggleChipOpen}
+                  label="باز"
+                />
+                <FilterChip
+                  active={bucket === "today_do"}
+                  onClick={toggleChipTodayDo}
+                  label="امروز انجام"
+                />
+                <FilterChip
+                  active={priority === "high"}
+                  onClick={toggleChipHighPriority}
+                  label="اولویت بالا"
+                />
+              </div>
             </div>
-            <FilterSelect
-              label="گروه"
-              value={group}
-              onChange={setGroup}
-              options={[
-                { value: ALL, label: "همه" },
-                ...groupOptions.map((g) => ({ value: g, label: g })),
-              ]}
-            />
-            <FilterSelect
-              label="وضعیت"
-              value={status}
-              onChange={setStatus}
-              options={[
-                { value: ALL, label: "همه" },
-                ...ALL_STATUSES.map((s) => ({
-                  value: s,
-                  label: STATUS_LABELS[s],
-                })),
-              ]}
-            />
-            <FilterSelect
-              label="نوع"
-              value={kind}
-              onChange={setKind}
-              options={[
-                { value: ALL, label: "همه" },
-                ...ALL_KINDS.map((k) => ({ value: k, label: KIND_LABELS[k] })),
-              ]}
-            />
-            <FilterSelect
-              label="سطل تصمیم"
-              value={bucket}
-              onChange={setBucket}
-              options={[
-                { value: ALL, label: "همه" },
-                ...ALL_BUCKETS.map((b) => ({
-                  value: b,
-                  label: BUCKET_LABELS[b],
-                })),
-              ]}
-            />
-            <FilterSelect
-              label="حالت کار"
-              value={workMode}
-              onChange={setWorkMode}
-              options={[
-                { value: ALL, label: "همه" },
-                ...ALL_MODES.map((m) => ({ value: m, label: MODE_LABELS[m] })),
-              ]}
-            />
+
+            <Collapsible open={moreFiltersOpen} onOpenChange={setMoreFiltersOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  data-testid="work-filter-more"
+                  className="h-8 gap-1 px-2 text-xs text-slate-600"
+                >
+                  فیلترهای بیشتر
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 transition-transform",
+                      moreFiltersOpen && "rotate-180",
+                    )}
+                  />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="mt-2 flex flex-wrap items-end gap-2">
+                  <FilterSelect
+                    label="گروه"
+                    value={group}
+                    onChange={setGroup}
+                    options={[
+                      { value: ALL, label: "همه" },
+                      ...groupOptions.map((g) => ({ value: g, label: g })),
+                    ]}
+                  />
+                  <FilterSelect
+                    label="وضعیت"
+                    value={status}
+                    onChange={(v) => {
+                      setStatus(v);
+                      if (v !== ALL) setOpenOnly(false);
+                    }}
+                    options={[
+                      { value: ALL, label: "همه" },
+                      ...ALL_STATUSES.map((s) => ({
+                        value: s,
+                        label: STATUS_LABELS[s],
+                      })),
+                    ]}
+                  />
+                  <FilterSelect
+                    label="نوع"
+                    value={kind}
+                    onChange={setKind}
+                    options={[
+                      { value: ALL, label: "همه" },
+                      ...ALL_KINDS.map((k) => ({
+                        value: k,
+                        label: KIND_LABELS[k],
+                      })),
+                    ]}
+                  />
+                  <FilterSelect
+                    label="سطل تصمیم"
+                    value={bucket}
+                    onChange={(v) => {
+                      setBucket(v);
+                      if (v !== ALL) setOpenOnly(false);
+                    }}
+                    options={[
+                      { value: ALL, label: "همه" },
+                      ...ALL_BUCKETS.map((b) => ({
+                        value: b,
+                        label: BUCKET_LABELS[b],
+                      })),
+                    ]}
+                  />
+                  <FilterSelect
+                    label="حالت کار"
+                    value={workMode}
+                    onChange={setWorkMode}
+                    options={[
+                      { value: ALL, label: "همه" },
+                      ...ALL_MODES.map((m) => ({
+                        value: m,
+                        label: MODE_LABELS[m],
+                      })),
+                    ]}
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </div>
 
           {itemsLoading && (
@@ -398,14 +530,26 @@ export function WorkBoardPage() {
             </p>
           )}
           {!itemsLoading && !itemsError && items.length === 0 && (
-            <p className="py-8 text-center text-sm text-slate-500">
-              کاری با این فیلترها پیدا نشد.
-            </p>
+            <div
+              data-testid="work-board-empty"
+              className="flex flex-col items-center gap-3 py-10 text-center"
+            >
+              <p className="text-sm text-slate-600">
+                هنوز کاری برای نمایش نیست. اولین کار را ثبت کنید تا تابلو زنده شود.
+              </p>
+              <Button size="sm" onClick={() => setCreateOpen(true)}>
+                <Plus className="me-1.5 h-4 w-4" />
+                ثبت اولین کار
+              </Button>
+            </div>
           )}
 
           <ul className="divide-y divide-slate-100">
             {items.map((item) => (
-              <li key={item.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <li
+                key={item.id}
+                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
                 <div className="min-w-0">
                   <Link
                     to="/operations/work/$itemId"
@@ -443,6 +587,17 @@ export function WorkBoardPage() {
         </section>
       </div>
 
+      <Button
+        type="button"
+        size="lg"
+        data-testid="work-board-fab"
+        className="fixed bottom-5 end-5 z-40 h-14 w-14 rounded-full p-0 shadow-lg md:hidden"
+        aria-label="کار جدید"
+        onClick={() => setCreateOpen(true)}
+      >
+        <Plus className="h-6 w-6" />
+      </Button>
+
       <CreateWorkWizard
         open={createOpen}
         onOpenChange={setCreateOpen}
@@ -463,6 +618,32 @@ export function WorkBoardPage() {
         }}
       />
     </div>
+  );
+}
+
+function FilterChip({
+  label,
+  active,
+  onClick,
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "rounded-full border px-3 py-1.5 text-xs transition",
+        active
+          ? "border-teal-600 bg-teal-50 text-teal-900"
+          : "border-slate-200 bg-white text-slate-600 hover:border-teal-300",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 

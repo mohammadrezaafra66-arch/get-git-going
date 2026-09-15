@@ -1,17 +1,28 @@
 import { Link } from "@tanstack/react-router";
 import { Loader2, Sunrise } from "lucide-react";
 import { toFaDigits } from "@/lib/i18n/formatters";
+import { cn } from "@/lib/utils";
 import type { WorkMorningSummary } from "@/lib/work";
 import { IMPACT_LABELS } from "./labels";
+
+export type MorningBucketKey =
+  | "today_decide"
+  | "today_do"
+  | "waiting"
+  | "open";
 
 export function MorningSummaryStrip({
   summary,
   loading,
   error,
+  onBucketClick,
+  activeBucket,
 }: {
   summary: WorkMorningSummary | null;
   loading: boolean;
   error: string | null;
+  onBucketClick?: (key: MorningBucketKey) => void;
+  activeBucket?: MorningBucketKey | null;
 }) {
   if (loading) {
     return (
@@ -48,11 +59,11 @@ export function MorningSummaryStrip({
   }
 
   const cells = [
-    { key: "today_decide", label: "امروز تصمیم", value: summary.today_decide },
-    { key: "today_do", label: "امروز انجام", value: summary.today_do },
-    { key: "waiting", label: "در انتظار", value: summary.waiting },
-    { key: "open", label: "باز", value: summary.open },
-  ] as const;
+    { key: "today_decide" as const, label: "امروز تصمیم", value: summary.today_decide },
+    { key: "today_do" as const, label: "امروز انجام", value: summary.today_do },
+    { key: "waiting" as const, label: "در انتظار", value: summary.waiting },
+    { key: "open" as const, label: "باز", value: summary.open },
+  ];
 
   return (
     <section
@@ -67,17 +78,47 @@ export function MorningSummaryStrip({
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
-        {cells.map((c) => (
-          <div
-            key={c.key}
-            className="rounded-xl bg-white/70 px-3 py-3 text-center ring-1 ring-slate-100"
-          >
-            <div className="text-2xl font-bold tracking-tight text-slate-800">
-              {toFaDigits(c.value)}
+        {cells.map((c) => {
+          const active = activeBucket === c.key;
+          const clickable = Boolean(onBucketClick);
+          const className = cn(
+            "rounded-xl bg-white/70 px-3 py-3 text-center ring-1 transition",
+            active
+              ? "ring-2 ring-teal-500 bg-teal-50/90 shadow-sm"
+              : "ring-slate-100",
+            clickable &&
+              "cursor-pointer hover:ring-teal-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500",
+          );
+          if (clickable) {
+            return (
+              <button
+                key={c.key}
+                type="button"
+                data-testid={`morning-bucket-${c.key}`}
+                aria-pressed={active}
+                onClick={() => onBucketClick?.(c.key)}
+                className={className}
+              >
+                <div className="text-2xl font-bold tracking-tight text-slate-800">
+                  {toFaDigits(c.value)}
+                </div>
+                <div className="mt-1 text-xs text-slate-500">{c.label}</div>
+              </button>
+            );
+          }
+          return (
+            <div
+              key={c.key}
+              data-testid={`morning-bucket-${c.key}`}
+              className={className}
+            >
+              <div className="text-2xl font-bold tracking-tight text-slate-800">
+                {toFaDigits(c.value)}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">{c.label}</div>
             </div>
-            <div className="mt-1 text-xs text-slate-500">{c.label}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       {summary.top_impact.length > 0 && (
         <div className="border-t border-sky-100/80 px-4 py-3">
