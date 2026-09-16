@@ -1,6 +1,6 @@
-# Torob Ops Path A — چک‌لیست پذیرش (:3100)
+﻿# Torob Ops Path A — چک‌لیست پذیرش (:3100)
 
-تاریخ اجرا: 2026-09-16  
+تاریخ اجرا: 2026-09-17 (re-verified on :3100 tip 2d9a5b20)  
 SHA وب: ببینید `docker exec afrakala-lan-web printenv APP_GIT_SHA`  
 هارنس: `npx tsx docs/verification/torob-ops-path-a-accept.ts` → خروجی `docs/verification/_torob_path_a_accept.out`
 
@@ -35,3 +35,4 @@ $env:TOROB_OPS_E2E_PASSWORD="e2e-path-a-module-pass"
 $env:E2E_BASE_URL="http://127.0.0.1:3100"
 npx playwright test e2e/torob-ops/torob-ops-path-a*.spec.ts --reporter=line
 ```
+
