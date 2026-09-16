@@ -28,11 +28,11 @@
  * shortcut would drift from them. Nor does it offer a "force" delete: a person with history
  * is refused, and the refusal names what would have been lost.
  */
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, Check, Loader2, Search, Trash2 } from "lucide-react";
+import { AlertTriangle, Check, Loader2, Merge, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +47,7 @@ import { PageHeader } from "@/components/common/PageHeader";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -343,12 +344,201 @@ function DeleteDialog({
   );
 }
 
+async function fetchBlockers(personId: string): Promise<Blocker[]> {
+  const { data, error } = await supabase.rpc(
+    "person_delete_blockers" as never,
+    { p_person_id: personId } as never,
+  );
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as Blocker[];
+}
+
+async function deletePerson(personId: string): Promise<void> {
+  const { error } = await supabase.rpc(
+    "person_delete" as never,
+    { p_person_id: personId } as never,
+  );
+  if (error) throw new Error(error.message);
+}
+
+type BulkScanRow = {
+  person: Enriched;
+  blockers: Blocker[];
+  total: number;
+};
+
+/**
+ * Same count-first rule as the single delete dialog, applied to many people at once.
+ * Anyone with history stays; only zero-blocker rows are offered for deletion.
+ */
+function BulkDeleteDialog({
+  targets,
+  onClose,
+  onDeleted,
+}: {
+  targets: Enriched[];
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const open = targets.length > 0;
+  const targetKey = targets
+    .map((t) => t.id)
+    .sort()
+    .join(",");
+
+  const scan = useQuery({
+    queryKey: ["person-delete-blockers-bulk", targetKey],
+    enabled: open,
+    staleTime: 0,
+    gcTime: 0,
+    queryFn: async (): Promise<BulkScanRow[]> => {
+      const rows: BulkScanRow[] = [];
+      for (const person of targets) {
+        const blockers = await fetchBlockers(person.id);
+        const total = blockers.reduce((s, r) => s + Number(r.row_count), 0);
+        rows.push({ person, blockers, total });
+      }
+      return rows;
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: async (deletable: Enriched[]) => {
+      const failures: { name: string; message: string }[] = [];
+      let deleted = 0;
+      for (const person of deletable) {
+        try {
+          await deletePerson(person.id);
+          deleted += 1;
+        } catch (err) {
+          failures.push({
+            name: person.displayName,
+            message: err instanceof Error ? err.message : "حذف ناموفق بود",
+          });
+        }
+      }
+      return { deleted, failures };
+    },
+    onSuccess: ({ deleted, failures }) => {
+      if (deleted > 0) {
+        toast.success(`${toFaDigits(deleted)} نفر حذف شدند`);
+      }
+      if (failures.length > 0) {
+        toast.error(
+          failures.length === 1
+            ? `حذف «${failures[0].name}» ناموفق بود: ${failures[0].message}`
+            : `حذف ${toFaDigits(failures.length)} نفر ناموفق بود`,
+        );
+      }
+      if (deleted > 0) onDeleted();
+      onClose();
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "حذف گروهی ناموفق بود");
+    },
+  });
+
+  const rows = scan.data ?? [];
+  const deletable = rows.filter((r) => r.total === 0).map((r) => r.person);
+  const blocked = rows.filter((r) => r.total > 0);
+  const canDelete = scan.isSuccess && deletable.length > 0;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => (o ? undefined : onClose())}>
+      <DialogContent dir="rtl" className="sm:max-w-xl">
+        <DialogHeader>
+          <DialogTitle>حذف گروهی ({toFaDigits(targets.length)} نفر)</DialogTitle>
+          <DialogDescription>
+            برای هر نفر انتخاب‌شده، وابستگی‌ها شمرده می‌شود. فقط کسانی که سابقه‌ای ندارند حذف
+            می‌شوند.
+          </DialogDescription>
+        </DialogHeader>
+
+        {scan.isPending ? (
+          <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            در حال بررسی وابستگی‌ها…
+          </div>
+        ) : scan.isError ? (
+          <p className="py-4 text-sm text-destructive">
+            {scan.error instanceof Error ? scan.error.message : "بررسی ناموفق بود"}
+          </p>
+        ) : (
+          <div className="max-h-[50vh] space-y-4 overflow-y-auto py-2">
+            {deletable.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm">
+                  {toFaDigits(deletable.length)} نفر بدون سابقه هستند و حذف می‌شوند:
+                </p>
+                <ul className="list-disc pr-5 text-sm">
+                  {deletable.map((p) => (
+                    <li key={p.id}>{p.displayName}</li>
+                  ))}
+                </ul>
+                <p className="text-sm font-medium text-destructive">این حذف برگشت‌پذیر نیست.</p>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                هیچ‌کدام از انتخاب‌شده‌ها قابل حذف نیستند.
+              </p>
+            )}
+
+            {blocked.length > 0 ? (
+              <div className="space-y-2">
+                <p className="flex items-start gap-2 text-sm">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+                  <span>
+                    {toFaDigits(blocked.length)} نفر سابقه دارند و حذف نمی‌شوند:
+                  </span>
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-right">نام</TableHead>
+                      <TableHead className="text-right">وابستگی</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {blocked.map((r) => (
+                      <TableRow key={r.person.id}>
+                        <TableCell>{r.person.displayName}</TableCell>
+                        <TableCell>{toFaDigits(r.total)} رکورد</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 sm:justify-start">
+          <Button
+            variant="destructive"
+            disabled={!canDelete || remove.isPending}
+            onClick={() => remove.mutate(deletable)}
+          >
+            {remove.isPending ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+            حذف قطعی قابل‌حذف‌ها
+            {deletable.length > 0 ? ` (${toFaDigits(deletable.length)})` : ""}
+          </Button>
+          <Button variant="outline" onClick={onClose} disabled={remove.isPending}>
+            انصراف
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function PersonsCleanupPage() {
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const debounced = useDebounce(search.trim(), 350);
   const [onlyIncomplete, setOnlyIncomplete] = useState(true);
   const [target, setTarget] = useState<Enriched | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [bulkTargets, setBulkTargets] = useState<Enriched[]>([]);
 
   const list = useQuery({
     queryKey: ["persons-cleanup", debounced],
@@ -405,9 +595,58 @@ function PersonsCleanupPage() {
   const neither = useMemo(() => all.filter((p) => !p.asanCode && !p.mobile), [all]);
   const shown = onlyIncomplete ? incomplete : all;
 
+  // Drop selections that left the current view (filter/search/refresh).
+  useEffect(() => {
+    const visible = new Set(shown.map((p) => p.id));
+    setSelectedIds((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const id of prev) {
+        if (visible.has(id)) next.add(id);
+        else changed = true;
+      }
+      return changed || next.size !== prev.size ? next : prev;
+    });
+  }, [shown]);
+
+  const selectedCount = selectedIds.size;
+  const allShownSelected = shown.length > 0 && shown.every((p) => selectedIds.has(p.id));
+  const someShownSelected = shown.some((p) => selectedIds.has(p.id));
+
+  const toggleOne = (id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const toggleAllShown = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        for (const p of shown) next.add(p.id);
+      } else {
+        for (const p of shown) next.delete(p.id);
+      }
+      return next;
+    });
+  };
+
+  const openBulkDelete = () => {
+    const targets = shown.filter((p) => selectedIds.has(p.id));
+    if (targets.length === 0) {
+      toast.message("ردیفی انتخاب نشده است");
+      return;
+    }
+    setBulkTargets(targets);
+  };
+
   const refresh = () => {
     void qc.invalidateQueries({ queryKey: ["persons-cleanup"] });
     void qc.invalidateQueries({ queryKey: ["person-delete-blockers"] });
+    void qc.invalidateQueries({ queryKey: ["person-delete-blockers-bulk"] });
   };
 
   return (
@@ -415,7 +654,23 @@ function PersonsCleanupPage() {
       <PageHeader
         title="تکمیل و پاک‌سازی پروندهٔ اشخاص"
         description="کسانی که کد آسان یا شمارهٔ موبایل ندارند. تا این دو تکمیل نشود نمی‌توان برایشان دریافت، پرداخت یا پیش‌فاکتور ثبت کرد. اگر شخصی اشتباهی وارد شده و هیچ سابقه‌ای ندارد، می‌توانید حذفش کنید."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link to="/persons/merge">
+              <Merge className="ml-1 h-4 w-4" />
+              اشخاص تکراری
+            </Link>
+          </Button>
+        }
       />
+
+      <p className="text-sm text-muted-foreground">
+        بعد از تکمیل یا حذف ناقص‌ها، جفت‌های مشکوک را در{" "}
+        <Link to="/persons/merge" className="font-medium text-foreground underline-offset-4 hover:underline">
+          اشخاص تکراری
+        </Link>{" "}
+        بررسی کنید.
+      </p>
 
       <div className="grid gap-3 sm:grid-cols-3">
         <Card>
@@ -461,6 +716,16 @@ function PersonsCleanupPage() {
         >
           همه
         </Button>
+        <Button
+          variant="destructive"
+          disabled={selectedCount === 0}
+          onClick={openBulkDelete}
+          aria-label="حذف گروهی انتخاب‌شده‌ها"
+        >
+          <Trash2 className="ml-1 h-4 w-4" />
+          حذف گروهی
+          {selectedCount > 0 ? ` (${toFaDigits(selectedCount)})` : ""}
+        </Button>
       </div>
 
       {all.length >= LIST_LIMIT ? (
@@ -486,6 +751,15 @@ function PersonsCleanupPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10 text-right">
+                    <Checkbox
+                      checked={
+                        allShownSelected ? true : someShownSelected ? "indeterminate" : false
+                      }
+                      onCheckedChange={(v) => toggleAllShown(v === true)}
+                      aria-label="انتخاب همهٔ ردیف‌های نمایش‌داده‌شده"
+                    />
+                  </TableHead>
                   <TableHead className="text-right">نام</TableHead>
                   <TableHead className="text-right">کد آسان</TableHead>
                   <TableHead className="text-right">موبایل</TableHead>
@@ -495,7 +769,14 @@ function PersonsCleanupPage() {
               </TableHeader>
               <TableBody>
                 {shown.map((p) => (
-                  <TableRow key={p.id}>
+                  <TableRow key={p.id} data-state={selectedIds.has(p.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(p.id)}
+                        onCheckedChange={(v) => toggleOne(p.id, v === true)}
+                        aria-label={`انتخاب ${p.displayName}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {p.displayName}
                       {!p.isActive ? (
@@ -551,6 +832,14 @@ function PersonsCleanupPage() {
       </Card>
 
       <DeleteDialog target={target} onClose={() => setTarget(null)} onDeleted={refresh} />
+      <BulkDeleteDialog
+        targets={bulkTargets}
+        onClose={() => setBulkTargets([])}
+        onDeleted={() => {
+          setSelectedIds(new Set());
+          refresh();
+        }}
+      />
     </div>
   );
 }
