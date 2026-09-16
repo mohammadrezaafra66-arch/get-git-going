@@ -1,11 +1,14 @@
 ﻿# =============================================================================
-# AfraKala PRODUCTION READ-ONLY DISCOVERY (PowerShell 5.1 safe, ASCII-only)
+# AfraKala - PRODUCTION READ-ONLY DISCOVERY (PowerShell 5.1 safe, ASCII-only)
 # Run on PRODUCTION laptop. Does NOT change anything. Paste full output back.
-# All docker --format templates use SINGLE-QUOTED strings.
-# Signature: PowerShell 5.1 safe ASCII
+#
+# IMPORTANT: All docker --format templates use SINGLE-QUOTED strings so PowerShell
+# does not parse {{.Names}} as pipeline syntax.
+# File is ASCII-only so Windows PowerShell 5.1 does not break on UTF-8 downloads.
 # =============================================================================
 
 $ErrorActionPreference = "Continue"
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 function Section([string]$t) {
   Write-Host ""
@@ -41,11 +44,6 @@ $candidates = @(
   "D:\AfraKalaTest\app"
 )
 foreach ($p in $candidates) {
-  # Skip roots whose drive letter is missing on this machine (e.g. D: on prod).
-  if ($p -match '^[A-Za-z]:' -and -not (Test-Path -LiteralPath ($p.Substring(0, 2)))) {
-    KV $p "exists=False git=False compose_lan=False (drive missing)"
-    continue
-  }
   $exists = Test-Path -LiteralPath $p
   $git = Test-Path -LiteralPath (Join-Path $p ".git")
   $compose = Test-Path -LiteralPath (Join-Path $p "deploy\lan\docker-compose.yml")
@@ -54,6 +52,7 @@ foreach ($p in $candidates) {
 
 Section "2) RUNNING WEB CONTAINER"
 $webName = "afrakala-lan-web"
+# SINGLE quotes around Go templates - required on Windows PowerShell 5.1
 $webLine = (Run-Cmd "docker" @("ps", "-a", "--filter", "name=$webName", "--format", '{{.Names}} {{.Status}} {{.Ports}}') | Select-Object -First 1)
 KV "docker_ps_web" $webLine
 
@@ -62,42 +61,43 @@ if ($webLine -and ($webLine -notmatch "^ERR:") -and ($webLine.Trim().Length -gt 
   $hasWeb = $true
 }
 if ($hasWeb) {
-  try {
-    $raw = docker inspect $webName 2>$null
-    $obj = $raw | ConvertFrom-Json
-    if ($obj -is [System.Array]) { $c = $obj[0] } else { $c = $obj }
-    $labels = $c.Config.Labels
-    KV "compose_project" $labels.'com.docker.compose.project'
-    KV "compose_working_dir" $labels.'com.docker.compose.project.working_dir'
-    KV "compose_config_files" $labels.'com.docker.compose.project.config_files'
-    KV "image" $c.Config.Image
-    KV "started" $c.State.StartedAt
-    Write-Host "--- ports ---"
-    if ($c.NetworkSettings.Ports) {
-      $c.NetworkSettings.Ports.PSObject.Properties | ForEach-Object {
-        $map = $_.Value
-        if ($map) {
-          foreach ($m in $map) { Write-Host ($_.Name + " -> " + $m.HostIp + ":" + $m.HostPort) }
-        } else {
-          Write-Host ($_.Name + " -> (not published)")
+  $inspectJson = docker inspect $webName 2>$null | Out-String
+  if ($inspectJson) {
+    try {
+      $obj = $inspectJson | ConvertFrom-Json
+      $labels = $obj[0].Config.Labels
+      KV "compose_project" $labels.'com.docker.compose.project'
+      KV "compose_working_dir" $labels.'com.docker.compose.project.working_dir'
+      KV "compose_config_files" $labels.'com.docker.compose.project.config_files'
+      KV "image" $obj[0].Config.Image
+      KV "started" $obj[0].State.StartedAt
+      Write-Host "--- ports ---"
+      if ($obj[0].NetworkSettings.Ports) {
+        $obj[0].NetworkSettings.Ports.PSObject.Properties | ForEach-Object {
+          $map = $_.Value
+          if ($map) {
+            foreach ($m in $map) { Write-Host ($_.Name + " -> " + $m.HostIp + ":" + $m.HostPort) }
+          } else {
+            Write-Host ($_.Name + " -> (not published)")
+          }
         }
       }
+      Write-Host "--- env stamp filtered (redact secrets before sharing) ---"
+      $obj[0].Config.Env | Where-Object {
+        $_ -match "^(APP_GIT_SHA|GIT_SHA|BUILD_TIME|APP_PORT|SITE_URL|POSTGRES_DB|VITE_APP_ENV)="
+      }
+      Write-Host "--- env KEY presence only ---"
+      foreach ($prefix in @("ISSABEL_", "PRICING_WORKER_TOKEN", "MARKETING_TASKS_WORKER_TOKEN", "SUPABASE_")) {
+        $hits = @($obj[0].Config.Env | Where-Object { $_ -like ($prefix + "*") })
+        KV ("env_present." + $prefix.TrimEnd('_').TrimEnd('=')) ("count=" + $hits.Count)
+      }
+    } catch {
+      Write-Host ("inspect parse ERR: " + $_.Exception.Message)
     }
-    Write-Host "--- env stamp (filtered; redact secrets before sharing) ---"
-    $c.Config.Env | Where-Object {
-      $_ -match "^(APP_GIT_SHA|GIT_SHA|BUILD_TIME|APP_PORT|SITE_URL|POSTGRES_DB|VITE_APP_ENV)="
-    }
-    Write-Host "--- env KEY presence only ---"
-    foreach ($prefix in @("ISSABEL_", "PRICING_WORKER_TOKEN", "MARKETING_TASKS_WORKER_TOKEN", "SUPABASE_")) {
-      $hits = @($c.Config.Env | Where-Object { $_ -like ($prefix + "*") })
-      KV ("env_present." + $prefix.TrimEnd('_','=')) ("count=" + $hits.Count)
-    }
-  } catch {
-    Write-Host ("inspect parse ERR: " + $_.Exception.Message)
   }
 }
 
-Section "3) /api/version on common ports"
+Section "3) api/version on common ports"
 foreach ($port in @(3100, 3000, 80)) {
   foreach ($hostAddr in @("127.0.0.1", "192.168.170.10")) {
     $url = "http://${hostAddr}:${port}/api/version"
@@ -184,12 +184,9 @@ foreach ($d in @("afrakala-lan-db", "afrakala-db", "supabase-db", "db")) {
   $names = Run-Cmd "docker" @("ps", "-a", "--format", '{{.Names}}')
   if ($names -contains $d) {
     KV "db_container" $d
-    try {
-      $elines = docker inspect $d 2>$null | ConvertFrom-Json
-      if ($elines -is [System.Array]) { $dc = $elines[0] } else { $dc = $elines }
-      $dc.Config.Env | Where-Object { $_ -match "^(POSTGRES_DB|POSTGRES_USER)=" }
-    } catch {
-      Write-Host ("db inspect ERR: " + $_.Exception.Message)
+    $elines = docker inspect $d 2>$null | ConvertFrom-Json
+    if ($elines) {
+      $elines[0].Config.Env | Where-Object { $_ -match "^(POSTGRES_DB|POSTGRES_USER)=" }
     }
   }
 }
@@ -208,13 +205,11 @@ WHERE version >= '20260916000000'
 ORDER BY version;
 SELECT version FROM supabase_migrations.schema_migrations
 WHERE version IN (
-  '20260915233000','20260916001500',
   '20260916030000','20260916031000','20260916032000','20260916033000',
   '20260916120000','20260916121000','20260916122000','20260916123000',
   '20260916140000','20260916150000',
   '20260916160000','20260916161000','20260916162000','20260916170000'
 ) ORDER BY version;
-SELECT to_regclass('public.work_items') AS work_items;
 SELECT to_regclass('public.call_ring_events') AS call_ring_events;
 SELECT to_regclass('public.sales_interactions') AS sales_interactions;
 SELECT count(*) AS call_logs FROM public.call_logs;
@@ -260,7 +255,7 @@ function Grep-Compose([string]$compose) {
   if (-not (Test-Path -LiteralPath $compose)) { KV $compose "MISSING"; return }
   KV $compose "present"
   Select-String -LiteralPath $compose -Pattern "ISSABEL_|PRICING_WORKER_TOKEN|APP_PORT" |
-    ForEach-Object { Write-Host ("L" + $_.LineNumber + ": " + $_.Line.Trim()) }
+    ForEach-Object { "L$($_.LineNumber): $($_.Line.Trim())" }
 }
 @(
   "C:\afrakala\deploy\lan\docker-compose.yml",
