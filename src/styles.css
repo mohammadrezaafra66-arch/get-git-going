@@ -421,6 +421,66 @@
   border: 1px solid rgba(15, 118, 110, 0.18);
 }
 
+/* پین ثابت تیکت در سایدبار — کادر کوچک سه‌بعدی */
+.sidebar-pin-3d {
+  perspective: 520px;
+  transform-style: preserve-3d;
+}
+
+.sidebar-pin-3d-inner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.65rem;
+  transform: rotateX(var(--pin-rot-x, 0deg)) rotateY(var(--pin-rot-y, 0deg))
+    translateZ(0);
+  transition: transform 0.16s ease-out, box-shadow 0.2s ease;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 1px 0 rgba(13, 148, 136, 0.2),
+    0 8px 16px -10px rgba(15, 47, 44, 0.45);
+  background: linear-gradient(
+    152deg,
+    #f0fdfa 0%,
+    #ccfbf1 42%,
+    #5eead4 100%
+  );
+  border: 1px solid rgba(13, 148, 136, 0.38);
+}
+
+.sidebar-pin-3d-inner::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    180px circle at var(--pin-shine-x, 50%) var(--pin-shine-y, 18%),
+    rgba(255, 255, 255, 0.45),
+    transparent 50%
+  );
+  opacity: 0.85;
+  mix-blend-mode: soft-light;
+}
+
+.sidebar-pin-3d:hover .sidebar-pin-3d-inner {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.85) inset,
+    0 2px 0 rgba(13, 148, 136, 0.28),
+    0 14px 22px -12px rgba(15, 47, 44, 0.5);
+}
+
+.sidebar-pin-3d-inner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-pin-3d-inner[data-active="true"] {
+  background: linear-gradient(152deg, #99f6e4 0%, #2dd4bf 55%, #0d9488 100%);
+  border-color: rgba(15, 118, 110, 0.55);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 8px 16px -10px rgba(15, 47, 44, 0.55);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .sales-desk-orb,
   .sales-desk-kicker,
@@ -429,7 +489,8 @@
   .sales-desk-stat-pulse {
     animation: none !important;
   }
-  .sales-desk-tilt-inner {
+  .sales-desk-tilt-inner,
+  .sidebar-pin-3d-inner {
     transition: none !important;
     transform: none !important;
   }

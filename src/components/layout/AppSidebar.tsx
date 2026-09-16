@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -27,6 +27,7 @@ import {
   LogOut,
   Star,
   ScanSearch,
+  ClipboardList,
   ChevronDown,
   ChevronLeft,
 } from "lucide-react";
@@ -40,6 +41,7 @@ import { useNavigationRecent } from "@/hooks/navigation/useNavigationRecent";
 import { FloatingReactionBurst } from "@/components/common/FloatingReactionBurst";
 import { BRANDING } from "@/config/branding";
 import { toFaDigits } from "@/lib/i18n/formatters";
+import { cn } from "@/lib/utils";
 
 // QUICK-ACCESS — role-aware shortcut paths. Items resolve against NAV_ITEMS so
 // label/icon/module/adminOnly stay in sync with the main nav.
@@ -71,6 +73,60 @@ const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
 };
 const QUICK_ACCESS_LIMIT = 6;
 
+function SidebarTicketPin3d({
+  compact = false,
+  active,
+}: {
+  compact?: boolean;
+  active: boolean;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  const onMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    el.style.setProperty("--pin-rot-x", `${(py - 0.5) * 10}deg`);
+    el.style.setProperty("--pin-rot-y", `${(px - 0.5) * -12}deg`);
+    el.style.setProperty("--pin-shine-x", `${px * 100}%`);
+    el.style.setProperty("--pin-shine-y", `${py * 100}%`);
+  }, []);
+
+  const onLeave = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--pin-rot-x", "0deg");
+    el.style.setProperty("--pin-rot-y", "0deg");
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="sidebar-pin-3d"
+      onMouseMove={onMove}
+      onMouseLeave={onLeave}
+    >
+      <Link
+        to="/operations/work"
+        title="تیکت"
+        aria-label="تیکت"
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "sidebar-pin-3d-inner flex items-center justify-center gap-1.5 font-bold text-teal-900",
+          compact ? "h-9 w-9" : "h-9 w-full px-3 text-xs",
+          active && "text-teal-950",
+        )}
+        data-active={active ? "true" : "false"}
+      >
+        <ClipboardList className="h-3.5 w-3.5 shrink-0" />
+        {!compact ? <span>تیکت</span> : null}
+      </Link>
+    </div>
+  );
+}
+
 export function AppSidebar() {
   const { roles, user, signOut } = useAuth();
   const location = useLocation();
@@ -95,6 +151,11 @@ export function AppSidebar() {
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
   const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
   const visible = useMemo(() => getVisibleNavigationEntries(roles), [roles]);
+  const canSeeTickets = useMemo(
+    () => visible.some((entry) => entry.route === "/operations/work"),
+    [visible],
+  );
+  const ticketActive = location.pathname.startsWith("/operations/work");
   const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
   const { favorites, favoriteIdSet, toggleFavorite, maxFavorites } =
     useNavigationFavorites(visible);
@@ -397,6 +458,18 @@ export function AppSidebar() {
                 </TooltipContent>
               </Tooltip>
             )}
+            {canSeeTickets && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="hidden group-data-[collapsible=icon]:block">
+                    <SidebarTicketPin3d compact active={ticketActive} />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  تیکت
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </SidebarHeader>
 
@@ -459,6 +532,11 @@ export function AppSidebar() {
                     <span>جستجوی سریع فروش</span>
                     <FloatingReactionBurst trigger={quickSalesBurst} />
                   </Link>
+                </div>
+              )}
+              {canSeeTickets && (
+                <div className="mb-2">
+                  <SidebarTicketPin3d active={ticketActive} />
                 </div>
               )}
               <div className="relative">
