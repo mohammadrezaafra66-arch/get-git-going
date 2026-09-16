@@ -26,6 +26,7 @@ export default defineConfig({
     /marketing\/.*\.spec\.ts/,
     /clusters\/.*\.spec\.ts/,
     /products\/.*\.spec\.ts/,
+    /torob-ops\/.*\.spec\.ts/,
     // ASAN bridge (M3-M5). API-level for the same reason as the suites above: the
     // rules they assert live in triggers and RLS precisely so no client can dodge
     // them, so the honest test is the one that tries to dodge them.
