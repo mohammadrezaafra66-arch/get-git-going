@@ -381,8 +381,9 @@ test("morning summary strip shows Calm Mind counts", async ({ page }) => {
   const decideCell = page.getByTestId("morning-bucket-today_decide");
   await expect(decideCell).toBeVisible();
   const text = (await decideCell.innerText()).replace(/\s+/g, " ").trim();
-  expect(text, `today_decide cell text: ${text}`).toMatch(/^[۰-۹]+/);
-  expect(text, "seeded queue must make today_decide non-zero").not.toMatch(/^۰\b/);
+  const digit = text.match(/[۰-۹]+/);
+  expect(digit, `today_decide cell text: ${text}`).not.toBeNull();
+  expect(digit![0], "seeded queue must make today_decide non-zero").not.toBe("۰");
 });
 
 test("decision queue can set today_do, waiting, and clear", async ({ page }) => {
