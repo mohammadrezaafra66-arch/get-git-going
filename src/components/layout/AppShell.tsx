@@ -9,6 +9,7 @@ import { PopupCenterProvider } from "@/lib/popups/PopupCenterProvider";
 import { PriceChangePopupListener } from "@/shared/components/PriceChangePopupListener";
 import { OwnerRemindersListener } from "@/shared/components/OwnerRemindersListener";
 import { CallerInboundListener } from "@/components/sales-desk";
+import { ModulePageChrome } from "@/components/common/ModulePageChrome";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
@@ -27,7 +28,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <AppHeader />
             <main className="flex-1 px-3 py-4 pb-20 sm:px-6 sm:py-6 md:pb-6">
               <NavigationBreadcrumbs />
-              {children}
+              <ModulePageChrome>{children}</ModulePageChrome>
             </main>
             <NavigationCommandPalette />
             <MobileBottomNav />
