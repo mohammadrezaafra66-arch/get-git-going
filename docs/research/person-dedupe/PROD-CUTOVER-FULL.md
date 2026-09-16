@@ -14,7 +14,8 @@
 - LIVE_CLONE = C:\afrakala
 - WEB_PORT = 3000
 - PROD_DB = postgres (container afrakala-lan-db)
-- Running image SHA was a935be0b; clone HEAD already feature/sales-desk @ 22277e48
+- Test tip to transfer: **`afa33768`** on `feature/sales-desk` (synced origin; includes pin + Torob Ops + quick-price)
+- Prod live tree was previously around `22277e48` — must `git pull` to tip before rebuild
 - DO NOT rebuild from C:\AfraKalaServer\get-git-going01lan
 - Ledger probe in discovery used the WRONG .env first — always use C:\afrakala\deploy\lan\.env.lan
 
@@ -40,7 +41,7 @@ git rev-parse --short HEAD
 git status -sb
 ```
 
-Expected short SHA at or after `b6b298b0` (sales-desk + Torob Ops Path B + quick-price flag + rules dropdown fix). `.env.lan` dirty is OK.
+Expected short SHA **`afa33768`** or newer on `feature/sales-desk`. `.env.lan` dirty is OK.
 Confirm: `Test-Path .\src\routes\_app.torob-ops.tsx` and migrations `20260916190000_555_torob_ops_path_b.sql` + `20260916200000_556_sale_price_type_quick_price_only.sql`.
 
 ---
