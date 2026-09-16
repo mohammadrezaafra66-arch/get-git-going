@@ -19,7 +19,7 @@
 param(
   [switch]$IApproveProdMigrate,
   [string]$RepoRoot = "C:\afrakala",
-  [string]$TargetShaPrefix = "814f07c0",
+  [string]$TargetShaPrefix = "d2b7ca91",
   [string]$Branch = "feature/sales-desk",
   [string]$DbContainer = "afrakala-lan-db",
   [string]$DbName = "postgres",
