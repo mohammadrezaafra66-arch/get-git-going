@@ -20,6 +20,10 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { searchPersons } from "@/lib/persons/functions";
 import { createSalesInteraction } from "@/lib/sales-desk";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  PersianFollowUpFields,
+  combineTehranFollowUpIso,
+} from "./PersianFollowUpFields";
 
 type Props = {
   /** اگر از پاپ‌آپ تماس باز شود، شخص از قبل مشخص است. */
@@ -52,7 +56,8 @@ export function QuickRequestForm({
   const [body, setBody] = useState("");
   const [title, setTitle] = useState("");
   const [salespersonId, setSalespersonId] = useState<string>("__me__");
-  const [followUpLocal, setFollowUpLocal] = useState("");
+  const [followUpDate, setFollowUpDate] = useState<string | null>(null);
+  const [followUpTime, setFollowUpTime] = useState("09:00");
 
   const resultsQ = useQuery({
     queryKey: ["sales-desk", "person-picker", debounced],
@@ -85,9 +90,7 @@ export function QuickRequestForm({
         salespersonId === "__me__" || salespersonId === ""
           ? null
           : salespersonId;
-      const nextFollowUpAt = followUpLocal
-        ? new Date(followUpLocal).toISOString()
-        : null;
+      const nextFollowUpAt = combineTehranFollowUpIso(followUpDate, followUpTime);
       return createSalesInteraction({
         personId,
         kind: "request",
@@ -105,7 +108,8 @@ export function QuickRequestForm({
       toast.success("درخواست ثبت شد");
       setBody("");
       setTitle("");
-      setFollowUpLocal("");
+      setFollowUpDate(null);
+      setFollowUpTime("09:00");
       if (!initialPersonId) {
         setPersonId(null);
         setPersonName(null);
@@ -214,7 +218,7 @@ export function QuickRequestForm({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 sm:col-span-2">
           <Label>کارشناس فروش (اختیاری)</Label>
           <Select value={salespersonId} onValueChange={setSalespersonId}>
             <SelectTrigger>
@@ -230,18 +234,15 @@ export function QuickRequestForm({
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="sd-req-fu">پیگیری (اختیاری)</Label>
-          <Input
-            id="sd-req-fu"
-            type="datetime-local"
-            dir="ltr"
-            className="text-left"
-            value={followUpLocal}
-            onChange={(e) => setFollowUpLocal(e.target.value)}
-          />
-        </div>
       </div>
+
+      <PersianFollowUpFields
+        idPrefix="sd-req-fu"
+        dateIso={followUpDate}
+        timeHm={followUpTime}
+        onDateChange={setFollowUpDate}
+        onTimeChange={setFollowUpTime}
+      />
 
       <Button
         type="button"

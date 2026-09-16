@@ -19,6 +19,10 @@ import {
   createSalesInteraction,
   type SalesInteractionKind,
 } from "@/lib/sales-desk";
+import {
+  PersianFollowUpFields,
+  combineTehranFollowUpIso,
+} from "./PersianFollowUpFields";
 
 type Props = {
   personId: string;
@@ -46,15 +50,14 @@ export function CallNoteForm({
   const [kind, setKind] = useState<"call" | "note">(defaultKind);
   const [body, setBody] = useState("");
   const [title, setTitle] = useState("");
-  const [followUpLocal, setFollowUpLocal] = useState("");
+  const [followUpDate, setFollowUpDate] = useState<string | null>(null);
+  const [followUpTime, setFollowUpTime] = useState("09:00");
 
   const mutation = useMutation({
     mutationFn: async () => {
       const trimmed = body.trim();
       if (!trimmed) throw new Error("متن خلاصه الزامی است");
-      const nextFollowUpAt = followUpLocal
-        ? new Date(followUpLocal).toISOString()
-        : null;
+      const nextFollowUpAt = combineTehranFollowUpIso(followUpDate, followUpTime);
       return createSalesInteraction({
         personId,
         kind: kind as SalesInteractionKind,
@@ -71,7 +74,8 @@ export function CallNoteForm({
       toast.success(kind === "call" ? "خلاصه تماس ثبت شد" : "یادداشت ثبت شد");
       setBody("");
       setTitle("");
-      setFollowUpLocal("");
+      setFollowUpDate(null);
+      setFollowUpTime("09:00");
       qc.invalidateQueries({ queryKey: ["sales-desk"] });
       onCreated?.(id);
     },
@@ -120,17 +124,14 @@ export function CallNoteForm({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="sd-note-fu">پیگیری بعدی (اختیاری)</Label>
-        <Input
-          id="sd-note-fu"
-          type="datetime-local"
-          dir="ltr"
-          className="text-left"
-          value={followUpLocal}
-          onChange={(e) => setFollowUpLocal(e.target.value)}
-        />
-      </div>
+      <PersianFollowUpFields
+        idPrefix="sd-note-fu"
+        label="پیگیری بعدی (اختیاری)"
+        dateIso={followUpDate}
+        timeHm={followUpTime}
+        onDateChange={setFollowUpDate}
+        onTimeChange={setFollowUpTime}
+      />
 
       <Button
         type="button"

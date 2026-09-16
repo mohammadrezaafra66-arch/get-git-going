@@ -3,7 +3,8 @@ import { BarChart3, Loader2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { fetchMyMonthStats } from "@/lib/sales-desk";
-import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
+import { isoToJalaliMonthDisplay } from "@/lib/i18n/jalali";
 
 /**
  * کارت آمار شخصی فروشنده برای ماه جاری (RPC sales_my_month_stats).
@@ -42,10 +43,9 @@ export function MyMonthStatsCard() {
             <Stat label="ناموفق" value={q.data.lost_count} />
             {q.data.month_start ? (
               <p className="col-span-3 text-xs text-muted-foreground">
-                از{" "}
-                <span dir="ltr" className="inline-block tabular-nums">
-                  {toFaDigits(q.data.month_start.slice(0, 10))}
-                </span>
+                {isoToJalaliMonthDisplay(q.data.month_start)
+                  ? `ماه ${isoToJalaliMonthDisplay(q.data.month_start)}`
+                  : `از ${formatDateFa(q.data.month_start)}`}
                 {q.data.calls_source === "call_logs" ? " · منبع: تماس‌های ثبت‌شده" : null}
               </p>
             ) : null}
