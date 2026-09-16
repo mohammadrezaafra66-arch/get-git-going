@@ -16,8 +16,11 @@ if ($existing) {
   Unregister-ScheduledTask -TaskName $taskName -Confirm:$false
 }
 
-$arg = '-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $workerScript
-$action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $arg
+$vbs = Join-Path $scriptDir "run-ps-hidden.vbs"
+if (-not (Test-Path $vbs)) { throw "Missing $vbs" }
+$wscript = Join-Path $env:SystemRoot "System32\wscript.exe"
+$arg = '//B //Nologo "{0}" "{1}" 1' -f $vbs, $workerScript
+$action = New-ScheduledTaskAction -Execute $wscript -Argument $arg
 $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
   -RepetitionInterval (New-TimeSpan -Minutes 1) `
   -RepetitionDuration ([TimeSpan]::FromDays(3650))
@@ -26,14 +29,15 @@ $settings = New-ScheduledTaskSettingsSet `
   -DontStopIfGoingOnBatteries `
   -StartWhenAvailable `
   -MultipleInstances IgnoreNew `
-  -ExecutionTimeLimit (New-TimeSpan -Minutes 3)
+  -ExecutionTimeLimit (New-TimeSpan -Minutes 3) `
+  -Hidden
 
 Register-ScheduledTask `
   -TaskName $taskName `
   -Action $action `
   -Trigger $trigger `
   -Settings $settings `
-  -Description "AfraKala pricing recompute worker every 1 minute (auto publish sale prices)" `
+  -Description "AfraKala pricing recompute worker every 1 minute (windowless)" `
   -User $env:USERNAME `
   | Out-Null
 
