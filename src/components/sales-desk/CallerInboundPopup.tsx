@@ -21,7 +21,7 @@ import {
   type RecentInboundCall,
 } from "@/lib/sales-desk";
 import { supabase } from "@/integrations/supabase/client";
-import { toFaDigits } from "@/lib/i18n/formatters";
+import { formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { CallNoteForm } from "./CallNoteForm";
 import { QuickRequestForm } from "./QuickRequestForm";
 
@@ -221,6 +221,11 @@ export function CallerInboundPopup() {
                     <span dir="ltr" className="inline-block tabular-nums">
                       {toFaDigits(active.phoneHint)}
                     </span>
+                  </span>
+                ) : null}
+                {active.call.started_at ? (
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    زمان تماس: {formatDateTimeFa(active.call.started_at)}
                   </span>
                 ) : null}
               </>

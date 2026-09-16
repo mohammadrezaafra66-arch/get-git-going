@@ -1,11 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,7 +22,9 @@ import {
 } from "@/components/ui/table";
 import { Loader2, PhoneIncoming } from "lucide-react";
 import { toast } from "sonner";
-import { toFaDigits } from "@/lib/i18n/formatters";
+import { formatDateFa, toFaDigits } from "@/lib/i18n/formatters";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
+import { SalesDeskShell, SalesDeskTiltCard } from "@/components/sales-desk";
 
 /**
  * Wave 6 / C-8 — گزارش فعالیت تلفنی به تفکیک داخلی.
@@ -206,28 +207,38 @@ function CallActivityPage() {
   }
 
   return (
-    <div dir="rtl" className="space-y-6 p-4 sm:p-6">
-      <PageHeader
-        title="فعالیت تلفنی داخلی‌ها"
-        description="شمار تماس‌های ورودی، خروجی، داخلی و بی‌پاسخ و دقایق مکالمه، به تفکیک داخلی و روز."
-      />
-
+    <SalesDeskShell
+      title="فعالیت تلفنی داخلی‌ها"
+      description="شمار تماس‌های ورودی، خروجی، داخلی و بی‌پاسخ و دقایق مکالمه، به تفکیک داخلی و روز — تاریخ‌ها شمسی."
+      fallbackTo="/operations/sales-desk"
+      actions={
+        <Button asChild variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm">
+          <Link to="/operations/sales-desk">میز فروش</Link>
+        </Button>
+      }
+    >
       {!isPrivileged ? (
-        <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+        <p className="rounded-xl border border-teal-800/10 bg-white/70 p-3 text-sm text-muted-foreground backdrop-blur-sm">
           شما فقط آمار داخلی خودتان را می‌بینید. اگر چیزی نمایش داده نمی‌شود، یعنی هنوز داخلی‌ای به
           نام شما ثبت نشده است.
         </p>
       ) : null}
 
-      {/* فیلترها */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <SalesDeskTiltCard delayMs={60}>
+      <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
         <div className="space-y-1">
-          <label className="text-sm text-muted-foreground">از تاریخ</label>
-          <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+          <Label className="text-sm text-muted-foreground">از تاریخ (شمسی)</Label>
+          <PersianDatePicker
+            value={fromDate}
+            onChange={(v) => setFromDate(v ?? isoDaysAgo(7))}
+          />
         </div>
         <div className="space-y-1">
-          <label className="text-sm text-muted-foreground">تا تاریخ</label>
-          <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
+          <Label className="text-sm text-muted-foreground">تا تاریخ (شمسی)</Label>
+          <PersianDatePicker
+            value={toDate}
+            onChange={(v) => setToDate(v ?? isoDaysAgo(0))}
+          />
         </div>
         <div className="space-y-1">
           <label className="text-sm text-muted-foreground">داخلی</label>
@@ -239,7 +250,7 @@ function CallActivityPage() {
               <SelectItem value={ALL}>همه داخلی‌ها</SelectItem>
               {extensions.map((e) => (
                 <SelectItem key={e} value={e}>
-                  {e}
+                  {toFaDigits(e)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -255,7 +266,7 @@ function CallActivityPage() {
               <SelectItem value={ALL}>همه ساعت‌ها</SelectItem>
               {Array.from({ length: 24 }, (_, h) => (
                 <SelectItem key={h} value={String(h)}>
-                  {String(h).padStart(2, "0")}:00
+                  {toFaDigits(String(h).padStart(2, "0"))}:۰۰
                 </SelectItem>
               ))}
             </SelectContent>
@@ -274,9 +285,10 @@ function CallActivityPage() {
           </Select>
         </div>
       </div>
+      </SalesDeskTiltCard>
 
-      {/* جدول */}
-      <div className="overflow-x-auto rounded-md border border-border">
+      <SalesDeskTiltCard delayMs={140}>
+      <div className="overflow-x-auto p-2">
         <Table>
           <TableHeader>
             <TableRow>
@@ -313,34 +325,40 @@ function CallActivityPage() {
                 <TableRow
                   key={`${r.extension}-${r.call_date}-${(r as HourlyRow).call_hour ?? "d"}`}
                 >
-                  <TableCell className="font-medium">{r.extension}</TableCell>
-                  <TableCell>{r.call_date}</TableCell>
+                  <TableCell className="font-medium tabular-nums">
+                    {toFaDigits(r.extension)}
+                  </TableCell>
+                  <TableCell>{formatDateFa(r.call_date)}</TableCell>
                   {showingHourly ? (
-                    <TableCell>{String((r as HourlyRow).call_hour).padStart(2, "0")}:00</TableCell>
+                    <TableCell className="tabular-nums">
+                      {toFaDigits(String((r as HourlyRow).call_hour).padStart(2, "0"))}:۰۰
+                    </TableCell>
                   ) : null}
-                  <TableCell>{r.total_calls}</TableCell>
-                  <TableCell>{toFaDigits(r.inbound_count)}</TableCell>
-                  <TableCell>{toFaDigits(r.outbound_count)}</TableCell>
-                  <TableCell>{toFaDigits(r.internal_count)}</TableCell>
-                  <TableCell>{toFaDigits(r.missed_count)}</TableCell>
-                  <TableCell>{r.talk_minutes}</TableCell>
+                  <TableCell className="tabular-nums">{toFaDigits(r.total_calls)}</TableCell>
+                  <TableCell className="tabular-nums">{toFaDigits(r.inbound_count)}</TableCell>
+                  <TableCell className="tabular-nums">{toFaDigits(r.outbound_count)}</TableCell>
+                  <TableCell className="tabular-nums">{toFaDigits(r.internal_count)}</TableCell>
+                  <TableCell className="tabular-nums">{toFaDigits(r.missed_count)}</TableCell>
+                  <TableCell className="tabular-nums">
+                    {toFaDigits(Math.round(r.talk_minutes * 10) / 10)}
+                  </TableCell>
                 </TableRow>
               ))
             )}
           </TableBody>
         </Table>
       </div>
+      </SalesDeskTiltCard>
 
-      {/* جمع همین صفحه — عمداً «جمع کل» نیست، چون فقط ردیف‌های نمایش‌داده‌شده را جمع می‌زند. */}
       {rows.length > 0 ? (
         <p className="text-sm text-muted-foreground">
           جمع این صفحه — کل: {toFaDigits(totals.total)} · ورودی: {toFaDigits(totals.inbound)} ·
-          خروجی: {toFaDigits(totals.outbound)} · داخلی: {totals.internal} · بی‌پاسخ: {totals.missed}{" "}
-          · دقایق مکالمه: {Math.round(totals.minutes * 10) / 10}
+          خروجی: {toFaDigits(totals.outbound)} · داخلی: {toFaDigits(totals.internal)} · بی‌پاسخ:{" "}
+          {toFaDigits(totals.missed)} · دقایق مکالمه:{" "}
+          {toFaDigits(Math.round(totals.minutes * 10) / 10)}
         </p>
       ) : null}
 
-      {/* صفحه‌بندی */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">
           {toFaDigits(total)} ردیف · صفحه {toFaDigits(page + 1)} از {toFaDigits(pageCount)}
@@ -364,6 +382,6 @@ function CallActivityPage() {
           </Button>
         </div>
       </div>
-    </div>
+    </SalesDeskShell>
   );
 }

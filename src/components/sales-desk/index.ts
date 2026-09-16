@@ -5,3 +5,8 @@ export { InteractionTimeline } from "./InteractionTimeline";
 export { FollowUpsToday } from "./FollowUpsToday";
 export { CallNoteForm } from "./CallNoteForm";
 export { OutcomeButtons } from "./OutcomeButtons";
+export { SalesDeskShell, SalesDeskTiltCard } from "./SalesDeskShell";
+export {
+  PersianFollowUpFields,
+  combineTehranFollowUpIso,
+} from "./PersianFollowUpFields";

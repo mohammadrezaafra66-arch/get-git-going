@@ -58,8 +58,8 @@ export function MyMonthStatsCard() {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-md border border-border/70 bg-muted/20 px-3 py-2 text-center">
-      <div className="text-lg font-semibold tabular-nums">{formatNumber(value)}</div>
+    <div className="sales-desk-stat-pulse rounded-md border border-teal-800/10 bg-teal-50/40 px-3 py-2 text-center">
+      <div className="text-lg font-semibold tabular-nums text-teal-950">{formatNumber(value)}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </div>
   );
