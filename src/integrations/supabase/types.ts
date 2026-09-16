@@ -12167,7 +12167,7 @@ export type Database = {
        * blocked_reason when person_merge's cardinality guard would refuse.
        */
       person_merge_candidates_overview: {
-        Args: Record<PropertyKey, never>
+        Args: { p_limit?: number; p_offset?: number }
         Returns: Json
       }
       /**

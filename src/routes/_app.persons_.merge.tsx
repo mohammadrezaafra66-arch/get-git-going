@@ -1,8 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, Loader2, Merge, ShieldAlert, UserRoundCog, UserX } from "lucide-react";
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  Merge,
+  ShieldAlert,
+  UserRoundCog,
+  UserX,
+} from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
@@ -15,7 +24,17 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toFaDigits } from "@/lib/i18n/formatters";
+
+const PAGE_SIZE_OPTIONS = [20, 25, 50] as const;
+type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
 // Phase 8.1 (Decision 4) — the review page for suspected duplicate persons.
 //
@@ -105,6 +124,13 @@ function rpcMessage(error: unknown, fallback: string): string {
   return msg && msg.trim() ? msg : fallback;
 }
 
+interface OverviewPage {
+  items: Candidate[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 function PersonMergePage() {
   const queryClient = useQueryClient();
   const { roles, rolesLoading } = useAuth();
@@ -112,13 +138,43 @@ function PersonMergePage() {
   // Cleanup deletes people; only admin may open it. Do not send managers there.
   const canOpenCleanup = hasAnyRole(roles, ["admin"]);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["person-merge-candidates"],
+  const [pageSize, setPageSize] = useState<PageSize>(25);
+  const [page, setPage] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPage(0);
+    setExpandedId(null);
+  }, [pageSize]);
+
+  const offset = page * pageSize;
+
+  const { data, isLoading, error, isFetching } = useQuery({
+    queryKey: ["person-merge-candidates", pageSize, offset],
     enabled: allowed,
-    queryFn: async () => {
-      const { data, error } = await supabase.rpc("person_merge_candidates_overview");
+    queryFn: async (): Promise<OverviewPage> => {
+      const { data, error } = await supabase.rpc("person_merge_candidates_overview", {
+        p_limit: pageSize,
+        p_offset: offset,
+      });
       if (error) throw error;
-      return (data ?? []) as unknown as Candidate[];
+      const raw = data as unknown;
+      // Backward-compat: old unpaged RPC returned a bare array.
+      if (Array.isArray(raw)) {
+        return { items: raw as Candidate[], total: raw.length, limit: pageSize, offset };
+      }
+      const obj = (raw ?? {}) as {
+        items?: Candidate[];
+        total?: number;
+        limit?: number;
+        offset?: number;
+      };
+      return {
+        items: Array.isArray(obj.items) ? obj.items : [],
+        total: Number(obj.total ?? 0),
+        limit: Number(obj.limit ?? pageSize),
+        offset: Number(obj.offset ?? offset),
+      };
     },
   });
 
@@ -137,6 +193,8 @@ function PersonMergePage() {
           ? `صف تشخیص به‌روز شد — ${toFaDigits(pending)} جفت در انتظار`
           : "صف تشخیص به‌روز شد — جفت مشکوکی نیست",
       );
+      setPage(0);
+      setExpandedId(null);
       void queryClient.invalidateQueries({ queryKey: ["person-merge-candidates"] });
     },
     onError: (e) => toast.error(rpcMessage(e, "بازخوانی صف تشخیص انجام نشد.")),
@@ -149,7 +207,15 @@ function PersonMergePage() {
     return <div className="p-6 text-muted-foreground">دسترسی ندارید.</div>;
   }
 
-  const candidates = data ?? [];
+  const candidates = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const from = total === 0 ? 0 : offset + 1;
+  const to = Math.min(offset + candidates.length, total);
+
+  const refreshPage = () => {
+    void queryClient.invalidateQueries({ queryKey: ["person-merge-candidates"] });
+  };
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -210,23 +276,84 @@ function PersonMergePage() {
         <div className="rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
           بارگذاری صف ادغام با خطا مواجه شد. لطفاً دوباره تلاش کنید.
         </div>
-      ) : candidates.length === 0 ? (
+      ) : total === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">
             هیچ جفت مشکوکی در انتظار بررسی نیست.
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {candidates.map((c) => (
-            <CandidateCard
-              key={c.candidate_id}
-              candidate={c}
-              onResolved={() =>
-                queryClient.invalidateQueries({ queryKey: ["person-merge-candidates"] })
-              }
-            />
-          ))}
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              نمایش {toFaDigits(from)} تا {toFaDigits(to)} از {toFaDigits(total)}
+              {isFetching ? " …" : ""}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Label htmlFor="merge-page-size" className="text-sm text-muted-foreground">
+                در هر صفحه
+              </Label>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => setPageSize(Number(v) as PageSize)}
+              >
+                <SelectTrigger id="merge-page-size" className="w-[5.5rem]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {toFaDigits(n)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={page <= 0 || isFetching}
+                onClick={() => {
+                  setExpandedId(null);
+                  setPage((p) => Math.max(0, p - 1));
+                }}
+              >
+                قبلی
+              </Button>
+              <span className="text-sm tabular-nums text-muted-foreground">
+                {toFaDigits(page + 1)} / {toFaDigits(totalPages)}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={page + 1 >= totalPages || isFetching}
+                onClick={() => {
+                  setExpandedId(null);
+                  setPage((p) => p + 1);
+                }}
+              >
+                بعدی
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {candidates.map((c) => (
+              <CandidateCard
+                key={c.candidate_id}
+                candidate={c}
+                expanded={expandedId === c.candidate_id}
+                onToggle={() =>
+                  setExpandedId((cur) => (cur === c.candidate_id ? null : c.candidate_id))
+                }
+                onResolved={() => {
+                  setExpandedId(null);
+                  refreshPage();
+                }}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -235,9 +362,13 @@ function PersonMergePage() {
 
 function CandidateCard({
   candidate,
+  expanded,
+  onToggle,
   onResolved,
 }: {
   candidate: Candidate;
+  expanded: boolean;
+  onToggle: () => void;
   onResolved: () => void;
 }) {
   // Default the winner to the side with more business references — the record a
@@ -291,103 +422,129 @@ function CandidateCard({
   return (
     <Card>
       <CardHeader className="space-y-2">
-        <CardTitle className="text-base">
-          {candidate.a.display_name} ↔ {candidate.b.display_name}
-        </CardTitle>
-        {candidate.detail ? (
-          <p className="text-sm text-muted-foreground">{candidate.detail}</p>
-        ) : null}
-      </CardHeader>
-
-      <CardContent className="space-y-5">
-        {blocked ? (
-          <div
-            role="alert"
-            className="flex gap-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-200"
-          >
-            <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
-            <div className="space-y-1">
-              <div className="font-medium">ادغام این جفت مجاز نیست</div>
-              <p>{BLOCKED_MESSAGE[candidate.blocked_reason as string]}</p>
-              <p className="text-xs">
-                اگر مطمئنید این دو یک نفر نیستند، از دکمهٔ «این‌ها یک نفر نیستند» استفاده کنید.
-              </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 space-y-1">
+            <CardTitle className="text-base">
+              {candidate.a.display_name} ↔ {candidate.b.display_name}
+            </CardTitle>
+            {candidate.detail ? (
+              <p className="text-sm text-muted-foreground">{candidate.detail}</p>
+            ) : null}
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {blocked ? <Badge variant="destructive">ادغام مسدود</Badge> : null}
+              <Badge variant="outline">
+                ارجاع‌ها: {toFaDigits(candidate.a.reference_count)} /{" "}
+                {toFaDigits(candidate.b.reference_count)}
+              </Badge>
             </div>
           </div>
-        ) : null}
+          <Button type="button" variant="outline" size="sm" onClick={onToggle}>
+            {expanded ? (
+              <>
+                <ChevronUp className="ml-1 h-4 w-4" />
+                بستن جزئیات
+              </>
+            ) : (
+              <>
+                <ChevronDown className="ml-1 h-4 w-4" />
+                باز کردن جزئیات
+              </>
+            )}
+          </Button>
+        </div>
+      </CardHeader>
 
-        <RadioGroup
-          value={winner}
-          onValueChange={(v) => setWinner(v as "a" | "b")}
-          disabled={blocked || busy}
-          className="grid gap-4 md:grid-cols-2"
-        >
-          <SidePanel
-            side={candidate.a}
-            value="a"
-            selected={winner === "a"}
-            disabled={blocked || busy}
-            radioId={`winner-a-${candidate.candidate_id}`}
-          />
-          <SidePanel
-            side={candidate.b}
-            value="b"
-            selected={winner === "b"}
-            disabled={blocked || busy}
-            radioId={`winner-b-${candidate.candidate_id}`}
-          />
-        </RadioGroup>
+      {expanded ? (
+        <CardContent className="space-y-5">
+          {blocked ? (
+            <div
+              role="alert"
+              className="flex gap-3 rounded-md border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-amber-900 dark:text-amber-200"
+            >
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" />
+              <div className="space-y-1">
+                <div className="font-medium">ادغام این جفت مجاز نیست</div>
+                <p>{BLOCKED_MESSAGE[candidate.blocked_reason as string]}</p>
+                <p className="text-xs">
+                  اگر مطمئنید این دو یک نفر نیستند، از دکمهٔ «این‌ها یک نفر نیستند» استفاده کنید.
+                </p>
+              </div>
+            </div>
+          ) : null}
 
-        {!blocked ? (
+          <RadioGroup
+            value={winner}
+            onValueChange={(v) => setWinner(v as "a" | "b")}
+            disabled={blocked || busy}
+            className="grid gap-4 md:grid-cols-2"
+          >
+            <SidePanel
+              side={candidate.a}
+              value="a"
+              selected={winner === "a"}
+              disabled={blocked || busy}
+              radioId={`winner-a-${candidate.candidate_id}`}
+            />
+            <SidePanel
+              side={candidate.b}
+              value="b"
+              selected={winner === "b"}
+              disabled={blocked || busy}
+              radioId={`winner-b-${candidate.candidate_id}`}
+            />
+          </RadioGroup>
+
+          {!blocked ? (
+            <div className="space-y-3 rounded-md border p-4">
+              <p className="text-sm">
+                با ادغام، همهٔ ارجاع‌های «{loserSide.display_name}» به «{winnerSide.display_name}»
+                منتقل می‌شود و شخص بازنده غیرفعال (نه حذف) خواهد شد.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor={`merge-reason-${candidate.candidate_id}`}>دلیل ادغام</Label>
+                <Input
+                  id={`merge-reason-${candidate.candidate_id}`}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="مثلاً: رکورد آزمایشی، همان شخص با املای متفاوت"
+                  disabled={busy}
+                />
+              </div>
+              <Button onClick={() => mergeMutation.mutate()} disabled={busy}>
+                {mergeMutation.isPending ? (
+                  <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Merge className="ml-2 h-4 w-4" />
+                )}
+                ادغام
+              </Button>
+            </div>
+          ) : null}
+
           <div className="space-y-3 rounded-md border p-4">
-            <p className="text-sm">
-              با ادغام، همهٔ ارجاع‌های «{loserSide.display_name}» به «{winnerSide.display_name}»
-              منتقل می‌شود و شخص بازنده غیرفعال (نه حذف) خواهد شد.
-            </p>
             <div className="space-y-2">
-              <Label htmlFor={`merge-reason-${candidate.candidate_id}`}>دلیل ادغام</Label>
+              <Label htmlFor={`dismiss-reason-${candidate.candidate_id}`}>
+                دلیل رد پیشنهاد (اختیاری)
+              </Label>
               <Input
-                id={`merge-reason-${candidate.candidate_id}`}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="مثلاً: رکورد آزمایشی، همان شخص با املای متفاوت"
+                id={`dismiss-reason-${candidate.candidate_id}`}
+                value={dismissReason}
+                onChange={(e) => setDismissReason(e.target.value)}
+                placeholder="مثلاً: شمارهٔ تلفن ثابتِ مشترک بین دو همکار"
                 disabled={busy}
               />
             </div>
-            <Button onClick={() => mergeMutation.mutate()} disabled={busy}>
-              {mergeMutation.isPending ? (
+            <Button variant="outline" onClick={() => dismissMutation.mutate()} disabled={busy}>
+              {dismissMutation.isPending ? (
                 <Loader2 className="ml-2 h-4 w-4 animate-spin" />
               ) : (
-                <Merge className="ml-2 h-4 w-4" />
+                <UserX className="ml-2 h-4 w-4" />
               )}
-              ادغام
+              این‌ها یک نفر نیستند
             </Button>
           </div>
-        ) : null}
-
-        <div className="space-y-3 rounded-md border p-4">
-          <div className="space-y-2">
-            <Label htmlFor={`dismiss-reason-${candidate.candidate_id}`}>
-              دلیل رد پیشنهاد (اختیاری)
-            </Label>
-            <Input
-              id={`dismiss-reason-${candidate.candidate_id}`}
-              value={dismissReason}
-              onChange={(e) => setDismissReason(e.target.value)}
-              placeholder="مثلاً: شمارهٔ تلفن ثابتِ مشترک بین دو همکار"
-              disabled={busy}
-            />
-          </div>
-          <Button variant="outline" onClick={() => dismissMutation.mutate()} disabled={busy}>
-            {dismissMutation.isPending ? (
-              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
-            ) : (
-              <UserX className="ml-2 h-4 w-4" />
-            )}
-            این‌ها یک نفر نیستند
-          </Button>
-        </div>
-      </CardContent>
+        </CardContent>
+      ) : null}
     </Card>
   );
 }
