@@ -122,6 +122,26 @@ function PersonMergePage() {
     },
   });
 
+  const detectMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("person_detect_merge_candidates", {
+        p_person_id: null,
+      });
+      if (error) throw error;
+      return data as { pending?: number } | null;
+    },
+    onSuccess: (result) => {
+      const pending = Number((result as { pending?: number } | null)?.pending ?? 0);
+      toast.success(
+        pending > 0
+          ? `صف تشخیص به‌روز شد — ${toFaDigits(pending)} جفت در انتظار`
+          : "صف تشخیص به‌روز شد — جفت مشکوکی نیست",
+      );
+      void queryClient.invalidateQueries({ queryKey: ["person-merge-candidates"] });
+    },
+    onError: (e) => toast.error(rpcMessage(e, "بازخوانی صف تشخیص انجام نشد.")),
+  });
+
   if (rolesLoading) {
     return <div className="p-6 text-muted-foreground">در حال بررسی دسترسی…</div>;
   }
@@ -139,6 +159,20 @@ function PersonMergePage() {
             <ArrowRight className="ml-2 h-4 w-4" />
             بازگشت به اشخاص
           </Link>
+        </Button>
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          disabled={detectMutation.isPending}
+          onClick={() => detectMutation.mutate()}
+        >
+          {detectMutation.isPending ? (
+            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Merge className="ml-2 h-4 w-4" />
+          )}
+          پیشنهاد ادغام‌ها
         </Button>
         {canOpenCleanup ? (
           <Button asChild variant="outline" size="sm">
