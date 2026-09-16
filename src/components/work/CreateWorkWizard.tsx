@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import { supabase } from "@/integrations/supabase/client";
+import { postIntakeSummary } from "@/lib/work/intake-summary.client";
 import {
   INTAKE_ALL_QUESTIONS,
   buildIntakeTranscript,
@@ -71,46 +72,6 @@ export function needsIntakeStep(
   if (confidence < 0.6) return true;
   if (text.trim().length < SHORT_TEXT_CHARS) return true;
   return false;
-}
-
-async function fetchAuthToken(): Promise<string | null> {
-  const { data } = await supabase.auth.getSession();
-  return data.session?.access_token ?? null;
-}
-
-async function postIntakeSummary(args: {
-  answers: IntakeAnswer[];
-  description?: string;
-  title?: string;
-}): Promise<{ summary: string; transcript: string } | null> {
-  try {
-    const token = await fetchAuthToken();
-    if (!token) return null;
-    const res = await fetch("/api/work/intake-summary", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        answers: args.answers,
-        description: args.description,
-        title: args.title,
-      }),
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as {
-      summary?: string;
-      transcript?: string;
-    };
-    if (!json.summary?.trim()) return null;
-    return {
-      summary: json.summary.trim(),
-      transcript: json.transcript?.trim() || buildIntakeTranscript(args.answers),
-    };
-  } catch {
-    return null;
-  }
 }
 
 function stepLabel(step: WizardStep): string {

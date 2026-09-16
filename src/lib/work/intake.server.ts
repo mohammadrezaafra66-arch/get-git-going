@@ -39,9 +39,11 @@ export async function summarizeIntakeWithAi(
     return { summary: local, source: "local", transcript };
   }
 
+  // Wizard client aborts at ~4s; keep server AI short so we don't hold the
+  // request long after the UI already fell back to local summarizeIntake.
   const result = await aiChat({
     temperature: 0.2,
-    timeoutMs: 45_000,
+    timeoutMs: 5_000,
     messages: [
       {
         role: "system",
