@@ -132,12 +132,46 @@ export const torobOpsAdminListActiveUsers = createServerFn({ method: "POST" })
     await assertAdmin(userId);
     const { data, error } = await torobOpsAdmin()
       .from("profiles")
-      .select("id, full_name, status")
+      .select("id, full_name, status, phone")
       .eq("status", "active")
       .order("full_name")
       .limit(500);
     if (error) throw new Error(error.message);
-    return (data ?? []) as Array<{ id: string; full_name: string | null; status: string }>;
+
+    // LAN/test DBs often rename everyone to «کاربر آزمایشی N»; expose email so
+    // admins can identify real accounts (auth.users is not in PostgREST).
+    const emailById = new Map<string, string | null>();
+    let page = 1;
+    for (;;) {
+      const { data: pageData, error: listErr } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage: 200,
+      });
+      if (listErr) throw new Error(listErr.message);
+      const users = pageData?.users ?? [];
+      for (const u of users) emailById.set(u.id, u.email ?? null);
+      if (users.length < 200) break;
+      page += 1;
+      if (page > 20) break;
+    }
+
+    const rows = (data ?? []).map((p: { id: string; full_name: string | null; status: string; phone: string | null }) => ({
+      id: p.id,
+      full_name: p.full_name,
+      status: p.status,
+      phone: p.phone,
+      email: emailById.get(p.id) ?? null,
+      isSelf: p.id === userId,
+    }));
+
+    rows.sort((a, b) => {
+      if (a.isSelf !== b.isSelf) return a.isSelf ? -1 : 1;
+      const ae = (a.email || a.full_name || "").toLowerCase();
+      const be = (b.email || b.full_name || "").toLowerCase();
+      return ae.localeCompare(be, "fa");
+    });
+
+    return rows;
   });
 
 async function gateOps(userId: string, opsSession: string | undefined, write: boolean) {

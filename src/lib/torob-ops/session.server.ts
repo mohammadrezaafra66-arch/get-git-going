@@ -1,3 +1,4 @@
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   createTorobOpsSessionToken,
   hashTorobOpsPassword,
@@ -233,6 +234,7 @@ export async function listTorobOpsCredentials(): Promise<
     created_at: string;
     updated_at: string;
     full_name: string | null;
+    email: string | null;
   }>
 > {
   const { data: creds, error } = await torobOpsAdmin()
@@ -250,6 +252,12 @@ export async function listTorobOpsCredentials(): Promise<
     (profiles ?? []).map((p: { id: string; full_name: string | null }) => [p.id, p.full_name]),
   );
 
+  const emailMap = new Map<string, string | null>();
+  for (const id of userIds) {
+    const { data } = await supabaseAdmin.auth.admin.getUserById(id);
+    emailMap.set(id, data.user?.email ?? null);
+  }
+
   return (creds ?? []).map(
     (c: { user_id: string; is_active: boolean; created_at: string; updated_at: string }) => ({
       user_id: c.user_id,
@@ -257,6 +265,7 @@ export async function listTorobOpsCredentials(): Promise<
       created_at: c.created_at,
       updated_at: c.updated_at,
       full_name: nameMap.get(c.user_id) ?? null,
+      email: emailMap.get(c.user_id) ?? null,
     }),
   );
 }
