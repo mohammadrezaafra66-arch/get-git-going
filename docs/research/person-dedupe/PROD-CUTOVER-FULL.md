@@ -14,9 +14,9 @@
 - LIVE_CLONE = C:\afrakala
 - WEB_PORT = 3000
 - PROD_DB = postgres (container afrakala-lan-db)
-- Test tip to transfer: **`6623963b`** (or newer) on `staging` — canonical 3100 branch (`staging`); includes pin + Torob Ops + quick-price + cutover runner
+- Test tip to transfer: **`077be1b7`** (or newer) on `staging` — canonical 3100 branch (`staging`); includes pin + Torob Ops + quick-price + cutover runner
 - Prod live tree was previously around `22277e48` — must `git pull` to tip before rebuild
-- One-shot runner: `docs/research/person-dedupe/PROD-CUTOVER-RUN.ps1` (SHA256 `5FE02261E498FA5BCCE06295D9CB43C23A3758A161385F339066E9A8A37438E0`)
+- One-shot runner: `docs/research/person-dedupe/PROD-CUTOVER-RUN.ps1` (SHA256 `1860CD53EA59AF74E87AC583B91E77D6D7A6BAD1B5AE823642F4A461B88D0573`)
 - DO NOT rebuild from C:\AfraKalaServer\get-git-going01lan
 - Ledger probe in discovery used the WRONG .env first — always use C:\afrakala\deploy\lan\.env.lan
 
