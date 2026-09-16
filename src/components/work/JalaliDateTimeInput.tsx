@@ -1,5 +1,5 @@
 /**
- * تاریخ+ساعت شمسی برای دستیار کار.
+ * تاریخ+ساعت شمسی برای تیکت.
  * مقدار داخلی: datetime-local سازگار (YYYY-MM-DDTHH:mm) تا با fromDatetimeLocalValue یکی بماند.
  */
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";

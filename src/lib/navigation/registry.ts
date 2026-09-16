@@ -583,7 +583,7 @@ const NAVIGATION_SEEDS = [
   },
   {
     to: "/operations/work",
-    label: "دستیار کار",
+    label: "تیکت",
     icon: ClipboardList,
     // No dedicated `work` ModuleKey — mirror tasks (invoices) + pin ROLE_ALLOWLIST.
     module: "invoices",
@@ -591,7 +591,7 @@ const NAVIGATION_SEEDS = [
   },
   {
     to: "/operations/work/settings",
-    label: "طبقه‌بندی کار",
+    label: "طبقه‌بندی تیکت",
     icon: Settings,
     module: "invoices",
     group: "operations",

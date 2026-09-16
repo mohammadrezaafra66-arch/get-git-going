@@ -359,10 +359,12 @@ test("seeded work item is visible on /operations/work", async ({ page }) => {
   await expect(page.getByText("در حال بررسی جلسه کاربری...")).toHaveCount(0, {
     timeout: 30_000,
   });
-  await expect(page.getByRole("heading", { name: "دستیار کار" })).toBeVisible({
+  await expect(page.getByRole("heading", { name: "تیکت" })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText("تابلوی آرام برای تصمیم امروز")).toBeVisible();
+  await expect(
+    page.getByText("نظرات، انتقادات و پیشنهادات خود را اینجا ثبت کنید"),
+  ).toBeVisible();
   await expect(page.getByText(TITLES.board)).toBeVisible({ timeout: 20_000 });
 });
 
@@ -495,8 +497,8 @@ test("create work wizard describe+classify then create end-to-end", async ({ pag
   await expect(page.getByText("در حال بررسی جلسه کاربری...")).toHaveCount(0, {
     timeout: 30_000,
   });
-  await page.getByRole("button", { name: "کار جدید" }).click();
-  await expect(page.getByRole("heading", { name: "ثبت کار جدید" })).toBeVisible();
+  await page.getByRole("button", { name: "تیکت جدید" }).click();
+  await expect(page.getByRole("heading", { name: "ثبت تیکت جدید" })).toBeVisible();
 
   const describeText =
     `${TITLES.created} — یادداشت آزاد برای ثبت از ویزارد e2e با متن به اندازه کافی بلند برای عبور از آستانهٔ کوتاه بودن`;

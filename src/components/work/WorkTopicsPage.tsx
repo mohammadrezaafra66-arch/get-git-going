@@ -81,13 +81,13 @@ export function WorkTopicsPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link to="/operations/work">
             <ArrowRight className="h-4 w-4" />
-            بازگشت به تابلو
+            بازگشت به تیکت‌ها
           </Link>
         </Button>
 
         <PageHeader
           title="موضوع‌ها"
-          description="گروه‌بندی کارهای مرتبط زیر یک موضوع مشترک"
+          description="گروه‌بندی تیکت‌های مرتبط زیر یک موضوع مشترک"
           actions={
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" />

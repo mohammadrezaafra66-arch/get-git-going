@@ -86,7 +86,7 @@ export function CreateWorkFromMessageButton({
       });
 
       if (pending.length > 0) {
-        toast.success("کار از پیام ثبت شد — پیشنهاد ادغام در تابلو آماده است.", {
+        toast.success("تیکت از پیام ثبت شد — پیشنهاد ادغام در تابلو آماده است.", {
           action: {
             label: "تابلو ادغام",
             onClick: () => {
@@ -95,7 +95,7 @@ export function CreateWorkFromMessageButton({
           },
         });
       } else {
-        toast.success("کار از پیام ثبت شد.", {
+        toast.success("تیکت از پیام ثبت شد.", {
           action: {
             label: "مشاهده",
             onClick: () => {
@@ -106,7 +106,7 @@ export function CreateWorkFromMessageButton({
       }
       setOpen(false);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "ثبت کار ناموفق بود.");
+      toast.error(e instanceof Error ? e.message : "ثبت تیکت ناموفق بود.");
     } finally {
       setSaving(false);
     }
@@ -121,8 +121,8 @@ export function CreateWorkFromMessageButton({
           variant="ghost"
           disabled={disabled || !(messageText ?? "").trim()}
           onClick={openDialog}
-          aria-label="ثبت کار از این پیام"
-          title="ثبت کار از این پیام"
+          aria-label="ثبت تیکت از این پیام"
+          title="ثبت تیکت از این پیام"
           className="h-7 w-7"
         >
           <ClipboardList className="h-3.5 w-3.5" />
@@ -136,14 +136,14 @@ export function CreateWorkFromMessageButton({
           onClick={openDialog}
         >
           <ClipboardList className="h-4 w-4" />
-          ثبت کار از این پیام
+          ثبت تیکت از این پیام
         </Button>
       )}
 
       <Dialog open={open} onOpenChange={(v) => !saving && setOpen(v)}>
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader className="text-right sm:text-right">
-            <DialogTitle>ثبت کار از این پیام</DialogTitle>
+            <DialogTitle>ثبت تیکت از این پیام</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div className="rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground line-clamp-4 whitespace-pre-wrap text-right">
@@ -182,7 +182,7 @@ export function CreateWorkFromMessageButton({
                 rows={2}
                 value={acceptance}
                 onChange={(e) => setAcceptance(e.target.value)}
-                placeholder="چه چیزی این کار را تمام‌شده می‌کند؟"
+                placeholder="چه چیزی این تیکت را تمام‌شده می‌کند؟"
               />
             </div>
           </div>
@@ -196,7 +196,7 @@ export function CreateWorkFromMessageButton({
             </Button>
             <Button disabled={saving} onClick={() => void submit()}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              ثبت کار
+              ثبت تیکت
             </Button>
           </DialogFooter>
         </DialogContent>

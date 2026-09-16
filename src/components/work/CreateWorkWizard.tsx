@@ -337,7 +337,7 @@ export function CreateWorkWizard({
     if (step === "describe") {
       const trimmed = description.trim();
       if (!trimmed) {
-        toast.error("لطفاً شرح کار را بنویسید.");
+        toast.error("لطفاً شرح تیکت را بنویسید.");
         return;
       }
       const classified = classifyWorkItem({ text: trimmed });
@@ -368,7 +368,7 @@ export function CreateWorkWizard({
   async function submit() {
     const trimmed = title.trim();
     if (!trimmed) {
-      toast.error("عنوان کار الزامی است.");
+      toast.error("عنوان تیکت الزامی است.");
       return;
     }
     setSaving(true);
@@ -392,12 +392,12 @@ export function CreateWorkWizard({
         itemId: item.id,
         limit: 20,
       });
-      toast.success("کار ثبت شد.");
+      toast.success("تیکت ثبت شد.");
       onCreated?.(item.id, pending.length);
       reset();
       onOpenChange(false);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "ثبت کار ناموفق بود.");
+      toast.error(e instanceof Error ? e.message : "ثبت تیکت ناموفق بود.");
     } finally {
       setSaving(false);
     }
@@ -428,13 +428,13 @@ export function CreateWorkWizard({
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-100 text-lg" aria-hidden>
               📋
             </span>
-            ثبت کار جدید
+            ثبت تیکت جدید
           </DialogTitle>
         </DialogHeader>
 
         <nav
           className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2 text-xs"
-          aria-label="مراحل ثبت کار"
+          aria-label="مراحل ثبت تیکت"
           data-testid="create-work-steps"
         >
           {visibleSteps.map((s, i) => {
@@ -472,7 +472,7 @@ export function CreateWorkWizard({
             <div className="space-y-1.5">
               <Label htmlFor="work-wizard-describe" className="flex items-center gap-1.5">
                 <span aria-hidden>✍️</span>
-                شرح آزاد کار
+                شرح آزاد تیکت
               </Label>
               <Textarea
                 id="work-wizard-describe"
@@ -794,7 +794,7 @@ export function CreateWorkWizard({
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin me-1" />
               ) : null}
-              ثبت کار
+              ثبت تیکت
             </Button>
           )}
         </DialogFooter>

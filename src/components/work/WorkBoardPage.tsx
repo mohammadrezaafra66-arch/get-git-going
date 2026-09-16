@@ -339,8 +339,8 @@ export function WorkBoardPage() {
     >
       <div className="container max-w-5xl space-y-6 py-6 pb-24 md:pb-6">
         <PageHeader
-          title="🗂️ دستیار کار"
-          description="تابلوی آرام برای تصمیم امروز، انجام کار و بستن حلقه — بدون شلوغی داشبوردی."
+          title="🎫 تیکت"
+          description="نظرات، انتقادات و پیشنهادات خود را اینجا ثبت کنید تا بررسی و اعمال شوند."
           actions={
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" asChild className="rounded-full border-slate-200 bg-white/90">
@@ -372,11 +372,43 @@ export function WorkBoardPage() {
                 onClick={() => setCreateOpen(true)}
               >
                 <Plus className="me-1.5 h-4 w-4" />
-                کار جدید
+                تیکت جدید
               </Button>
             </div>
           }
         />
+
+        <section
+          className="rounded-2xl border border-teal-100 bg-white/80 px-4 py-4 text-sm leading-7 text-slate-700 shadow-sm"
+          aria-labelledby="ticket-intro-title"
+        >
+          <h2 id="ticket-intro-title" className="text-base font-semibold text-teal-900">
+            اینجا چه کاری انجام می‌شود؟
+          </h2>
+          <p className="mt-2">
+            این بخش برای ثبت <strong className="font-semibold text-slate-900">نظر، انتقاد و پیشنهاد</strong>{" "}
+            شماست تا تیم بتواند آن‌ها را بررسی کند و در صورت نیاز اعمال کند. هر مورد به‌صورت یک
+            «تیکت» ثبت می‌شود و تا بسته شدن قابل پیگیری است.
+          </p>
+          <h3 className="mt-4 text-sm font-semibold text-slate-900">آموزش کار با تیکت</h3>
+          <ol className="mt-2 list-decimal space-y-1.5 pe-5">
+            <li>
+              با دکمهٔ <span className="font-medium text-teal-800">«تیکت جدید»</span> موضوع را
+              بنویسید؛ چند سوال کوتاه کمکتان می‌کند تا شرح کامل شود.
+            </li>
+            <li>
+              در خلاصهٔ صبحگاهی و صف تصمیم، تیکت‌های امروز را ببینید و سطل تصمیم
+              (امروز / بعداً / رد) را مشخص کنید.
+            </li>
+            <li>
+              روی هر تیکت بروید، موعد ادعا‌شده و وضعیت را تنظیم کنید و تا انجام/بستن
+              حلقه پیش ببرید.
+            </li>
+            <li>
+              اگر چند تیکت شبیه هم بود، از پنل پیشنهاد ادغام برای یکی‌کردن استفاده کنید.
+            </li>
+          </ol>
+        </section>
 
         <MorningSummaryStrip
           summary={summary}
@@ -406,7 +438,7 @@ export function WorkBoardPage() {
         <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur-sm">
           <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
             <ListTodo className="h-4 w-4 text-teal-700" />
-            <span>📋 فهرست کارها</span>
+            <span>📋 فهرست تیکت‌ها</span>
           </div>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-end gap-2">
@@ -532,7 +564,7 @@ export function WorkBoardPage() {
           {itemsLoading && (
             <div className="flex items-center gap-2 py-8 text-sm text-slate-500">
               <Loader2 className="h-4 w-4 animate-spin" />
-              در حال بارگذاری کارها…
+              در حال بارگذاری تیکت‌ها…
             </div>
           )}
           {itemsError && (
@@ -549,7 +581,7 @@ export function WorkBoardPage() {
                 🌱
               </span>
               <p className="text-sm text-slate-600">
-                هنوز کاری برای نمایش نیست. اولین کار را ثبت کنید تا تابلو زنده شود.
+                هنوز تیکتی برای نمایش نیست. اولین نظر یا پیشنهاد را ثبت کنید تا فهرست زنده شود.
               </p>
               <Button
                 size="sm"
@@ -557,7 +589,7 @@ export function WorkBoardPage() {
                 onClick={() => setCreateOpen(true)}
               >
                 <Plus className="me-1.5 h-4 w-4" />
-                ثبت اولین کار
+                ثبت اولین تیکت
               </Button>
             </div>
           )}
@@ -610,7 +642,7 @@ export function WorkBoardPage() {
         size="lg"
         data-testid="work-board-fab"
         className="fixed bottom-5 end-5 z-40 h-14 w-14 rounded-full p-0 shadow-lg md:hidden"
-        aria-label="کار جدید"
+        aria-label="تیکت جدید"
         onClick={() => setCreateOpen(true)}
       >
         <Plus className="h-6 w-6" />
