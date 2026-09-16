@@ -199,7 +199,13 @@ export async function buildReportPreview(findingId: string): Promise<{
     .maybeSingle();
   if (error || !finding) throw new Error("یافته یافت نشد.");
 
-  const allowed = ["confirmed_bait", "queued_for_report", "report_failed", "reported"];
+  const allowed = [
+    "confirmed_bait",
+    "queued_for_report",
+    "reporting",
+    "report_failed",
+    "reported",
+  ];
   if (!allowed.includes(String(finding.status))) {
     return {
       findingId,
@@ -484,9 +490,10 @@ export async function processAutoReportQueue(input: {
 
   for (const row of rows ?? []) {
     const findingId = String(row.id);
+    const correlationId = `torob-ops:${findingId}:${Date.now().toString(36)}`;
     const account = await pickReporterAccount();
     if (!account && mode === "auto") {
-      results.push({ findingId, ok: false, detail: "no_active_account" });
+      results.push({ findingId, ok: false, detail: "no_active_account", correlationId });
       break;
     }
 
@@ -496,6 +503,21 @@ export async function processAutoReportQueue(input: {
       .eq("id", findingId);
 
     const preview = await buildReportPreview(findingId);
+    if (preview.blockedReason) {
+      await torobOpsAdmin()
+        .from("torob_ops_findings")
+        .update({ status: "report_failed" })
+        .eq("id", findingId);
+      results.push({
+        findingId,
+        ok: false,
+        detail: preview.blockedReason,
+        correlationId,
+      });
+      processed += 1;
+      continue;
+    }
+
     const submit = await submitTorobReportAdapter({
       mode,
       reportText: preview.reportText,
@@ -508,9 +530,10 @@ export async function processAutoReportQueue(input: {
       reported_by: input.actorId,
       report_text: preview.reportText,
       result: submit.ok ? "submitted" : "failed",
-      notes: submit.detail,
+      notes: `${submit.detail} | correlation=${correlationId}`,
       account_id: account?.id ?? null,
       mode,
+      correlation_id: correlationId,
     });
 
     await torobOpsAdmin()
@@ -547,9 +570,21 @@ export async function processAutoReportQueue(input: {
         status: "quarantine",
         lastError: submit.detail,
       });
+      // Circuit: pause whole queue on captcha/ban signal
+      await updateTorobOpsSettings({
+        adminId: input.actorId,
+        patch: { kill_switch: true },
+      });
     }
 
-    results.push({ findingId, ok: submit.ok, mode, detail: submit.detail, accountId: account?.id });
+    results.push({
+      findingId,
+      ok: submit.ok,
+      mode,
+      detail: submit.detail,
+      accountId: account?.id,
+      correlationId,
+    });
     processed += 1;
   }
 

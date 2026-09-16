@@ -150,7 +150,9 @@ function FindingsInner() {
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="max-w-xs flex-1">
-          <Label className="mb-1 block">فیلتر وضعیت</Label>
+          <Label htmlFor="torob-ops-status-filter" className="mb-1 block">
+            فیلتر وضعیت
+          </Label>
           <Select
             value={statusFilter}
             onValueChange={(v) => {
@@ -158,7 +160,7 @@ function FindingsInner() {
               setPage(0);
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger id="torob-ops-status-filter">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
