@@ -63,7 +63,7 @@ $have = docker exec -e PGPASSWORD=$pw $DbContainer `
   psql -U supabase_admin -d $DbName -t -A -c `
   ("SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '" + $MigVersion + "';")
 if (($have | Out-String).Trim() -eq "1") {
-  Log ("ALREADY_APPLIED version=" + $MigVersion + " — re-running SQL (idempotent GRANT)")
+  Log ("ALREADY_APPLIED version=" + $MigVersion + " - re-running SQL (idempotent GRANT)")
 }
 
 $RemoteSql = "/tmp/558_person_merge_helper_grants.sql"
@@ -87,15 +87,10 @@ docker exec -e PGPASSWORD=$pw $DbContainer `
 if ($LASTEXITCODE -ne 0) { Fail "ledger insert failed" }
 
 Log "STEP probe privileges"
+# Single-line SQL only: PowerShell 5.1 mishandles here-strings with ||.
+$probeSql = "SELECT has_function_privilege('authenticated','public._person_merge_repoint(text,text,uuid,uuid)'::regprocedure,'EXECUTE')::text || chr(124) || has_function_privilege('authenticated','public._person_merge_count_refs(text,text,uuid)'::regprocedure,'EXECUTE')::text || chr(124) || has_function_privilege('anon','public._person_merge_repoint(text,text,uuid,uuid)'::regprocedure,'EXECUTE')::text;"
 $probe = docker exec -e PGPASSWORD=$pw $DbContainer `
-  psql -U supabase_admin -d $DbName -t -A -c @"
-SELECT
-  has_function_privilege('authenticated','public._person_merge_repoint(text,text,uuid,uuid)'::regprocedure,'EXECUTE')::text
-  || '|' ||
-  has_function_privilege('authenticated','public._person_merge_count_refs(text,text,uuid)'::regprocedure,'EXECUTE')::text
-  || '|' ||
-  has_function_privilege('anon','public._person_merge_repoint(text,text,uuid,uuid)'::regprocedure,'EXECUTE')::text;
-"@
+  psql -U supabase_admin -d $DbName -t -A -c $probeSql
 if ($LASTEXITCODE -ne 0) { Fail "probe failed" }
 $probeText = ($probe | Out-String).Trim()
 Log ("PROBE_auth_repoint|auth_count|anon_repoint=" + $probeText)
