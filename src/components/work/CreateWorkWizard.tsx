@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
+import {
+  Brain,
+  CheckCircle2,
+  ClipboardList,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,16 +30,18 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import { supabase } from "@/integrations/supabase/client";
 import { postIntakeSummary } from "@/lib/work/intakeSummaryPost";
+import { postIntakeQuestions } from "@/lib/work/intakeQuestionsPost";
 import {
-  INTAKE_ALL_QUESTIONS,
   buildIntakeTranscript,
   classifyWorkItem,
   createWorkItem,
   listActiveTaxonomies,
   listMergeSuggestions,
+  localIntakeQuestionsForKind,
   summarizeIntake,
   type ClassifyWorkResult,
   type IntakeAnswer,
+  type IntakeQuestion,
   type WorkDecisionBucket,
   type WorkItemKind,
   type WorkItemPriority,
@@ -50,6 +58,7 @@ import {
   PRIORITY_LABELS,
 } from "./labels";
 import { TaxonomySelect } from "./TaxonomySelect";
+import { cn } from "@/lib/utils";
 
 const NONE = "__none__";
 const CLASSIFY_DEBOUNCE_MS = 300;
@@ -79,9 +88,20 @@ function stepLabel(step: WizardStep): string {
     case "describe":
       return "شرح";
     case "intake":
-      return "پرسش‌نامه";
+      return "پرسش‌نامه هوشمند";
     case "confirm":
       return "تأیید";
+  }
+}
+
+function stepIcon(step: WizardStep) {
+  switch (step) {
+    case "describe":
+      return ClipboardList;
+    case "intake":
+      return Brain;
+    case "confirm":
+      return CheckCircle2;
   }
 }
 
@@ -103,6 +123,11 @@ export function CreateWorkWizard({
   const [preview, setPreview] = useState<ClassifyWorkResult | null>(null);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [intakeQuestions, setIntakeQuestions] = useState<IntakeQuestion[]>([]);
+  const [questionsSource, setQuestionsSource] = useState<"ai" | "local" | null>(
+    null,
+  );
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -184,6 +209,9 @@ export function CreateWorkWizard({
     setDescription("");
     setPreview(null);
     setAnswers({});
+    setIntakeQuestions([]);
+    setQuestionsSource(null);
+    setLoadingQuestions(false);
     setTitle("");
     setBody("");
     setKind("note");
@@ -208,21 +236,59 @@ export function CreateWorkWizard({
     setGroupName(result.group ?? "");
   }
 
+  const activeQuestions = useMemo(() => {
+    if (intakeQuestions.length) return intakeQuestions;
+    const k = preview?.kind ?? kind;
+    return localIntakeQuestionsForKind(k);
+  }, [intakeQuestions, preview?.kind, kind]);
+
   const buildAnswerList = useCallback((): IntakeAnswer[] => {
-    return INTAKE_ALL_QUESTIONS.map((q) => {
-      const raw = (answers[q.id] ?? "").trim();
-      if (!raw) return null;
-      if (q.type === "mcq") {
-        const opt = q.options?.find((o) => o.id === raw);
+    return activeQuestions
+      .map((q) => {
+        const raw = (answers[q.id] ?? "").trim();
+        if (!raw) return null;
+        if (q.type === "mcq") {
+          const opt = q.options?.find((o) => o.id === raw);
+          return {
+            questionId: q.id,
+            value: raw,
+            label: opt?.label,
+            prompt: q.prompt,
+          } satisfies IntakeAnswer;
+        }
         return {
           questionId: q.id,
           value: raw,
-          label: opt?.label,
+          prompt: q.prompt,
         } satisfies IntakeAnswer;
+      })
+      .filter(Boolean) as IntakeAnswer[];
+  }, [answers, activeQuestions]);
+
+  async function loadSmartQuestions(classified: ClassifyWorkResult, text: string) {
+    setLoadingQuestions(true);
+    setAnswers({});
+    const fallback = localIntakeQuestionsForKind(classified.kind);
+    try {
+      const remote = await postIntakeQuestions({
+        description: text,
+        title: classified.suggestedTitle,
+        kind: classified.kind,
+      });
+      if (remote?.questions?.length) {
+        setIntakeQuestions(remote.questions);
+        setQuestionsSource(remote.source);
+      } else {
+        setIntakeQuestions(fallback);
+        setQuestionsSource("local");
       }
-      return { questionId: q.id, value: raw } satisfies IntakeAnswer;
-    }).filter(Boolean) as IntakeAnswer[];
-  }, [answers]);
+    } catch {
+      setIntakeQuestions(fallback);
+      setQuestionsSource("local");
+    } finally {
+      setLoadingQuestions(false);
+    }
+  }
 
   async function goToConfirm(fromIntake: boolean) {
     const classified =
@@ -242,8 +308,9 @@ export function CreateWorkWizard({
       const localSummary = summarizeIntake(answerList, {
         description: description.trim() || undefined,
         title: classified.suggestedTitle,
+        questions: activeQuestions,
       });
-      const localTranscript = buildIntakeTranscript(answerList);
+      const localTranscript = buildIntakeTranscript(answerList, activeQuestions);
 
       const remote = await postIntakeSummary({
         answers: answerList,
@@ -277,6 +344,7 @@ export function CreateWorkWizard({
       setPreview(classified);
       if (needsIntakeStep(classified.kind, trimmed, classified.confidence)) {
         setStep("intake");
+        void loadSmartQuestions(classified, trimmed);
       } else {
         await goToConfirm(false);
       }
@@ -339,7 +407,7 @@ export function CreateWorkWizard({
     setAnswers((prev) => ({ ...prev, [questionId]: value }));
   }
 
-  const busy = saving || preparingConfirm;
+  const busy = saving || preparingConfirm || loadingQuestions;
 
   return (
     <Dialog
@@ -352,15 +420,20 @@ export function CreateWorkWizard({
     >
       <DialogContent
         dir="rtl"
-        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        className="max-w-lg max-h-[90vh] overflow-y-auto border-teal-100/80 bg-gradient-to-b from-white to-slate-50/80"
         data-testid="create-work-wizard"
       >
         <DialogHeader className="text-right sm:text-right">
-          <DialogTitle>ثبت کار جدید</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-teal-900">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-100 text-lg" aria-hidden>
+              📋
+            </span>
+            ثبت کار جدید
+          </DialogTitle>
         </DialogHeader>
 
         <nav
-          className="flex items-center gap-2 text-xs text-muted-foreground"
+          className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200/80 bg-white/90 px-3 py-2 text-xs"
           aria-label="مراحل ثبت کار"
           data-testid="create-work-steps"
         >
@@ -368,20 +441,25 @@ export function CreateWorkWizard({
             const active = s === step;
             const idx = visibleSteps.indexOf(step);
             const done = i < idx;
+            const Icon = stepIcon(s);
             return (
               <span key={s} className="flex items-center gap-2">
-                {i > 0 ? <span aria-hidden="true">‹</span> : null}
+                {i > 0 ? (
+                  <span className="text-slate-300" aria-hidden="true">
+                    ‹
+                  </span>
+                ) : null}
                 <span
                   data-testid={`create-work-step-${s}`}
                   data-active={active ? "true" : "false"}
-                  className={
-                    active
-                      ? "font-medium text-foreground"
-                      : done
-                        ? "text-foreground/70"
-                        : undefined
-                  }
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+                    active && "bg-teal-100 font-medium text-teal-900",
+                    done && !active && "text-slate-700",
+                    !done && !active && "text-slate-400",
+                  )}
                 >
+                  <Icon className="h-3.5 w-3.5" />
                   {toFaDigits(i + 1)}. {stepLabel(s)}
                 </span>
               </span>
@@ -392,7 +470,10 @@ export function CreateWorkWizard({
         {step === "describe" ? (
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <Label htmlFor="work-wizard-describe">شرح آزاد کار</Label>
+              <Label htmlFor="work-wizard-describe" className="flex items-center gap-1.5">
+                <span aria-hidden>✍️</span>
+                شرح آزاد کار
+              </Label>
               <Textarea
                 id="work-wizard-describe"
                 data-testid="create-work-describe"
@@ -400,13 +481,18 @@ export function CreateWorkWizard({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="مثلاً: باگ فوری در ثبت فاکتور مالی — یا سؤال دربارهٔ گزارش ماهانه…"
+                className="rounded-xl border-slate-200 bg-white"
               />
             </div>
             <div
               data-testid="classify-preview"
-              className="rounded-md border bg-muted/40 px-3 py-2 text-sm space-y-1.5 text-right"
+              className="space-y-1.5 rounded-xl border border-teal-100 bg-teal-50/40 px-3 py-2.5 text-sm text-right"
               aria-live="polite"
             >
+              <p className="mb-1 flex items-center gap-1.5 text-xs font-medium text-teal-800">
+                <Sparkles className="h-3.5 w-3.5" />
+                پیش‌نمایش هوشمند
+              </p>
               {preview && description.trim() ? (
                 <>
                   <p>
@@ -430,17 +516,17 @@ export function CreateWorkWizard({
                     {toFaDigits(Math.round(preview.confidence * 100))}٪
                   </p>
                   {intakeNeeded ? (
-                    <p className="text-xs text-muted-foreground pt-1">
-                      در مرحله بعد چند سؤال کوتاه برای تکمیل ثبت می‌آید.
+                    <p className="pt-1 text-xs text-teal-800/80">
+                      در مرحله بعد پرسش‌نامهٔ هوشمند بر اساس همین شرح ساخته می‌شود.
                     </p>
                   ) : (
-                    <p className="text-xs text-muted-foreground pt-1">
+                    <p className="pt-1 text-xs text-muted-foreground">
                       متن کافی به‌نظر می‌رسد؛ مستقیماً به تأیید می‌روید.
                     </p>
                   )}
                 </>
               ) : (
-                <p className="text-muted-foreground text-xs">
+                <p className="text-xs text-muted-foreground">
                   با نوشتن شرح، پیش‌نمایش طبقه‌بندی اینجا ظاهر می‌شود.
                 </p>
               )}
@@ -450,38 +536,64 @@ export function CreateWorkWizard({
 
         {step === "intake" ? (
           <div className="space-y-4" data-testid="create-work-intake">
-            {INTAKE_ALL_QUESTIONS.map((q) => (
-              <div key={q.id} className="space-y-1.5">
-                <Label htmlFor={`intake-${q.id}`}>{q.prompt}</Label>
-                {q.type === "open" ? (
-                  <Textarea
-                    id={`intake-${q.id}`}
-                    rows={2}
-                    value={answers[q.id] ?? ""}
-                    onChange={(e) => setAnswer(q.id, e.target.value)}
-                  />
-                ) : (
-                  <Select
-                    value={answers[q.id] || NONE}
-                    onValueChange={(v) =>
-                      setAnswer(q.id, v === NONE ? "" : v)
-                    }
-                  >
-                    <SelectTrigger id={`intake-${q.id}`}>
-                      <SelectValue placeholder="انتخاب کنید" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={NONE}>بدون پاسخ</SelectItem>
-                      {(q.options ?? []).map((o) => (
-                        <SelectItem key={o.id} value={o.id}>
-                          {o.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+            <div className="flex items-start gap-2 rounded-xl border border-violet-100 bg-violet-50/50 px-3 py-2 text-xs text-violet-900">
+              <Brain className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-medium">
+                  {questionsSource === "ai"
+                    ? "سوال‌ها مخصوص این کار با هوش مصنوعی ساخته شدند."
+                    : questionsSource === "local"
+                      ? "سوال‌های متناسب با نوع کار (حالت محلی)."
+                      : "در حال آماده‌سازی سوال‌های مرتبط…"}
+                </p>
+                <p className="mt-0.5 text-violet-800/80">
+                  پاسخ‌ها به حافظهٔ سازمانی کمک می‌کنند تا دفعات بعد سوال‌ها دقیق‌تر شوند.
+                </p>
               </div>
-            ))}
+            </div>
+            {loadingQuestions ? (
+              <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                در حال ساخت سوال‌های مرتبط…
+              </div>
+            ) : (
+              activeQuestions.map((q) => (
+                <div key={q.id} className="space-y-1.5 rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
+                  <Label htmlFor={`intake-${q.id}`} className="text-sm leading-relaxed">
+                    {q.type === "open" ? "💬 " : "☑️ "}
+                    {q.prompt}
+                  </Label>
+                  {q.type === "open" ? (
+                    <Textarea
+                      id={`intake-${q.id}`}
+                      rows={2}
+                      value={answers[q.id] ?? ""}
+                      onChange={(e) => setAnswer(q.id, e.target.value)}
+                      className="rounded-lg"
+                    />
+                  ) : (
+                    <Select
+                      value={answers[q.id] || NONE}
+                      onValueChange={(v) =>
+                        setAnswer(q.id, v === NONE ? "" : v)
+                      }
+                    >
+                      <SelectTrigger id={`intake-${q.id}`}>
+                        <SelectValue placeholder="انتخاب کنید" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NONE}>بدون پاسخ</SelectItem>
+                        {(q.options ?? []).map((o) => (
+                          <SelectItem key={o.id} value={o.id}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         ) : null}
 

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, Scale } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { WorkItem } from "@/lib/work";
 import { KIND_LABELS, PRIORITY_LABELS } from "./labels";
@@ -22,11 +22,15 @@ export function DecisionQueue({
 }) {
   return (
     <section
-      className="rounded-2xl border border-amber-200/70 bg-gradient-to-l from-amber-50/50 to-white p-4"
+      className="rounded-2xl border border-amber-200/70 bg-gradient-to-l from-amber-50/50 to-white p-4 shadow-sm"
       dir="rtl"
     >
       <div className="mb-3 flex items-baseline justify-between gap-2">
-        <h2 className="text-sm font-semibold text-slate-800">صف تصمیم امروز</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+          <span aria-hidden>⚖️</span>
+          <Scale className="h-4 w-4 text-amber-700" />
+          صف تصمیم امروز
+        </h2>
         <span className="text-xs text-slate-500">سریع به انجام یا انتظار بفرستید</span>
       </div>
 
@@ -42,8 +46,8 @@ export function DecisionQueue({
       )}
 
       {!loading && !error && items.length === 0 && (
-        <p className="py-4 text-center text-sm text-slate-500">
-          موردی برای تصمیم امروز نیست — آرام بمانید.
+        <p className="rounded-xl bg-white/70 py-4 text-center text-sm text-slate-500 ring-1 ring-amber-100">
+          😌 موردی برای تصمیم امروز نیست — آرام بمانید.
         </p>
       )}
 
@@ -53,7 +57,7 @@ export function DecisionQueue({
           return (
             <li
               key={item.id}
-              className="flex flex-col gap-2 rounded-xl bg-white/80 p-3 ring-1 ring-amber-100 sm:flex-row sm:items-center sm:justify-between"
+              className="flex flex-col gap-2 rounded-xl bg-white/90 p-3 shadow-sm ring-1 ring-amber-100 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
                 <Link
@@ -71,22 +75,25 @@ export function DecisionQueue({
                 <Button
                   size="sm"
                   variant="secondary"
+                  className="rounded-full"
                   disabled={busy}
                   onClick={() => onSetBucket(item.id, "today_do")}
                 >
-                  امروز انجام
+                  ✅ امروز انجام
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
+                  className="rounded-full"
                   disabled={busy}
                   onClick={() => onSetBucket(item.id, "waiting")}
                 >
-                  انتظار
+                  ⏳ انتظار
                 </Button>
                 <Button
                   size="sm"
                   variant="ghost"
+                  className="rounded-full"
                   disabled={busy}
                   onClick={() => onSetBucket(item.id, null)}
                 >

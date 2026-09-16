@@ -57,6 +57,7 @@ import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-table
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
 import { Route as ApiWorkIntakeSummaryRouteImport } from './routes/api/work/intake-summary'
+import { Route as ApiWorkIntakeQuestionsRouteImport } from './routes/api/work/intake-questions'
 import { Route as ApiWorkClassifyRouteImport } from './routes/api/work/classify'
 import { Route as ApiPublicProductsRouteImport } from './routes/api/public/products'
 import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
@@ -186,6 +187,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppGamificationAdminIndexRouteImport } from './routes/_app.gamification.admin.index'
 import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/api/public/hooks/process-pricing-queue'
+import { Route as ApiPublicHooksIssabelAmiRingRouteImport } from './routes/api/public/hooks/issabel-ami-ring'
 import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/api/public/hooks/ingest-market-rates'
 import { Route as ApiPublicHooksImportIssabelCallsRouteImport } from './routes/api/public/hooks/import-issabel-calls'
 import { Route as ApiPublicHooksGenerateMarketingTasksRouteImport } from './routes/api/public/hooks/generate-marketing-tasks'
@@ -471,6 +473,11 @@ const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
 const ApiWorkIntakeSummaryRoute = ApiWorkIntakeSummaryRouteImport.update({
   id: '/api/work/intake-summary',
   path: '/api/work/intake-summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkIntakeQuestionsRoute = ApiWorkIntakeQuestionsRouteImport.update({
+  id: '/api/work/intake-questions',
+  path: '/api/work/intake-questions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiWorkClassifyRoute = ApiWorkClassifyRouteImport.update({
@@ -1156,6 +1163,12 @@ const ApiPublicHooksProcessPricingQueueRoute =
     path: '/api/public/hooks/process-pricing-queue',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksIssabelAmiRingRoute =
+  ApiPublicHooksIssabelAmiRingRouteImport.update({
+    id: '/api/public/hooks/issabel-ami-ring',
+    path: '/api/public/hooks/issabel-ami-ring',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksIngestMarketRatesRoute =
   ApiPublicHooksIngestMarketRatesRouteImport.update({
     id: '/api/public/hooks/ingest-market-rates',
@@ -1586,6 +1599,7 @@ export interface FileRoutesByFullPath {
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-questions': typeof ApiWorkIntakeQuestionsRoute
   '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
@@ -1623,6 +1637,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
+  '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/gamification/admin/': typeof AppGamificationAdminIndexRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
@@ -1806,6 +1821,7 @@ export interface FileRoutesByTo {
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-questions': typeof ApiWorkIntakeQuestionsRoute
   '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
@@ -1843,6 +1859,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
+  '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/gamification/admin': typeof AppGamificationAdminIndexRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
@@ -2031,6 +2048,7 @@ export interface FileRoutesById {
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
   '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-questions': typeof ApiWorkIntakeQuestionsRoute
   '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
@@ -2068,6 +2086,7 @@ export interface FileRoutesById {
   '/api/public/hooks/generate-marketing-tasks': typeof ApiPublicHooksGenerateMarketingTasksRoute
   '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
+  '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/_app/gamification/admin/': typeof AppGamificationAdminIndexRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
@@ -2256,6 +2275,7 @@ export interface FileRouteTypes {
     | '/api/messenger/ai-chat'
     | '/api/public/products'
     | '/api/work/classify'
+    | '/api/work/intake-questions'
     | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
@@ -2293,6 +2313,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
+    | '/api/public/hooks/issabel-ami-ring'
     | '/api/public/hooks/process-pricing-queue'
     | '/gamification/admin/'
     | '/sales/quotes/'
@@ -2476,6 +2497,7 @@ export interface FileRouteTypes {
     | '/api/messenger/ai-chat'
     | '/api/public/products'
     | '/api/work/classify'
+    | '/api/work/intake-questions'
     | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
@@ -2513,6 +2535,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
+    | '/api/public/hooks/issabel-ami-ring'
     | '/api/public/hooks/process-pricing-queue'
     | '/gamification/admin'
     | '/sales/quotes'
@@ -2700,6 +2723,7 @@ export interface FileRouteTypes {
     | '/api/messenger/ai-chat'
     | '/api/public/products'
     | '/api/work/classify'
+    | '/api/work/intake-questions'
     | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
@@ -2737,6 +2761,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/generate-marketing-tasks'
     | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
+    | '/api/public/hooks/issabel-ami-ring'
     | '/api/public/hooks/process-pricing-queue'
     | '/_app/gamification/admin/'
     | '/_app/sales/quotes/'
@@ -2776,6 +2801,7 @@ export interface RootRouteChildren {
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
   ApiPublicProductsRoute: typeof ApiPublicProductsRoute
   ApiWorkClassifyRoute: typeof ApiWorkClassifyRoute
+  ApiWorkIntakeQuestionsRoute: typeof ApiWorkIntakeQuestionsRoute
   ApiWorkIntakeSummaryRoute: typeof ApiWorkIntakeSummaryRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiAdminCallsImportIssabelRoute: typeof ApiAdminCallsImportIssabelRoute
@@ -2783,6 +2809,7 @@ export interface RootRouteChildren {
   ApiPublicHooksGenerateMarketingTasksRoute: typeof ApiPublicHooksGenerateMarketingTasksRoute
   ApiPublicHooksImportIssabelCallsRoute: typeof ApiPublicHooksImportIssabelCallsRoute
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
+  ApiPublicHooksIssabelAmiRingRoute: typeof ApiPublicHooksIssabelAmiRingRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
   ApiAdminAutomationTorobEnqueueRoute: typeof ApiAdminAutomationTorobEnqueueRoute
   ApiPublicBotMarketMatchesResolveRoute: typeof ApiPublicBotMarketMatchesResolveRoute
@@ -3127,6 +3154,13 @@ declare module '@tanstack/react-router' {
       path: '/api/work/intake-summary'
       fullPath: '/api/work/intake-summary'
       preLoaderRoute: typeof ApiWorkIntakeSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/work/intake-questions': {
+      id: '/api/work/intake-questions'
+      path: '/api/work/intake-questions'
+      fullPath: '/api/work/intake-questions'
+      preLoaderRoute: typeof ApiWorkIntakeQuestionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/work/classify': {
@@ -4032,6 +4066,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksProcessPricingQueueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/issabel-ami-ring': {
+      id: '/api/public/hooks/issabel-ami-ring'
+      path: '/api/public/hooks/issabel-ami-ring'
+      fullPath: '/api/public/hooks/issabel-ami-ring'
+      preLoaderRoute: typeof ApiPublicHooksIssabelAmiRingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/ingest-market-rates': {
       id: '/api/public/hooks/ingest-market-rates'
       path: '/api/public/hooks/ingest-market-rates'
@@ -4896,6 +4937,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
   ApiPublicProductsRoute: ApiPublicProductsRoute,
   ApiWorkClassifyRoute: ApiWorkClassifyRoute,
+  ApiWorkIntakeQuestionsRoute: ApiWorkIntakeQuestionsRoute,
   ApiWorkIntakeSummaryRoute: ApiWorkIntakeSummaryRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiAdminCallsImportIssabelRoute: ApiAdminCallsImportIssabelRoute,
@@ -4904,6 +4946,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksGenerateMarketingTasksRoute,
   ApiPublicHooksImportIssabelCallsRoute: ApiPublicHooksImportIssabelCallsRoute,
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
+  ApiPublicHooksIssabelAmiRingRoute: ApiPublicHooksIssabelAmiRingRoute,
   ApiPublicHooksProcessPricingQueueRoute:
     ApiPublicHooksProcessPricingQueueRoute,
   ApiAdminAutomationTorobEnqueueRoute: ApiAdminAutomationTorobEnqueueRoute,

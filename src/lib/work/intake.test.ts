@@ -10,6 +10,7 @@ import {
   INTAKE_MCQ_QUESTIONS,
   INTAKE_OPEN_QUESTIONS,
   buildIntakeTranscript,
+  localIntakeQuestionsForKind,
   summarizeIntake,
 } from "./intake.ts";
 
@@ -26,6 +27,12 @@ describe("intake questions", () => {
       assert.equal(q.type, "mcq");
       assert.ok((q.options?.length ?? 0) >= 2);
     }
+  });
+
+  it("localIntakeQuestionsForKind returns bug-specific prompts", () => {
+    const qs = localIntakeQuestionsForKind("bug");
+    assert.ok(qs.length >= 8);
+    assert.match(qs[0]!.prompt, /بازتولید/);
   });
 });
 

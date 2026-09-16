@@ -7,6 +7,8 @@ import {
   FolderKanban,
   RefreshCw,
   Settings2,
+  ListTodo,
+  Search,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { toast } from "sonner";
@@ -337,18 +339,18 @@ export function WorkBoardPage() {
     >
       <div className="container max-w-5xl space-y-6 py-6 pb-24 md:pb-6">
         <PageHeader
-          title="دستیار کار"
-          description="تابلوی آرام برای تصمیم امروز، انجام کار و بستن حلقه — بدون شلوغی."
+          title="🗂️ دستیار کار"
+          description="تابلوی آرام برای تصمیم امروز، انجام کار و بستن حلقه — بدون شلوغی داشبوردی."
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" asChild>
+              <Button variant="outline" size="sm" asChild className="rounded-full border-slate-200 bg-white/90">
                 <Link to="/operations/work/topics">
                   <FolderKanban className="me-1.5 h-4 w-4" />
                   موضوع‌ها
                 </Link>
               </Button>
               {canManageTaxonomies ? (
-                <Button variant="outline" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild className="rounded-full border-slate-200 bg-white/90">
                   <Link to="/operations/work/settings">
                     <Settings2 className="me-1.5 h-4 w-4" />
                     طبقه‌بندی
@@ -358,6 +360,7 @@ export function WorkBoardPage() {
               <Button
                 variant="outline"
                 size="sm"
+                className="rounded-full border-slate-200 bg-white/90"
                 onClick={() => void refreshAll()}
               >
                 <RefreshCw className="me-1.5 h-4 w-4" />
@@ -365,7 +368,7 @@ export function WorkBoardPage() {
               </Button>
               <Button
                 size="sm"
-                className="hidden md:inline-flex"
+                className="hidden rounded-full bg-teal-700 text-white hover:bg-teal-800 md:inline-flex"
                 onClick={() => setCreateOpen(true)}
               >
                 <Plus className="me-1.5 h-4 w-4" />
@@ -400,16 +403,24 @@ export function WorkBoardPage() {
           onDismiss={handleDismissMerge}
         />
 
-        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+        <section className="space-y-3 rounded-2xl border border-slate-200/80 bg-white/95 p-4 shadow-sm backdrop-blur-sm">
+          <div className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <ListTodo className="h-4 w-4 text-teal-700" />
+            <span>📋 فهرست کارها</span>
+          </div>
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap items-end gap-2">
-              <div className="min-w-[8rem] flex-1 space-y-1">
+              <div className="relative min-w-[8rem] flex-1 space-y-1">
                 <label className="text-xs text-slate-500">جستجو</label>
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="عنوان…"
-                />
+                <div className="relative">
+                  <Search className="pointer-events-none absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="عنوان…"
+                    className="rounded-xl ps-8"
+                  />
+                </div>
               </div>
               <div className="flex flex-wrap gap-1.5 pb-0.5">
                 <FilterChip
@@ -532,12 +543,19 @@ export function WorkBoardPage() {
           {!itemsLoading && !itemsError && items.length === 0 && (
             <div
               data-testid="work-board-empty"
-              className="flex flex-col items-center gap-3 py-10 text-center"
+              className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-teal-200 bg-teal-50/40 py-12 text-center"
             >
+              <span className="text-3xl" aria-hidden>
+                🌱
+              </span>
               <p className="text-sm text-slate-600">
                 هنوز کاری برای نمایش نیست. اولین کار را ثبت کنید تا تابلو زنده شود.
               </p>
-              <Button size="sm" onClick={() => setCreateOpen(true)}>
+              <Button
+                size="sm"
+                className="rounded-full bg-teal-700 hover:bg-teal-800"
+                onClick={() => setCreateOpen(true)}
+              >
                 <Plus className="me-1.5 h-4 w-4" />
                 ثبت اولین کار
               </Button>
