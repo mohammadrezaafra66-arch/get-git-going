@@ -40,7 +40,7 @@ if (-not (Test-Path -LiteralPath $Compose)) { Fail "Missing compose: $Compose" }
 
 Section "0) GATE"
 if (-not $IApproveProductionMigrations) {
-  Write-Host "DRY / PRECHECK MODE — no migrate, no rebuild."
+  Write-Host "DRY / PRECHECK MODE - no migrate, no rebuild."
   Write-Host "To apply everything, re-run with: -IApproveProductionMigrations"
 } else {
   Write-Host "MIGRATE_PROD_APPROVED = YES (switch present)"
@@ -55,7 +55,7 @@ $head = (git rev-parse --short HEAD).Trim()
 $branch = (git rev-parse --abbrev-ref HEAD).Trim()
 Write-Host "branch=$branch HEAD=$head"
 if ($branch -ne $ExpectedBranch) { Fail "Expected branch $ExpectedBranch" }
-if (-not (Test-Path ".\src\routes\_app.admin.persons-cleanup.tsx")) { Fail "persons-cleanup missing — wrong tree?" }
+if (-not (Test-Path ".\src\routes\_app.admin.persons-cleanup.tsx")) { Fail "persons-cleanup missing - wrong tree?" }
 if (-not (Test-Path ".\supabase\migrations\20260916160000_552_call_ring_events.sql")) { Fail "ring migration missing" }
 
 Section "2) ENV PRESENCE (no values)"
