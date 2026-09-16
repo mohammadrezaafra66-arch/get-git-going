@@ -24,6 +24,26 @@ import {
 } from "@/lib/torob-ops/functions";
 import { formatDateFa } from "@/lib/i18n/formatters";
 
+type UserOption = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+  isSelf?: boolean;
+};
+
+function userLabel(u: {
+  full_name: string | null;
+  email?: string | null;
+  isSelf?: boolean;
+  id: string;
+}) {
+  const name = u.full_name?.trim() || "بدون نام";
+  const email = u.email?.trim();
+  const base = email ? `${name} — ${email}` : `${name} (${u.id.slice(0, 8)})`;
+  return u.isSelf ? `${base} (شما)` : base;
+}
+
 export function TorobOpsAccessAdminPage() {
   const qc = useQueryClient();
   const listCredsFn = useServerFn(torobOpsAdminListCredentials);
@@ -34,6 +54,7 @@ export function TorobOpsAccessAdminPage() {
 
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
+  const [userFilter, setUserFilter] = useState("");
 
   const credsQ = useQuery({
     queryKey: ["torob-ops-admin-creds"],
@@ -44,7 +65,15 @@ export function TorobOpsAccessAdminPage() {
     queryFn: () => listUsersFn({ data: {} }),
   });
 
-  const userOptions = useMemo(() => usersQ.data ?? [], [usersQ.data]);
+  const userOptions = useMemo(() => {
+    const rows = (usersQ.data ?? []) as UserOption[];
+    const q = userFilter.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((u) => {
+      const hay = `${u.full_name ?? ""} ${u.email ?? ""} ${u.phone ?? ""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [usersQ.data, userFilter]);
 
   const upsertMut = useMutation({
     mutationFn: () => upsertFn({ data: { userId, password, isActive: true } }),
@@ -86,19 +115,37 @@ export function TorobOpsAccessAdminPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="space-y-2">
+            <Label htmlFor="ops-user-filter">جست‌وجوی کاربر (نام یا ایمیل)</Label>
+            <Input
+              id="ops-user-filter"
+              value={userFilter}
+              onChange={(e) => setUserFilter(e.target.value)}
+              placeholder="مثلاً بخشی از ایمیل خودتان"
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-2">
             <Label>کاربر</Label>
             <Select value={userId} onValueChange={setUserId}>
               <SelectTrigger>
                 <SelectValue placeholder="انتخاب کاربر" />
               </SelectTrigger>
               <SelectContent>
-                {userOptions.map((u: { id: string; full_name: string | null }) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.full_name || u.id.slice(0, 8)}
-                  </SelectItem>
-                ))}
+                {userOptions.length === 0 ? (
+                  <div className="px-2 py-1.5 text-sm text-muted-foreground">نتیجه‌ای نیست</div>
+                ) : (
+                  userOptions.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {userLabel(u)}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              در محیط تست ممکن است نام نمایشی «کاربر آزمایشی» باشد؛ با ایمیل تشخیص دهید. حساب خودتان با
+              برچسب «(شما)» اول لیست است.
+            </p>
           </div>
           <div className="space-y-2">
             <Label htmlFor="ops-pw">رمز جدید (حداقل ۸ کاراکتر)</Label>
@@ -125,13 +172,20 @@ export function TorobOpsAccessAdminPage() {
           (row: {
             user_id: string;
             full_name: string | null;
+            email: string | null;
             is_active: boolean;
             updated_at: string;
           }) => (
             <Card key={row.user_id}>
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm">
                 <div className="space-y-1">
-                  <div className="font-medium">{row.full_name || row.user_id.slice(0, 8)}</div>
+                  <div className="font-medium">
+                    {userLabel({
+                      id: row.user_id,
+                      full_name: row.full_name,
+                      email: row.email,
+                    })}
+                  </div>
                   <div className="text-muted-foreground">
                     به‌روزرسانی: {formatDateFa(row.updated_at)}
                   </div>
