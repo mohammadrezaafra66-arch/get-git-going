@@ -359,7 +359,7 @@ test("seeded work item is visible on /operations/work", async ({ page }) => {
   await expect(page.getByText("در حال بررسی جلسه کاربری...")).toHaveCount(0, {
     timeout: 30_000,
   });
-  await expect(page.getByRole("heading", { name: "تیکت" })).toBeVisible({
+  await expect(page.getByRole("heading", { level: 1, name: "🎫 تیکت" })).toBeVisible({
     timeout: 30_000,
   });
   await expect(
