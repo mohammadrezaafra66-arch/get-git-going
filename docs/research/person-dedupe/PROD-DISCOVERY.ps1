@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # AfraKala PRODUCTION READ-ONLY DISCOVERY (PowerShell 5.1 safe, ASCII-only)
 # Run on PRODUCTION laptop. Does NOT change anything. Paste full output back.
 # All docker --format templates use SINGLE-QUOTED strings.
@@ -204,18 +204,21 @@ function Try-Ledger([string]$dbContainer, [string]$dbName, [string]$envFile) {
   $sql = @"
 SELECT current_database() AS db, current_user AS usr;
 SELECT version FROM supabase_migrations.schema_migrations
-WHERE version >= '20260916000000'
+WHERE version >= '20260915000000'
 ORDER BY version;
 SELECT version FROM supabase_migrations.schema_migrations
 WHERE version IN (
+  '20260915233000','20260916001500',
   '20260916030000','20260916031000','20260916032000','20260916033000',
   '20260916120000','20260916121000','20260916122000','20260916123000',
   '20260916140000','20260916150000',
   '20260916160000','20260916161000','20260916162000','20260916170000'
 ) ORDER BY version;
+SELECT to_regclass('public.work_items') AS work_items;
 SELECT to_regclass('public.call_ring_events') AS call_ring_events;
 SELECT to_regclass('public.sales_interactions') AS sales_interactions;
 SELECT count(*) AS call_logs FROM public.call_logs;
+SELECT count(*) AS call_ring_events_n FROM public.call_ring_events;
 "@
   $tmp = Join-Path $env:TEMP "afrakala-ledger.sql"
   $utf8 = New-Object System.Text.UTF8Encoding $false
