@@ -23,7 +23,7 @@ param(
   [switch]$SkipBackupConfirm
 )
 
-# IMPORTANT: do not use Stop globally — git/docker write to stderr (NOTICE / "Already on")
+# IMPORTANT: do not use Stop globally - git/docker write to stderr (NOTICE / "Already on")
 # and PowerShell would treat that as a terminating error when piped.
 $ErrorActionPreference = "Continue"
 
@@ -161,7 +161,7 @@ if (-not $pgPass) { Fail "POSTGRES_PASSWORD missing" }
 $DbContainer = "afrakala-lan-db"
 
 # Prod (:3000) uses database "postgres". Staging/test (:3100) uses "afrakala".
-# Do not invert these — AGENTS.md.
+# Do not invert these - AGENTS.md.
 $dbNameEnv = Get-EnvLineValue $EnvFile "POSTGRES_DB"
 $preferredDb = if ($AppPort -eq 3000) { "postgres" } else { "afrakala" }
 $dbName = $preferredDb
@@ -223,7 +223,7 @@ $tmplCheck = (docker exec -e ("PGPASSWORD=" + $pgPass) $DbContainer `
   psql -U supabase_admin -d $dbName -tAc $tmplCheckSql).Trim()
 Log ("TEMPLATE_CHECK=" + $tmplCheck)
 if ($tmplCheck -ne "OK") {
-  Fail ("Template UTF-8 check failed: " + $tmplCheck + " — re-run fix-torob-ops-template-utf8.sql on DB=" + $dbName)
+  Fail ("Template UTF-8 check failed: " + $tmplCheck + " - re-run fix-torob-ops-template-utf8.sql on DB=" + $dbName)
 }
 Log "DB_OK"
 
