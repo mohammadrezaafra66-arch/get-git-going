@@ -200,12 +200,30 @@ foreach ($rel in $migFiles) {
 Invoke-PsqlAdmin $pgPass $DbContainer $dbName @("-c", "NOTIFY pgrst, 'reload schema';")
 Invoke-PsqlAdmin $pgPass $DbContainer $dbName @("-c", "UPDATE public.torob_ops_settings SET auto_report_enabled=false, kill_switch=false WHERE id=1;")
 
-$tmplName = (docker exec -e ("PGPASSWORD=" + $pgPass) $DbContainer `
-  psql -U supabase_admin -d $dbName -tAc "SELECT name FROM torob_ops_report_templates WHERE is_default LIMIT 1;").Trim()
-Log ("TEMPLATE_NAME=" + $tmplName)
-if (-not $tmplName) { Fail "Default report template missing after migrate" }
-if ($tmplName -like "*?*" -and $tmplName -notmatch "[\u0600-\u06FF]") {
-  Fail "Template name still corrupted; re-run fix-torob-ops-template-utf8.sql on correct DB"
+# Do NOT judge Persian via Windows console decoding. Check inside Postgres:
+# - default row exists
+# - no ASCII '?' corruption
+# - name has multi-byte UTF-8 (octet_length > char_length)
+$tmplCheckSql = @"
+SELECT CASE
+  WHEN NOT EXISTS (SELECT 1 FROM public.torob_ops_report_templates WHERE is_default) THEN 'MISSING'
+  WHEN EXISTS (
+    SELECT 1 FROM public.torob_ops_report_templates
+    WHERE is_default
+      AND (
+        position('?' in name) > 0
+        OR position('?' in coalesce(body,'')) > 0
+        OR octet_length(convert_to(name, 'UTF8')) <= char_length(name)
+      )
+  ) THEN 'CORRUPT'
+  ELSE 'OK'
+END;
+"@
+$tmplCheck = (docker exec -e ("PGPASSWORD=" + $pgPass) $DbContainer `
+  psql -U supabase_admin -d $dbName -tAc $tmplCheckSql).Trim()
+Log ("TEMPLATE_CHECK=" + $tmplCheck)
+if ($tmplCheck -ne "OK") {
+  Fail ("Template UTF-8 check failed: " + $tmplCheck + " — re-run fix-torob-ops-template-utf8.sql on DB=" + $dbName)
 }
 Log "DB_OK"
 
