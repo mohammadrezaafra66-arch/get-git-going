@@ -121,6 +121,7 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-09-16 | Cursor | **ماژول عملیات ترب مسیر ب.** migration 555 + قفل رمز per-user + اسکن از رصدخانه + صف بررسی طعمه + ثبت گزارش دستی. مسیرها: `/torob-ops*` و `/admin/torob-ops-access`. قرارداد: `docs/torob-ops/PATH_B_CONTRACT.md`. | (pending) |
 | 2026-09-16 | Cursor | **merge staging→sales-desk برای دائمی کردن دستیار کار روی LAN :3100.** مسیرهای `/operations/work*` + ناوبری «دستیار کار» داخل `feature/sales-desk` تا deployهای میز فروش دیگر منو را پاک نکنند. | (این commit) |
 | 2026-09-16 | Cursor | **sales-desk ۹ نیاز — اسناد تحویل.** README + HANDOFF برای میز فروش: URLهای `/operations/sales-desk`، dossier، `/operations/call-activity`، ناوبری «میز فروش»؛ بدون Issabel مسیر `createSalesInteraction`؛ مهاجرت‌های ۵۴۵–۵۴۸ روی LAN afrakala+لجر (طبق checkpoint D1/D1b)؛ Need3=`derive_staff_call_metrics` پس از ایمپورت؛ Need9=`sales_interaction_assigned`+تریگر؛ E2E ۷ سبز روی Vite :8080 (LAN :3100 نیازمند redeploy)؛ C6 با ۵۴۸ بسته، MEDIUM assign-spam باز؛ بدون merge به staging / push با orchestrator. | (این commit) |
 | 2026-09-16 | Cursor | **جلوگیری اشخاص تکراری (۵۴۸+۵۴۹ + UI).** قفل سخت در `person_create_full`: شخص فعال بدون موبایل/کد آسان ساخته نمی‌شود؛ برخورد شناسه قبل از INSERT با پیام فارسی reuse. تشخیص پیوسته `person_detect_merge_candidates` + تریگر + badge منو + dismiss اجباری برای جفت‌های قوی. دریافت: نام مبهم → لیست انتخاب. گزارش: `docs/research/person-dedupe/`. روی تست اعمال و در لجر ثبت شد. | (pending) |
