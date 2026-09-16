@@ -1,4 +1,4 @@
-SET client_encoding TO 'UTF8';
+﻿SET client_encoding TO 'UTF8';
 
 -- ============================================================================
 -- 555 — Torob Ops Path B (ماژول عملیات ترب)
@@ -134,15 +134,15 @@ CREATE POLICY torob_ops_own_shops_select ON public.torob_ops_own_shops
   USING (
     public.has_any_role(
       auth.uid(),
-      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::text[]
+      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::app_role[]
     )
   );
 
 DROP POLICY IF EXISTS torob_ops_own_shops_write ON public.torob_ops_own_shops;
 CREATE POLICY torob_ops_own_shops_write ON public.torob_ops_own_shops
   FOR ALL TO authenticated
-  USING (public.has_any_role(auth.uid(), ARRAY['admin', 'manager']::text[]))
-  WITH CHECK (public.has_any_role(auth.uid(), ARRAY['admin', 'manager']::text[]));
+  USING (public.has_any_role(auth.uid(), ARRAY['admin', 'manager']::app_role[]))
+  WITH CHECK (public.has_any_role(auth.uid(), ARRAY['admin', 'manager']::app_role[]));
 
 REVOKE ALL ON public.torob_ops_own_shops FROM PUBLIC;
 REVOKE ALL ON public.torob_ops_own_shops FROM anon;
@@ -184,7 +184,7 @@ CREATE POLICY torob_ops_scan_runs_select ON public.torob_ops_scan_runs
   USING (
     public.has_any_role(
       auth.uid(),
-      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::text[]
+      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::app_role[]
     )
   );
 
@@ -192,7 +192,7 @@ DROP POLICY IF EXISTS torob_ops_scan_runs_insert ON public.torob_ops_scan_runs;
 CREATE POLICY torob_ops_scan_runs_insert ON public.torob_ops_scan_runs
   FOR INSERT TO authenticated
   WITH CHECK (
-    public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::text[])
+    public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::app_role[])
     AND created_by = auth.uid()
   );
 
@@ -200,10 +200,10 @@ DROP POLICY IF EXISTS torob_ops_scan_runs_update ON public.torob_ops_scan_runs;
 CREATE POLICY torob_ops_scan_runs_update ON public.torob_ops_scan_runs
   FOR UPDATE TO authenticated
   USING (
-    public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::text[])
+    public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::app_role[])
   )
   WITH CHECK (
-    public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::text[])
+    public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::app_role[])
   );
 
 REVOKE ALL ON public.torob_ops_scan_runs FROM PUBLIC;
@@ -265,15 +265,15 @@ CREATE POLICY torob_ops_findings_select ON public.torob_ops_findings
   USING (
     public.has_any_role(
       auth.uid(),
-      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::text[]
+      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::app_role[]
     )
   );
 
 DROP POLICY IF EXISTS torob_ops_findings_write ON public.torob_ops_findings;
 CREATE POLICY torob_ops_findings_write ON public.torob_ops_findings
   FOR ALL TO authenticated
-  USING (public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::text[]))
-  WITH CHECK (public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::text[]));
+  USING (public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::app_role[]))
+  WITH CHECK (public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::app_role[]));
 
 REVOKE ALL ON public.torob_ops_findings FROM PUBLIC;
 REVOKE ALL ON public.torob_ops_findings FROM anon;
@@ -306,7 +306,7 @@ CREATE POLICY torob_ops_report_logs_select ON public.torob_ops_report_logs
   USING (
     public.has_any_role(
       auth.uid(),
-      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::text[]
+      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::app_role[]
     )
   );
 
@@ -314,7 +314,7 @@ DROP POLICY IF EXISTS torob_ops_report_logs_insert ON public.torob_ops_report_lo
 CREATE POLICY torob_ops_report_logs_insert ON public.torob_ops_report_logs
   FOR INSERT TO authenticated
   WITH CHECK (
-    public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::text[])
+    public.has_any_role(auth.uid(), ARRAY['admin', 'manager', 'sales']::app_role[])
     AND reported_by = auth.uid()
   );
 

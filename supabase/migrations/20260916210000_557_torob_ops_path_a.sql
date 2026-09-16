@@ -1,4 +1,4 @@
-SET client_encoding TO 'UTF8';
+﻿SET client_encoding TO 'UTF8';
 
 -- ============================================================================
 -- 557 — Torob Ops Path A extensions
@@ -56,7 +56,7 @@ CREATE POLICY torob_ops_report_templates_select ON public.torob_ops_report_templ
   USING (
     public.has_any_role(
       auth.uid(),
-      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::text[]
+      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::app_role[]
     )
   );
 
@@ -144,7 +144,7 @@ CREATE POLICY torob_ops_settings_select ON public.torob_ops_settings
   USING (
     public.has_any_role(
       auth.uid(),
-      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::text[]
+      ARRAY['admin', 'manager', 'sales', 'accountant', 'viewer']::app_role[]
     )
   );
 
