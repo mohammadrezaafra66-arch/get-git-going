@@ -40,8 +40,8 @@ git rev-parse --short HEAD
 git status -sb
 ```
 
-Expected short SHA at or after `e39b2ab4` (sales-desk + Torob Ops Path B). `.env.lan` dirty is OK.
-Confirm: `Test-Path .\src\routes\_app.torob-ops.tsx` and migration `20260916190000_555_torob_ops_path_b.sql`.
+Expected short SHA at or after `b6b298b0` (sales-desk + Torob Ops Path B + quick-price flag + rules dropdown fix). `.env.lan` dirty is OK.
+Confirm: `Test-Path .\src\routes\_app.torob-ops.tsx` and migrations `20260916190000_555_torob_ops_path_b.sql` + `20260916200000_556_sale_price_type_quick_price_only.sql`.
 
 ---
 
