@@ -9,6 +9,7 @@ import {
   QuickRequestForm,
   SalesDeskShell,
   SalesDeskTiltCard,
+  SalesDeskLiveStatus,
 } from "@/components/sales-desk";
 
 export const Route = createFileRoute("/_app/operations/sales-desk")({
@@ -44,9 +45,12 @@ function SalesDeskPage() {
         </div>
       }
     >
-      <div className="sales-desk-chip mb-1">
-        <Sparkles className="h-3.5 w-3.5" />
-        آمادهٔ کار روزانه تیم فروش
+      <div className="mb-1 flex flex-wrap items-center gap-2">
+        <div className="sales-desk-chip">
+          <Sparkles className="h-3.5 w-3.5" />
+          آمادهٔ کار روزانه تیم فروش
+        </div>
+        <SalesDeskLiveStatus />
       </div>
 
       <section aria-label="خلاصه امروز من">
