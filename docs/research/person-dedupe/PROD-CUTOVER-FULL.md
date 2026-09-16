@@ -125,7 +125,9 @@ $need = @(
   "20260916160000",
   "20260916161000",
   "20260916162000",
-  "20260916170000"
+  "20260916170000",
+  # Quick-price-only sale price types (556)
+  "20260916200000"
 )
 
 $haveRaw = docker exec -e PGPASSWORD=$pw $Db psql -U supabase_admin -d $DbName -t -A -c "SELECT version FROM supabase_migrations.schema_migrations WHERE version >= '20260915000000';"
@@ -220,7 +222,9 @@ foreach ($p in @(
   '/operations/call-activity',
   '/admin/persons-cleanup',
   '/admin/call-extensions',
-  '/sales/search'
+  '/sales/search',
+  '/pricing/quick-price',
+  '/pricing/sale-price-types'
 )) {
   try {
     $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 25 -Uri ("http://127.0.0.1:3000" + $p) -MaximumRedirection 0

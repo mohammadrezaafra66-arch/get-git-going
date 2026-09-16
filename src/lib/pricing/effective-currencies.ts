@@ -165,7 +165,12 @@ export async function saveCurrencyRateAndRecompute(opts: {
       .eq("base_currency", currency)
       .eq("status", "active")
       .in("stock_status", ["available", "limited"]),
-    supabase.from("sale_price_types").select("id, title").eq("is_active", true).order("sort_order"),
+    supabase
+      .from("sale_price_types")
+      .select("id, title")
+      .eq("is_active", true)
+      .eq("is_quick_price_only", false)
+      .order("sort_order"),
     supabase
       .from("pricing_rules")
       .select(

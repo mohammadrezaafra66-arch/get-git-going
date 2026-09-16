@@ -33,11 +33,11 @@ export function ProductPublishPricesCard({ productId }: Props) {
       const { data, error } = await (supabase as any)
         .from("product_computed_prices_public")
         .select(
-          "rounded_sale_price, computed_at, source, sale_price_type:sale_price_types(id, title, sort_order)",
+          "rounded_sale_price, computed_at, source, sale_price_type:sale_price_types(id, title, sort_order, is_quick_price_only)",
         )
         .eq("product_id", productId);
       if (error) throw error;
-      const rows = (data ?? []) as any[];
+      const rows = ((data ?? []) as any[]).filter((r) => !r.sale_price_type?.is_quick_price_only);
       rows.sort(
         (a, b) => (a.sale_price_type?.sort_order ?? 0) - (b.sale_price_type?.sort_order ?? 0),
       );

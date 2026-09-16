@@ -8406,6 +8406,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          is_quick_price_only: boolean
           max_settlement_days: number
           sort_order: number
           title: string
@@ -8417,6 +8418,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_quick_price_only?: boolean
           max_settlement_days?: number
           sort_order?: number
           title: string
@@ -8428,6 +8430,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_quick_price_only?: boolean
           max_settlement_days?: number
           sort_order?: number
           title?: string
