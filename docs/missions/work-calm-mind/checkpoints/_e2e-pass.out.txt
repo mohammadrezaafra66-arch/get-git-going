@@ -1,0 +1,16 @@
+
+Running 8 tests using 1 worker
+
+
+  ok 1 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:205:1 › DB trigger refuses in_progress without claimed_due_at (350ms)
+  ok 2 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:241:1 › DB trigger allows in_progress when claimed_due_at is set (309ms)
+  ok 3 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:276:1 › seeded work item is visible on /operations/work (1.9s)
+  ok 4 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:288:1 › morning summary strip shows Calm Mind counts (2.0s)
+
+  ok 5 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:308:1 › decision queue can set today_do, waiting, and clear (5.0s)
+  ok 6 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:377:1 › UI blocks in_progress without claimed_due_at (3.1s)
+  ok 7 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:415:1 › create work item from UI appears on the board (5.5s)
+
+  ok 8 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:451:1 › merge suggestion dismiss path removes pending card (2.9s)
+
+  8 passed (25.0s)

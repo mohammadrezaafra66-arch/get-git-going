@@ -582,6 +582,22 @@ const NAVIGATION_SEEDS = [
     group: "operations",
   },
   {
+    to: "/operations/work",
+    label: "دستیار کار",
+    icon: ClipboardList,
+    // No dedicated `work` ModuleKey — mirror tasks (invoices) + pin ROLE_ALLOWLIST.
+    module: "invoices",
+    group: "operations",
+  },
+  {
+    to: "/operations/work/settings",
+    label: "طبقه‌بندی کار",
+    icon: Settings,
+    module: "invoices",
+    group: "operations",
+    adminOnly: true,
+  },
+  {
     to: "/operations/daily-mood",
     label: "حال‌وهوای امروز",
     icon: Heart,
@@ -1418,6 +1434,10 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   // _app.operations.sales-desk.tsx / call-activity — requireAnyRole(admin,manager,sales)
   "/operations/sales-desk": ["admin", "manager", "sales"],
   "/operations/call-activity": ["admin", "manager", "sales"],
+  // Calm Mind work board — mirrors route requireAnyRole(admin|manager|sales|accountant)
+  "/operations/work": ["admin", "manager", "sales", "accountant"],
+  "/operations/work/topics": ["admin", "manager", "sales", "accountant"],
+  "/operations/work/settings": ["admin", "manager"],
   "/gamification/achievements": [
     "admin",
     "manager",

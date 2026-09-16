@@ -56,6 +56,8 @@ import { Route as AppPricingIndexRouteImport } from './routes/_app.pricing.index
 import { Route as AppDataTablesIndexRouteImport } from './routes/_app.data-tables.index'
 import { Route as AppBotApiKeysIndexRouteImport } from './routes/_app.bot-api-keys.index'
 import { Route as PublicSaleListsListIdRouteImport } from './routes/public.sale-lists.$listId'
+import { Route as ApiWorkIntakeSummaryRouteImport } from './routes/api/work/intake-summary'
+import { Route as ApiWorkClassifyRouteImport } from './routes/api/work/classify'
 import { Route as ApiPublicProductsRouteImport } from './routes/api/public/products'
 import { Route as ApiMessengerAiChatRouteImport } from './routes/api/messenger/ai-chat'
 import { Route as AppWarehousesTransfersRouteImport } from './routes/_app.warehouses_.transfers'
@@ -107,6 +109,7 @@ import { Route as AppPricingAminHozoorBoardRouteImport } from './routes/_app.pri
 import { Route as AppPersonsMergeRouteImport } from './routes/_app.persons_.merge'
 import { Route as AppPersonsCreateRouteImport } from './routes/_app.persons_.create'
 import { Route as AppPersonsPersonIdRouteImport } from './routes/_app.persons_.$personId'
+import { Route as AppOperationsWorkRouteImport } from './routes/_app.operations.work'
 import { Route as AppOperationsTasksRouteImport } from './routes/_app.operations.tasks'
 import { Route as AppOperationsSalesDeskRouteImport } from './routes/_app.operations.sales-desk'
 import { Route as AppOperationsPurchaseAdvisorRouteImport } from './routes/_app.operations.purchase-advisor'
@@ -196,6 +199,9 @@ import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.q
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
 import { Route as AppPricingSaleListsListIdRouteImport } from './routes/_app.pricing.sale-lists_.$listId'
 import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.persons_.$personId_.edit'
+import { Route as AppOperationsWorkTopicsRouteImport } from './routes/_app.operations.work_.topics'
+import { Route as AppOperationsWorkSettingsRouteImport } from './routes/_app.operations.work_.settings'
+import { Route as AppOperationsWorkItemIdRouteImport } from './routes/_app.operations.work_.$itemId'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppGamificationAdminRewardsRouteImport } from './routes/_app.gamification.admin.rewards'
 import { Route as AppGamificationAdminPurchaseSettingsRouteImport } from './routes/_app.gamification.admin.purchase-settings'
@@ -217,6 +223,7 @@ import { Route as AppSalesCustomersCustomerIdEditRouteImport } from './routes/_a
 import { Route as AppSalesCustomersCustomerIdDossierRouteImport } from './routes/_app.sales_.customers_.$customerId.dossier'
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists_.$listId.publish'
+import { Route as AppOperationsWorkTopicsTopicIdRouteImport } from './routes/_app.operations.work_.topics_.$topicId'
 import { Route as AppGamificationAdminManualMetricsGuideRouteImport } from './routes/_app.gamification_.admin_.manual-metrics_.guide'
 import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
 import { Route as ApiPublicBotMarketMatchesCandidatesUpsertRouteImport } from './routes/api.public.bot.market-matches.candidates.upsert'
@@ -459,6 +466,16 @@ const AppBotApiKeysIndexRoute = AppBotApiKeysIndexRouteImport.update({
 const PublicSaleListsListIdRoute = PublicSaleListsListIdRouteImport.update({
   id: '/public/sale-lists/$listId',
   path: '/public/sale-lists/$listId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkIntakeSummaryRoute = ApiWorkIntakeSummaryRouteImport.update({
+  id: '/api/work/intake-summary',
+  path: '/api/work/intake-summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiWorkClassifyRoute = ApiWorkClassifyRouteImport.update({
+  id: '/api/work/classify',
+  path: '/api/work/classify',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicProductsRoute = ApiPublicProductsRouteImport.update({
@@ -726,6 +743,11 @@ const AppPersonsCreateRoute = AppPersonsCreateRouteImport.update({
 const AppPersonsPersonIdRoute = AppPersonsPersonIdRouteImport.update({
   id: '/persons_/$personId',
   path: '/persons/$personId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperationsWorkRoute = AppOperationsWorkRouteImport.update({
+  id: '/operations/work',
+  path: '/operations/work',
   getParentRoute: () => AppRoute,
 } as any)
 const AppOperationsTasksRoute = AppOperationsTasksRouteImport.update({
@@ -1206,6 +1228,22 @@ const AppPersonsPersonIdEditRoute = AppPersonsPersonIdEditRouteImport.update({
   path: '/persons/$personId/edit',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsWorkTopicsRoute = AppOperationsWorkTopicsRouteImport.update({
+  id: '/operations/work_/topics',
+  path: '/operations/work/topics',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOperationsWorkSettingsRoute =
+  AppOperationsWorkSettingsRouteImport.update({
+    id: '/operations/work_/settings',
+    path: '/operations/work/settings',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppOperationsWorkItemIdRoute = AppOperationsWorkItemIdRouteImport.update({
+  id: '/operations/work_/$itemId',
+  path: '/operations/work/$itemId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppOperationsDailyMoodAdminRoute =
   AppOperationsDailyMoodAdminRouteImport.update({
     id: '/admin',
@@ -1331,6 +1369,12 @@ const AppPricingSaleListsListIdPublishRoute =
     id: '/publish',
     path: '/publish',
     getParentRoute: () => AppPricingSaleListsListIdRoute,
+  } as any)
+const AppOperationsWorkTopicsTopicIdRoute =
+  AppOperationsWorkTopicsTopicIdRouteImport.update({
+    id: '/operations/work_/topics_/$topicId',
+    path: '/operations/work/topics/$topicId',
+    getParentRoute: () => AppRoute,
   } as any)
 const AppGamificationAdminManualMetricsGuideRoute =
   AppGamificationAdminManualMetricsGuideRouteImport.update({
@@ -1489,6 +1533,7 @@ export interface FileRoutesByFullPath {
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/sales-desk': typeof AppOperationsSalesDeskRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
+  '/operations/work': typeof AppOperationsWorkRoute
   '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/persons/merge': typeof AppPersonsMergeRoute
@@ -1540,6 +1585,8 @@ export interface FileRoutesByFullPath {
   '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
+  '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/data-tables/': typeof AppDataTablesIndexRoute
@@ -1560,6 +1607,9 @@ export interface FileRoutesByFullPath {
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/operations/work/$itemId': typeof AppOperationsWorkItemIdRoute
+  '/operations/work/settings': typeof AppOperationsWorkSettingsRoute
+  '/operations/work/topics': typeof AppOperationsWorkTopicsRoute
   '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
@@ -1578,6 +1628,7 @@ export interface FileRoutesByFullPath {
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/gamification/admin/manual-metrics/guide': typeof AppGamificationAdminManualMetricsGuideRoute
+  '/operations/work/topics/$topicId': typeof AppOperationsWorkTopicsTopicIdRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/dossier': typeof AppSalesCustomersCustomerIdDossierRoute
@@ -1703,6 +1754,7 @@ export interface FileRoutesByTo {
   '/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/operations/sales-desk': typeof AppOperationsSalesDeskRoute
   '/operations/tasks': typeof AppOperationsTasksRoute
+  '/operations/work': typeof AppOperationsWorkRoute
   '/persons/$personId': typeof AppPersonsPersonIdRoute
   '/persons/create': typeof AppPersonsCreateRoute
   '/persons/merge': typeof AppPersonsMergeRoute
@@ -1753,6 +1805,8 @@ export interface FileRoutesByTo {
   '/warehouses/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
+  '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/bot-api-keys': typeof AppBotApiKeysIndexRoute
   '/data-tables': typeof AppDataTablesIndexRoute
@@ -1773,6 +1827,9 @@ export interface FileRoutesByTo {
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/operations/work/$itemId': typeof AppOperationsWorkItemIdRoute
+  '/operations/work/settings': typeof AppOperationsWorkSettingsRoute
+  '/operations/work/topics': typeof AppOperationsWorkTopicsRoute
   '/persons/$personId/edit': typeof AppPersonsPersonIdEditRoute
   '/pricing/sale-lists/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
@@ -1791,6 +1848,7 @@ export interface FileRoutesByTo {
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/gamification/admin/manual-metrics/guide': typeof AppGamificationAdminManualMetricsGuideRoute
+  '/operations/work/topics/$topicId': typeof AppOperationsWorkTopicsTopicIdRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/sales/customers/$customerId/dossier': typeof AppSalesCustomersCustomerIdDossierRoute
@@ -1920,6 +1978,7 @@ export interface FileRoutesById {
   '/_app/operations/purchase-advisor': typeof AppOperationsPurchaseAdvisorRoute
   '/_app/operations/sales-desk': typeof AppOperationsSalesDeskRoute
   '/_app/operations/tasks': typeof AppOperationsTasksRoute
+  '/_app/operations/work': typeof AppOperationsWorkRoute
   '/_app/persons_/$personId': typeof AppPersonsPersonIdRoute
   '/_app/persons_/create': typeof AppPersonsCreateRoute
   '/_app/persons_/merge': typeof AppPersonsMergeRoute
@@ -1971,6 +2030,8 @@ export interface FileRoutesById {
   '/_app/warehouses_/transfers': typeof AppWarehousesTransfersRoute
   '/api/messenger/ai-chat': typeof ApiMessengerAiChatRoute
   '/api/public/products': typeof ApiPublicProductsRoute
+  '/api/work/classify': typeof ApiWorkClassifyRoute
+  '/api/work/intake-summary': typeof ApiWorkIntakeSummaryRoute
   '/public/sale-lists/$listId': typeof PublicSaleListsListIdRoute
   '/_app/bot-api-keys/': typeof AppBotApiKeysIndexRoute
   '/_app/data-tables/': typeof AppDataTablesIndexRoute
@@ -1991,6 +2052,9 @@ export interface FileRoutesById {
   '/_app/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/_app/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/_app/operations/work_/$itemId': typeof AppOperationsWorkItemIdRoute
+  '/_app/operations/work_/settings': typeof AppOperationsWorkSettingsRoute
+  '/_app/operations/work_/topics': typeof AppOperationsWorkTopicsRoute
   '/_app/persons_/$personId_/edit': typeof AppPersonsPersonIdEditRoute
   '/_app/pricing/sale-lists_/$listId': typeof AppPricingSaleListsListIdRouteWithChildren
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
@@ -2009,6 +2073,7 @@ export interface FileRoutesById {
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/_app/gamification_/admin_/manual-metrics_/guide': typeof AppGamificationAdminManualMetricsGuideRoute
+  '/_app/operations/work_/topics_/$topicId': typeof AppOperationsWorkTopicsTopicIdRoute
   '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
   '/_app/sales_/customers_/$customerId/dossier': typeof AppSalesCustomersCustomerIdDossierRoute
@@ -2138,6 +2203,7 @@ export interface FileRouteTypes {
     | '/operations/purchase-advisor'
     | '/operations/sales-desk'
     | '/operations/tasks'
+    | '/operations/work'
     | '/persons/$personId'
     | '/persons/create'
     | '/persons/merge'
@@ -2189,6 +2255,8 @@ export interface FileRouteTypes {
     | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
+    | '/api/work/classify'
+    | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys/'
     | '/data-tables/'
@@ -2209,6 +2277,9 @@ export interface FileRouteTypes {
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
+    | '/operations/work/$itemId'
+    | '/operations/work/settings'
+    | '/operations/work/topics'
     | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
@@ -2227,6 +2298,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/'
     | '/academy/$courseId/$lessonId/quiz'
     | '/gamification/admin/manual-metrics/guide'
+    | '/operations/work/topics/$topicId'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/dossier'
@@ -2352,6 +2424,7 @@ export interface FileRouteTypes {
     | '/operations/purchase-advisor'
     | '/operations/sales-desk'
     | '/operations/tasks'
+    | '/operations/work'
     | '/persons/$personId'
     | '/persons/create'
     | '/persons/merge'
@@ -2402,6 +2475,8 @@ export interface FileRouteTypes {
     | '/warehouses/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
+    | '/api/work/classify'
+    | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/bot-api-keys'
     | '/data-tables'
@@ -2422,6 +2497,9 @@ export interface FileRouteTypes {
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
+    | '/operations/work/$itemId'
+    | '/operations/work/settings'
+    | '/operations/work/topics'
     | '/persons/$personId/edit'
     | '/pricing/sale-lists/$listId'
     | '/pricing/sale-lists/new'
@@ -2440,6 +2518,7 @@ export interface FileRouteTypes {
     | '/sales/quotes'
     | '/academy/$courseId/$lessonId/quiz'
     | '/gamification/admin/manual-metrics/guide'
+    | '/operations/work/topics/$topicId'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
     | '/sales/customers/$customerId/dossier'
@@ -2568,6 +2647,7 @@ export interface FileRouteTypes {
     | '/_app/operations/purchase-advisor'
     | '/_app/operations/sales-desk'
     | '/_app/operations/tasks'
+    | '/_app/operations/work'
     | '/_app/persons_/$personId'
     | '/_app/persons_/create'
     | '/_app/persons_/merge'
@@ -2619,6 +2699,8 @@ export interface FileRouteTypes {
     | '/_app/warehouses_/transfers'
     | '/api/messenger/ai-chat'
     | '/api/public/products'
+    | '/api/work/classify'
+    | '/api/work/intake-summary'
     | '/public/sale-lists/$listId'
     | '/_app/bot-api-keys/'
     | '/_app/data-tables/'
@@ -2639,6 +2721,9 @@ export interface FileRouteTypes {
     | '/_app/gamification/admin/purchase-settings'
     | '/_app/gamification/admin/rewards'
     | '/_app/operations/daily-mood/admin'
+    | '/_app/operations/work_/$itemId'
+    | '/_app/operations/work_/settings'
+    | '/_app/operations/work_/topics'
     | '/_app/persons_/$personId_/edit'
     | '/_app/pricing/sale-lists_/$listId'
     | '/_app/pricing/sale-lists_/new'
@@ -2657,6 +2742,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
     | '/_app/gamification_/admin_/manual-metrics_/guide'
+    | '/_app/operations/work_/topics_/$topicId'
     | '/_app/pricing/sale-lists_/$listId/publish'
     | '/_app/sales_/customers_/$customerId/credit'
     | '/_app/sales_/customers_/$customerId/dossier'
@@ -2689,6 +2775,8 @@ export interface RootRouteChildren {
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiMessengerAiChatRoute: typeof ApiMessengerAiChatRoute
   ApiPublicProductsRoute: typeof ApiPublicProductsRoute
+  ApiWorkClassifyRoute: typeof ApiWorkClassifyRoute
+  ApiWorkIntakeSummaryRoute: typeof ApiWorkIntakeSummaryRoute
   PublicSaleListsListIdRoute: typeof PublicSaleListsListIdRoute
   ApiAdminCallsImportIssabelRoute: typeof ApiAdminCallsImportIssabelRoute
   ApiPublicBotProductsRoute: typeof ApiPublicBotProductsRouteWithChildren
@@ -3032,6 +3120,20 @@ declare module '@tanstack/react-router' {
       path: '/public/sale-lists/$listId'
       fullPath: '/public/sale-lists/$listId'
       preLoaderRoute: typeof PublicSaleListsListIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/work/intake-summary': {
+      id: '/api/work/intake-summary'
+      path: '/api/work/intake-summary'
+      fullPath: '/api/work/intake-summary'
+      preLoaderRoute: typeof ApiWorkIntakeSummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/work/classify': {
+      id: '/api/work/classify'
+      path: '/api/work/classify'
+      fullPath: '/api/work/classify'
+      preLoaderRoute: typeof ApiWorkClassifyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/products': {
@@ -3389,6 +3491,13 @@ declare module '@tanstack/react-router' {
       path: '/persons/$personId'
       fullPath: '/persons/$personId'
       preLoaderRoute: typeof AppPersonsPersonIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/work': {
+      id: '/_app/operations/work'
+      path: '/operations/work'
+      fullPath: '/operations/work'
+      preLoaderRoute: typeof AppOperationsWorkRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/operations/tasks': {
@@ -4014,6 +4123,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPersonsPersonIdEditRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/work_/topics': {
+      id: '/_app/operations/work_/topics'
+      path: '/operations/work/topics'
+      fullPath: '/operations/work/topics'
+      preLoaderRoute: typeof AppOperationsWorkTopicsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/work_/settings': {
+      id: '/_app/operations/work_/settings'
+      path: '/operations/work/settings'
+      fullPath: '/operations/work/settings'
+      preLoaderRoute: typeof AppOperationsWorkSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/work_/$itemId': {
+      id: '/_app/operations/work_/$itemId'
+      path: '/operations/work/$itemId'
+      fullPath: '/operations/work/$itemId'
+      preLoaderRoute: typeof AppOperationsWorkItemIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/daily-mood/admin': {
       id: '/_app/operations/daily-mood/admin'
       path: '/admin'
@@ -4160,6 +4290,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pricing/sale-lists/$listId/publish'
       preLoaderRoute: typeof AppPricingSaleListsListIdPublishRouteImport
       parentRoute: typeof AppPricingSaleListsListIdRoute
+    }
+    '/_app/operations/work_/topics_/$topicId': {
+      id: '/_app/operations/work_/topics_/$topicId'
+      path: '/operations/work/topics/$topicId'
+      fullPath: '/operations/work/topics/$topicId'
+      preLoaderRoute: typeof AppOperationsWorkTopicsTopicIdRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/gamification_/admin_/manual-metrics_/guide': {
       id: '/_app/gamification_/admin_/manual-metrics_/guide'
@@ -4490,6 +4627,7 @@ interface AppRouteChildren {
   AppOperationsPurchaseAdvisorRoute: typeof AppOperationsPurchaseAdvisorRoute
   AppOperationsSalesDeskRoute: typeof AppOperationsSalesDeskRoute
   AppOperationsTasksRoute: typeof AppOperationsTasksRoute
+  AppOperationsWorkRoute: typeof AppOperationsWorkRoute
   AppPersonsPersonIdRoute: typeof AppPersonsPersonIdRoute
   AppPersonsCreateRoute: typeof AppPersonsCreateRoute
   AppPersonsMergeRoute: typeof AppPersonsMergeRoute
@@ -4532,6 +4670,9 @@ interface AppRouteChildren {
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
   AppAccountingReceiptsTrainingRoute: typeof AppAccountingReceiptsTrainingRoute
+  AppOperationsWorkItemIdRoute: typeof AppOperationsWorkItemIdRoute
+  AppOperationsWorkSettingsRoute: typeof AppOperationsWorkSettingsRoute
+  AppOperationsWorkTopicsRoute: typeof AppOperationsWorkTopicsRoute
   AppPersonsPersonIdEditRoute: typeof AppPersonsPersonIdEditRoute
   AppPricingSaleListsListIdRoute: typeof AppPricingSaleListsListIdRouteWithChildren
   AppPricingSaleListsNewRoute: typeof AppPricingSaleListsNewRoute
@@ -4540,6 +4681,7 @@ interface AppRouteChildren {
   AppSalesCustomersCreditTrainingRoute: typeof AppSalesCustomersCreditTrainingRoute
   AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
   AppGamificationAdminManualMetricsGuideRoute: typeof AppGamificationAdminManualMetricsGuideRoute
+  AppOperationsWorkTopicsTopicIdRoute: typeof AppOperationsWorkTopicsTopicIdRoute
   AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
   AppSalesCustomersCustomerIdDossierRoute: typeof AppSalesCustomersCustomerIdDossierRoute
   AppSalesCustomersCustomerIdEditRoute: typeof AppSalesCustomersCustomerIdEditRoute
@@ -4639,6 +4781,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsPurchaseAdvisorRoute: AppOperationsPurchaseAdvisorRoute,
   AppOperationsSalesDeskRoute: AppOperationsSalesDeskRoute,
   AppOperationsTasksRoute: AppOperationsTasksRoute,
+  AppOperationsWorkRoute: AppOperationsWorkRoute,
   AppPersonsPersonIdRoute: AppPersonsPersonIdRoute,
   AppPersonsCreateRoute: AppPersonsCreateRoute,
   AppPersonsMergeRoute: AppPersonsMergeRoute,
@@ -4681,6 +4824,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
   AppAccountingReceiptsTrainingRoute: AppAccountingReceiptsTrainingRoute,
+  AppOperationsWorkItemIdRoute: AppOperationsWorkItemIdRoute,
+  AppOperationsWorkSettingsRoute: AppOperationsWorkSettingsRoute,
+  AppOperationsWorkTopicsRoute: AppOperationsWorkTopicsRoute,
   AppPersonsPersonIdEditRoute: AppPersonsPersonIdEditRoute,
   AppPricingSaleListsListIdRoute: AppPricingSaleListsListIdRouteWithChildren,
   AppPricingSaleListsNewRoute: AppPricingSaleListsNewRoute,
@@ -4691,6 +4837,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyCourseIdLessonIdQuizRoute: AppAcademyCourseIdLessonIdQuizRoute,
   AppGamificationAdminManualMetricsGuideRoute:
     AppGamificationAdminManualMetricsGuideRoute,
+  AppOperationsWorkTopicsTopicIdRoute: AppOperationsWorkTopicsTopicIdRoute,
   AppSalesCustomersCustomerIdCreditRoute:
     AppSalesCustomersCustomerIdCreditRoute,
   AppSalesCustomersCustomerIdDossierRoute:
@@ -4748,6 +4895,8 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiMessengerAiChatRoute: ApiMessengerAiChatRoute,
   ApiPublicProductsRoute: ApiPublicProductsRoute,
+  ApiWorkClassifyRoute: ApiWorkClassifyRoute,
+  ApiWorkIntakeSummaryRoute: ApiWorkIntakeSummaryRoute,
   PublicSaleListsListIdRoute: PublicSaleListsListIdRoute,
   ApiAdminCallsImportIssabelRoute: ApiAdminCallsImportIssabelRoute,
   ApiPublicBotProductsRoute: ApiPublicBotProductsRouteWithChildren,

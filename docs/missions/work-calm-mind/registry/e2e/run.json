@@ -1,0 +1,34 @@
+{
+  "job_id": "e2e",
+  "state": "done",
+  "attempt": 1,
+  "deadline_at": "2026-09-16T08:30:00+05:00",
+  "budget": { "time_minutes": 60 },
+  "checkpoint_path": "docs/missions/work-calm-mind/checkpoints/phase-f-e2e.md",
+  "heartbeat_every": 60,
+  "killable": true,
+  "agent": "dev-test-engineer",
+  "phase": "F",
+  "next_action": "report_to_orchestrator",
+  "result": "COMPLETE_local_vite_12_passed",
+  "exit_pass": 0,
+  "build_exit": 0,
+  "tests_passed": 12,
+  "tests_failed": 0,
+  "baseline_tests": 8,
+  "added_tests": [
+    "create work wizard describe+classify then create end-to-end",
+    "POST /api/work/classify responds with kind/priority JSON",
+    "testing workflow approve moves status to done",
+    "testing workflow reject with ETA returns to in_progress",
+    "merge suggestion accept path keeps one item"
+  ],
+  "adapted_tests": [
+    "morning summary strip shows Calm Mind counts (morning-bucket testid)"
+  ],
+  "evidence": {
+    "out": "docs/missions/work-calm-mind/checkpoints/_e2e-phase-f.out.txt",
+    "exit": "docs/missions/work-calm-mind/checkpoints/_e2e-phase-f.exit.txt",
+    "build_exit": "docs/missions/work-calm-mind/checkpoints/_e2e-phase-f-build.exit.txt"
+  }
+}
