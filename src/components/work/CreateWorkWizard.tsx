@@ -23,7 +23,7 @@ import {
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import { supabase } from "@/integrations/supabase/client";
-import { postIntakeSummary } from "@/lib/work/intake-summary.client";
+import { postIntakeSummary } from "@/lib/work/intakeSummaryPost";
 import {
   INTAKE_ALL_QUESTIONS,
   buildIntakeTranscript,
