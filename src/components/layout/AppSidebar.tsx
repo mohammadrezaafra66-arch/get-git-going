@@ -81,6 +81,8 @@ function SidebarTicketPin3d({
   active: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const [burst, setBurst] = useState(0);
+  const [pressed, setPressed] = useState(false);
 
   const onMove = useCallback((e: MouseEvent<HTMLDivElement>) => {
     const el = ref.current;
@@ -88,40 +90,48 @@ function SidebarTicketPin3d({
     const r = el.getBoundingClientRect();
     const px = (e.clientX - r.left) / r.width;
     const py = (e.clientY - r.top) / r.height;
-    el.style.setProperty("--pin-rot-x", `${(py - 0.5) * 10}deg`);
-    el.style.setProperty("--pin-rot-y", `${(px - 0.5) * -12}deg`);
+    el.style.setProperty("--pin-rot-x", `${(py - 0.5) * 16}deg`);
+    el.style.setProperty("--pin-rot-y", `${(px - 0.5) * -20}deg`);
+    el.style.setProperty("--pin-lift", pressed ? "4px" : "10px");
     el.style.setProperty("--pin-shine-x", `${px * 100}%`);
     el.style.setProperty("--pin-shine-y", `${py * 100}%`);
-  }, []);
+  }, [pressed]);
 
   const onLeave = useCallback(() => {
     const el = ref.current;
     if (!el) return;
     el.style.setProperty("--pin-rot-x", "0deg");
     el.style.setProperty("--pin-rot-y", "0deg");
+    el.style.setProperty("--pin-lift", "0px");
+    setPressed(false);
   }, []);
 
   return (
     <div
       ref={ref}
-      className="sidebar-pin-3d"
+      className={cn("sidebar-pin-3d", !compact && "ms-auto w-fit")}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
     >
       <Link
         to="/operations/work"
         title="تیکت"
         aria-label="تیکت"
         aria-current={active ? "page" : undefined}
+        onClick={() => setBurst((v) => v + 1)}
         className={cn(
-          "sidebar-pin-3d-inner flex items-center justify-center gap-1.5 font-bold text-teal-900",
-          compact ? "h-9 w-9" : "h-9 w-full px-3 text-xs",
+          "sidebar-pin-3d-inner relative flex items-center justify-center gap-1 overflow-visible font-semibold text-teal-900",
+          compact ? "h-7 w-7" : "h-7 px-2.5 text-[11px]",
           active && "text-teal-950",
+          pressed && "sidebar-pin-3d-pressed",
         )}
         data-active={active ? "true" : "false"}
       >
-        <ClipboardList className="h-3.5 w-3.5 shrink-0" />
+        <ClipboardList className="h-3 w-3 shrink-0" />
         {!compact ? <span>تیکت</span> : null}
+        <FloatingReactionBurst trigger={burst} />
       </Link>
     </div>
   );
@@ -535,7 +545,7 @@ export function AppSidebar() {
                 </div>
               )}
               {canSeeTickets && (
-                <div className="mb-2">
+                <div className="mb-1.5 flex justify-end">
                   <SidebarTicketPin3d active={ticketActive} />
                 </div>
               )}

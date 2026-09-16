@@ -421,30 +421,50 @@
   border: 1px solid rgba(15, 118, 110, 0.18);
 }
 
-/* پین ثابت تیکت در سایدبار — کادر کوچک سه‌بعدی */
+/* پین ثابت تیکت در سایدبار — کادر کوچک سه‌بعدی تعاملی */
 .sidebar-pin-3d {
-  perspective: 520px;
+  perspective: 420px;
   transform-style: preserve-3d;
 }
 
 .sidebar-pin-3d-inner {
   position: relative;
-  overflow: hidden;
-  border-radius: 0.65rem;
+  overflow: visible;
+  border-radius: 0.55rem;
   transform: rotateX(var(--pin-rot-x, 0deg)) rotateY(var(--pin-rot-y, 0deg))
-    translateZ(0);
-  transition: transform 0.16s ease-out, box-shadow 0.2s ease;
+    translateZ(var(--pin-lift, 0px));
+  transition:
+    transform 0.14s ease-out,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 1px 0 rgba(13, 148, 136, 0.2),
-    0 8px 16px -10px rgba(15, 47, 44, 0.45);
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 1px 0 rgba(13, 148, 136, 0.22),
+    0 5px 10px -6px rgba(15, 47, 44, 0.42);
   background: linear-gradient(
     152deg,
     #f0fdfa 0%,
-    #ccfbf1 42%,
+    #99f6e4 48%,
     #5eead4 100%
   );
-  border: 1px solid rgba(13, 148, 136, 0.38);
+  border: 1px solid rgba(13, 148, 136, 0.4);
+  animation: sidebar-pin-idle 2.8s ease-in-out infinite;
+}
+
+.sidebar-pin-3d-inner::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    transparent 42%,
+    transparent 58%,
+    rgba(13, 148, 136, 0.12) 100%
+  );
+  opacity: 0.9;
 }
 
 .sidebar-pin-3d-inner::after {
@@ -452,20 +472,32 @@
   pointer-events: none;
   position: absolute;
   inset: 0;
+  border-radius: inherit;
   background: radial-gradient(
-    180px circle at var(--pin-shine-x, 50%) var(--pin-shine-y, 18%),
-    rgba(255, 255, 255, 0.45),
-    transparent 50%
+    120px circle at var(--pin-shine-x, 50%) var(--pin-shine-y, 18%),
+    rgba(255, 255, 255, 0.55),
+    transparent 48%
   );
-  opacity: 0.85;
+  opacity: 0.9;
   mix-blend-mode: soft-light;
+  transition: opacity 0.15s ease;
 }
 
 .sidebar-pin-3d:hover .sidebar-pin-3d-inner {
+  animation: none;
+  filter: brightness(1.04);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.85) inset,
-    0 2px 0 rgba(13, 148, 136, 0.28),
-    0 14px 22px -12px rgba(15, 47, 44, 0.5);
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 2px 0 rgba(13, 148, 136, 0.3),
+    0 12px 18px -10px rgba(15, 47, 44, 0.55);
+}
+
+.sidebar-pin-3d-inner.sidebar-pin-3d-pressed {
+  --pin-lift: 2px !important;
+  filter: brightness(0.96);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 2px 6px -4px rgba(15, 47, 44, 0.45);
 }
 
 .sidebar-pin-3d-inner > * {
@@ -474,11 +506,28 @@
 }
 
 .sidebar-pin-3d-inner[data-active="true"] {
-  background: linear-gradient(152deg, #99f6e4 0%, #2dd4bf 55%, #0d9488 100%);
-  border-color: rgba(15, 118, 110, 0.55);
+  background: linear-gradient(152deg, #5eead4 0%, #14b8a6 55%, #0f766e 100%);
+  border-color: rgba(15, 118, 110, 0.6);
+  color: #042f2e;
   box-shadow:
     0 1px 0 rgba(255, 255, 255, 0.35) inset,
-    0 8px 16px -10px rgba(15, 47, 44, 0.55);
+    0 6px 12px -8px rgba(15, 47, 44, 0.55);
+}
+
+@keyframes sidebar-pin-idle {
+  0%,
+  100% {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.75) inset,
+      0 1px 0 rgba(13, 148, 136, 0.22),
+      0 5px 10px -6px rgba(15, 47, 44, 0.42);
+  }
+  50% {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.85) inset,
+      0 1px 0 rgba(13, 148, 136, 0.28),
+      0 7px 14px -6px rgba(15, 47, 44, 0.5);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -486,7 +535,8 @@
   .sales-desk-kicker,
   .sales-desk-header h1,
   .sales-desk-tilt,
-  .sales-desk-stat-pulse {
+  .sales-desk-stat-pulse,
+  .sidebar-pin-3d-inner {
     animation: none !important;
   }
   .sales-desk-tilt-inner,
