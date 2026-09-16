@@ -1,7 +1,7 @@
 # =============================================================================
-# AfraKala PROD CUTOVER ALL — C:\afrakala port 3000
+# AfraKala PROD CUTOVER ALL - C:\afrakala port 3000
 # PowerShell 5.1 safe. ASCII-only. Run as Administrator on PRODUCTION only.
-# Transfers everything from feature/sales-desk (LAN :3100 tip) to live :3000.
+# Transfers everything from staging (LAN :3100 tip) to live :3000.
 #
 # Usage:
 #   powershell -NoProfile -ExecutionPolicy Bypass -File .\PROD-CUTOVER-ALL.ps1 -ApproveMigrations
@@ -24,7 +24,7 @@ $MigDir = Join-Path $Root "supabase\migrations"
 $DbContainer = "afrakala-lan-db"
 $WebContainer = "afrakala-lan-web"
 $DbName = "postgres"
-$Branch = "feature/sales-desk"
+$Branch = "staging"
 $LogDir = Join-Path $env:TEMP "afrakala-cutover"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $Log = Join-Path $LogDir ("CUTOVER-" + (Get-Date -Format "yyyyMMdd-HHmmss") + ".log")
@@ -76,14 +76,14 @@ $psOut | ForEach-Object { Log ("  " + $_) }
 $cwd = docker inspect $WebContainer --format '{{index .Config.Labels "com.docker.compose.project.working_dir"}}' 2>$null
 Log ("live_compose_working_dir=" + $cwd)
 if ($cwd -and ($cwd -notmatch '(?i)\\afrakala\\deploy\\lan')) {
-  Fail "Live web is not C:\afrakala\deploy\lan — aborting"
+  Fail "Live web is not C:\afrakala\deploy\lan - aborting"
 }
 
 $pw = Get-PgPassword
 Log "PRECHECK OK"
 Log ("log_file=" + $Log)
 
-Section "1 GIT PULL feature/sales-desk"
+Section "1 GIT PULL staging"
 Set-Location -LiteralPath $Root
 git fetch origin 2>&1 | ForEach-Object { Log ($_.ToString()) }
 git checkout $Branch 2>&1 | ForEach-Object { Log ($_.ToString()) }
@@ -91,7 +91,7 @@ git pull origin $Branch 2>&1 | ForEach-Object { Log ($_.ToString()) }
 $head = (git rev-parse --short HEAD).Trim()
 Log ("HEAD=" + $head)
 if (-not (Test-Path -LiteralPath (Join-Path $Root "src\components\work\WorkBoardPage.tsx"))) {
-  Fail "WorkBoardPage.tsx missing after pull — wrong tree?"
+  Fail "WorkBoardPage.tsx missing after pull - wrong tree?"
 }
 
 Section "2 ENV KEYS (presence only)"
@@ -110,7 +110,7 @@ if ($raw -notmatch '(?m)^\s*PRICING_WORKER_TOKEN\s*=\s*\S') {
 
 Section "3 BACKUP"
 if ($SkipBackup) {
-  Log "SkipBackup set — NOT recommended"
+  Log "SkipBackup set - NOT recommended"
 } else {
   $bakDir = Join-Path $Root "backups"
   New-Item -ItemType Directory -Force -Path $bakDir | Out-Null
@@ -168,7 +168,7 @@ $need = @(
 )
 
 $haveRaw = docker exec -e "PGPASSWORD=$pw" $DbContainer psql -U supabase_admin -d $DbName -t -A -c "SELECT version FROM supabase_migrations.schema_migrations WHERE version >= '20260915000000';"
-if ($LASTEXITCODE -ne 0) { Fail "Cannot read schema_migrations — Docker/DB unhealthy?" }
+if ($LASTEXITCODE -ne 0) { Fail "Cannot read schema_migrations - Docker/DB unhealthy?" }
 $haveSet = @{}
 $haveRaw -split "`n" | ForEach-Object { if ($_.Trim()) { $haveSet[$_.Trim()] = $true } }
 
@@ -275,3 +275,4 @@ Write-Host ("HEAD=" + $head)
 Write-Host ("VERSION=" + $ver.commit)
 Write-Host "WEB=healthy"
 Write-Host ("LOG=" + $Log)
+

@@ -1,9 +1,10 @@
-# Thin launcher — kept for docs that already point here.
+# Thin launcher - kept for docs that already point here.
 # Real cutover logic: deploy\lan\scripts\prod-cutover-full.ps1
+# PowerShell 5.1 safe: ASCII-only (no em-dash / smart quotes).
 $ErrorActionPreference = "Stop"
 Set-Location C:\afrakala
 $script = Join-Path $PWD "deploy\lan\scripts\prod-cutover-full.ps1"
 if (-not (Test-Path -LiteralPath $script)) {
-  throw "Missing $script — run: git pull origin feature/sales-desk"
+  throw "Missing $script - run: git pull origin feature/sales-desk"
 }
 powershell -NoProfile -ExecutionPolicy Bypass -File $script -IApproveProdMigrate
