@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { FINDING_STATUSES } from "./types";
+import { ACCOUNT_STATUSES, FINDING_STATUSES } from "./types";
 import {
   listTorobOpsCredentials,
   requireTorobOpsSession,
@@ -18,6 +18,21 @@ import {
   logManualTorobReport,
   updateFindingStatus,
 } from "./scan.server";
+import {
+  buildReportPreview,
+  deleteOwnShop,
+  getTorobOpsSettings,
+  listAccountsMeta,
+  listOwnShops,
+  listReportTemplates,
+  processAutoReportQueue,
+  queueFindingForReport,
+  setAccountStatus,
+  updateTorobOpsSettings,
+  upsertAccount,
+  upsertOwnShop,
+  upsertReportTemplate,
+} from "./path-a.server";
 import { torobOpsAdmin } from "./db.server";
 
 const ALLOWED_OPS_ROLES = ["admin", "manager", "sales", "accountant", "viewer"] as const;
@@ -233,25 +248,36 @@ export const torobOpsListFindings = createServerFn({ method: "POST" })
     OpsSessionField.extend({
       status: z.enum(FINDING_STATUSES).optional(),
       runId: z.string().uuid().optional(),
-      limit: z.number().int().min(1).max(200).optional(),
+      limit: z.number().int().min(1).max(50).optional(),
       offset: z.number().int().min(0).optional(),
     }),
   )
   .handler(async ({ data, context }) => {
     const userId = (context as { userId: string }).userId;
     await gateOps(userId, data.opsSession, false);
+    const limit = data.limit ?? 25;
+    const offset = data.offset ?? 0;
+
+    let countQ = torobOpsAdmin()
+      .from("torob_ops_findings")
+      .select("id", { count: "exact", head: true });
+    if (data.status) countQ = countQ.eq("status", data.status);
+    if (data.runId) countQ = countQ.eq("scan_run_id", data.runId);
+    const { count, error: countErr } = await countQ;
+    if (countErr) throw new Error(countErr.message);
+
     let q = torobOpsAdmin()
       .from("torob_ops_findings")
       .select(
         "id, scan_run_id, product_id, product_name_snapshot, torob_url, seller_name, seller_domain, seller_offer_url, our_price_toman, their_price_toman, price_source, status, evidence, reviewed_by, reviewed_at, review_note, created_at",
       )
       .order("created_at", { ascending: false })
-      .range(data.offset ?? 0, (data.offset ?? 0) + (data.limit ?? 50) - 1);
+      .range(offset, offset + limit - 1);
     if (data.status) q = q.eq("status", data.status);
     if (data.runId) q = q.eq("scan_run_id", data.runId);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-    return rows ?? [];
+    return { rows: rows ?? [], total: count ?? 0, limit, offset };
   });
 
 export const torobOpsReviewFinding = createServerFn({ method: "POST" })
@@ -316,8 +342,9 @@ export const torobOpsDashboardStats = createServerFn({ method: "POST" })
       "manual_review",
       "suspected_bait",
       "confirmed_bait",
-      "cheaper_competitor",
+      "queued_for_report",
       "reported",
+      "report_failed",
     ] as const;
 
     const counts: Record<string, number> = {};
@@ -350,4 +377,206 @@ export const torobOpsListLabels = createServerFn({ method: "POST" })
       .order("title");
     if (error) throw new Error(error.message);
     return rows ?? [];
+  });
+
+// ─── Path A: shops / templates / settings / accounts / report queue ───
+
+export const torobOpsListOwnShops = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(OpsSessionField)
+  .handler(async ({ data, context }) => {
+    const userId = (context as { userId: string }).userId;
+    await gateOps(userId, data.opsSession, false);
+    return await listOwnShops();
+  });
+
+export const torobOpsUpsertOwnShop = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    OpsSessionField.extend({
+      id: z.string().uuid().optional(),
+      shopName: z.string().max(200).optional().nullable(),
+      domain: z.string().max(200).optional().nullable(),
+      notes: z.string().max(2000).optional().nullable(),
+      isActive: z.boolean().optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const userId = (context as { userId: string }).userId;
+    await gateOps(userId, data.opsSession, true);
+    return await upsertOwnShop({
+      userId,
+      id: data.id,
+      shopName: data.shopName,
+      domain: data.domain,
+      notes: data.notes,
+      isActive: data.isActive,
+    });
+  });
+
+export const torobOpsDeleteOwnShop = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(OpsSessionField.extend({ id: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const userId = (context as { userId: string }).userId;
+    await gateOps(userId, data.opsSession, true);
+    await deleteOwnShop(data.id);
+    return { ok: true as const };
+  });
+
+export const torobOpsListReportTemplates = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(OpsSessionField)
+  .handler(async ({ data, context }) => {
+    const userId = (context as { userId: string }).userId;
+    await gateOps(userId, data.opsSession, false);
+    return await listReportTemplates();
+  });
+
+export const torobOpsUpsertReportTemplate = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    OpsSessionField.extend({
+      id: z.string().uuid().optional(),
+      name: z.string().min(1).max(200),
+      body: z.string().min(1).max(8000),
+      isDefault: z.boolean().optional(),
+      isActive: z.boolean().optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const adminId = (context as { userId: string }).userId;
+    await assertAdmin(adminId);
+    await gateOps(adminId, data.opsSession, true);
+    return await upsertReportTemplate({
+      adminId,
+      id: data.id,
+      name: data.name,
+      body: data.body,
+      isDefault: data.isDefault,
+      isActive: data.isActive,
+    });
+  });
+
+export const torobOpsReportPreview = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(OpsSessionField.extend({ findingId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const userId = (context as { userId: string }).userId;
+    await gateOps(userId, data.opsSession, false);
+    return await buildReportPreview(data.findingId);
+  });
+
+export const torobOpsQueueForReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(OpsSessionField.extend({ findingId: z.string().uuid() }))
+  .handler(async ({ data, context }) => {
+    const userId = (context as { userId: string }).userId;
+    await gateOps(userId, data.opsSession, true);
+    await queueFindingForReport({ userId, findingId: data.findingId });
+    return { ok: true as const };
+  });
+
+export const torobOpsGetSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(OpsSessionField)
+  .handler(async ({ data, context }) => {
+    const userId = (context as { userId: string }).userId;
+    await gateOps(userId, data.opsSession, false);
+    return await getTorobOpsSettings();
+  });
+
+export const torobOpsUpdateSettings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    OpsSessionField.extend({
+      auto_report_enabled: z.boolean().optional(),
+      kill_switch: z.boolean().optional(),
+      require_human_confirm_first_n: z.number().int().min(0).max(100).optional(),
+      max_reports_per_hour: z.number().int().min(1).max(200).optional(),
+      dedupe_window_hours: z.number().int().min(1).max(720).optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const adminId = (context as { userId: string }).userId;
+    await assertAdmin(adminId);
+    await gateOps(adminId, data.opsSession, true);
+    const { opsSession: _s, ...patch } = data;
+    return await updateTorobOpsSettings({ adminId, patch });
+  });
+
+export const torobOpsListAccounts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(OpsSessionField)
+  .handler(async ({ data, context }) => {
+    const adminId = (context as { userId: string }).userId;
+    await assertAdmin(adminId);
+    await gateOps(adminId, data.opsSession, false);
+    return await listAccountsMeta();
+  });
+
+export const torobOpsUpsertAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    OpsSessionField.extend({
+      id: z.string().uuid().optional(),
+      label: z.string().min(1).max(200),
+      status: z.enum(ACCOUNT_STATUSES).optional(),
+      dailyCap: z.number().int().min(1).max(500).optional(),
+      sessionJson: z.string().max(50_000).optional().nullable(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const adminId = (context as { userId: string }).userId;
+    await assertAdmin(adminId);
+    await gateOps(adminId, data.opsSession, true);
+    return await upsertAccount({
+      adminId,
+      id: data.id,
+      label: data.label,
+      status: data.status,
+      dailyCap: data.dailyCap,
+      sessionJson: data.sessionJson,
+    });
+  });
+
+export const torobOpsSetAccountStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    OpsSessionField.extend({
+      id: z.string().uuid(),
+      status: z.enum(ACCOUNT_STATUSES),
+      lastError: z.string().max(2000).optional().nullable(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const adminId = (context as { userId: string }).userId;
+    await assertAdmin(adminId);
+    await gateOps(adminId, data.opsSession, true);
+    await setAccountStatus({
+      adminId,
+      id: data.id,
+      status: data.status,
+      lastError: data.lastError,
+    });
+    return { ok: true as const };
+  });
+
+export const torobOpsProcessReportQueue = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    OpsSessionField.extend({
+      dryRunForce: z.boolean().optional(),
+      limit: z.number().int().min(1).max(20).optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const adminId = (context as { userId: string }).userId;
+    await assertAdmin(adminId);
+    await gateOps(adminId, data.opsSession, true);
+    return await processAutoReportQueue({
+      actorId: adminId,
+      dryRunForce: data.dryRunForce,
+      limit: data.limit,
+    });
   });

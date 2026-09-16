@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   createTorobOpsSessionToken,
+  decryptTorobAccountSession,
+  encryptTorobAccountSession,
   hashTorobOpsPassword,
   hashTorobOpsSessionToken,
   verifyTorobOpsPassword,
@@ -17,4 +19,11 @@ test("session token hash is stable", () => {
   const token = createTorobOpsSessionToken();
   assert.equal(hashTorobOpsSessionToken(token), hashTorobOpsSessionToken(token));
   assert.notEqual(hashTorobOpsSessionToken(token), hashTorobOpsSessionToken(token + "x"));
+});
+
+test("account session encrypt/decrypt roundtrip", () => {
+  const plain = JSON.stringify({ cookies: "abc", ts: 1 });
+  const { ciphertext, iv } = encryptTorobAccountSession(plain);
+  assert.notEqual(ciphertext, plain);
+  assert.equal(decryptTorobAccountSession(ciphertext, iv), plain);
 });

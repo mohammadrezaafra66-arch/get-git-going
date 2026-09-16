@@ -1,10 +1,62 @@
-# Torob Ops Path B — آماده‌سازی انتقال به سرور اصلی
+# Torob Ops Path A/B — آماده‌سازی انتقال به سرور اصلی
 
-وضعیت: آمادهٔ انتقال پس از تأیید مالک روی ۳۱۰۰  
-شاخهٔ نمایش ۳۱۰۰ / مسیر cutover فعلی: `staging` (با کامیت‌های ترب)  
-Migration: `supabase/migrations/20260916190000_555_torob_ops_path_b.sql`  
-Rollback: `docs/verification/555-down.sql`  
-قرارداد فاز ۱: `docs/torob-ops/PATH_B_CONTRACT.md`
+وضعیت: Path B روی :3000 زنده؛ Path A روی شاخهٔ `feature/torob-ops-path-a` → اول `:3100`  
+شاخهٔ نمایش ۳۱۰۰: `staging` پس از merge  
+Migration Path B: `555_torob_ops_path_b`  
+Migration Path A: `20260916210000_557_torob_ops_path_a.sql`  
+Rollback A: `docs/verification/557-down.sql`  
+قرارداد: `docs/torob-ops/PATH_A_CONTRACT.md` · Runbook: `docs/torob-ops/RUNBOOK.md`
+
+## محدودهٔ قابل انتقال (Path A)
+
+- همهٔ Path B به‌علاوه: own shops UI، pagination یافته‌ها، غنی‌سازی فروشنده، قالب گزارش، dry-run
+- استخر اکانت + encryption session، worker صف گزارش، kill switch، feature flag `auto_report_enabled` (**پیش‌فرض خاموش**)
+- **ارسال زنده به ترب** فقط پس از spike + تأیید کتبی مالک؛ تا آن زمان dry_run / دستی
+
+## Env جدید (LAN)
+
+در `deploy/lan/.env.lan` (هرگز commit نشود):
+
+```
+TOROB_OPS_WORKER_TOKEN=<random>
+TOROB_OPS_ACCOUNT_SECRET=<random-32+>
+# اختیاری:
+# TOROB_OPS_WORKER_ACTOR_ID=<admin-uuid>
+# TOROB_OPS_SIMULATE_SUBMIT=1   # فقط staging برای تست بدون hit ترب
+```
+
+Worker: `deploy/lan/scripts/torob-ops-report-worker.ps1`
+
+## مسیرهای جدید
+
+`/torob-ops/shops` · `/torob-ops/settings` · `/torob-ops/accounts`  
+API: `POST /api/public/hooks/process-torob-ops-report-queue`
+
+## ترتیب promote
+
+1. Merge `feature/torob-ops-path-a` → `staging` → rebuild `:3100`
+2. اعمال migration **557** روی DB تست
+3. e2e گیت + path-a + smoke settings (flag خاموش)
+4. تأیید مالک برای cutover کد به `:3000` با **auto_report_enabled=false** و kill_switch آماده
+5. Migration 557 روی پرود فقط با بکاپ + تأیید کتبی
+6. روشن کردن auto فقط بعد از spike و تست کنترل‌شده روی :3100
+
+## چک‌لیست cutover Path A
+
+- [ ] 557 روی :3100 اعمال و `\dt torob_ops_*` شامل templates/accounts/settings
+- [ ] صف یافته‌ها page size ≤۵۰ بدون timeout
+- [ ] dry-run preview روی confirmed_bait کار می‌کند؛ روی manual_review بلاک می‌شود
+- [ ] kill switch صف را صفر می‌کند
+- [ ] worker بدون token → 401
+- [ ] auto flag روی :3000 خاموش است
+- [ ] PROD بکاپ قبل از 557
+
+## خارج از محدوده تا تأیید جدا
+
+- اتصال adapter به فرم زندهٔ ترب بدون spike
+- دور زدن CAPTCHA
+- گزارش روی یافتهٔ بررسی‌دستی یا ردشده
+
 
 ## محدودهٔ قابل انتقال (فاز ۱)
 

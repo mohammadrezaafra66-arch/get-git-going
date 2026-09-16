@@ -258,12 +258,14 @@ export async function createAndRunTorobOpsScan(input: {
         strong: false,
         sellerDomain: null as string | null,
         httpStatus: null as number | null,
+        phones: [] as string[],
+        enriched: false,
+        snippet: undefined as string | undefined,
       };
 
       const offerUrl = product.torob_url;
       if (input.runBaitChecks !== false && baitChecksUsed < MAX_BAIT_CHECKS_PER_SCAN && offerUrl) {
-        // Optional light check against Torob product page itself for contact-only patterns
-        // (seller site redirect enrichment is phase follow-up).
+        // Read-only product page + optional seller deep-link enrichment (Path A).
         const result = await checkSellerPageForBait(offerUrl);
         baitChecksUsed += 1;
         bait = result;
@@ -280,8 +282,7 @@ export async function createAndRunTorobOpsScan(input: {
         baitFetchFailed: bait.signals.includes("fetch_failed") || bait.signals.length === 0,
       });
 
-      // Without per-seller identity, default ambiguous cases stay manual_review
-      // when we only have aggregate min (Path B).
+      // Ambiguous undercut without strong bait → manual_review (aggregate observatory min).
       const finalStatus: FindingStatus =
         status === "cheaper_competitor" && !bait.strong ? "manual_review" : status;
 
@@ -302,7 +303,12 @@ export async function createAndRunTorobOpsScan(input: {
           torob_seller_count: toNumber(obs?.torob_seller_count),
           bait_signals: bait.signals,
           bait_http_status: bait.httpStatus,
-          note: "فاز ۱: قیمت از رصدخانه (min کلی)؛ هویت فروشنده نیاز به غنی‌سازی دارد.",
+          phones: bait.phones,
+          seller_enriched: bait.enriched,
+          seller_snippet: bait.snippet ?? null,
+          note: bait.enriched
+            ? "فاز ۲: غنی‌سازی فقط‌خواندنی صفحهٔ فروشنده/کالا؛ قیمت min از رصدخانه."
+            : "فاز ۲: غنی‌سازی انجام نشد یا شکست خورد؛ قیمت min از رصدخانه.",
         },
       });
     }

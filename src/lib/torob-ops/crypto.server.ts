@@ -1,4 +1,11 @@
-import { createHash, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  randomBytes,
+  scryptSync,
+  timingSafeEqual,
+} from "node:crypto";
 
 const SCRYPT_N = 16384;
 const SCRYPT_R = 8;
@@ -36,4 +43,35 @@ export function createTorobOpsSessionToken(): string {
 
 export function hashTorobOpsSessionToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
+}
+
+/** 32-byte key from env TOROB_OPS_ACCOUNT_SECRET (or JWT_SECRET fallback). */
+function accountSecretKey(): Buffer {
+  const raw =
+    process.env.TOROB_OPS_ACCOUNT_SECRET ||
+    process.env.JWT_SECRET ||
+    "torob-ops-dev-only-insecure-key";
+  return createHash("sha256").update(raw, "utf8").digest();
+}
+
+/** Encrypt JSON session blob for torob_ops_accounts. */
+export function encryptTorobAccountSession(plain: string): { ciphertext: string; iv: string } {
+  const iv = randomBytes(12);
+  const cipher = createCipheriv("aes-256-gcm", accountSecretKey(), iv);
+  const enc = Buffer.concat([cipher.update(plain, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return {
+    ciphertext: Buffer.concat([enc, tag]).toString("base64"),
+    iv: iv.toString("base64"),
+  };
+}
+
+export function decryptTorobAccountSession(ciphertextB64: string, ivB64: string): string {
+  const buf = Buffer.from(ciphertextB64, "base64");
+  const iv = Buffer.from(ivB64, "base64");
+  const tag = buf.subarray(buf.length - 16);
+  const data = buf.subarray(0, buf.length - 16);
+  const decipher = createDecipheriv("aes-256-gcm", accountSecretKey(), iv);
+  decipher.setAuthTag(tag);
+  return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
 }

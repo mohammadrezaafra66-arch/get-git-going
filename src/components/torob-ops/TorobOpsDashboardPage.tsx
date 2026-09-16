@@ -25,7 +25,7 @@ function DashboardInner() {
     <div className="space-y-4 p-4">
       <PageHeader
         title="عملیات ترب"
-        description="مسیر ب: کشف قیمت پایین‌تر، صف بررسی طعمه، و ثبت دستی گزارش پس از تأیید."
+        description="مسیر الف: کشف طعمه، صف بررسی، dry-run، و گزارش خودکار با سقف نرخ."
       />
 
       <div className="flex flex-wrap gap-2">
@@ -35,6 +35,15 @@ function DashboardInner() {
         <Button asChild variant="secondary">
           <Link to="/torob-ops/findings">صف بررسی</Link>
         </Button>
+        <Button asChild variant="outline">
+          <Link to="/torob-ops/shops">فروشگاه‌های خودی</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/torob-ops/settings">تنظیمات / kill switch</Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/torob-ops/accounts">استخر اکانت</Link>
+        </Button>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -43,8 +52,9 @@ function DashboardInner() {
             "manual_review",
             "suspected_bait",
             "confirmed_bait",
-            "cheaper_competitor",
+            "queued_for_report",
             "reported",
+            "report_failed",
           ] as FindingStatus[]
         ).map((status) => (
           <Card key={status}>
