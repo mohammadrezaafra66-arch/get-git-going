@@ -221,6 +221,7 @@ export function TestReportPanel({
           </Label>
           <JalaliDateTimeInput
             id="test-report-eta"
+            data-testid="test-report-eta"
             value={claimedDueLocal}
             onChange={setClaimedDueLocal}
             disabled={!canSubmit || submitting !== null}

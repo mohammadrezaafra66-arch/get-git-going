@@ -13,6 +13,7 @@ interface Props {
   disabled?: boolean;
   className?: string;
   datePlaceholder?: string;
+  "data-testid"?: string;
 }
 
 function splitLocal(value: string): { date: string; time: string } {
@@ -32,6 +33,7 @@ export function JalaliDateTimeInput({
   disabled,
   className,
   datePlaceholder = "انتخاب تاریخ شمسی",
+  "data-testid": dataTestId,
 }: Props) {
   const { date, time } = splitLocal(value);
 
@@ -45,7 +47,10 @@ export function JalaliDateTimeInput({
   }
 
   return (
-    <div className={cn("flex flex-col gap-2 sm:flex-row sm:items-center", className)}>
+    <div
+      className={cn("flex flex-col gap-2 sm:flex-row sm:items-center", className)}
+      data-testid={dataTestId}
+    >
       <div className="min-w-0 flex-1">
         <JalaliDateInput
           value={date || null}
@@ -63,6 +68,7 @@ export function JalaliDateTimeInput({
         onChange={(e) => emit(date, e.target.value || "12:00")}
         disabled={disabled || !date}
         aria-label="ساعت"
+        data-testid={dataTestId ? `${dataTestId}-time` : undefined}
       />
     </div>
   );

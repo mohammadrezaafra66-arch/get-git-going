@@ -257,6 +257,19 @@ async function progressCreateWizardToConfirm(page: Page, description: string): P
   });
 }
 
+/** Pick a Jalali calendar day then set HH:mm on the time input (id on time field). */
+async function setJalaliDateTimeByTimeId(page: Page, timeInputId: string): Promise<void> {
+  const section = page.locator(`label[for="${timeInputId}"]`).locator("xpath=..");
+  const dateInput = section.getByPlaceholder("انتخاب تاریخ شمسی");
+  await dateInput.click();
+  const day = page.locator(".rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden)").first();
+  await expect(day).toBeVisible({ timeout: 10_000 });
+  await day.click();
+  const time = page.locator(`#${timeInputId}`);
+  await expect(time).toBeEnabled({ timeout: 5_000 });
+  await time.fill("14:30");
+}
+
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(() => {
@@ -461,9 +474,9 @@ test("UI blocks in_progress without claimed_due_at", async ({ page }) => {
     timeout: 20_000,
   });
 
-  // Ensure due field is empty, then pick «در حال انجام».
-  const due = page.locator("#claimed_due_at");
-  await due.fill("");
+  // Seed has NULL due; Jalali picker shows empty placeholder (time stays disabled).
+  await expect(page.getByPlaceholder("انتخاب تاریخ شمسی").first()).toBeVisible();
+
   const statusBox = page
     .getByText("وضعیت", { exact: true })
     .locator("..")
@@ -614,8 +627,8 @@ test("testing workflow reject with ETA returns to in_progress", async ({ page })
     timeout: 20_000,
   });
 
-  // datetime-local: far enough future to satisfy ETA gate.
-  await page.locator("#test-report-eta").fill("2030-06-15T14:30");
+  // Jalali date+time: pick a day then set HH:mm (replaces datetime-local fill).
+  await setJalaliDateTimeByTimeId(page, "test-report-eta");
   // Use reject-existing without linked bug id — RPC allows null linked bug.
   await page.getByTestId("work-test-reject-existing").click();
   await expect(
