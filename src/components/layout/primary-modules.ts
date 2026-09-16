@@ -52,6 +52,8 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/popup-center",
       "/collaboration",
       "/operations/tasks",
+      "/operations/work",
+      "/operations/work/settings",
       "/operations/daily-mood",
     ],
   },
@@ -126,6 +128,9 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/sales/credit-rules",
       "/sales/customers/credit-training",
       "/sales/send-queue",
+      // F1 sales-desk — میز فروش + فعالیت تلفنی زیر ماژول فروش
+      "/operations/sales-desk",
+      "/operations/call-activity",
     ],
   },
   {

@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BRANDING } from "@/config/branding";
+import { CreateWorkFromMessageButton } from "@/components/work/CreateWorkFromMessageButton";
 
 export function AiAssistantDrawer({
   open,
@@ -245,7 +246,7 @@ function Bubble({
   const mine = role === "user";
   const displayContent = mine ? content : normalizeAssistantText(content);
   return (
-    <div className={cn("flex", mine ? "justify-end" : "justify-start")}>
+    <div className={cn("flex flex-col gap-1", mine ? "items-end" : "items-start")}>
       <div
         dir="rtl"
         className={cn(
@@ -258,6 +259,12 @@ function Bubble({
       >
         {displayContent}
       </div>
+      {!mine && !streaming && displayContent.trim().length > 0 && (
+        <CreateWorkFromMessageButton
+          messageText={displayContent}
+          variant="menu"
+        />
+      )}
     </div>
   );
 }

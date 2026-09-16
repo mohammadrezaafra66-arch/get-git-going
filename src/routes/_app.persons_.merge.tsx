@@ -2,7 +2,7 @@ import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowRight, Loader2, Merge, ShieldAlert, UserX } from "lucide-react";
+import { ArrowRight, Loader2, Merge, ShieldAlert, UserRoundCog, UserX } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
@@ -109,6 +109,8 @@ function PersonMergePage() {
   const queryClient = useQueryClient();
   const { roles, rolesLoading } = useAuth();
   const allowed = hasAnyRole(roles, ["admin", "manager"]);
+  // Cleanup deletes people; only admin may open it. Do not send managers there.
+  const canOpenCleanup = hasAnyRole(roles, ["admin"]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["person-merge-candidates"],
@@ -138,12 +140,33 @@ function PersonMergePage() {
             بازگشت به اشخاص
           </Link>
         </Button>
+        {canOpenCleanup ? (
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/persons-cleanup">
+              <UserRoundCog className="ml-2 h-4 w-4" />
+              تکمیل و پاک‌سازی
+            </Link>
+          </Button>
+        ) : null}
       </div>
 
       <PageHeader
         title="بررسی اشخاص تکراری"
         description="جفت‌هایی که سیستم به تکراری‌بودن آن‌ها مشکوک است. برندهٔ ادغام را انتخاب کنید یا اعلام کنید این‌ها یک نفر نیستند."
       />
+
+      {canOpenCleanup ? (
+        <p className="text-sm text-muted-foreground">
+          اگر پروندهٔ ناقص (بدون کد آسان یا موبایل) دارید، اول در{" "}
+          <Link
+            to="/admin/persons-cleanup"
+            className="font-medium text-foreground underline-offset-4 hover:underline"
+          >
+            تکمیل و پاک‌سازی
+          </Link>{" "}
+          کامل یا حذفش کنید؛ بعد به این صف برگردید.
+        </p>
+      ) : null}
 
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">

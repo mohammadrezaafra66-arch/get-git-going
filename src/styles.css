@@ -268,3 +268,280 @@
     opacity: 0 !important;
   }
 }
+
+/* ===== Sales desk (میز فروش) — depth + motion ===== */
+.sales-desk-shell {
+  --sd-ink: #0f2f2c;
+  --sd-teal: #0f766e;
+  --sd-sand: #e8f2ef;
+  position: relative;
+  min-height: 70vh;
+  padding: 0.25rem 0 1.5rem;
+  overflow: hidden;
+}
+
+.sales-desk-atmosphere {
+  pointer-events: none;
+  position: absolute;
+  inset: -2rem -1rem auto;
+  height: 22rem;
+  background:
+    radial-gradient(ellipse 80% 60% at 90% 0%, rgba(15, 118, 110, 0.16), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 10% 10%, rgba(14, 116, 144, 0.12), transparent 50%),
+    linear-gradient(180deg, rgba(232, 242, 239, 0.9), transparent 70%);
+  z-index: 0;
+}
+
+.sales-desk-orb {
+  pointer-events: none;
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(2px);
+  opacity: 0.55;
+  z-index: 0;
+  animation: sales-desk-float 9s ease-in-out infinite;
+}
+
+.sales-desk-orb-a {
+  width: 9rem;
+  height: 9rem;
+  top: 2rem;
+  left: 8%;
+  background: radial-gradient(circle at 30% 30%, #99f6e4, transparent 70%);
+}
+
+.sales-desk-orb-b {
+  width: 14rem;
+  height: 14rem;
+  top: 6rem;
+  right: 4%;
+  background: radial-gradient(circle at 40% 40%, #bae6fd, transparent 68%);
+  animation-delay: -3s;
+  animation-duration: 12s;
+}
+
+@keyframes sales-desk-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0) scale(1.04);
+  }
+}
+
+.sales-desk-kicker {
+  animation: sales-desk-rise 0.55s ease-out both;
+}
+
+.sales-desk-header h1 {
+  animation: sales-desk-rise 0.65s ease-out 0.05s both;
+}
+
+@keyframes sales-desk-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.sales-desk-tilt {
+  perspective: 1100px;
+  transform-style: preserve-3d;
+  animation: sales-desk-rise 0.7s ease-out both;
+}
+
+.sales-desk-tilt-inner {
+  position: relative;
+  height: 100%;
+  border-radius: 1rem;
+  transform: rotateX(var(--sd-rot-x, 0deg)) rotateY(var(--sd-rot-y, 0deg))
+    translateZ(0);
+  transition: transform 0.18s ease-out, box-shadow 0.25s ease;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.65) inset,
+    0 12px 28px -18px rgba(15, 47, 44, 0.35);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 252, 0.88));
+  border: 1px solid rgba(15, 118, 110, 0.12);
+  overflow: hidden;
+}
+
+.sales-desk-tilt-inner::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    420px circle at var(--sd-shine-x, 50%) var(--sd-shine-y, 20%),
+    rgba(255, 255, 255, 0.35),
+    transparent 45%
+  );
+  opacity: 0.7;
+  mix-blend-mode: soft-light;
+}
+
+.sales-desk-tilt:hover .sales-desk-tilt-inner {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.8) inset,
+    0 22px 40px -20px rgba(15, 47, 44, 0.42);
+}
+
+.sales-desk-tilt-inner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sales-desk-stat-pulse {
+  animation: sales-desk-pulse 2.8s ease-in-out infinite;
+}
+
+@keyframes sales-desk-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.sales-desk-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.75rem;
+  background: rgba(15, 118, 110, 0.1);
+  color: #115e59;
+  border: 1px solid rgba(15, 118, 110, 0.18);
+}
+
+/* پین ثابت تیکت در سایدبار — کادر کوچک سه‌بعدی تعاملی */
+.sidebar-pin-3d {
+  perspective: 420px;
+  transform-style: preserve-3d;
+}
+
+.sidebar-pin-3d-inner {
+  position: relative;
+  overflow: visible;
+  border-radius: 0.55rem;
+  transform: rotateX(var(--pin-rot-x, 0deg)) rotateY(var(--pin-rot-y, 0deg))
+    translateZ(var(--pin-lift, 0px));
+  transition:
+    transform 0.14s ease-out,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.75) inset,
+    0 1px 0 rgba(13, 148, 136, 0.22),
+    0 5px 10px -6px rgba(15, 47, 44, 0.42);
+  background: linear-gradient(
+    152deg,
+    #f0fdfa 0%,
+    #99f6e4 48%,
+    #5eead4 100%
+  );
+  border: 1px solid rgba(13, 148, 136, 0.4);
+  animation: sidebar-pin-idle 2.8s ease-in-out infinite;
+}
+
+.sidebar-pin-3d-inner::before {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    125deg,
+    rgba(255, 255, 255, 0.55) 0%,
+    transparent 42%,
+    transparent 58%,
+    rgba(13, 148, 136, 0.12) 100%
+  );
+  opacity: 0.9;
+}
+
+.sidebar-pin-3d-inner::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    120px circle at var(--pin-shine-x, 50%) var(--pin-shine-y, 18%),
+    rgba(255, 255, 255, 0.55),
+    transparent 48%
+  );
+  opacity: 0.9;
+  mix-blend-mode: soft-light;
+  transition: opacity 0.15s ease;
+}
+
+.sidebar-pin-3d:hover .sidebar-pin-3d-inner {
+  animation: none;
+  filter: brightness(1.04);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 2px 0 rgba(13, 148, 136, 0.3),
+    0 12px 18px -10px rgba(15, 47, 44, 0.55);
+}
+
+.sidebar-pin-3d-inner.sidebar-pin-3d-pressed {
+  --pin-lift: 2px !important;
+  filter: brightness(0.96);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.4) inset,
+    0 2px 6px -4px rgba(15, 47, 44, 0.45);
+}
+
+.sidebar-pin-3d-inner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-pin-3d-inner[data-active="true"] {
+  background: linear-gradient(152deg, #5eead4 0%, #14b8a6 55%, #0f766e 100%);
+  border-color: rgba(15, 118, 110, 0.6);
+  color: #042f2e;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.35) inset,
+    0 6px 12px -8px rgba(15, 47, 44, 0.55);
+}
+
+@keyframes sidebar-pin-idle {
+  0%,
+  100% {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.75) inset,
+      0 1px 0 rgba(13, 148, 136, 0.22),
+      0 5px 10px -6px rgba(15, 47, 44, 0.42);
+  }
+  50% {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.85) inset,
+      0 1px 0 rgba(13, 148, 136, 0.28),
+      0 7px 14px -6px rgba(15, 47, 44, 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sales-desk-orb,
+  .sales-desk-kicker,
+  .sales-desk-header h1,
+  .sales-desk-tilt,
+  .sales-desk-stat-pulse,
+  .sidebar-pin-3d-inner {
+    animation: none !important;
+  }
+  .sales-desk-tilt-inner,
+  .sidebar-pin-3d-inner {
+    transition: none !important;
+    transform: none !important;
+  }
+}

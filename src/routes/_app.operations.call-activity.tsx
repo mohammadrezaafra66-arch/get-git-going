@@ -1,11 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,33 +20,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Loader2, PhoneIncoming } from "lucide-react";
 import { toast } from "sonner";
-import { toFaDigits } from "@/lib/i18n/formatters";
+import { formatDateFa, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
+import { PersianDatePicker } from "@/components/common/PersianDatePicker";
+import { SalesDeskShell, SalesDeskTiltCard } from "@/components/sales-desk";
 
 /**
  * Wave 6 / C-8 — گزارش فعالیت تلفنی به تفکیک داخلی.
  *
- * داده از دو view مهاجرت ۵۱۴ می‌آید (`v_call_extension_daily` و
- * `v_call_extension_hourly`). این صفحه هیچ شمارشی خودش انجام نمی‌دهد و هرگز
- * مستقیم به `call_logs` نمی‌زند — چون گارد دسترسی داخل خودِ view است، نه اینجا.
- *
- * گارد، دو نیمه دارد و هر دو نیمه لازم‌اند:
- *  ۱) این مسیر با `staticData.gate` و `requireAnyRole` به admin و manager و
- *     sales باز است؛
- *  ۲) خودِ view تصمیم می‌گیرد هر کس چه می‌بیند — admin و manager همه چیز،
- *     و هر کس دیگر فقط داخلی‌هایی که در `call_log_extensions` به او نگاشت
- *     شده‌اند. اگر این صفحه دور زده شود و کسی مستقیم به PostgREST بزند، باز
- *     همان محدودیت اعمال می‌شود.
- *
- * اندازه‌گیری‌شده در یک تراکنش برگشتی: کاربر sale ای که هیچ داخلی‌ای به او نگاشت
- * نشده **صفر ردیف** می‌بیند، نه همه چیز؛ و وقتی داخلی ۴۱۳ به او نگاشت شد،
- * دقیقاً ۴۱۳ را دید و ۴۰۱/۴۰۳/۴۰۴/۴۰۷/۴۴۹ را ندید.
- *
- * قاعدهٔ ۱۱ پروژه (کوئری بزرگ): امروز ۱۴۲۹ تماس است ولی با ~۸۸۷ تماس در روز
- * سالانه ~۳۲۴ هزار می‌شود. پس بازهٔ تاریخ همیشه بسته است، صفحه‌بندی دارد،
- * ورودی‌های فیلتر debounce شده‌اند، و ایندکس
- * `idx_call_logs_extension_started` در همان مهاجرت ۵۱۴ ساخته شد.
+ * دادهٔ جمع از viewهای مهاجرت ۵۱۴؛ ریز مکالمه از `call_logs` با همان گارد RLS.
+ * نام کنار داخلی از `call_log_extensions.label` (فهرست داخلی دفتر).
  */
 
 type DailyRow = {
@@ -63,20 +53,82 @@ type DailyRow = {
 
 type HourlyRow = DailyRow & { call_hour: number };
 
+type ExtensionInfo = { label: string | null };
+
+type CallDetail = {
+  id: string;
+  started_at: string;
+  direction: string;
+  is_missed: boolean | null;
+  disposition: string | null;
+  duration_seconds: number | null;
+  extension: string | null;
+  metadata: Record<string, unknown> | null;
+};
+
+type DetailFilter = "all" | "inbound" | "outbound" | "missed";
+
+type SelectedBucket = {
+  extension: string;
+  call_date: string;
+  call_hour?: number;
+};
+
 const PAGE_SIZE = 50;
+const DETAIL_LIMIT = 200;
 const ALL = "__all__";
 const FILTER_DEBOUNCE_MS = 400;
+
+/** Asia/Tehran بدون DST از ۲۰۲۲ — همان قرارداد promotion-suggestions. */
+const TEHRAN_OFFSET_MS = (3 * 60 + 30) * 60 * 1000;
 
 function isoDaysAgo(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() - days);
-  // روزِ تهران، نه روزِ UTC — همان قراردادی که viewها استفاده می‌کنند.
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Tehran" }).format(d);
 }
 
+function tehranDayRangeIso(isoDate: string): { gte: string; lt: string } {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const start = Date.UTC(y, m - 1, d) - TEHRAN_OFFSET_MS;
+  return {
+    gte: new Date(start).toISOString(),
+    lt: new Date(start + 24 * 60 * 60 * 1000).toISOString(),
+  };
+}
+
+function tehranHourRangeIso(isoDate: string, hour: number): { gte: string; lt: string } {
+  const day = tehranDayRangeIso(isoDate);
+  const start = new Date(day.gte).getTime() + hour * 3_600_000;
+  return {
+    gte: new Date(start).toISOString(),
+    lt: new Date(start + 3_600_000).toISOString(),
+  };
+}
+
+function extensionCaption(extension: string, map: Map<string, ExtensionInfo>): string {
+  const label = map.get(extension)?.label?.trim();
+  return label ? `${toFaDigits(extension)} · ${label}` : toFaDigits(extension);
+}
+
+function phoneFromMeta(meta: Record<string, unknown> | null): string | null {
+  if (!meta) return null;
+  if (typeof meta.raw_number === "string" && meta.raw_number.trim()) return meta.raw_number.trim();
+  if (typeof meta.stripped_number === "string" && meta.stripped_number.trim()) {
+    return meta.stripped_number.trim();
+  }
+  return null;
+}
+
+function directionLabel(direction: string, isMissed: boolean | null): string {
+  if (isMissed) return "بی‌پاسخ";
+  if (direction === "inbound") return "ورودی";
+  if (direction === "outbound") return "خروجی";
+  if (direction === "internal") return "داخلی";
+  return direction || "—";
+}
+
 export const Route = createFileRoute("/_app/operations/call-activity")({
-  // نیمهٔ سمت کاربرِ گارد. `beforeLoad` فقط روی سرور اجرا می‌شود و نشست
-  // localStorage را نمی‌بیند، پس RouteRoleGate این را می‌خواند.
   staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager", "sales"] } },
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager", "sales"]);
@@ -99,10 +151,15 @@ function CallActivityPage() {
 
   const [rows, setRows] = useState<(DailyRow | HourlyRow)[]>([]);
   const [extensions, setExtensions] = useState<string[]>([]);
+  const [extensionMap, setExtensionMap] = useState<Map<string, ExtensionInfo>>(new Map());
   const [total, setTotal] = useState(0);
   const [listLoading, setListLoading] = useState(true);
 
-  // فیلترهای debounce شده — هر حرفی که در تاریخ تایپ می‌شود یک کوئری نمی‌زند.
+  const [selected, setSelected] = useState<SelectedBucket | null>(null);
+  const [detailFilter, setDetailFilter] = useState<DetailFilter>("all");
+  const [details, setDetails] = useState<CallDetail[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
+
   const [applied, setApplied] = useState({ fromDate, toDate, extension, hour, mode });
   useEffect(() => {
     const t = setTimeout(() => {
@@ -116,12 +173,9 @@ function CallActivityPage() {
     if (!allowed) return;
     setListLoading(true);
 
-    // انتخاب ساعت فقط در نمای ساعتی معنی دارد.
     const useHourly = applied.mode === "hourly" || applied.hour !== ALL;
     const viewName = useHourly ? "v_call_extension_hourly" : "v_call_extension_daily";
 
-    // viewهای مهاجرت ۵۱۴ در types.ts تولیدشده نیستند؛ همان قرارداد موجود repo
-    // برای این فاصله (مثل _app.admin.call-extensions.tsx) — نه خطای خاموش‌شده.
     let q = supabase
       .from(viewName as never)
       .select("*", { count: "exact" })
@@ -155,21 +209,76 @@ function CallActivityPage() {
     void load();
   }, [load]);
 
-  // فهرست داخلی‌ها از خودِ view می‌آید، پس کاربری که فقط یک داخلی می‌بیند
-  // در این فهرست هم فقط همان یکی را می‌بیند.
   useEffect(() => {
     if (!allowed) return;
     void (async () => {
-      const { data } = await supabase
-        .from("v_call_extension_daily" as never)
-        .select("extension")
-        .limit(1000);
+      const [{ data: daily }, { data: maps }] = await Promise.all([
+        supabase.from("v_call_extension_daily" as never).select("extension").limit(1000),
+        supabase
+          .from("call_log_extensions" as never)
+          .select("extension, label")
+          .limit(500),
+      ]);
+
       const list = [
-        ...new Set(((data ?? []) as unknown as { extension: string }[]).map((r) => r.extension)),
+        ...new Set(((daily ?? []) as unknown as { extension: string }[]).map((r) => r.extension)),
       ].sort();
       setExtensions(list);
+
+      const map = new Map<string, ExtensionInfo>();
+      for (const row of (maps ?? []) as unknown as { extension: string; label: string | null }[]) {
+        if (row.extension) map.set(row.extension, { label: row.label });
+      }
+      setExtensionMap(map);
     })();
   }, [allowed]);
+
+  useEffect(() => {
+    if (!selected || !allowed) {
+      setDetails([]);
+      return;
+    }
+
+    let cancelled = false;
+    setDetailLoading(true);
+
+    void (async () => {
+      const range =
+        selected.call_hour != null
+          ? tehranHourRangeIso(selected.call_date, selected.call_hour)
+          : tehranDayRangeIso(selected.call_date);
+
+      let q = supabase
+        .from("call_logs" as never)
+        .select(
+          "id, started_at, direction, is_missed, disposition, duration_seconds, extension, metadata",
+        )
+        .eq("extension" as never, selected.extension as never)
+        .gte("started_at" as never, range.gte as never)
+        .lt("started_at" as never, range.lt as never)
+        .order("started_at" as never, { ascending: false } as never)
+        .limit(DETAIL_LIMIT);
+
+      if (detailFilter === "inbound") q = q.eq("direction" as never, "inbound" as never);
+      if (detailFilter === "outbound") q = q.eq("direction" as never, "outbound" as never);
+      if (detailFilter === "missed") q = q.eq("is_missed" as never, true as never);
+
+      const { data, error } = await q;
+      if (cancelled) return;
+
+      if (error) {
+        toast.error(`خواندن ریز مکالمات ناموفق بود: ${error.message}`);
+        setDetails([]);
+      } else {
+        setDetails((data ?? []) as unknown as CallDetail[]);
+      }
+      setDetailLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selected, detailFilter, allowed]);
 
   const totals = useMemo(() => {
     return rows.reduce(
@@ -206,141 +315,170 @@ function CallActivityPage() {
   }
 
   return (
-    <div dir="rtl" className="space-y-6 p-4 sm:p-6">
-      <PageHeader
-        title="فعالیت تلفنی داخلی‌ها"
-        description="شمار تماس‌های ورودی، خروجی، داخلی و بی‌پاسخ و دقایق مکالمه، به تفکیک داخلی و روز."
-      />
-
+    <SalesDeskShell
+      title="فعالیت تلفنی داخلی‌ها"
+      description="شمار تماس‌های ورودی، خروجی، داخلی و بی‌پاسخ و دقایق مکالمه، به تفکیک داخلی و روز — روی هر ردیف بزنید تا ریز مکالمات همان داخلی را ببینید."
+      fallbackTo="/operations/sales-desk"
+      actions={
+        <Button asChild variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm">
+          <Link to="/operations/sales-desk">میز فروش</Link>
+        </Button>
+      }
+    >
       {!isPrivileged ? (
-        <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+        <p className="rounded-xl border border-teal-800/10 bg-white/70 p-3 text-sm text-muted-foreground backdrop-blur-sm">
           شما فقط آمار داخلی خودتان را می‌بینید. اگر چیزی نمایش داده نمی‌شود، یعنی هنوز داخلی‌ای به
           نام شما ثبت نشده است.
         </p>
       ) : null}
 
-      {/* فیلترها */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="space-y-1">
-          <label className="text-sm text-muted-foreground">از تاریخ</label>
-          <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
+      <SalesDeskTiltCard delayMs={60}>
+        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="space-y-1">
+            <Label className="text-sm text-muted-foreground">از تاریخ (شمسی)</Label>
+            <PersianDatePicker
+              value={fromDate}
+              onChange={(v) => setFromDate(v ?? isoDaysAgo(7))}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label className="text-sm text-muted-foreground">تا تاریخ (شمسی)</Label>
+            <PersianDatePicker
+              value={toDate}
+              onChange={(v) => setToDate(v ?? isoDaysAgo(0))}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-muted-foreground">داخلی</label>
+            <Select value={extension} onValueChange={setExtension}>
+              <SelectTrigger>
+                <SelectValue placeholder="همه" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>همه داخلی‌ها</SelectItem>
+                {extensions.map((e) => (
+                  <SelectItem key={e} value={e}>
+                    {extensionCaption(e, extensionMap)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-muted-foreground">ساعت</label>
+            <Select value={hour} onValueChange={setHour}>
+              <SelectTrigger>
+                <SelectValue placeholder="همه ساعت‌ها" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL}>همه ساعت‌ها</SelectItem>
+                {Array.from({ length: 24 }, (_, h) => (
+                  <SelectItem key={h} value={String(h)}>
+                    {toFaDigits(String(h).padStart(2, "0"))}:۰۰
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm text-muted-foreground">نما</label>
+            <Select value={mode} onValueChange={(v) => setMode(v as "daily" | "hourly")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="daily">روزانه</SelectItem>
+                <SelectItem value="hourly">ساعتی</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className="text-sm text-muted-foreground">تا تاریخ</label>
-          <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm text-muted-foreground">داخلی</label>
-          <Select value={extension} onValueChange={setExtension}>
-            <SelectTrigger>
-              <SelectValue placeholder="همه" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>همه داخلی‌ها</SelectItem>
-              {extensions.map((e) => (
-                <SelectItem key={e} value={e}>
-                  {e}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm text-muted-foreground">ساعت</label>
-          <Select value={hour} onValueChange={setHour}>
-            <SelectTrigger>
-              <SelectValue placeholder="همه ساعت‌ها" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>همه ساعت‌ها</SelectItem>
-              {Array.from({ length: 24 }, (_, h) => (
-                <SelectItem key={h} value={String(h)}>
-                  {String(h).padStart(2, "0")}:00
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1">
-          <label className="text-sm text-muted-foreground">نما</label>
-          <Select value={mode} onValueChange={(v) => setMode(v as "daily" | "hourly")}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="daily">روزانه</SelectItem>
-              <SelectItem value="hourly">ساعتی</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      </SalesDeskTiltCard>
 
-      {/* جدول */}
-      <div className="overflow-x-auto rounded-md border border-border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-right">داخلی</TableHead>
-              <TableHead className="text-right">تاریخ</TableHead>
-              {showingHourly ? <TableHead className="text-right">ساعت</TableHead> : null}
-              <TableHead className="text-right">کل</TableHead>
-              <TableHead className="text-right">ورودی</TableHead>
-              <TableHead className="text-right">خروجی</TableHead>
-              <TableHead className="text-right">داخلی</TableHead>
-              <TableHead className="text-right">بی‌پاسخ</TableHead>
-              <TableHead className="text-right">دقایق مکالمه</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {listLoading ? (
+      <SalesDeskTiltCard delayMs={140}>
+        <div className="overflow-x-auto p-2">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={showingHourly ? 9 : 8} className="py-8 text-center">
-                  <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
-                </TableCell>
+                <TableHead className="text-right">داخلی</TableHead>
+                <TableHead className="text-right">تاریخ</TableHead>
+                {showingHourly ? <TableHead className="text-right">ساعت</TableHead> : null}
+                <TableHead className="text-right">کل</TableHead>
+                <TableHead className="text-right">ورودی</TableHead>
+                <TableHead className="text-right">خروجی</TableHead>
+                <TableHead className="text-right">داخلی</TableHead>
+                <TableHead className="text-right">بی‌پاسخ</TableHead>
+                <TableHead className="text-right">دقایق مکالمه</TableHead>
               </TableRow>
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={showingHourly ? 9 : 8}
-                  className="py-8 text-center text-muted-foreground"
-                >
-                  <PhoneIncoming className="mx-auto mb-2 h-5 w-5" />
-                  در این بازه تماسی ثبت نشده است.
-                </TableCell>
-              </TableRow>
-            ) : (
-              rows.map((r) => (
-                <TableRow
-                  key={`${r.extension}-${r.call_date}-${(r as HourlyRow).call_hour ?? "d"}`}
-                >
-                  <TableCell className="font-medium">{r.extension}</TableCell>
-                  <TableCell>{r.call_date}</TableCell>
-                  {showingHourly ? (
-                    <TableCell>{String((r as HourlyRow).call_hour).padStart(2, "0")}:00</TableCell>
-                  ) : null}
-                  <TableCell>{r.total_calls}</TableCell>
-                  <TableCell>{toFaDigits(r.inbound_count)}</TableCell>
-                  <TableCell>{toFaDigits(r.outbound_count)}</TableCell>
-                  <TableCell>{toFaDigits(r.internal_count)}</TableCell>
-                  <TableCell>{toFaDigits(r.missed_count)}</TableCell>
-                  <TableCell>{r.talk_minutes}</TableCell>
+            </TableHeader>
+            <TableBody>
+              {listLoading ? (
+                <TableRow>
+                  <TableCell colSpan={showingHourly ? 9 : 8} className="py-8 text-center">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin text-muted-foreground" />
+                  </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={showingHourly ? 9 : 8}
+                    className="py-8 text-center text-muted-foreground"
+                  >
+                    <PhoneIncoming className="mx-auto mb-2 h-5 w-5" />
+                    در این بازه تماسی ثبت نشده است.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                rows.map((r) => {
+                  const callHour = (r as HourlyRow).call_hour;
+                  return (
+                    <TableRow
+                      key={`${r.extension}-${r.call_date}-${callHour ?? "d"}`}
+                      className="cursor-pointer transition-colors hover:bg-teal-50/70"
+                      onClick={() => {
+                        setDetailFilter("all");
+                        setSelected({
+                          extension: r.extension,
+                          call_date: r.call_date,
+                          call_hour: showingHourly ? callHour : undefined,
+                        });
+                      }}
+                    >
+                      <TableCell className="font-medium">
+                        {extensionCaption(r.extension, extensionMap)}
+                      </TableCell>
+                      <TableCell>{formatDateFa(r.call_date)}</TableCell>
+                      {showingHourly ? (
+                        <TableCell className="tabular-nums">
+                          {toFaDigits(String(callHour).padStart(2, "0"))}:۰۰
+                        </TableCell>
+                      ) : null}
+                      <TableCell className="tabular-nums">{toFaDigits(r.total_calls)}</TableCell>
+                      <TableCell className="tabular-nums">{toFaDigits(r.inbound_count)}</TableCell>
+                      <TableCell className="tabular-nums">{toFaDigits(r.outbound_count)}</TableCell>
+                      <TableCell className="tabular-nums">{toFaDigits(r.internal_count)}</TableCell>
+                      <TableCell className="tabular-nums">{toFaDigits(r.missed_count)}</TableCell>
+                      <TableCell className="tabular-nums">
+                        {toFaDigits(Math.round(r.talk_minutes * 10) / 10)}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </SalesDeskTiltCard>
 
-      {/* جمع همین صفحه — عمداً «جمع کل» نیست، چون فقط ردیف‌های نمایش‌داده‌شده را جمع می‌زند. */}
       {rows.length > 0 ? (
         <p className="text-sm text-muted-foreground">
           جمع این صفحه — کل: {toFaDigits(totals.total)} · ورودی: {toFaDigits(totals.inbound)} ·
-          خروجی: {toFaDigits(totals.outbound)} · داخلی: {totals.internal} · بی‌پاسخ: {totals.missed}{" "}
-          · دقایق مکالمه: {Math.round(totals.minutes * 10) / 10}
+          خروجی: {toFaDigits(totals.outbound)} · داخلی: {toFaDigits(totals.internal)} · بی‌پاسخ:{" "}
+          {toFaDigits(totals.missed)} · دقایق مکالمه:{" "}
+          {toFaDigits(Math.round(totals.minutes * 10) / 10)}
         </p>
       ) : null}
 
-      {/* صفحه‌بندی */}
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-muted-foreground">
           {toFaDigits(total)} ردیف · صفحه {toFaDigits(page + 1)} از {toFaDigits(pageCount)}
@@ -364,6 +502,119 @@ function CallActivityPage() {
           </Button>
         </div>
       </div>
-    </div>
+
+      <Sheet
+        open={!!selected}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      >
+        <SheetContent side="left" className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-lg" dir="rtl">
+          <SheetHeader className="border-b p-4 text-right">
+            <SheetTitle>
+              ریز مکالمات{" "}
+              {selected ? extensionCaption(selected.extension, extensionMap) : ""}
+            </SheetTitle>
+            <SheetDescription className="text-right">
+              {selected
+                ? `${formatDateFa(selected.call_date)}${
+                    selected.call_hour != null
+                      ? ` · ساعت ${toFaDigits(String(selected.call_hour).padStart(2, "0"))}`
+                      : ""
+                  }`
+                : null}
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex flex-wrap gap-2 border-b p-3">
+            {(
+              [
+                ["all", "همه"],
+                ["inbound", "ورودی"],
+                ["outbound", "خروجی"],
+                ["missed", "بی‌پاسخ"],
+              ] as const
+            ).map(([value, label]) => (
+              <Button
+                key={value}
+                type="button"
+                size="sm"
+                variant={detailFilter === value ? "default" : "outline"}
+                onClick={() => setDetailFilter(value)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-3">
+            {detailLoading ? (
+              <div className="flex items-center justify-center py-12 text-muted-foreground">
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                در حال بارگذاری…
+              </div>
+            ) : details.length === 0 ? (
+              <p className="py-12 text-center text-sm text-muted-foreground">
+                تماسی در این فیلتر نیست.
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {details.map((call) => {
+                  const phone = phoneFromMeta(call.metadata);
+                  const secs = Number(call.duration_seconds ?? 0);
+                  const mins = Math.floor(secs / 60);
+                  const rem = secs % 60;
+                  return (
+                    <li
+                      key={call.id}
+                      className="rounded-xl border border-teal-900/10 bg-white/80 px-3 py-2.5 text-sm"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 space-y-1">
+                          <p className="font-medium tabular-nums">
+                            {formatDateTimeFa(call.started_at)}
+                          </p>
+                          <p className="tabular-nums text-muted-foreground">
+                            {phone ? toFaDigits(phone) : "شماره نامشخص"}
+                          </p>
+                        </div>
+                        <div className="shrink-0 text-left text-xs">
+                          <span
+                            className={
+                              call.is_missed
+                                ? "rounded-md bg-amber-100 px-2 py-0.5 text-amber-900"
+                                : call.direction === "inbound"
+                                  ? "rounded-md bg-emerald-100 px-2 py-0.5 text-emerald-900"
+                                  : call.direction === "outbound"
+                                    ? "rounded-md bg-sky-100 px-2 py-0.5 text-sky-900"
+                                    : "rounded-md bg-slate-100 px-2 py-0.5 text-slate-700"
+                            }
+                          >
+                            {directionLabel(call.direction, call.is_missed)}
+                          </span>
+                          <p className="mt-1 tabular-nums text-muted-foreground">
+                            {toFaDigits(mins)}:{toFaDigits(String(rem).padStart(2, "0"))}
+                          </p>
+                          {call.disposition ? (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground">
+                              {call.disposition}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {!detailLoading && details.length >= DETAIL_LIMIT ? (
+              <p className="mt-3 text-center text-xs text-muted-foreground">
+                فقط {toFaDigits(DETAIL_LIMIT)} تماس اول نشان داده شد.
+              </p>
+            ) : null}
+          </div>
+        </SheetContent>
+      </Sheet>
+    </SalesDeskShell>
   );
 }

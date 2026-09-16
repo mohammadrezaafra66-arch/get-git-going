@@ -1,0 +1,14 @@
+﻿{
+  "bug": {
+    "kind": "bug",
+    "confidence": 0.75,
+    "needs": true
+  },
+  "short": {
+    "kind": "note",
+    "confidence": 0.35,
+    "needs": true
+  },
+  "longSkip": false
+}
+GATE_OK
