@@ -1,13 +1,11 @@
-# =============================================================================
-# AfraKala — PRODUCTION READ-ONLY DISCOVERY (PowerShell 5.1 safe)
+﻿# =============================================================================
+# AfraKala PRODUCTION READ-ONLY DISCOVERY (PowerShell 5.1 safe, ASCII-only)
 # Run on PRODUCTION laptop. Does NOT change anything. Paste full output back.
-#
-# IMPORTANT: All docker --format templates use SINGLE-QUOTED strings so PowerShell
-# does not parse {{.Names}} / | as pipeline syntax.
+# All docker --format templates use SINGLE-QUOTED strings.
+# Signature: PowerShell 5.1 safe ASCII
 # =============================================================================
 
 $ErrorActionPreference = "Continue"
-try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 function Section([string]$t) {
   Write-Host ""
@@ -51,7 +49,6 @@ foreach ($p in $candidates) {
 
 Section "2) RUNNING WEB CONTAINER"
 $webName = "afrakala-lan-web"
-# SINGLE quotes around Go templates — required on Windows PowerShell 5.1
 $webLine = (Run-Cmd "docker" @("ps", "-a", "--filter", "name=$webName", "--format", '{{.Names}} {{.Status}} {{.Ports}}') | Select-Object -First 1)
 KV "docker_ps_web" $webLine
 
@@ -60,39 +57,38 @@ if ($webLine -and ($webLine -notmatch "^ERR:") -and ($webLine.Trim().Length -gt 
   $hasWeb = $true
 }
 if ($hasWeb) {
-  $inspectJson = docker inspect $webName 2>$null | Out-String
-  if ($inspectJson) {
-    try {
-      $obj = $inspectJson | ConvertFrom-Json
-      $labels = $obj[0].Config.Labels
-      KV "compose_project" $labels.'com.docker.compose.project'
-      KV "compose_working_dir" $labels.'com.docker.compose.project.working_dir'
-      KV "compose_config_files" $labels.'com.docker.compose.project.config_files'
-      KV "image" $obj[0].Config.Image
-      KV "started" $obj[0].State.StartedAt
-      Write-Host "--- ports ---"
-      if ($obj[0].NetworkSettings.Ports) {
-        $obj[0].NetworkSettings.Ports.PSObject.Properties | ForEach-Object {
-          $map = $_.Value
-          if ($map) {
-            foreach ($m in $map) { Write-Host ($_.Name + " -> " + $m.HostIp + ":" + $m.HostPort) }
-          } else {
-            Write-Host ($_.Name + " -> (not published)")
-          }
+  try {
+    $raw = docker inspect $webName 2>$null
+    $obj = $raw | ConvertFrom-Json
+    if ($obj -is [System.Array]) { $c = $obj[0] } else { $c = $obj }
+    $labels = $c.Config.Labels
+    KV "compose_project" $labels.'com.docker.compose.project'
+    KV "compose_working_dir" $labels.'com.docker.compose.project.working_dir'
+    KV "compose_config_files" $labels.'com.docker.compose.project.config_files'
+    KV "image" $c.Config.Image
+    KV "started" $c.State.StartedAt
+    Write-Host "--- ports ---"
+    if ($c.NetworkSettings.Ports) {
+      $c.NetworkSettings.Ports.PSObject.Properties | ForEach-Object {
+        $map = $_.Value
+        if ($map) {
+          foreach ($m in $map) { Write-Host ($_.Name + " -> " + $m.HostIp + ":" + $m.HostPort) }
+        } else {
+          Write-Host ($_.Name + " -> (not published)")
         }
       }
-      Write-Host "--- env stamp (filtered; values may appear — redact secrets before sharing) ---"
-      $obj[0].Config.Env | Where-Object {
-        $_ -match "^(APP_GIT_SHA|GIT_SHA|BUILD_TIME|APP_PORT|SITE_URL|POSTGRES_DB|VITE_APP_ENV)="
-      }
-      Write-Host "--- env KEY presence only ---"
-      foreach ($prefix in @("ISSABEL_", "PRICING_WORKER_TOKEN", "MARKETING_TASKS_WORKER_TOKEN", "SUPABASE_")) {
-        $hits = @($obj[0].Config.Env | Where-Object { $_ -like ($prefix + "*") })
-        KV ("env_present." + $prefix.TrimEnd('_','=')) ("count=" + $hits.Count)
-      }
-    } catch {
-      Write-Host ("inspect parse ERR: " + $_.Exception.Message)
     }
+    Write-Host "--- env stamp (filtered; redact secrets before sharing) ---"
+    $c.Config.Env | Where-Object {
+      $_ -match "^(APP_GIT_SHA|GIT_SHA|BUILD_TIME|APP_PORT|SITE_URL|POSTGRES_DB|VITE_APP_ENV)="
+    }
+    Write-Host "--- env KEY presence only ---"
+    foreach ($prefix in @("ISSABEL_", "PRICING_WORKER_TOKEN", "MARKETING_TASKS_WORKER_TOKEN", "SUPABASE_")) {
+      $hits = @($c.Config.Env | Where-Object { $_ -like ($prefix + "*") })
+      KV ("env_present." + $prefix.TrimEnd('_','=')) ("count=" + $hits.Count)
+    }
+  } catch {
+    Write-Host ("inspect parse ERR: " + $_.Exception.Message)
   }
 }
 
@@ -183,9 +179,12 @@ foreach ($d in @("afrakala-lan-db", "afrakala-db", "supabase-db", "db")) {
   $names = Run-Cmd "docker" @("ps", "-a", "--format", '{{.Names}}')
   if ($names -contains $d) {
     KV "db_container" $d
-    $elines = docker inspect $d 2>$null | ConvertFrom-Json
-    if ($elines) {
-      $elines[0].Config.Env | Where-Object { $_ -match "^(POSTGRES_DB|POSTGRES_USER)=" }
+    try {
+      $elines = docker inspect $d 2>$null | ConvertFrom-Json
+      if ($elines -is [System.Array]) { $dc = $elines[0] } else { $dc = $elines }
+      $dc.Config.Env | Where-Object { $_ -match "^(POSTGRES_DB|POSTGRES_USER)=" }
+    } catch {
+      Write-Host ("db inspect ERR: " + $_.Exception.Message)
     }
   }
 }
@@ -214,7 +213,6 @@ SELECT to_regclass('public.sales_interactions') AS sales_interactions;
 SELECT count(*) AS call_logs FROM public.call_logs;
 "@
   $tmp = Join-Path $env:TEMP "afrakala-ledger.sql"
-  # UTF8 no BOM
   $utf8 = New-Object System.Text.UTF8Encoding $false
   [System.IO.File]::WriteAllText($tmp, $sql, $utf8)
   cmd /c "type `"$tmp`" | docker exec -i -e PGPASSWORD=$pw $dbContainer psql -U supabase_admin -d $dbName -v ON_ERROR_STOP=1" 2>&1 |
@@ -255,7 +253,7 @@ function Grep-Compose([string]$compose) {
   if (-not (Test-Path -LiteralPath $compose)) { KV $compose "MISSING"; return }
   KV $compose "present"
   Select-String -LiteralPath $compose -Pattern "ISSABEL_|PRICING_WORKER_TOKEN|APP_PORT" |
-    ForEach-Object { "L$($_.LineNumber): $($_.Line.Trim())" }
+    ForEach-Object { Write-Host ("L" + $_.LineNumber + ": " + $_.Line.Trim()) }
 }
 @(
   "C:\afrakala\deploy\lan\docker-compose.yml",
@@ -272,4 +270,4 @@ Write-Host "Q4 FEATURES              = pricing-only  OR  full-main"
 Write-Host "Q5 MIGRATE_PROD_APPROVED = YES I approve  OR  NO"
 Write-Host "Q6 ISSABEL_LATER_OK      = yes leave Issabel for later / no need Issabel now"
 
-Section "DONE — copy ALL output above and send it (redact passwords if any leaked)"
+Section "DONE - copy ALL output above and send it (redact passwords if any leaked)"
