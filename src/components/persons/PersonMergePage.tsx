@@ -35,21 +35,8 @@ import { toFaDigits } from "@/lib/i18n/formatters";
 const PAGE_SIZE_OPTIONS = [20, 25, 50] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
-// Phase 8.1 (Decision 4) - the review page for suspected duplicate persons.
-//
-// Guard: admin/manager via requireAnyRole. Phase 6.7 proved a hand-rolled
-// `ensureAuthReady()` check bounces authenticated users to /login on every
-// server-rendered navigation, so this route reuses the shared guard.
-export const Route = createFileRoute("/_app/persons_/merge")({
-  // Wave 2 / B-1 - the client half of the guard below. `beforeLoad` runs only on the server
-  // for a direct navigation and cannot see a localStorage session, so RouteRoleGate reads this.
-  // Mirrors the requireAnyRole call below, which is this route's own authority.
-  staticData: { gate: { kind: "anyRole", allowed: ["admin", "manager"] } },
-  beforeLoad: async () => {
-    await requireAnyRole(["admin", "manager"]);
-  },
-  component: PersonMergePage,
-});
+// Phase 8.1 — UI for suspected duplicate persons. Route guard lives in
+// `_app.persons_.merge.tsx` (createFileRoute must not appear in this file).
 
 interface CandidateSide {
   id: string;
@@ -186,11 +173,15 @@ export function PersonMergePage() {
       return data as { pending?: number } | null;
     },
     onSuccess: (result) => {
-      const pending = Number((result as { pending?: number } | null)?.pending ?? 0);
+      const pendingRaw =
+        result && typeof result === "object" && "pending" in result
+          ? (result as { pending?: unknown }).pending
+          : 0;
+      const pending = Number(pendingRaw ?? 0);
       toast.success(
         pending > 0
-          ? `صف تشخیص به‌روز شد - ${toFaDigits(pending)} جفت در انتظار`
-          : "صف تشخیص به‌روز شد - جفت مشکوکی نیست",
+          ? `صف تشخیص به روز شد - ${toFaDigits(pending)} جفت در انتظار`
+          : "صف تشخیص به روز شد - جفت مشکوکی نیست",
       );
       setPage(0);
       setExpandedId(null);
