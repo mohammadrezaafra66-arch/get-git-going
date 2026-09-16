@@ -2,7 +2,8 @@
 # Target: 192.168.170.10 | Live tree: C:\afrakala | Port: 3000 | DB: postgres @ afrakala-lan-db
 #
 # Scope: EVERYTHING from LAN test (ticket, sales-desk, ring/CEL, persons, sidebar pin,
-# pricing worker, windowless tasks). Issabel CDR keys already present in live .env.lan.
+# pricing worker, windowless tasks, Torob Ops Path B). Issabel CDR keys already present in live .env.lan.
+# Torob transfer details: docs/torob-ops/PROD-TRANSFER.md
 #
 # Admin PowerShell on PRODUCTION. Run blocks IN ORDER. Stop on FAIL.
 # Never paste passwords into chat.
@@ -39,7 +40,8 @@ git rev-parse --short HEAD
 git status -sb
 ```
 
-Expected short SHA at or after `22277e48`. `.env.lan` dirty is OK.
+Expected short SHA at or after `e39b2ab4` (sales-desk + Torob Ops Path B). `.env.lan` dirty is OK.
+Confirm: `Test-Path .\src\routes\_app.torob-ops.tsx` and migration `20260916190000_555_torob_ops_path_b.sql`.
 
 ---
 
@@ -126,6 +128,8 @@ $need = @(
   "20260916161000",
   "20260916162000",
   "20260916170000",
+  # Torob Ops Path B (555)
+  "20260916190000",
   # Quick-price-only sale price types (556)
   "20260916200000"
 )
@@ -154,7 +158,9 @@ Start-Sleep 5
 docker exec -e PGPASSWORD=$pw $Db psql -U supabase_admin -d $DbName -c @"
 SELECT to_regclass('public.work_items') AS work_items,
        to_regclass('public.sales_interactions') AS sales_interactions,
-       to_regclass('public.call_ring_events') AS call_ring_events;
+       to_regclass('public.call_ring_events') AS call_ring_events,
+       to_regclass('public.torob_ops_credentials') AS torob_ops_credentials,
+       to_regclass('public.torob_ops_findings') AS torob_ops_findings;
 SELECT public.person_detect_merge_candidates(NULL);
 "@
 ```
@@ -224,7 +230,11 @@ foreach ($p in @(
   '/admin/call-extensions',
   '/sales/search',
   '/pricing/quick-price',
-  '/pricing/sale-price-types'
+  '/pricing/sale-price-types',
+  '/torob-ops',
+  '/torob-ops/runs',
+  '/torob-ops/findings',
+  '/admin/torob-ops-access'
 )) {
   try {
     $r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 25 -Uri ("http://127.0.0.1:3000" + $p) -MaximumRedirection 0
@@ -242,6 +252,8 @@ Manual:
 3. /operations/work — intro + Jalali due
 4. /admin/call-extensions — map extensions if empty
 5. Test call for popup (after CEL log looks healthy)
+6. /admin/torob-ops-access — set module password for owner; /torob-ops unlock form works
+7. See also `docs/torob-ops/PROD-TRANSFER.md`
 
 ---
 
@@ -254,6 +266,7 @@ VERSION=<commit from /api/version>
 WEB=healthy
 WORK=200
 SALES_DESK=200
+TOROB_OPS=200
 IMPORT_LOG=<ok or short error without token>
 CEL=<ok or short error>
 PINS=yes
