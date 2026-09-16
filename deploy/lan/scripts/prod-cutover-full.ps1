@@ -184,7 +184,8 @@ $need = @(
   "20260916162000",
   "20260916170000",
   "20260916190000",
-  "20260916200000"
+  "20260916200000",
+  "20260916210000"
 )
 
 $haveRaw = docker exec -e PGPASSWORD=$pw $DbContainer psql -U supabase_admin -d $DbName -t -A -c "SELECT version FROM supabase_migrations.schema_migrations WHERE version >= '20260915000000';"
