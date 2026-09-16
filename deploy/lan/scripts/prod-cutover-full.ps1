@@ -19,7 +19,7 @@
 param(
   [switch]$IApproveProdMigrate,
   [string]$RepoRoot = "C:\afrakala",
-  [string]$TargetShaPrefix = "d2b7ca91",
+  [string]$TargetShaPrefix = "120a2996",
   [string]$Branch = "feature/sales-desk",
   [string]$DbContainer = "afrakala-lan-db",
   [string]$DbName = "postgres",
@@ -100,8 +100,13 @@ foreach ($rel in $mustFiles) {
     Fail "Missing required file after pull: $rel"
   }
 }
-if (-not (Select-String -Path (Join-Path $RepoRoot "src\components\layout\AppSidebar.tsx") -Pattern "میز فروش" -SimpleMatch -Quiet)) {
-  Fail "Sidebar pin marker missing (میز فروش)"
+# ASCII-only markers (PS 5.1 console encoding breaks Persian SimpleMatch)
+$sidebarPath = Join-Path $RepoRoot "src\components\layout\AppSidebar.tsx"
+$sidebarOk = (Select-String -Path $sidebarPath -Pattern "SidebarNavPin3d" -SimpleMatch -Quiet) -and `
+  (Select-String -Path $sidebarPath -Pattern "/operations/sales-desk" -SimpleMatch -Quiet) -and `
+  (Select-String -Path $sidebarPath -Pattern "canSeeSalesDesk" -SimpleMatch -Quiet)
+if (-not $sidebarOk) {
+  Fail "Sidebar pin marker missing (SidebarNavPin3d / sales-desk)"
 }
 Write-Host "CODE_OK"
 
