@@ -544,6 +544,14 @@ function SalesSearchPage() {
       <PageHeader
         title="جستجوی سریع فروش"
         description="پیدا کردن سریع محصول و مشاهده قیمت فروش معتبر برای پاسخ به مشتری"
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link to="/pricing/quick-price">
+              <Calculator className="ms-1 h-4 w-4" />
+              محاسبه سریع قیمت
+            </Link>
+          </Button>
+        }
       />
 
       {pageUsdRate && pageUsdRate > 0 && (

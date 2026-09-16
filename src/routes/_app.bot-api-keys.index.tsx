@@ -563,6 +563,31 @@ function BotApiKeysPage() {
   );
 }
 
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  // On LAN HTTP, navigator.clipboard.writeText often exists but rejects
+  // (not a secure context). Always fall back to execCommand.
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+}
+
 function RevealKeyDialog({
   revealed,
   onClose,
@@ -574,16 +599,27 @@ function RevealKeyDialog({
   const [copied, setCopied] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const open = !!revealed;
+  // After the key is visible, allow confirm even if clipboard failed (manual save).
+  const canConfirm = copied || shown;
+
+  const resetLocal = () => {
+    setShown(false);
+    setCopied(false);
+    setConfirmed(false);
+  };
 
   const copy = async () => {
     if (!revealed) return;
-    try {
-      await navigator.clipboard.writeText(revealed.raw);
+    const ok = await copyTextToClipboard(revealed.raw);
+    if (ok) {
       setCopied(true);
       toast.success("کلید کپی شد.");
-    } catch {
-      toast.error("کپی ناموفق بود؛ لطفاً دستی انتخاب و کپی کنید.");
+      return;
     }
+    // Unstick the dialog: show the key so the user can save it manually
+    // and enable the confirmation checkbox.
+    setShown(true);
+    toast.error("کپی خودکار ممکن نشد؛ کلید را نمایش دادیم — دستی کپی کنید.");
   };
 
   return (
@@ -591,11 +627,9 @@ function RevealKeyDialog({
       open={open}
       onOpenChange={(v) => {
         if (!v) {
-          if (!copied || !confirmed) return;
+          if (!canConfirm || !confirmed) return;
           onClose();
-          setShown(false);
-          setCopied(false);
-          setConfirmed(false);
+          resetLocal();
         }
       }}
     >
@@ -624,37 +658,48 @@ function RevealKeyDialog({
                 کپی
               </Button>
             </div>
-            {!copied && (
+            {!canConfirm && (
               <p className="text-xs text-amber-600 dark:text-amber-400">
-                ⚠️ ابتدا کلید را کپی کنید، سپس می‌توانید پنجره را ببندید.
+                ⚠️ ابتدا کلید را کپی کنید (یا با «نمایش» ببینید و دستی ذخیره کنید)، سپس تیک بزنید.
               </p>
             )}
-            {copied && !confirmed && (
+            {canConfirm && !confirmed && (
               <p className="text-xs text-blue-600 dark:text-blue-400">
-                ✓ کلید کپی شد — تیک تأیید را بزنید تا بتوانید ببندید.
+                ✓ حالا تیک تأیید را بزنید تا بتوانید ببندید.
               </p>
             )}
-            <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
+            {/* Do NOT wrap Radix Checkbox in <label> — nested label re-fires the control
+                and toggles checked→unchecked in one click (tick looks broken). */}
+            <div className="flex items-center gap-2 text-sm select-none">
               <Checkbox
                 checked={confirmed}
-                onCheckedChange={(v) => setConfirmed(!!v)}
-                disabled={!copied}
+                onCheckedChange={(v) => setConfirmed(v === true)}
+                disabled={!canConfirm}
               />
-              <span className={!copied ? "text-muted-foreground" : ""}>
+              <button
+                type="button"
+                disabled={!canConfirm}
+                className={
+                  !canConfirm
+                    ? "text-muted-foreground cursor-not-allowed text-right"
+                    : "cursor-pointer text-right"
+                }
+                onClick={() => {
+                  if (canConfirm) setConfirmed((c) => !c);
+                }}
+              >
                 کلید را در محل امن ذخیره کردم
-              </span>
-            </label>
+              </button>
+            </div>
           </div>
         )}
         <DialogFooter>
           <Button
             onClick={() => {
               onClose();
-              setShown(false);
-              setCopied(false);
-              setConfirmed(false);
+              resetLocal();
             }}
-            disabled={!copied || !confirmed}
+            disabled={!canConfirm || !confirmed}
           >
             متوجه شدم، بستن
           </Button>

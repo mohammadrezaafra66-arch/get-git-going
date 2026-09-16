@@ -28,8 +28,10 @@ import {
   Star,
   ScanSearch,
   ClipboardList,
+  PhoneCall,
   ChevronDown,
   ChevronLeft,
+  type LucideIcon,
 } from "lucide-react";
 import type { AppRole } from "@/lib/rbac/roles";
 import { getPrimaryActionEntry, getVisibleNavigationEntries } from "@/lib/navigation/selectors";
@@ -73,10 +75,17 @@ const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
 };
 const QUICK_ACCESS_LIMIT = 6;
 
-function SidebarTicketPin3d({
+/** Fixed 3D pins under quick-sales search (ticket + sales desk). */
+function SidebarNavPin3d({
+  to,
+  label,
+  icon: Icon,
   compact = false,
   active,
 }: {
+  to: "/operations/work" | "/operations/sales-desk";
+  label: string;
+  icon: LucideIcon;
   compact?: boolean;
   active: boolean;
 }) {
@@ -109,16 +118,16 @@ function SidebarTicketPin3d({
   return (
     <div
       ref={ref}
-      className={cn("sidebar-pin-3d", !compact && "ms-auto w-fit")}
+      className={cn("sidebar-pin-3d", !compact && "w-fit")}
       onMouseMove={onMove}
       onMouseLeave={onLeave}
       onMouseDown={() => setPressed(true)}
       onMouseUp={() => setPressed(false)}
     >
       <Link
-        to="/operations/work"
-        title="تیکت"
-        aria-label="تیکت"
+        to={to}
+        title={label}
+        aria-label={label}
         aria-current={active ? "page" : undefined}
         onClick={() => setBurst((v) => v + 1)}
         className={cn(
@@ -129,8 +138,8 @@ function SidebarTicketPin3d({
         )}
         data-active={active ? "true" : "false"}
       >
-        <ClipboardList className="h-3 w-3 shrink-0" />
-        {!compact ? <span>تیکت</span> : null}
+        <Icon className="h-3 w-3 shrink-0" />
+        {!compact ? <span>{label}</span> : null}
         <FloatingReactionBurst trigger={burst} />
       </Link>
     </div>
@@ -165,7 +174,13 @@ export function AppSidebar() {
     () => visible.some((entry) => entry.route === "/operations/work"),
     [visible],
   );
+  const canSeeSalesDesk = useMemo(
+    () => visible.some((entry) => entry.route === "/operations/sales-desk"),
+    [visible],
+  );
   const ticketActive = location.pathname.startsWith("/operations/work");
+  const salesDeskActive = location.pathname.startsWith("/operations/sales-desk");
+  const showSidebarPins = canSeeTickets || canSeeSalesDesk;
   const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
   const { favorites, favoriteIdSet, toggleFavorite, maxFavorites } =
     useNavigationFavorites(visible);
@@ -468,11 +483,35 @@ export function AppSidebar() {
                 </TooltipContent>
               </Tooltip>
             )}
+            {canSeeSalesDesk && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="hidden group-data-[collapsible=icon]:block">
+                    <SidebarNavPin3d
+                      compact
+                      to="/operations/sales-desk"
+                      label="میز فروش"
+                      icon={PhoneCall}
+                      active={salesDeskActive}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  میز فروش
+                </TooltipContent>
+              </Tooltip>
+            )}
             {canSeeTickets && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="hidden group-data-[collapsible=icon]:block">
-                    <SidebarTicketPin3d compact active={ticketActive} />
+                    <SidebarNavPin3d
+                      compact
+                      to="/operations/work"
+                      label="تیکت"
+                      icon={ClipboardList}
+                      active={ticketActive}
+                    />
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="left" sideOffset={6} className="text-xs">
@@ -544,9 +583,24 @@ export function AppSidebar() {
                   </Link>
                 </div>
               )}
-              {canSeeTickets && (
-                <div className="mb-1.5 flex justify-end">
-                  <SidebarTicketPin3d active={ticketActive} />
+              {showSidebarPins && (
+                <div className="mb-1.5 flex flex-wrap items-center justify-end gap-1.5">
+                  {canSeeSalesDesk && (
+                    <SidebarNavPin3d
+                      to="/operations/sales-desk"
+                      label="میز فروش"
+                      icon={PhoneCall}
+                      active={salesDeskActive}
+                    />
+                  )}
+                  {canSeeTickets && (
+                    <SidebarNavPin3d
+                      to="/operations/work"
+                      label="تیکت"
+                      icon={ClipboardList}
+                      active={ticketActive}
+                    />
+                  )}
                 </div>
               )}
               <div className="relative">

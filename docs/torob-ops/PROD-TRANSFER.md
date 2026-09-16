@@ -1,7 +1,7 @@
 # Torob Ops Path B — آماده‌سازی انتقال به سرور اصلی
 
 وضعیت: آمادهٔ انتقال پس از تأیید مالک روی ۳۱۰۰  
-شاخهٔ نمایش ۳۱۰۰ / مسیر cutover فعلی: `feature/sales-desk` (با کامیت‌های ترب)  
+شاخهٔ نمایش ۳۱۰۰ / مسیر cutover فعلی: `staging` (با کامیت‌های ترب)  
 Migration: `supabase/migrations/20260916190000_555_torob_ops_path_b.sql`  
 Rollback: `docs/verification/555-down.sql`  
 قرارداد فاز ۱: `docs/torob-ops/PATH_B_CONTRACT.md`
@@ -40,8 +40,8 @@ Rollback: `docs/verification/555-down.sql`
 ```powershell
 cd C:\afrakala
 git fetch origin
-git checkout feature/sales-desk
-git pull origin feature/sales-desk
+git checkout staging
+git pull origin staging
 git rev-parse --short HEAD
 # باید شامل مسیرهای torob-ops در درخت باشد:
 Test-Path .\src\routes\_app.torob-ops.tsx
@@ -96,7 +96,7 @@ docker compose --env-file .\deploy\lan\.env.lan -f .\deploy\lan\docker-compose.y
 - [ ] ادمین می‌تواند با ایمیل کاربر را پیدا کند و رمز بگذارد
 - [ ] unlock با رمز ماژول کار می‌کند؛ ابطال نشست از ادمین کاربر را دوباره به گیت می‌فرستد
 - [ ] اسکن آزمایشی روی ۳۱۰۰ بدون خطای سرور تمام می‌شود (ممکن است یافته صفر باشد)
-- [ ] migration 555 در درخت `feature/sales-desk` هست
+- [ ] migration 555 در درخت `staging` هست
 - [ ] `555-down.sql` و این سند در ریپو هستند
 - [ ] مالک تأیید کرده که فاز ۱ بدون گزارش خودکار است
 - [ ] بکاپ پرود قبل از apply گرفته می‌شود

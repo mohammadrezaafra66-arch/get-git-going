@@ -289,6 +289,7 @@ function NewQuotePage() {
         .from("sale_price_types")
         .select("id, code, title")
         .eq("is_active", true)
+        .eq("is_quick_price_only", false)
         .order("sort_order");
       if (error) throw error;
       return data ?? [];

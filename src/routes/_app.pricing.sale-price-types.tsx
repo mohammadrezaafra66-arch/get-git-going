@@ -39,6 +39,7 @@ type SPT = {
   title: string;
   description: string | null;
   is_active: boolean;
+  is_quick_price_only: boolean;
   sort_order: number;
 };
 
@@ -52,7 +53,7 @@ function SalePriceTypesPage() {
 
   const listQ = useQuery({
     queryKey: ["sale-price-types", "list"],
-    queryFn: () => fetchSalePriceTypes(false),
+    queryFn: () => fetchSalePriceTypes(false, { includeQuickPriceOnly: true }),
   });
 
   const rows = (listQ.data ?? []) as SPT[];
@@ -125,7 +126,16 @@ function SalePriceTypesPage() {
                           {r.code}
                         </div>
                       </div>
-                      {r.is_active ? <Badge>فعال</Badge> : <Badge variant="outline">غیرفعال</Badge>}
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        {r.is_active ? (
+                          <Badge>فعال</Badge>
+                        ) : (
+                          <Badge variant="outline">غیرفعال</Badge>
+                        )}
+                        {r.is_quick_price_only && (
+                          <Badge variant="secondary">محاسبه سریع قیمت</Badge>
+                        )}
+                      </div>
                     </div>
                     {r.description && (
                       <p className="text-xs text-muted-foreground">{r.description}</p>
@@ -187,11 +197,16 @@ function SalePriceTypesPage() {
                         </td>
                         <td className="p-3 text-xs">{formatNumber(r.sort_order)}</td>
                         <td className="p-3">
-                          {r.is_active ? (
-                            <Badge>فعال</Badge>
-                          ) : (
-                            <Badge variant="outline">غیرفعال</Badge>
-                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {r.is_active ? (
+                              <Badge>فعال</Badge>
+                            ) : (
+                              <Badge variant="outline">غیرفعال</Badge>
+                            )}
+                            {r.is_quick_price_only && (
+                              <Badge variant="secondary">محاسبه سریع قیمت</Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="p-3">
                           {canWrite && (
@@ -252,6 +267,7 @@ function SaleTypeDialog({
     description: "",
     sort_order: 100,
     is_active: true,
+    is_quick_price_only: false,
   };
   const [values, setValues] = useState<SalePriceTypeFormValues>(empty);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -273,6 +289,7 @@ function SaleTypeDialog({
               description: editing.description ?? "",
               sort_order: editing.sort_order,
               is_active: editing.is_active,
+              is_quick_price_only: editing.is_quick_price_only,
             }
           : empty,
       );
@@ -301,6 +318,7 @@ function SaleTypeDialog({
         description: d.description || null,
         sort_order: d.sort_order,
         is_active: d.is_active,
+        is_quick_price_only: d.is_quick_price_only,
       };
       if (editing) {
         if (!trimmedCode) {
@@ -401,6 +419,16 @@ function SaleTypeDialog({
             />
             <Label>فعال</Label>
           </div>
+          <div className="flex items-center gap-2">
+            <Switch
+              checked={values.is_quick_price_only}
+              onCheckedChange={(v) => setValues((s) => ({ ...s, is_quick_price_only: v }))}
+            />
+            <Label>محاسبه سریع قیمت</Label>
+          </div>
+          <p className="-mt-1 text-[11px] text-muted-foreground">
+            اگر روشن باشد فقط در صفحهٔ محاسبه سریع قیمت دیده می‌شود و در جستجوی فروش و انتشار لیست قیمت استفاده نمی‌شود.
+          </p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>

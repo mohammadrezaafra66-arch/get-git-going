@@ -14,7 +14,9 @@
 - LIVE_CLONE = C:\afrakala
 - WEB_PORT = 3000
 - PROD_DB = postgres (container afrakala-lan-db)
-- Running image SHA was a935be0b; clone HEAD already feature/sales-desk @ 22277e48
+- Test tip to transfer: **`6623963b`** (or newer) on `staging` — canonical 3100 branch (`staging`); includes pin + Torob Ops + quick-price + cutover runner
+- Prod live tree was previously around `22277e48` — must `git pull` to tip before rebuild
+- One-shot runner: `docs/research/person-dedupe/PROD-CUTOVER-RUN.ps1` (SHA256 `5FE02261E498FA5BCCE06295D9CB43C23A3758A161385F339066E9A8A37438E0`)
 - DO NOT rebuild from C:\AfraKalaServer\get-git-going01lan
 - Ledger probe in discovery used the WRONG .env first — always use C:\afrakala\deploy\lan\.env.lan
 
@@ -34,14 +36,14 @@ Write-Host "MIGRATE_PROD_APPROVED = YES I approve migrations on production DB"
 ```powershell
 cd C:\afrakala
 git fetch origin
-git checkout feature/sales-desk
-git pull origin feature/sales-desk
+git checkout staging
+git pull origin staging
 git rev-parse --short HEAD
 git status -sb
 ```
 
-Expected short SHA at or after `e39b2ab4` (sales-desk + Torob Ops Path B). `.env.lan` dirty is OK.
-Confirm: `Test-Path .\src\routes\_app.torob-ops.tsx` and migration `20260916190000_555_torob_ops_path_b.sql`.
+Expected short SHA: tip of `origin/staging` after merge (see Discovery lock). `.env.lan` dirty is OK.
+Confirm: `Test-Path .\src\routes\_app.torob-ops.tsx` and migrations `20260916190000_555_torob_ops_path_b.sql` + `20260916200000_556_sale_price_type_quick_price_only.sql`.
 
 ---
 
