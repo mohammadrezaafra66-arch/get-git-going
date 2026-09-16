@@ -24,6 +24,7 @@ Branch / PR: `feature/sales-desk`, [#451](https://github.com/mohammadrezaafra66-
 |---|---|
 | Sales desk (۹ نیاز فروش) | `/operations/sales-desk` |
 | Caller popup — inbound + outbound, panel from **left** | `CallerInboundPopup` (Sheet `side=left`) |
+| Sidebar pin **میز فروش** next to **تیکت** | `AppSidebar` → `/operations/sales-desk` |
 | Live ring feed (not CDR-only) | `call_ring_events` via `recent-calls.ts` |
 | Call activity page updates | `/operations/call-activity` |
 | Person hard-identity gate + merge candidates | create/merge RPCs |
