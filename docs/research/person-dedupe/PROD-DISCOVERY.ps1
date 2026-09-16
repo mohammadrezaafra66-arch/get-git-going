@@ -41,6 +41,11 @@ $candidates = @(
   "D:\AfraKalaTest\app"
 )
 foreach ($p in $candidates) {
+  # Skip roots whose drive letter is missing on this machine (e.g. D: on prod).
+  if ($p -match '^[A-Za-z]:' -and -not (Test-Path -LiteralPath ($p.Substring(0, 2)))) {
+    KV $p "exists=False git=False compose_lan=False (drive missing)"
+    continue
+  }
   $exists = Test-Path -LiteralPath $p
   $git = Test-Path -LiteralPath (Join-Path $p ".git")
   $compose = Test-Path -LiteralPath (Join-Path $p "deploy\lan\docker-compose.yml")
@@ -203,11 +208,13 @@ WHERE version >= '20260916000000'
 ORDER BY version;
 SELECT version FROM supabase_migrations.schema_migrations
 WHERE version IN (
+  '20260915233000','20260916001500',
   '20260916030000','20260916031000','20260916032000','20260916033000',
   '20260916120000','20260916121000','20260916122000','20260916123000',
   '20260916140000','20260916150000',
   '20260916160000','20260916161000','20260916162000','20260916170000'
 ) ORDER BY version;
+SELECT to_regclass('public.work_items') AS work_items;
 SELECT to_regclass('public.call_ring_events') AS call_ring_events;
 SELECT to_regclass('public.sales_interactions') AS sales_interactions;
 SELECT count(*) AS call_logs FROM public.call_logs;
