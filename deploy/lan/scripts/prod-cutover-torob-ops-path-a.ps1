@@ -19,7 +19,7 @@ param(
   [string]$RepoRoot = "C:\afrakala",
   [int]$AppPort = 3000,
   [string]$ExpectedBranch = "staging",
-  [string]$MinSha = "3d26e098",
+  [string]$MinSha = "48f404dc",
   [switch]$SkipBackupConfirm
 )
 
@@ -104,10 +104,17 @@ if (-not $SkipBackupConfirm) {
 }
 
 # --- git ---
-Log "STEP git fetch/checkout/pull"
+# Prod laptop must track remote staging tip. Local merge leftovers block checkout.
+Log "STEP git fetch/reset to origin/staging"
 Invoke-Native git @("fetch", "origin")
-Invoke-Native git @("checkout", $ExpectedBranch)
-Invoke-Native git @("pull", "origin", $ExpectedBranch)
+$prev = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+git merge --abort 2>$null | Out-Null
+git rebase --abort 2>$null | Out-Null
+$ErrorActionPreference = $prev
+Invoke-Native git @("checkout", "-f", $ExpectedBranch)
+Invoke-Native git @("reset", "--hard", ("origin/" + $ExpectedBranch))
+Invoke-Native git @("clean", "-fd", "--", "src", "supabase", "docs", "deploy")
 $branch = (git rev-parse --abbrev-ref HEAD).Trim()
 $head = (git rev-parse --short HEAD).Trim()
 Log ("BRANCH=" + $branch)
@@ -116,7 +123,7 @@ if ($branch -ne $ExpectedBranch) { Fail ("Expected " + $ExpectedBranch) }
 
 git merge-base --is-ancestor $MinSha HEAD
 if ($LASTEXITCODE -ne 0) {
-  Fail ("HEAD " + $head + " does not contain MinSha " + $MinSha + " — pull staging again")
+  Fail ("HEAD " + $head + " does not contain MinSha " + $MinSha + " - pull staging again")
 }
 Log ("MIN_SHA_OK ancestor=" + $MinSha)
 
@@ -153,23 +160,23 @@ $pgPass = Get-EnvLineValue $EnvFile "POSTGRES_PASSWORD"
 if (-not $pgPass) { Fail "POSTGRES_PASSWORD missing" }
 $DbContainer = "afrakala-lan-db"
 
-# Prefer real app DB. Prod .env sometimes says postgres by mistake.
+# Prod (:3000) uses database "postgres". Staging/test (:3100) uses "afrakala".
+# Do not invert these — AGENTS.md.
 $dbNameEnv = Get-EnvLineValue $EnvFile "POSTGRES_DB"
-$dbName = "afrakala"
-$hasAfrakala = $false
+$preferredDb = if ($AppPort -eq 3000) { "postgres" } else { "afrakala" }
+$dbName = $preferredDb
 $prev = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
-docker exec -e ("PGPASSWORD=" + $pgPass) $DbContainer psql -U supabase_admin -d afrakala -tAc "SELECT 1" 2>$null | Out-Null
-if ($LASTEXITCODE -eq 0) { $hasAfrakala = $true }
-$ErrorActionPreference = $prev
-if ($hasAfrakala) {
-  $dbName = "afrakala"
-} elseif ($dbNameEnv) {
-  $dbName = $dbNameEnv
+docker exec -e ("PGPASSWORD=" + $pgPass) $DbContainer psql -U supabase_admin -d $preferredDb -tAc "SELECT 1" 2>$null | Out-Null
+$prefOk = ($LASTEXITCODE -eq 0)
+if (-not $prefOk -and $dbNameEnv -and $dbNameEnv -ne $preferredDb) {
+  docker exec -e ("PGPASSWORD=" + $pgPass) $DbContainer psql -U supabase_admin -d $dbNameEnv -tAc "SELECT 1" 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) { $dbName = $dbNameEnv }
 }
-Log ("DB_NAME=" + $dbName + " (env POSTGRES_DB=" + $dbNameEnv + ")")
-if ($dbName -eq "postgres") {
-  Write-Host "WARN: using database 'postgres'. If Path A tables are missing later, set POSTGRES_DB=afrakala and re-run."
+$ErrorActionPreference = $prev
+Log ("DB_NAME=" + $dbName + " (preferred=" + $preferredDb + " env POSTGRES_DB=" + $dbNameEnv + ")")
+if ($AppPort -eq 3000 -and $dbName -ne "postgres") {
+  Write-Host "WARN: prod AppPort=3000 but DB is not 'postgres'. Confirm before trusting Path A tables."
 }
 
 # --- migrations (docker cp avoids PowerShell pipe encoding damage) ---
