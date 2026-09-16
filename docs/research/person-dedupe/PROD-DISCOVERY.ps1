@@ -1,8 +1,9 @@
 # =============================================================================
-# AfraKala — PRODUCTION READ-ONLY DISCOVERY (cutover questionnaire)
-# PowerShell 5.1 safe: docker Go-templates use SINGLE-quoted strings only.
-# Does NOT change files, git, docker, DB data, or tasks — only prints facts.
-# Copy the ENTIRE output and send it back (no secret values are printed).
+# AfraKala — PRODUCTION READ-ONLY DISCOVERY (PowerShell 5.1 safe)
+# Run on PRODUCTION laptop. Does NOT change anything. Paste full output back.
+#
+# CRITICAL: Docker Go templates MUST use SINGLE-QUOTED strings in PowerShell.
+# "{{.Names}}" is parsed as a scriptblock and breaks the script.
 # =============================================================================
 
 $ErrorActionPreference = "Continue"
@@ -10,22 +11,29 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 
 function Section([string]$t) {
   Write-Host ""
-  Write-Host ("=" * 72)
+  Write-Host "========================================================================"
   Write-Host $t
-  Write-Host ("=" * 72)
+  Write-Host "========================================================================"
 }
 function KV([string]$k, $v) {
   if ($null -eq $v) { $v = "" }
-  Write-Host ("{0,-28} {1}" -f $k, $v)
+  Write-Host ("{0,-32} {1}" -f $k, $v)
+}
+function Run-Cmd([string]$File, [string[]]$ArgList) {
+  try {
+    & $File @ArgList 2>&1 | ForEach-Object { $_.ToString() }
+  } catch {
+    "ERR: $($_.Exception.Message)"
+  }
 }
 
 Section "0) MACHINE / TIME"
 KV "ComputerName" $env:COMPUTERNAME
 KV "User" $env:USERNAME
 KV "Now" (Get-Date -Format o)
-KV "PSVersion" $PSVersionTable.PSVersion
+KV "PSVersion" $PSVersionTable.PSVersion.ToString()
 
-Section "1) CANDIDATE CLONE PATHS (existence)"
+Section "1) CANDIDATE CLONE PATHS"
 $candidates = @(
   "C:\afrakala",
   "C:\afrakala\app",
@@ -38,40 +46,41 @@ foreach ($p in $candidates) {
   $exists = Test-Path -LiteralPath $p
   $git = Test-Path -LiteralPath (Join-Path $p ".git")
   $compose = Test-Path -LiteralPath (Join-Path $p "deploy\lan\docker-compose.yml")
-  $composeAlt = Test-Path -LiteralPath (Join-Path $p "docker-compose.yml")
-  KV $p ("exists=$exists git=$git compose_lan=$compose compose_root=$composeAlt")
+  KV $p ("exists=$exists git=$git compose_lan=$compose")
 }
 
-Section "2) RUNNING WEB CONTAINER — which tree is LIVE?"
+Section "2) RUNNING WEB CONTAINER"
 $webName = "afrakala-lan-web"
-$fmtWeb = '{{.Names}}|{{.Status}}|{{.Ports}}'
-$web = docker ps -a --filter ("name=" + $webName) --format $fmtWeb 2>$null
-KV "docker_ps_web" $web
+# SINGLE quotes — never double-quote Go templates in PowerShell
+$webLine = (Run-Cmd "docker" @("ps", "-a", "--filter", "name=$webName", "--format", '{{.Names}} {{.Status}} {{.Ports}}') | Select-Object -First 1)
+KV "docker_ps_web" $webLine
 
-if ($web) {
-  $fmtProject = '{{index .Config.Labels "com.docker.compose.project"}}'
-  $fmtWorkDir = '{{index .Config.Labels "com.docker.compose.project.working_dir"}}'
-  $fmtConfig = '{{index .Config.Labels "com.docker.compose.project.config_files"}}'
-  $fmtImage = '{{.Config.Image}}'
-  $fmtStarted = '{{.State.StartedAt}}'
-  $fmtEnv = '{{range .Config.Env}}{{println .}}{{end}}'
-
-  KV "compose_project" (docker inspect $webName --format $fmtProject 2>$null)
-  KV "compose_working_dir" (docker inspect $webName --format $fmtWorkDir 2>$null)
-  KV "compose_config_files" (docker inspect $webName --format $fmtConfig 2>$null)
-  KV "image" (docker inspect $webName --format $fmtImage 2>$null)
-  KV "started" (docker inspect $webName --format $fmtStarted 2>$null)
-  Write-Host "--- ports / publish ---"
-  docker port $webName 2>$null
-  Write-Host "--- APP_/env stamp (names+values that are not secrets filtered) ---"
-  docker inspect $webName --format $fmtEnv 2>$null |
-    Select-String -Pattern "APP_GIT_SHA|GIT_SHA|BUILD_TIME|APP_PORT|SITE_URL|SUPABASE_URL|POSTGRES_DB|ISSABEL_|PRICING_|OLLAMA_|MARKETING_"
+$hasWeb = $false
+if ($webLine -and ($webLine -notmatch "^ERR:") -and ($webLine.Trim().Length -gt 0) -and ($webLine -notmatch "Error")) {
+  $hasWeb = $true
+}
+if ($hasWeb) {
+  KV "compose_project" ((Run-Cmd "docker" @("inspect", $webName, "--format", '{{index .Config.Labels "com.docker.compose.project"}}') | Select-Object -First 1))
+  KV "compose_working_dir" ((Run-Cmd "docker" @("inspect", $webName, "--format", '{{index .Config.Labels "com.docker.compose.project.working_dir"}}') | Select-Object -First 1))
+  KV "compose_config_files" ((Run-Cmd "docker" @("inspect", $webName, "--format", '{{index .Config.Labels "com.docker.compose.project.config_files"}}') | Select-Object -First 1))
+  KV "image" ((Run-Cmd "docker" @("inspect", $webName, "--format", '{{.Config.Image}}') | Select-Object -First 1))
+  KV "started" ((Run-Cmd "docker" @("inspect", $webName, "--format", '{{.State.StartedAt}}') | Select-Object -First 1))
+  Write-Host "--- ports ---"
+  Run-Cmd "docker" @("port", $webName)
+  Write-Host "--- env stamp (filtered) ---"
+  $envLines = Run-Cmd "docker" @("inspect", $webName, "--format", '{{range .Config.Env}}{{println .}}{{end}}')
+  $envLines | Where-Object {
+    $_ -match "APP_GIT_SHA|GIT_SHA|BUILD_TIME|APP_PORT|SITE_URL|SUPABASE|POSTGRES_DB|ISSABEL|PRICING|OLLAMA|MARKETING"
+  }
+} else {
+  Write-Host "Web container '$webName' not found — listing all containers:"
+  Run-Cmd "docker" @("ps", "-a", "--format", '{{.Names}} {{.Status}} {{.Ports}}')
 }
 
 Section "3) /api/version on common ports"
-foreach ($port in 3100, 3000, 80, 443) {
+foreach ($port in @(3100, 3000, 80)) {
   foreach ($hostAddr in @("127.0.0.1", "192.168.170.10")) {
-    $url = ("http://{0}:{1}/api/version" -f $hostAddr, $port)
+    $url = "http://${hostAddr}:${port}/api/version"
     try {
       $r = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 3
       KV $url $r.Content
@@ -81,31 +90,29 @@ foreach ($port in 3100, 3000, 80, 443) {
   }
 }
 
-Section "4) GIT STATE for each existing clone root"
+Section "4) GIT STATE for each clone"
 $gitRoots = New-Object System.Collections.Generic.List[string]
 foreach ($p in $candidates) {
-  if (Test-Path -LiteralPath (Join-Path $p ".git")) {
-    [void]$gitRoots.Add($p)
-  } elseif (Test-Path -LiteralPath (Join-Path $p "app\.git")) {
-    [void]$gitRoots.Add((Join-Path $p "app"))
-  }
+  if (Test-Path -LiteralPath (Join-Path $p ".git")) { [void]$gitRoots.Add($p) }
+  $appGit = Join-Path $p "app"
+  if (Test-Path -LiteralPath (Join-Path $appGit ".git")) { [void]$gitRoots.Add($appGit) }
 }
 $gitRoots = $gitRoots | Select-Object -Unique
-if (-not $gitRoots) { Write-Host "No .git found in candidates." }
+if (-not $gitRoots) { Write-Host "No .git found." }
 foreach ($root in $gitRoots) {
   Write-Host ""
-  Write-Host ("--- git @ {0} ---" -f $root)
+  Write-Host ("--- git root: " + $root + " ---")
   Push-Location -LiteralPath $root
   try {
-    KV "branch" (git rev-parse --abbrev-ref HEAD 2>$null)
-    KV "HEAD" (git rev-parse --short HEAD 2>$null)
-    KV "upstream" (git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null)
-    KV "status_sb" ((git status -sb 2>$null | Select-Object -First 1) -join "")
+    KV "branch" ((git rev-parse --abbrev-ref HEAD 2>$null))
+    KV "HEAD" ((git rev-parse --short HEAD 2>$null))
+    KV "upstream" ((git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null))
+    KV "status_sb" ((git status -sb 2>$null | Select-Object -First 1))
     Write-Host "recent:"
     git log -5 --oneline 2>$null
     Write-Host "remotes:"
     git remote -v 2>$null
-    Write-Host "branch -vv (staging/main/sales-desk):"
+    Write-Host "branches of interest:"
     git branch -vv 2>$null | Select-String "staging|main|sales-desk|^\*"
   } finally {
     Pop-Location
@@ -116,9 +123,10 @@ Section "5) .env.lan KEY NAMES ONLY (no secret values)"
 function Show-EnvKeyNames([string]$envPath) {
   if (-not (Test-Path -LiteralPath $envPath)) { KV $envPath "MISSING"; return }
   KV $envPath "present"
-  $keys = Get-Content -LiteralPath $envPath -ErrorAction SilentlyContinue |
-    Where-Object { $_ -match '^\s*[A-Za-z_][A-Za-z0-9_]*=' } |
-    ForEach-Object { ($_ -split '=', 2)[0].Trim() }
+  $keys = @()
+  Get-Content -LiteralPath $envPath -ErrorAction SilentlyContinue | ForEach-Object {
+    if ($_ -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=') { $keys += $Matches[1] }
+  }
   Write-Host ("keys: " + (($keys | Sort-Object) -join ", "))
   $want = @(
     "APP_PORT", "SITE_URL", "POSTGRES_DB", "POSTGRES_PASSWORD", "SUPABASE_URL",
@@ -130,15 +138,13 @@ function Show-EnvKeyNames([string]$envPath) {
     $hit = $keys -contains $k
     $nonEmpty = $false
     if ($hit) {
-      $line = Get-Content -LiteralPath $envPath |
-        Where-Object { $_ -match ("^\s*" + [regex]::Escape($k) + "\s*=") } |
-        Select-Object -First 1
+      $line = Get-Content -LiteralPath $envPath | Where-Object { $_ -match ("^\s*" + [regex]::Escape($k) + "\s*=") } | Select-Object -First 1
       if ($line) {
         $val = ($line -split "=", 2)[1]
         $nonEmpty = -not [string]::IsNullOrWhiteSpace($val)
       }
     }
-    KV ("env.$k") ("present=$hit nonEmpty=$nonEmpty")
+    KV ("env." + $k) ("present=$hit nonEmpty=$nonEmpty")
   }
 }
 $envPaths = @(
@@ -149,87 +155,88 @@ $envPaths = @(
 )
 foreach ($e in $envPaths) { Show-EnvKeyNames $e }
 
-Section "6) DOCKER DB container + database name hints"
-$fmtTable = "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-docker ps -a --format $fmtTable 2>$null | Select-String -Pattern "db|postgres|afrakala|NAMES"
-Write-Host "--- POSTGRES_DB from db container env (if any) ---"
-$fmtNames = '{{.Names}}'
-$fmtEnv = '{{range .Config.Env}}{{println .}}{{end}}'
-$dbCandidates = @("afrakala-lan-db", "afrakala-db", "supabase-db", "db")
-foreach ($d in $dbCandidates) {
-  $exists = docker ps -a --format $fmtNames 2>$null | Where-Object { $_ -eq $d }
-  if ($exists) {
+Section "6) DOCKER containers (db/web)"
+Run-Cmd "docker" @("ps", "-a", "--format", 'table {{.Names}}\t{{.Status}}\t{{.Ports}}')
+Write-Host "--- POSTGRES_* from likely db containers ---"
+$allNames = @(Run-Cmd "docker" @("ps", "-a", "--format", '{{.Names}}'))
+foreach ($d in @("afrakala-lan-db", "afrakala-db", "supabase-db", "db")) {
+  if ($allNames -contains $d) {
     KV "db_container" $d
-    docker inspect $d --format $fmtEnv 2>$null |
-      Select-String -Pattern "POSTGRES_DB|POSTGRES_USER|POSTGRES_HOST"
+    $elines = Run-Cmd "docker" @("inspect", $d, "--format", '{{range .Config.Env}}{{println .}}{{end}}')
+    $elines | Where-Object { $_ -match "POSTGRES_DB|POSTGRES_USER" }
   }
 }
 
 Section "7) MIGRATION LEDGER (read-only)"
 function Try-Ledger([string]$dbContainer, [string]$dbName, [string]$envFile) {
   if (-not (Test-Path -LiteralPath $envFile)) { return $false }
-  $pwLine = Get-Content -LiteralPath $envFile |
-    Where-Object { $_ -match '^\s*POSTGRES_PASSWORD=' } |
-    Select-Object -First 1
-  if (-not $pwLine) { Write-Host ("No POSTGRES_PASSWORD in {0}" -f $envFile); return $false }
-  $pw = ($pwLine -split "=", 2)[1].Trim().Trim('"').Trim("'")
-  Write-Host ("Trying ledger: container={0} db={1} env={2}" -f $dbContainer, $dbName, $envFile)
+  $pwLine = Get-Content -LiteralPath $envFile | Where-Object { $_ -match '^\s*POSTGRES_PASSWORD\s*=' } | Select-Object -First 1
+  if (-not $pwLine) { Write-Host "No POSTGRES_PASSWORD in $envFile"; return $false }
+  $pw = ($pwLine -split "=", 2)[1]
+  Write-Host "Trying ledger: container=$dbContainer db=$dbName envFile=$envFile"
   $sql = @"
 SELECT current_database() AS db, current_user AS usr;
 SELECT version FROM supabase_migrations.schema_migrations
-WHERE version >= '20260916000000'
+WHERE version >= '20260915000000'
 ORDER BY version;
 SELECT version FROM supabase_migrations.schema_migrations
 WHERE version IN (
+  '20260915233000','20260916001500',
   '20260916030000','20260916031000','20260916032000','20260916033000',
   '20260916120000','20260916121000','20260916122000','20260916123000',
   '20260916140000','20260916150000',
   '20260916160000','20260916161000','20260916162000','20260916170000'
 ) ORDER BY version;
+SELECT to_regclass('public.work_items') AS work_items;
 SELECT to_regclass('public.call_ring_events') AS call_ring_events;
 SELECT to_regclass('public.sales_interactions') AS sales_interactions;
 SELECT count(*) AS call_logs FROM public.call_logs;
 SELECT count(*) AS call_ring_events_n FROM public.call_ring_events;
 SELECT count(*) AS call_log_extensions FROM public.call_log_extensions;
 "@
-  $sql | docker exec -i -e ("PGPASSWORD=" + $pw) $dbContainer psql -U supabase_admin -d $dbName -v ON_ERROR_STOP=1 2>&1 |
+  $tmp = Join-Path $env:TEMP "afrakala-ledger.sql"
+  # UTF8 no BOM for psql
+  $utf8 = New-Object System.Text.UTF8Encoding $false
+  [System.IO.File]::WriteAllText($tmp, $sql, $utf8)
+  Get-Content -LiteralPath $tmp -Raw | docker exec -i -e "PGPASSWORD=$pw" $dbContainer psql -U supabase_admin -d $dbName -v ON_ERROR_STOP=1 2>&1 |
     ForEach-Object { $_.ToString() }
   return $true
 }
 
-$tried = $false
-foreach ($pair in @(
+$pairs = @(
   @{ c = "afrakala-lan-db"; d = "postgres"; e = "C:\AfraKalaServer\get-git-going01lan\deploy\lan\.env.lan" },
   @{ c = "afrakala-lan-db"; d = "postgres"; e = "C:\afrakala\deploy\lan\.env.lan" },
   @{ c = "afrakala-lan-db"; d = "afrakala"; e = "C:\AfraKalaServer\get-git-going01lan\deploy\lan\.env.lan" },
   @{ c = "afrakala-lan-db"; d = "afrakala"; e = "C:\afrakala\deploy\lan\.env.lan" },
   @{ c = "afrakala-lan-db"; d = "postgres"; e = "C:\AfraKalaServer\get-git-going01lan\app\deploy\lan\.env.lan" },
   @{ c = "afrakala-lan-db"; d = "postgres"; e = "C:\afrakala\app\deploy\lan\.env.lan" }
-)) {
+)
+$tried = $false
+foreach ($pair in $pairs) {
   if (Test-Path -LiteralPath $pair.e) {
-    $ok = Try-Ledger $pair.c $pair.d $pair.e
-    if ($ok) { $tried = $true; break }
+    $null = Try-Ledger $pair.c $pair.d $pair.e
+    $tried = $true
+    break
   }
 }
-if (-not $tried) {
-  Write-Host "Could not query ledger automatically — paste docker/db names manually if needed."
-}
+if (-not $tried) { Write-Host "Could not locate .env.lan for ledger query." }
 
-Section "8) SCHEDULED TASKS (Afra / Issabel / Pricing)"
+Section "8) SCHEDULED TASKS"
 Get-ScheduledTask -ErrorAction SilentlyContinue |
   Where-Object { $_.TaskName -match "Afra|Issabel|Pricing|afrakala" } |
   ForEach-Object {
     $a = $_.Actions | Select-Object -First 1
-    KV $_.TaskName ("State={0} Execute={1}" -f $_.State, $a.Execute)
-    if ($a.Arguments) { KV ("  args") $a.Arguments }
+    Write-Host ("Task=" + $_.TaskName + " State=" + $_.State)
+    Write-Host ("  Execute=" + $a.Execute)
+    Write-Host ("  Arguments=" + $a.Arguments)
   }
 
-Section "9) COMPOSE ISSABEL / PRICING BLOCK PRESENT?"
+Section "9) COMPOSE KEYWORD LINES"
 function Grep-Compose([string]$compose) {
   if (-not (Test-Path -LiteralPath $compose)) { KV $compose "MISSING"; return }
   KV $compose "present"
-  Select-String -Path $compose -Pattern "ISSABEL_|PRICING_WORKER_TOKEN|APP_PORT" |
-    ForEach-Object { Write-Host ("L{0}: {1}" -f $_.LineNumber, $_.Line.Trim()) }
+  Select-String -LiteralPath $compose -Pattern "ISSABEL_|PRICING_WORKER_TOKEN|APP_PORT" |
+    ForEach-Object { "L$($_.LineNumber): $($_.Line.Trim())" }
 }
 @(
   "C:\afrakala\deploy\lan\docker-compose.yml",
@@ -238,17 +245,12 @@ function Grep-Compose([string]$compose) {
   "C:\AfraKalaServer\get-git-going01lan\app\deploy\lan\docker-compose.yml"
 ) | ForEach-Object { Grep-Compose $_ }
 
-Section "10) ANSWER SHEET (fill from above — for the agent)"
-Write-Host @"
-Copy answers (or just send full log):
+Section "10) ANSWER SHEET (fill and send)"
+Write-Host "Q1 LIVE_CLONE_PATH       = "
+Write-Host "Q2 FEATURES              = ticket only  OR  ticket+sales-desk+ring  OR  all+issabel tasks"
+Write-Host "Q3 MIGRATE_PROD_APPROVED = YES I approve migrations on production DB  OR  NO"
+Write-Host "Q3b PROD_DB_NAME         = postgres / afrakala / other"
+Write-Host "Q4 ISSABEL_CREDS_READY   = have CDR / have AMI / later / skip"
+Write-Host "Q5 WEB_PORT              = from successful /api/version above"
 
-Q1 LIVE_CLONE_PATH          = (from compose_working_dir / config_files)
-Q2 GIT_BRANCH_STRATEGY      = staging NOW  |  wait for main
-Q3 MIGRATE_PROD_APPROVED    = YES I approve migrations on production DB  |  NO
-Q3b PROD_DB_NAME            = postgres / afrakala / other:___
-Q4 FEATURES_THIS_CUTOVER    = persons + sales-desk + ring + pricing + work   (edit)
-Q5 ISSABEL_CREDS_READY      = have CDR  |  have AMI  |  neither / later
-Q6 WEB_PORT                 = (from docker port /api/version that succeeded)
-"@
-
-Section "DONE — select all output above and paste back"
+Section "DONE — copy ALL output above and send it"
