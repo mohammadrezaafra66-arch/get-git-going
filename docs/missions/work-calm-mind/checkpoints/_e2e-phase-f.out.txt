@@ -1,0 +1,25 @@
+
+Running 12 tests using 1 worker
+
+(node:10768) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+  ok  1 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:286:1 › DB trigger refuses in_progress without claimed_due_at (339ms)
+  ok  2 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:322:1 › DB trigger allows in_progress when claimed_due_at is set (373ms)
+  ok  3 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:357:1 › seeded work item is visible on /operations/work (20.0s)
+  ok  4 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:369:1 › morning summary strip shows Calm Mind counts (3.1s)
+
+  ok  5 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:386:1 › decision queue can set today_do, waiting, and clear (6.2s)
+  ok  6 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:455:1 › UI blocks in_progress without claimed_due_at (3.8s)
+  ok  7 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:493:1 › create work wizard describe+classify then create end-to-end (4.8s)
+  ok  8 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:532:1 › POST /api/work/classify responds with kind/priority JSON (50ms)
+
+  ok  9 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:565:1 › testing workflow approve moves status to done (3.8s)
+
+  ok 10 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:598:1 › testing workflow reject with ETA returns to in_progress (4.1s)
+
+  ok 11 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:635:1 › merge suggestion dismiss path removes pending card (3.4s)
+
+  ok 12 [chromium-admin] › e2e\business-flows\calm-mind-work.spec.ts:669:1 › merge suggestion accept path keeps one item (4.2s)
+
+  12 passed (57.6s)

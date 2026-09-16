@@ -1,0 +1,69 @@
+docs/verification/550-down.sql local=d8a79f1fc5e2a40640d2c539282df02c remote=d8a79f1fc5e2a40640d2c539282df02c match=true
+DOWN_OUT:
+SET
+DROP FUNCTION
+DROP POLICY
+DROP POLICY
+DROP POLICY
+DROP POLICY
+DROP INDEX
+DROP INDEX
+DROP INDEX
+DROP TABLE
+
+DOWN_exit=0
+AFTER_DOWN_OUT:
+ after_down 
+------------
+ 
+(1 row)
+
+ rpc_after_down 
+----------------
+ 
+(1 row)
+
+
+AFTER_DOWN_exit=0
+supabase/migrations/20260916140000_550_work_test_reports.sql local=79bb8322a4872559e3415b395e6658f6 remote=79bb8322a4872559e3415b395e6658f6 match=true
+UP_AGAIN_OUT:
+SET
+SET
+CREATE TABLE
+COMMENT
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+REVOKE
+REVOKE
+GRANT
+CREATE FUNCTION
+REVOKE
+REVOKE
+GRANT
+COMMENT
+DO
+
+UP_AGAIN_exit=0
+AFTER_UP_OUT:
+     after_up      
+-------------------
+ work_test_reports
+(1 row)
+
+                             rpc_after_up                              
+-----------------------------------------------------------------------
+ work_submit_test_report(uuid,text,text,uuid,timestamp with time zone)
+(1 row)
+
+
+AFTER_UP_exit=0

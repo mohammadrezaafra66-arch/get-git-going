@@ -1,0 +1,17 @@
+﻿=== AFTER 2026-09-16T03:59:53.0238367+05:00 ===
+CreateWorkWizard.tsx:393:dir="rtl"
+CreateWorkWizard.tsx:424:{toFaDigits(i + 1)}. {stepLabel(s)}
+CreateWorkWizard.tsx:469:{toFaDigits(Math.round(preview.confidence * 100))}٪
+CreateWorkWizard.tsx:711:<Loader2 className="h-4 w-4 animate-spin me-1" />
+CreateWorkWizard.tsx:722:<Loader2 className="h-4 w-4 animate-spin me-1" />
+TestReportPanel.tsx:185:dir="rtl"
+TestReportPanel.tsx:231:dir="ltr"
+TestReportPanel.tsx:250:dir="ltr"
+TestReportPanel.tsx:350:<p className="mt-1 font-mono text-[11px] text-slate-500" dir="ltr">
+select.tsx:115:"relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 ps-2 pe-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+select.tsx:120:<span className="absolute end-2 flex h-3.5 w-3.5 items-center justify-center">
+dialog.tsx:47:<DialogPrimitive.Close className="absolute end-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+TaxonomySelect.tsx:63:<div className="space-y-1.5" dir="rtl">
+TaxonomySelect.tsx:85:<SelectContent dir="rtl">
+--- residual bad patterns ---
+CreateWorkWizard.tsx:469:{toFaDigits(Math.round(preview.confidence * 100))}٪

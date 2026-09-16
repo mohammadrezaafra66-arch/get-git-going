@@ -1,0 +1,42 @@
+SET
+      relname      | rls 
+-------------------+-----
+ work_test_reports | t
+(1 row)
+
+             indexname             
+-----------------------------------
+ idx_work_test_reports_created
+ idx_work_test_reports_item
+ idx_work_test_reports_item_active
+ work_test_reports_pkey
+(4 rows)
+
+        policyname        
+--------------------------
+ work_test_reports_delete
+ work_test_reports_insert
+ work_test_reports_select
+ work_test_reports_update
+(4 rows)
+
+ anon_sel | auth_sel | auth_ins 
+----------+----------+----------
+ f        | t        | t
+(1 row)
+
+         proname         | anon_exec | auth_exec 
+-------------------------+-----------+-----------
+ work_submit_test_report | f         | t
+(1 row)
+
+BEGIN
+DO
+ROLLBACK
+ tasks_cols 
+------------
+         15
+(1 row)
+
+
+probe_exit=0

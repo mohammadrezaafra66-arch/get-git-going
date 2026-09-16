@@ -1,0 +1,7 @@
+﻿=== BASELINE 2026-09-16T03:58:40.6909944+05:00 HEAD=5089d3f24255e14265d8d84599c024de0aecb086 ===
+CreateWorkWizard.tsx:468:{Math.round(preview.confidence * 100)}٪
+CreateWorkWizard.tsx:710:<Loader2 className="h-4 w-4 animate-spin ms-1" />
+CreateWorkWizard.tsx:721:<Loader2 className="h-4 w-4 animate-spin ms-1" />
+TestReportPanel.tsx:230:type="datetime-local"
+select.tsx:114:"relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+select.tsx:119:<span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
