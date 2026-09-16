@@ -54,7 +54,9 @@ export function MergePanel({
             aria-expanded={open}
           >
             <GitMerge className="h-4 w-4 text-slate-600" />
-            <h2 className="text-sm font-semibold text-slate-800">پیشنهاد ادغام</h2>
+            <h2 className="text-sm font-semibold text-slate-800">
+              <span aria-hidden>🔗</span> پیشنهاد ادغام
+            </h2>
             <span className="text-xs text-slate-500">
               {loading
                 ? "در حال بررسی…"

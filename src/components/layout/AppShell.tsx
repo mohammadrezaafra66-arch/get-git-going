@@ -8,12 +8,14 @@ import { NavigationCommandPalette } from "./NavigationCommandPalette";
 import { PopupCenterProvider } from "@/lib/popups/PopupCenterProvider";
 import { PriceChangePopupListener } from "@/shared/components/PriceChangePopupListener";
 import { OwnerRemindersListener } from "@/shared/components/OwnerRemindersListener";
+import { CallerInboundListener } from "@/components/sales-desk";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <PopupCenterProvider>
       <PriceChangePopupListener />
       <OwnerRemindersListener />
+      <CallerInboundListener />
       {/* Item 209 — 16rem truncated most Persian menu labels, which is what
           made options hard to find. Overridden here rather than in
           components/ui/sidebar.tsx so the generated shadcn file stays clean;

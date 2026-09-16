@@ -24,6 +24,8 @@ export interface IntakeAnswer {
   value: string;
   /** Optional human-readable label when value is an option id */
   label?: string;
+  /** Prompt text when questions are dynamic (AI / kind-pack) */
+  prompt?: string;
 }
 
 export interface SummarizeIntakeOptions {
@@ -127,13 +129,115 @@ export const INTAKE_ALL_QUESTIONS: IntakeQuestion[] = [
   ...INTAKE_MCQ_QUESTIONS,
 ];
 
+/**
+ * Kind-aware local pack (browser-safe) — used when AI questions are unavailable.
+ */
+export function localIntakeQuestionsForKind(
+  kind: import("./types").WorkItemKind = "note",
+): IntakeQuestion[] {
+  const tailoredOpen: IntakeQuestion[] = (() => {
+    switch (kind) {
+      case "bug":
+        return [
+          {
+            id: "dyn_open_repro",
+            prompt: "چطور این مشکل را بازتولید کنیم؟ (گام‌به‌گام کوتاه)",
+            type: "open",
+          },
+          {
+            id: "dyn_open_expected",
+            prompt: "رفتار درست چه باید باشد و الان چه می‌بینید؟",
+            type: "open",
+          },
+          {
+            id: "dyn_open_impact",
+            prompt: "کدام کاربر یا فرآیند الان متوقف یا آسیب‌دیده است؟",
+            type: "open",
+          },
+          {
+            id: "open_stakeholders",
+            prompt: INTAKE_OPEN_QUESTIONS[3]!.prompt,
+            type: "open",
+          },
+          {
+            id: "open_done",
+            prompt: "چه زمانی می‌گوییم باگ رفع شده؟ (معیار پذیرش)",
+            type: "open",
+          },
+        ];
+      case "change_request":
+        return [
+          {
+            id: "dyn_open_need",
+            prompt: "این تغییر کدام نیاز کسب‌وکار را برطرف می‌کند؟",
+            type: "open",
+          },
+          {
+            id: "dyn_open_scope",
+            prompt: "محدودهٔ تغییر چیست و چه چیزی عمداً خارج از محدوده است؟",
+            type: "open",
+          },
+          {
+            id: "open_impact",
+            prompt: INTAKE_OPEN_QUESTIONS[2]!.prompt,
+            type: "open",
+          },
+          {
+            id: "open_stakeholders",
+            prompt: INTAKE_OPEN_QUESTIONS[3]!.prompt,
+            type: "open",
+          },
+          {
+            id: "open_done",
+            prompt: INTAKE_OPEN_QUESTIONS[4]!.prompt,
+            type: "open",
+          },
+        ];
+      case "question":
+        return [
+          {
+            id: "dyn_open_ask",
+            prompt: "دقیقاً چه چیزی را می‌خواهید بدانید یا تصمیم بگیرید؟",
+            type: "open",
+          },
+          {
+            id: "dyn_open_tried",
+            prompt: "تا الان چه کارهایی کرده‌اید یا کجا را نگاه کرده‌اید؟",
+            type: "open",
+          },
+          {
+            id: "open_context",
+            prompt: INTAKE_OPEN_QUESTIONS[1]!.prompt,
+            type: "open",
+          },
+          {
+            id: "open_stakeholders",
+            prompt: "پاسخ این سؤال را چه کسی باید بدهد یا تأیید کند؟",
+            type: "open",
+          },
+          {
+            id: "open_done",
+            prompt: "با چه پاسخی این موضوع برای شما بسته می‌شود؟",
+            type: "open",
+          },
+        ];
+      default:
+        return [...INTAKE_OPEN_QUESTIONS];
+    }
+  })();
+
+  return [...tailoredOpen, ...INTAKE_MCQ_QUESTIONS];
+}
 const QUESTION_BY_ID = new Map(
   INTAKE_ALL_QUESTIONS.map((q) => [q.id, q] as const),
 );
 
-function resolveAnswerDisplay(answer: IntakeAnswer): { prompt: string; display: string } {
-  const q = QUESTION_BY_ID.get(answer.questionId);
-  const prompt = q?.prompt ?? answer.questionId;
+function resolveAnswerDisplay(
+  answer: IntakeAnswer,
+  extraById?: Map<string, IntakeQuestion>,
+): { prompt: string; display: string } {
+  const q = extraById?.get(answer.questionId) ?? QUESTION_BY_ID.get(answer.questionId);
+  const prompt = answer.prompt?.trim() || q?.prompt || answer.questionId;
   const raw = String(answer.value ?? "").trim();
   if (answer.label?.trim()) {
     return { prompt, display: answer.label.trim() };
@@ -148,10 +252,17 @@ function resolveAnswerDisplay(answer: IntakeAnswer): { prompt: string; display: 
 /**
  * Build a plain-text transcript of intake Q&A (Persian labels).
  */
-export function buildIntakeTranscript(answers: IntakeAnswer[]): string {
+export function buildIntakeTranscript(
+  answers: IntakeAnswer[],
+  questions?: IntakeQuestion[],
+): string {
+  const extra =
+    questions && questions.length
+      ? new Map(questions.map((q) => [q.id, q] as const))
+      : undefined;
   const lines: string[] = [];
   for (const a of answers ?? []) {
-    const { prompt, display } = resolveAnswerDisplay(a);
+    const { prompt, display } = resolveAnswerDisplay(a, extra);
     if (!display) continue;
     lines.push(`سؤال: ${prompt}`);
     lines.push(`پاسخ: ${display}`);
@@ -166,7 +277,7 @@ export function buildIntakeTranscript(answers: IntakeAnswer[]): string {
  */
 export function summarizeIntake(
   answers: IntakeAnswer[],
-  opts?: SummarizeIntakeOptions,
+  opts?: SummarizeIntakeOptions & { questions?: IntakeQuestion[] },
 ): string {
   const parts: string[] = [];
   const title = opts?.title?.trim();
@@ -174,9 +285,14 @@ export function summarizeIntake(
   if (title) parts.push(`عنوان پیشنهادی: ${title}`);
   if (description) parts.push(`شرح اولیه: ${description}`);
 
+  const extra =
+    opts?.questions && opts.questions.length
+      ? new Map(opts.questions.map((q) => [q.id, q] as const))
+      : undefined;
+
   const answered = (answers ?? [])
     .map((a) => {
-      const { prompt, display } = resolveAnswerDisplay(a);
+      const { prompt, display } = resolveAnswerDisplay(a, extra);
       if (!display) return null;
       return `— ${prompt}\n  ${display}`;
     })

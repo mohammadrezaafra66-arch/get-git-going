@@ -1,0 +1,66 @@
+import { useQuery } from "@tanstack/react-query";
+import { BarChart3, Loader2 } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { fetchMyMonthStats } from "@/lib/sales-desk";
+import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
+import { isoToJalaliMonthDisplay } from "@/lib/i18n/jalali";
+
+/**
+ * کارت آمار شخصی فروشنده برای ماه جاری (RPC sales_my_month_stats).
+ */
+export function MyMonthStatsCard() {
+  const q = useQuery({
+    queryKey: ["sales-desk", "my-month-stats"],
+    queryFn: () => fetchMyMonthStats(),
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  });
+
+  return (
+    <Card dir="rtl">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
+          <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          آمار من این ماه
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {q.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> در حال بارگذاری…
+          </div>
+        ) : q.isError ? (
+          <p className="text-sm text-destructive">
+            {(q.error as Error)?.message || "خطا در دریافت آمار"}
+          </p>
+        ) : !q.data ? (
+          <p className="text-sm text-muted-foreground">آماری ثبت نشده است.</p>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            <Stat label="تماس‌ها" value={q.data.calls_count} />
+            <Stat label="موفق" value={q.data.won_count} />
+            <Stat label="ناموفق" value={q.data.lost_count} />
+            {q.data.month_start ? (
+              <p className="col-span-3 text-xs text-muted-foreground">
+                {isoToJalaliMonthDisplay(q.data.month_start)
+                  ? `ماه ${isoToJalaliMonthDisplay(q.data.month_start)}`
+                  : `از ${formatDateFa(q.data.month_start)}`}
+                {q.data.calls_source === "call_logs" ? " · منبع: تماس‌های ثبت‌شده" : null}
+              </p>
+            ) : null}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="sales-desk-stat-pulse rounded-md border border-teal-800/10 bg-teal-50/40 px-3 py-2 text-center">
+      <div className="text-lg font-semibold tabular-nums text-teal-950">{formatNumber(value)}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+    </div>
+  );
+}

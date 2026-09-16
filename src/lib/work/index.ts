@@ -88,6 +88,7 @@ export {
   INTAKE_OPEN_QUESTIONS,
   INTAKE_MCQ_QUESTIONS,
   INTAKE_ALL_QUESTIONS,
+  localIntakeQuestionsForKind,
   buildIntakeTranscript,
   summarizeIntake,
   type IntakeQuestion,
@@ -96,6 +97,8 @@ export {
   type IntakeAnswer,
   type SummarizeIntakeOptions,
 } from "./intake";
+
+export { postIntakeQuestions } from "./intakeQuestionsPost";
 
 export {
   listActiveTaxonomies,

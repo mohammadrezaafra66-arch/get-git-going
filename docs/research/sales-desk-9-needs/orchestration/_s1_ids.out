@@ -1,0 +1,37 @@
+ relrowsecurity | relforcerowsecurity 
+----------------+---------------------
+ t              | f
+(1 row)
+
+    role    |               user_id                
+------------+--------------------------------------
+ accountant | 1a15e8c6-3a83-49c2-9531-db9046d30968
+ accountant | 56014064-1443-420e-a22a-bd6b3e00a411
+ accountant | 90c0479f-410d-4fff-9e00-34bbba1cce2b
+ admin      | 05098088-2849-43f4-8eb5-7c473c3832ec
+ admin      | 10b1a75c-9f4f-49af-b986-73281f8ba62f
+ admin      | 1a15e8c6-3a83-49c2-9531-db9046d30968
+ admin      | 279464bb-e61d-4885-ac00-9cd1898517c3
+ admin      | 4084224a-cd34-4632-9cbc-3b5f3581cf6e
+ admin      | 48f7c9d5-096e-437e-af9b-9cb0be5deb8c
+ admin      | 56014064-1443-420e-a22a-bd6b3e00a411
+ admin      | 5afb2fe7-b509-4265-b982-239efaf61798
+ admin      | 6aeeb222-c74b-4ccd-8cbc-c9170c808f41
+ admin      | 76fac9df-e48a-457f-ab98-0971825f3e2e
+ admin      | 7db74ba2-207c-4230-9893-b50a43a36039
+ admin      | 8ff55610-010f-4436-8f6e-1b20c42c93b2
+ admin      | b07d5522-6a23-44c5-b240-f821a3789329
+(16 rows)
+
+              person_id               
+--------------------------------------
+ 13de5f47-642b-456f-b167-616ce3ae117f
+(1 row)
+
+             customer_id              |            responsible_id            
+--------------------------------------+--------------------------------------
+ d38624fa-2fb3-4b4d-a428-3e278059db98 | 1a15e8c6-3a83-49c2-9531-db9046d30968
+ 7e35520c-820d-4637-a5b5-9d8591d3d4da | 
+ ce69632d-5426-4eee-9b46-0b2651e4005d | ea9b35dd-fd57-4905-9355-50ca8646d4d1
+(3 rows)
+

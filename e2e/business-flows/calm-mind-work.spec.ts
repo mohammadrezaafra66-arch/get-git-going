@@ -257,6 +257,19 @@ async function progressCreateWizardToConfirm(page: Page, description: string): P
   });
 }
 
+/** Pick a Jalali calendar day then set HH:mm on the time input (id on time field). */
+async function setJalaliDateTimeByTimeId(page: Page, timeInputId: string): Promise<void> {
+  const section = page.locator(`label[for="${timeInputId}"]`).locator("xpath=..");
+  const dateInput = section.getByPlaceholder("انتخاب تاریخ شمسی");
+  await dateInput.click();
+  const day = page.locator(".rmdp-day:not(.rmdp-disabled):not(.rmdp-day-hidden)").first();
+  await expect(day).toBeVisible({ timeout: 10_000 });
+  await day.click();
+  const time = page.locator(`#${timeInputId}`);
+  await expect(time).toBeEnabled({ timeout: 5_000 });
+  await time.fill("14:30");
+}
+
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(() => {
@@ -359,10 +372,12 @@ test("seeded work item is visible on /operations/work", async ({ page }) => {
   await expect(page.getByText("در حال بررسی جلسه کاربری...")).toHaveCount(0, {
     timeout: 30_000,
   });
-  await expect(page.getByRole("heading", { name: "دستیار کار" })).toBeVisible({
+  await expect(page.getByRole("heading", { level: 1, name: "🎫 تیکت" })).toBeVisible({
     timeout: 30_000,
   });
-  await expect(page.getByText("تابلوی آرام برای تصمیم امروز")).toBeVisible();
+  await expect(
+    page.getByText("نظرات، انتقادات و پیشنهادات خود را اینجا ثبت کنید"),
+  ).toBeVisible();
   await expect(page.getByText(TITLES.board)).toBeVisible({ timeout: 20_000 });
 });
 
@@ -379,8 +394,9 @@ test("morning summary strip shows Calm Mind counts", async ({ page }) => {
   const decideCell = page.getByTestId("morning-bucket-today_decide");
   await expect(decideCell).toBeVisible();
   const text = (await decideCell.innerText()).replace(/\s+/g, " ").trim();
-  expect(text, `today_decide cell text: ${text}`).toMatch(/^[۰-۹]+/);
-  expect(text, "seeded queue must make today_decide non-zero").not.toMatch(/^۰\b/);
+  const digit = text.match(/[۰-۹]+/);
+  expect(digit, `today_decide cell text: ${text}`).not.toBeNull();
+  expect(digit![0], "seeded queue must make today_decide non-zero").not.toBe("۰");
 });
 
 test("decision queue can set today_do, waiting, and clear", async ({ page }) => {
@@ -458,9 +474,9 @@ test("UI blocks in_progress without claimed_due_at", async ({ page }) => {
     timeout: 20_000,
   });
 
-  // Ensure due field is empty, then pick «در حال انجام».
-  const due = page.locator("#claimed_due_at");
-  await due.fill("");
+  // Seed has NULL due; Jalali picker shows empty placeholder (time stays disabled).
+  await expect(page.getByPlaceholder("انتخاب تاریخ شمسی").first()).toBeVisible();
+
   const statusBox = page
     .getByText("وضعیت", { exact: true })
     .locator("..")
@@ -495,8 +511,8 @@ test("create work wizard describe+classify then create end-to-end", async ({ pag
   await expect(page.getByText("در حال بررسی جلسه کاربری...")).toHaveCount(0, {
     timeout: 30_000,
   });
-  await page.getByRole("button", { name: "کار جدید" }).click();
-  await expect(page.getByRole("heading", { name: "ثبت کار جدید" })).toBeVisible();
+  await page.getByRole("button", { name: "تیکت جدید" }).click();
+  await expect(page.getByRole("heading", { name: "ثبت تیکت جدید" })).toBeVisible();
 
   const describeText =
     `${TITLES.created} — یادداشت آزاد برای ثبت از ویزارد e2e با متن به اندازه کافی بلند برای عبور از آستانهٔ کوتاه بودن`;
@@ -611,8 +627,8 @@ test("testing workflow reject with ETA returns to in_progress", async ({ page })
     timeout: 20_000,
   });
 
-  // datetime-local: far enough future to satisfy ETA gate.
-  await page.locator("#test-report-eta").fill("2030-06-15T14:30");
+  // Jalali date+time: pick a day then set HH:mm (replaces datetime-local fill).
+  await setJalaliDateTimeByTimeId(page, "test-report-eta");
   // Use reject-existing without linked bug id — RPC allows null linked bug.
   await page.getByTestId("work-test-reject-existing").click();
   await expect(

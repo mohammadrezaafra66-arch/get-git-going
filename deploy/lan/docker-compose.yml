@@ -74,6 +74,10 @@ services:
       # never VITE_ prefixed. Empty = the endpoint answers 500 and generates
       # nothing, which is the correct default for an unconfigured install.
       MARKETING_TASKS_WORKER_TOKEN: ${MARKETING_TASKS_WORKER_TOKEN:-}
+      # PRICE-RT — bearer for POST /api/public/hooks/process-pricing-queue.
+      # Host cron / Task Scheduler drains pricing_recompute_queue. Empty = endpoint
+      # answers 500 and drains nothing (fail-closed for an unconfigured install).
+      PRICING_WORKER_TOKEN: ${PRICING_WORKER_TOKEN:-}
       # C-4 — اتصال فقط-خواندنی به MySQL مرکز تلفن ایزابل، برای واردسازی CDR.
       # این کلیدها از قبل در .env.lan بودند ولی هرگز به کانتینر پاس داده نمی‌شدند.
       # اندازه‌گیری‌شده روی کانتینر در حال اجرا: `env | grep -c ISSABEL` -> 0.
@@ -88,6 +92,12 @@ services:
       # (POST /api/public/hooks/import-issabel-calls). خالی بودنش یعنی endpoint
       # با ۵۰۰ برمی‌گردد و هیچ کاری نمی‌کند — همان رفتار درست برای نصب پیکربندی‌نشده.
       ISSABEL_IMPORT_WORKER_TOKEN: ${ISSABEL_IMPORT_WORKER_TOKEN:-}
+      # Optional AMI keys — the ring listener runs on the HOST (not in web).
+      # Passthrough only if you ever move the listener into a container; unused by web today.
+      # ISSABEL_AMI_HOST: ${ISSABEL_AMI_HOST:-}
+      # ISSABEL_AMI_PORT: ${ISSABEL_AMI_PORT:-5038}
+      # ISSABEL_AMI_USER: ${ISSABEL_AMI_USER:-}
+      # ISSABEL_AMI_SECRET: ${ISSABEL_AMI_SECRET:-}
     ports:
       - "${APP_PORT:-3000}:3000"
     depends_on:

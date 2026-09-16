@@ -197,7 +197,7 @@ export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/operations/work">تابلو کار</Link>
+            <Link to="/operations/work">تابلو تیکت</Link>
           </Button>
         </div>
 

@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -23,6 +22,7 @@ import {
   IMPACT_LABELS,
   MODE_LABELS,
 } from "./labels";
+import { JalaliDateTimeInput } from "./JalaliDateTimeInput";
 
 const NONE = "__none__";
 
@@ -155,16 +155,13 @@ export function CalmMindPanel({
 
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor="claimed_due_at">موعد ادعا‌شده (برای شروع کار الزامی است)</Label>
-          <Input
+          <JalaliDateTimeInput
             id="claimed_due_at"
-            type="datetime-local"
-            dir="ltr"
-            className="text-start"
             value={draft.claimed_due_at}
-            onChange={(e) => onChange({ claimed_due_at: e.target.value })}
+            onChange={(local) => onChange({ claimed_due_at: local })}
           />
           <p className="text-xs text-slate-500">
-            برای وضعیت «در حال انجام» باید موعد مشخص باشد.
+            تاریخ شمسی + ساعت. برای وضعیت «در حال انجام» باید موعد مشخص باشد.
           </p>
         </div>
 

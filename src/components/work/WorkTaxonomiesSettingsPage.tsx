@@ -147,13 +147,13 @@ export function WorkTaxonomiesSettingsPage() {
         <Button variant="ghost" size="sm" asChild>
           <Link to="/operations/work">
             <ArrowRight className="h-4 w-4" />
-            بازگشت به تابلو
+            بازگشت به تیکت‌ها
           </Link>
         </Button>
 
         <PageHeader
-          title="تنظیمات طبقه‌بندی کار"
-          description="مدیریت گروه‌ها، بخش‌ها و برچسب‌های نوع برای دستیار کار"
+          title="تنظیمات طبقه‌بندی تیکت"
+          description="مدیریت گروه‌ها، بخش‌ها و برچسب‌های نوع برای تیکت‌ها"
         />
 
         <Tabs

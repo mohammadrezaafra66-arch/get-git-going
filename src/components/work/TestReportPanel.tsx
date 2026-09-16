@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { formatJalaliDateTime } from "@/lib/messenger/format";
 import {
   createWorkItem,
   listTestReports,
@@ -15,6 +16,7 @@ import {
   type WorkTestReport,
   type WorkTestVerdict,
 } from "@/lib/work";
+import { JalaliDateTimeInput } from "./JalaliDateTimeInput";
 
 const VERDICT_LABELS: Record<WorkTestVerdict, string> = {
   approve: "تأیید",
@@ -36,14 +38,6 @@ function fromDatetimeLocalValue(local: string): string | null {
   const d = new Date(v);
   if (Number.isNaN(d.getTime())) return null;
   return d.toISOString();
-}
-
-function formatFaDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleString("fa-IR");
-  } catch {
-    return iso;
-  }
 }
 
 export function TestReportPanel({
@@ -225,13 +219,11 @@ export function TestReportPanel({
             موعد ادعا‌شده
             {needsEtaGate ? " (برای رد الزامی)" : " (اختیاری برای به‌روزرسانی)"}
           </Label>
-          <Input
+          <JalaliDateTimeInput
             id="test-report-eta"
-            type="datetime-local"
-            dir="ltr"
-            className="text-start"
+            data-testid="test-report-eta"
             value={claimedDueLocal}
-            onChange={(e) => setClaimedDueLocal(e.target.value)}
+            onChange={setClaimedDueLocal}
             disabled={!canSubmit || submitting !== null}
           />
         </div>
@@ -338,7 +330,7 @@ export function TestReportPanel({
                     {VERDICT_LABELS[r.verdict] ?? r.verdict}
                   </span>
                   <time className="text-slate-400" dateTime={r.created_at}>
-                    {formatFaDate(r.created_at)}
+                    {formatJalaliDateTime(r.created_at)}
                   </time>
                 </div>
                 {r.notes && (

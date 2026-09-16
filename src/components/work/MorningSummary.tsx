@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
-import { Loader2, Sunrise } from "lucide-react";
+import { CircleHelp, Loader2, Sunrise } from "lucide-react";
 import { toFaDigits } from "@/lib/i18n/formatters";
+import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
 import { cn } from "@/lib/utils";
 import type { WorkMorningSummary } from "@/lib/work";
 import { IMPACT_LABELS } from "./labels";
@@ -10,6 +11,13 @@ export type MorningBucketKey =
   | "today_do"
   | "waiting"
   | "open";
+
+const BUCKET_EMOJI: Record<MorningBucketKey, string> = {
+  today_decide: "🤔",
+  today_do: "✅",
+  waiting: "⏳",
+  open: "📂",
+};
 
 export function MorningSummaryStrip({
   summary,
@@ -71,10 +79,13 @@ export function MorningSummaryStrip({
       dir="rtl"
     >
       <div className="flex flex-wrap items-center gap-2 border-b border-sky-100/80 px-4 py-3">
+        <span className="text-base" aria-hidden>
+          ☀️
+        </span>
         <Sunrise className="h-4 w-4 text-teal-700" />
         <h2 className="text-sm font-semibold text-slate-800">خلاصهٔ صبحگاهی</h2>
         <span className="text-xs text-slate-500">
-          تا {toFaDigits(summary.as_of_date)}
+          تا {isoToJalaliDisplay(summary.as_of_date) || toFaDigits(summary.as_of_date)}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
@@ -99,30 +110,35 @@ export function MorningSummaryStrip({
                 onClick={() => onBucketClick?.(c.key)}
                 className={className}
               >
-                <div className="text-2xl font-bold tracking-tight text-slate-800">
-                  {toFaDigits(c.value)}
+                <div className="text-lg" aria-hidden>
+                  {BUCKET_EMOJI[c.key]}
                 </div>
                 <div className="mt-1 text-xs text-slate-500">{c.label}</div>
+                <div className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900">
+                  {toFaDigits(c.value)}
+                </div>
               </button>
             );
           }
           return (
-            <div
-              key={c.key}
-              data-testid={`morning-bucket-${c.key}`}
-              className={className}
-            >
-              <div className="text-2xl font-bold tracking-tight text-slate-800">
-                {toFaDigits(c.value)}
+            <div key={c.key} className={className}>
+              <div className="text-lg" aria-hidden>
+                {BUCKET_EMOJI[c.key]}
               </div>
               <div className="mt-1 text-xs text-slate-500">{c.label}</div>
+              <div className="mt-0.5 text-xl font-semibold tabular-nums text-slate-900">
+                {toFaDigits(c.value)}
+              </div>
             </div>
           );
         })}
       </div>
       {summary.top_impact.length > 0 && (
         <div className="border-t border-sky-100/80 px-4 py-3">
-          <p className="mb-2 text-xs font-medium text-slate-600">بیشترین اثر</p>
+          <p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-slate-600">
+            <CircleHelp className="h-3.5 w-3.5" />
+            بیشترین اثر
+          </p>
           <ul className="space-y-1.5">
             {summary.top_impact.slice(0, 3).map((item) => (
               <li key={item.id} className="flex items-center justify-between gap-2 text-sm">

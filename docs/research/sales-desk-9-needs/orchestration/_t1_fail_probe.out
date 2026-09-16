@@ -1,0 +1,52 @@
+
+Running 1 test using 1 worker
+
+(node:34152) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/1] [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:189:3 › sales-desk-9 business flow › 2 · create request interaction via sales-desk UI
+  1) [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:189:3 › sales-desk-9 business flow › 2 · create request interaction via sales-desk UI 
+
+    Error: expect(locator).toBeVisible() failed
+
+    Locator: getByText('میز فروش').first()
+    Expected: visible
+    Timeout: 60000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeVisible" with timeout 60000ms
+      - waiting for getByText('میز فروش').first()
+
+
+      190 |     await enterApp(page);
+      191 |     await page.goto(`${BASE_URL}/operations/sales-desk`, { waitUntil: "domcontentloaded" });
+    > 192 |     await expect(page.getByText("میز فروش").first()).toBeVisible({ timeout: 60_000 });
+          |                                                      ^
+      193 |     await expect(page.getByText("ثبت سریع درخواست").first()).toBeVisible({ timeout: 30_000 });
+      194 |
+      195 |     await page.locator("#sd-person-q").fill(fx.displayName);
+        at D:\AfraKalaTest\app\e2e\business-flows\sales-desk-9.spec.ts:192:54
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-sales-desk--2e7c7-teraction-via-sales-desk-UI-chromium-admin\test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-sales-desk--2e7c7-teraction-via-sales-desk-UI-chromium-admin\video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results\211-218\business-flows-sales-desk--2e7c7-teraction-via-sales-desk-UI-chromium-admin\error-context.md
+
+    attachment #4: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results\211-218\business-flows-sales-desk--2e7c7-teraction-via-sales-desk-UI-chromium-admin\trace.zip
+    Usage:
+
+        npx playwright show-trace test-results\211-218\business-flows-sales-desk--2e7c7-teraction-via-sales-desk-UI-chromium-admin\trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+  1 failed
+    [chromium-admin] › e2e\business-flows\sales-desk-9.spec.ts:189:3 › sales-desk-9 business flow › 2 · create request interaction via sales-desk UI 

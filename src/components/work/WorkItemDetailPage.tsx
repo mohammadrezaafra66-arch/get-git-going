@@ -89,7 +89,7 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
         listWorkTopics({ limit: 100 }),
       ]);
       if (!row) {
-        setError("این کار پیدا نشد یا دسترسی ندارید.");
+        setError("این تیکت پیدا نشد یا دسترسی ندارید.");
         setItem(null);
         return;
       }
@@ -196,11 +196,11 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
   if (error || !item) {
     return (
       <div className="container max-w-3xl space-y-4 py-8" dir="rtl">
-        <p className="text-sm text-rose-700">{error ?? "کار یافت نشد."}</p>
+        <p className="text-sm text-rose-700">{error ?? "تیکت یافت نشد."}</p>
         <Button variant="outline" asChild>
           <Link to="/operations/work">
             <ArrowRight className="h-4 w-4" />
-            بازگشت به تابلو
+            بازگشت به تیکت‌ها
           </Link>
         </Button>
       </div>
@@ -217,7 +217,7 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
           <Button variant="ghost" size="sm" asChild>
             <Link to="/operations/work">
               <ArrowRight className="h-4 w-4" />
-              تابلو
+              تیکت‌ها
             </Link>
           </Button>
           <Button variant="ghost" size="sm" asChild>
@@ -226,7 +226,7 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
         </div>
 
         <PageHeader
-          title={title || "جزئیات کار"}
+          title={title || "جزئیات تیکت"}
           description="ویرایش کامل فیلدها و تنظیم آرامش ذهن"
           actions={
             <Button size="sm" disabled={saving} onClick={() => void save()}>
