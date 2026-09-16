@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { CircleHelp, Loader2, Sunrise } from "lucide-react";
 import { toFaDigits } from "@/lib/i18n/formatters";
+import { isoToJalaliDisplay } from "@/lib/i18n/jalali";
 import { cn } from "@/lib/utils";
 import type { WorkMorningSummary } from "@/lib/work";
 import { IMPACT_LABELS } from "./labels";
@@ -84,7 +85,7 @@ export function MorningSummaryStrip({
         <Sunrise className="h-4 w-4 text-teal-700" />
         <h2 className="text-sm font-semibold text-slate-800">خلاصهٔ صبحگاهی</h2>
         <span className="text-xs text-slate-500">
-          تا {toFaDigits(summary.as_of_date)}
+          تا {isoToJalaliDisplay(summary.as_of_date) || toFaDigits(summary.as_of_date)}
         </span>
       </div>
       <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-4">
