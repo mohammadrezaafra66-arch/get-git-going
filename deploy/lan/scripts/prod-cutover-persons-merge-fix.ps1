@@ -22,7 +22,7 @@ param(
   [string]$RepoRoot = "C:\afrakala",
   [int]$AppPort = 3000,
   [string]$ExpectedBranch = "staging",
-  [string]$MinSha = "REPLACE_AFTER_PUSH",
+  [string]$MinSha = "5b09a0f6",
   [switch]$SkipBackupConfirm
 )
 
@@ -82,7 +82,7 @@ Log ("BRANCH=" + $branch)
 Log ("HEAD=" + $head)
 if ($branch -ne $ExpectedBranch) { Fail ("Expected " + $ExpectedBranch) }
 
-if ($MinSha -ne "REPLACE_AFTER_PUSH") {
+if ($MinSha -ne "5b09a0f6") {
   git merge-base --is-ancestor $MinSha HEAD
   if ($LASTEXITCODE -ne 0) {
     Fail ("HEAD " + $head + " does not contain MinSha " + $MinSha)
@@ -141,3 +141,4 @@ foreach ($p in @("/persons/merge", "/api/version", "/login")) {
 Write-Host "===== AFRAKALA_PERSONS_MERGE_FIX_CUTOVER_END ====="
 Write-Host ("CUTOVER_OK HEAD=" + $head + " APP_PORT=" + $AppPort)
 Write-Host "Manual check: open /persons/merge logged in as admin - must NOT show Something went wrong."
+
