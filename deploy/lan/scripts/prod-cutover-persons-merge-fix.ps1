@@ -82,13 +82,11 @@ Log ("BRANCH=" + $branch)
 Log ("HEAD=" + $head)
 if ($branch -ne $ExpectedBranch) { Fail ("Expected " + $ExpectedBranch) }
 
-if ($MinSha -ne "5b09a0f6") {
-  git merge-base --is-ancestor $MinSha HEAD
-  if ($LASTEXITCODE -ne 0) {
-    Fail ("HEAD " + $head + " does not contain MinSha " + $MinSha)
-  }
-  Log ("MIN_SHA_OK ancestor=" + $MinSha)
+git merge-base --is-ancestor $MinSha HEAD
+if ($LASTEXITCODE -ne 0) {
+  Fail ("HEAD " + $head + " does not contain MinSha " + $MinSha)
 }
+Log ("MIN_SHA_OK ancestor=" + $MinSha)
 
 $route = Join-Path $RepoRoot "src\routes\_app.persons_.merge.tsx"
 if (-not (Test-Path -LiteralPath $route)) { Fail "Missing persons merge route" }
@@ -101,6 +99,7 @@ Log "GIT_TREE_OK"
 Log "STEP rebuild web"
 $env:GIT_SHA = $head
 $env:BUILD_TIME = (Get-Date -Format o)
+$prev = $ErrorActionPreference
 $ErrorActionPreference = "Continue"
 docker compose --env-file $EnvFile -f $Compose up -d --no-deps --build web
 $buildCode = $LASTEXITCODE
