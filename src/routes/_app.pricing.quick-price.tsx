@@ -1,7 +1,7 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Calculator, Loader2, AlertCircle, Copy, CheckCircle2 } from "lucide-react";
+import { Calculator, Loader2, AlertCircle, Copy, CheckCircle2, Search } from "lucide-react";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import type { AppRole } from "@/lib/rbac/roles";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -56,7 +56,7 @@ function QuickPricePage() {
 
   const { data: salePriceTypes = [] } = useQuery({
     queryKey: ["sale-price-types-active"],
-    queryFn: () => fetchSalePriceTypes(true),
+    queryFn: () => fetchSalePriceTypes(true, { includeQuickPriceOnly: true }),
     staleTime: 5 * 60_000,
   });
   const { data: settlementTypes = [] } = useQuery({
@@ -180,6 +180,14 @@ function QuickPricePage() {
       <PageHeader
         title="محاسبه سریع قیمت"
         description="محاسبه قیمت فروش پیشنهادی برای کالای خارج از لیست محصولات. این ابزار فقط برای پاسخ سریع به مشتری است و قیمت رسمی ثبت نمی‌کند."
+        actions={
+          <Button asChild variant="outline" size="sm">
+            <Link to="/sales/search">
+              <Search className="ms-1 h-4 w-4" />
+              جستجوی سریع فروش
+            </Link>
+          </Button>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">

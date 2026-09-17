@@ -54,6 +54,7 @@ export async function publishProductPrices(
     .from("sale_price_types")
     .select("id, title")
     .eq("is_active", true)
+    .eq("is_quick_price_only", false)
     .order("sort_order");
   if (sptErr) throw sptErr;
 

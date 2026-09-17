@@ -4,12 +4,12 @@ Prepared from test (`192.168.170.8:3100`) for transfer to production laptop (`19
 
 **Test stamp (verify before cutover):** `curl http://192.168.170.8:3100/api/version`
 
-Preflight on test (2026-09-16):
+Preflight on test (2026-09-16) — **PREFLIGHT_3100=READY** @ **`afa33768`**
 
-- Web `healthy`, commit aligned with `feature/sales-desk` tip at cutover prep
-- Bundle markers: حذف گروهی، لینک merge↔cleanup، `ami_ring` / `ring-popup`
-- Ledger has person `120000`–`123000` and ring `160000`–`162000`
-- `person_detect_merge_candidates(NULL)` OK; `call_ring_events` + `call_logs` receiving data
+- Web `healthy`; `/api/version` commit matches `feature/sales-desk` tip (synced with origin)
+- Smoke 200: sales-desk, work, call-activity, persons-cleanup, call-extensions, search, quick-price, sale-price-types, torob-ops, torob-ops-access
+- Schema: work_items, sales_interactions, call_ring_events, torob_ops_credentials; migrations through `20260916200000`
+- Import/Pricing HTTP 200; CEL live; sidebar pin **میز فروش** in tip
 - Host tasks windowless via `wscript` + `run-ps-hidden.vbs`: CelRing / Import / Pricing
 
 Branch / PR: `feature/sales-desk`, [#451](https://github.com/mohammadrezaafra66-arch/get-git-going/pull/451) → `staging`.
@@ -24,6 +24,7 @@ Branch / PR: `feature/sales-desk`, [#451](https://github.com/mohammadrezaafra66-
 |---|---|
 | Sales desk (۹ نیاز فروش) | `/operations/sales-desk` |
 | Caller popup — inbound + outbound, panel from **left** | `CallerInboundPopup` (Sheet `side=left`) |
+| Sidebar pin **میز فروش** next to **تیکت** | `AppSidebar` → `/operations/sales-desk` |
 | Live ring feed (not CDR-only) | `call_ring_events` via `recent-calls.ts` |
 | Call activity page updates | `/operations/call-activity` |
 | Person hard-identity gate + merge candidates | create/merge RPCs |

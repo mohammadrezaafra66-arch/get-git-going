@@ -33,12 +33,14 @@ export async function updateBoardSalePriceType(opts: {
   // اعتبارسنجی نوع قیمت فروش (باید موجود و فعال باشد)
   const { data: spt, error: sptErr } = await supabase
     .from("sale_price_types")
-    .select("id, is_active")
+    .select("id, is_active, is_quick_price_only")
     .eq("id", newSalePriceTypeId)
     .maybeSingle();
   if (sptErr) throw sptErr;
   if (!spt) throw new Error("نوع قیمت فروش انتخابی یافت نشد.");
   if (!spt.is_active) throw new Error("نوع قیمت فروش انتخابی فعال نیست.");
+  if (spt.is_quick_price_only)
+    throw new Error("این نوع قیمت فقط برای محاسبه سریع است و روی تابلو قابل انتخاب نیست.");
 
   // مقدار فعلی برای audit
   const prev = await fetchBoardSetting(boardKey);
