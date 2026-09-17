@@ -115,10 +115,17 @@ function PersonMergePage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["person-merge-candidates"],
     enabled: allowed,
-    queryFn: async () => {
+    queryFn: async (): Promise<Candidate[]> => {
       const { data, error } = await supabase.rpc("person_merge_candidates_overview");
       if (error) throw error;
-      return (data ?? []) as unknown as Candidate[];
+      // Migration 557+ returns { items, total, limit, offset }. Older builds
+      // returned a bare array. Treating the object as Candidate[] made
+      // candidates.map throw and the route show "Something went wrong"
+      // even when the queue was empty.
+      const raw = data as unknown;
+      if (Array.isArray(raw)) return raw as Candidate[];
+      const obj = (raw ?? {}) as { items?: Candidate[] };
+      return Array.isArray(obj.items) ? obj.items : [];
     },
   });
 
@@ -451,11 +458,11 @@ function SidePanel({
 
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground">شناسه‌ها</div>
-        {side.identifiers.length === 0 ? (
+        {(side.identifiers ?? []).length === 0 ? (
           <div className="text-sm text-muted-foreground">—</div>
         ) : (
           <ul className="space-y-1 text-sm">
-            {side.identifiers.map((i) => (
+            {(side.identifiers ?? []).map((i) => (
               <li key={`${i.kind}-${i.value_normalized}`} className="flex flex-wrap gap-x-2">
                 <span className="text-muted-foreground">{IDENTIFIER_LABEL[i.kind] ?? i.kind}:</span>
                 <span dir="ltr">{i.value_raw}</span>
@@ -473,11 +480,11 @@ function SidePanel({
 
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground">نام‌های دیگر</div>
-        {side.aliases.length === 0 ? (
+        {(side.aliases ?? []).length === 0 ? (
           <div className="text-sm text-muted-foreground">—</div>
         ) : (
           <ul className="text-sm">
-            {side.aliases.map((a) => (
+            {(side.aliases ?? []).map((a) => (
               <li key={a.alias}>{a.alias}</li>
             ))}
           </ul>
@@ -486,11 +493,11 @@ function SidePanel({
 
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground">زمینه‌ها</div>
-        {side.contexts.length === 0 ? (
+        {(side.contexts ?? []).length === 0 ? (
           <div className="text-sm text-muted-foreground">—</div>
         ) : (
           <ul className="text-sm">
-            {side.contexts.map((ctx, idx) => (
+            {(side.contexts ?? []).map((ctx, idx) => (
               <li key={`${ctx.context_kind}-${ctx.ref_id ?? idx}`}>
                 {ctx.context_kind}
                 {ctx.ref_table ? ` · ${ctx.ref_table}` : ""}
