@@ -4,10 +4,14 @@
 
 | Path | Needs | Latency |
 |------|--------|---------|
-| **CEL poller** (`issabel-cel-ring-poller.mjs`) | Existing `ISSABEL_CDR_*` MySQL RO user | ~1s after queue member rings |
+| **CEL poller** (`issabel-cel-ring-poller.mjs`) | Existing `ISSABEL_CDR_*` MySQL RO user | ~1s after queue **or** direct IVR→ext ring |
 | **AMI listener** (`issabel-ami-listener.mjs`) | AMI user + secret + `permit=` for app host | Sub-second push |
 
-CEL is measured working on this PBX today (`CHAN_START` `from-trunk` then `Local/EXT@from-queue`). AMI is the preferred end-state once credentials exist. Both POST to the same hook: `POST /api/public/hooks/issabel-ami-ring`.
+CEL is measured working on this PBX today:
+- queue: `CHAN_START` `from-trunk` then `Local/EXT@from-queue`
+- direct (IVR→ext): `CHAN_START` `from-trunk` then `SIP|PJSIP/EXT-…` in `from-internal` with the same `linkedid`
+
+AMI is the preferred end-state once credentials exist. Both POST to the same hook: `POST /api/public/hooks/issabel-ami-ring`.
 
 ## Create a read-only AMI user on Issabel
 
@@ -50,7 +54,8 @@ powershell -ExecutionPolicy Bypass -File "D:\AfraKalaTest\app\deploy\lan\scripts
 - Task name: `AfraKala-IssabelCelRing` (Hidden)
 - Runs `node` directly; lock file prevents duplicate instances
 - Poll interval 2s; only mapped extensions (`403`, `412`, …) are posted
-- Supports **inbound** (queue ring) and **outbound** (extension dials out)
+- Supports **inbound** (queue ring + direct IVR→extension) and **outbound** (extension dials out)
+- Offline proof: `node deploy/lan/scripts/issabel-cel-ring-replay-test.mjs`
 - Logs only: `deploy/lan/logs/issabel-cel-ring.log` — no user-facing terminal
 
 ## Mapping

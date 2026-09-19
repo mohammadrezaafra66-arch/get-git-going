@@ -29,6 +29,7 @@ import {
   ScanSearch,
   ClipboardList,
   PhoneCall,
+  Phone,
   ChevronDown,
   ChevronLeft,
   type LucideIcon,
@@ -853,6 +854,13 @@ export function AppSidebar() {
               >
                 <Bell className="h-3.5 w-3.5" />
                 <span>اعلان‌ها</span>
+              </Link>
+              <Link
+                to="/settings/caller-id"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                <span>Caller ID</span>
               </Link>
               <Link
                 to="/knowledge"
