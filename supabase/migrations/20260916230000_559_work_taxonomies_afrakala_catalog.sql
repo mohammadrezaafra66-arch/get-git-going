@@ -3,18 +3,8 @@ SET client_encoding TO 'UTF8';
 -- ============================================================================
 -- 559 — Calm Mind: AfraKala work_taxonomies catalog (groups / sections / kind_labels)
 -- ============================================================================
--- Replaces the thin 551 seed with the AfraKala-oriented catalog:
---   groups:   فروش، مالی، کالا / قیمت، خرید، پشتیبانی / IT، عملیات / تلفن،
---             عمومی + توسعه + پیگیری مشتری
---   sections: تیکت، میز فروش، جستجوی سریع فروش، پیش‌فاکتور، اشخاص / مشتری،
---             مطالبات / دریافت، کالا، قیمت‌گذاری / قیمت سریع، خرید،
---             فعالیت تلفنی / ایزابل، توروب، کاربران / دسترسی، عمومی
---   kind_labels: سؤال، درخواست تغییر، باگ، یادداشت، پیشنهاد بهبود،
---                انتقاد / گزارش مشکل
---
--- Soft-deletes live rows that are not in the target set (e.g. دستیار، پشتیبانی،
--- مطالبات) then upserts the target names with stable sort_order.
--- Idempotent. No schema change to work_items (names remain free text).
+-- Soft-deletes live rows that are not in the target set, reactivates soft-deleted
+-- target names, then inserts any still-missing rows. Idempotent.
 -- ============================================================================
 
 SET lock_timeout = '60s';
@@ -71,7 +61,47 @@ BEGIN
           AND keep.name = t.name
      );
 
-  -- Insert missing target rows
+  -- Revive soft-deleted target rows (avoids unique conflicts on re-insert)
+  UPDATE public.work_taxonomies t
+     SET deleted_at = NULL,
+         is_active = true,
+         sort_order = v.sort_order,
+         updated_at = now()
+    FROM (VALUES
+      ('group'::text, 'عمومی'::text, 10),
+      ('group', 'فروش', 20),
+      ('group', 'مالی', 30),
+      ('group', 'کالا / قیمت', 35),
+      ('group', 'خرید', 37),
+      ('group', 'پشتیبانی / IT', 40),
+      ('group', 'عملیات / تلفن', 45),
+      ('group', 'توسعه', 50),
+      ('group', 'پیگیری مشتری', 60),
+      ('section', 'تیکت', 10),
+      ('section', 'میز فروش', 20),
+      ('section', 'جستجوی سریع فروش', 30),
+      ('section', 'پیش‌فاکتور', 40),
+      ('section', 'اشخاص / مشتری', 50),
+      ('section', 'مطالبات / دریافت', 60),
+      ('section', 'کالا', 70),
+      ('section', 'قیمت‌گذاری / قیمت سریع', 80),
+      ('section', 'خرید', 90),
+      ('section', 'فعالیت تلفنی / ایزابل', 100),
+      ('section', 'توروب', 110),
+      ('section', 'کاربران / دسترسی', 120),
+      ('section', 'عمومی', 130),
+      ('kind_label', 'سؤال', 10),
+      ('kind_label', 'درخواست تغییر', 20),
+      ('kind_label', 'باگ', 30),
+      ('kind_label', 'یادداشت', 40),
+      ('kind_label', 'پیشنهاد بهبود', 50),
+      ('kind_label', 'انتقاد / گزارش مشکل', 60)
+    ) AS v(kind, name, sort_order)
+   WHERE t.kind = v.kind
+     AND t.name = v.name
+     AND t.deleted_at IS NOT NULL;
+
+  -- Insert only when no row (live or soft-deleted) exists for that kind+name
   INSERT INTO public.work_taxonomies (kind, name, sort_order, is_active)
   SELECT v.kind, v.name, v.sort_order, true
     FROM (VALUES
@@ -109,7 +139,6 @@ BEGIN
        FROM public.work_taxonomies t
       WHERE t.kind = v.kind
         AND t.name = v.name
-        AND t.deleted_at IS NULL
    );
 
   -- Align sort_order + reactivate for every live target row
@@ -151,6 +180,14 @@ BEGIN
      AND t.name = v.name
      AND t.deleted_at IS NULL
      AND (t.sort_order IS DISTINCT FROM v.sort_order OR t.is_active IS DISTINCT FROM true);
+
+  -- Remove accidental mojibake live rows from failed non-UTF8 applies (name is only ?)
+  UPDATE public.work_taxonomies
+     SET deleted_at = now(),
+         is_active = false,
+         updated_at = now()
+   WHERE deleted_at IS NULL
+     AND name ~ '^\?+$';
 
   SELECT count(*) INTO n_groups
     FROM public.work_taxonomies

@@ -142,8 +142,14 @@ foreach ($v in $need) {
   $file = Get-ChildItem -Path $MigDir -Filter ($v + "_*.sql") | Select-Object -First 1
   if (-not $file) { Fail ("MISSING FILE for " + $v + " in " + $MigDir) }
   Write-Host ("APPLY {0} ..." -f $file.Name)
-  $sql = [System.IO.File]::ReadAllText($file.FullName)
-  $sql | docker exec -i -e PGPASSWORD=$pw $DbContainer psql -U supabase_admin -d $DbName -v ON_ERROR_STOP=1 --single-transaction
+  # Byte-safe: never pipe Persian SQL through PowerShell (becomes ????)
+  $remote = ("/tmp/cutover_{0}.sql" -f $v)
+  docker cp $file.FullName ("{0}:{1}" -f $DbContainer, $remote)
+  if ($LASTEXITCODE -ne 0) { Fail ("docker cp failed for " + $file.Name) }
+  docker exec -e PGPASSWORD=$pw $DbContainer `
+    psql -U supabase_admin -d $DbName -v ON_ERROR_STOP=1 --single-transaction `
+    -c "SET client_encoding TO 'UTF8';" `
+    -f $remote
   if ($LASTEXITCODE -ne 0) { Fail ("Migration failed: " + $file.Name) }
   docker exec -e PGPASSWORD=$pw $DbContainer psql -U supabase_admin -d $DbName -c ("INSERT INTO supabase_migrations.schema_migrations (version) VALUES ('{0}') ON CONFLICT DO NOTHING;" -f $v)
   Write-Host ("OK {0}" -f $v)
@@ -153,14 +159,9 @@ docker exec -e PGPASSWORD=$pw $DbContainer psql -U supabase_admin -d $DbName -c 
 docker restart afrakala-lan-rest | Out-Null
 Start-Sleep -Seconds 5
 
-$checkSql = @"
-SELECT to_regclass('public.user_caller_id_settings') AS user_caller_id_settings;
-SELECT count(*) AS ticket_sections
-  FROM public.work_taxonomies
- WHERE deleted_at IS NULL AND kind = 'section' AND name = 'تیکت';
-"@
 Write-Host "--- DB check ---"
-$checkSql | docker exec -i -e PGPASSWORD=$pw $DbContainer psql -U supabase_admin -d $DbName
+docker exec -e PGPASSWORD=$pw $DbContainer psql -U supabase_admin -d $DbName -c "SELECT to_regclass('public.user_caller_id_settings') AS user_caller_id_settings;"
+docker exec -e PGPASSWORD=$pw $DbContainer psql -U supabase_admin -d $DbName -c "SELECT kind, count(*) FROM public.work_taxonomies WHERE deleted_at IS NULL AND is_active GROUP BY kind ORDER BY 1;"
 
 # --- 4) Rebuild web + CEL task ---
 Write-Host "`n[4/5] rebuild web + register CEL poller..." -ForegroundColor Yellow
