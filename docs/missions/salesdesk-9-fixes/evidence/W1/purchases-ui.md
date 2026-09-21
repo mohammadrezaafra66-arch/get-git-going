@@ -1,76 +1,89 @@
-# A6 — purchases UI («بدون تأمین‌کننده»)
+# W1 / Purchases UI — A4 · A5 · A6
 
-**Status:** implemented in worktree `wt-salesdesk-9-fixes`  
-**Date:** 2026-09-21  
-**Base HEAD when finishing:** `ccc40c44439999973029d46f14079abf60ecd2ba` (prior commit already landed a first A6 pass; this pass fixes global SQL count + purchases columns)
+Worktree: `D:\AfraKalaTest\wt-salesdesk-9-fixes`  
+Branch: `feature/salesdesk-9-fixes`
 
-## Acceptance (N27 / EXECUTION-PROMPT A6)
+## Acceptance
 
-| Criterion | Result | Evidence |
-|-----------|--------|----------|
-| Exact label «بدون تأمین‌کننده» | PASS | Switch labels in both routes (`a6-source-probe.txt`) |
-| `supplier_id` in purchase-payments select | PASS | `_app.accounting.purchase-payments.tsx` select includes `supplier_id` |
-| Filter = `supplier_id IS NULL` | PASS | `.is("supplier_id", null)` on list + count queries |
-| UI count = SQL count | PASS | Count query is global (not tab-scoped); SQL probe = **301** |
-| Switch near overdue filter | PASS | Same toolbar row as «فقط دیرکردها» |
-| `/purchases` list (id, number, date, product, supplier) | PASS | Table heads: شناسه / شماره / تاریخ / محصول / تأمین‌کننده |
-| Keep create button | PASS | «ثبت خرید جدید» retained |
-| Loading / empty / error | PASS | Spinner; EmptyState; error card on list failure |
-
-## SQL probe (E3)
-
-```text
-docker exec afrakala-lan-db psql -U postgres -d afrakala -A -t -c
-  "SET default_transaction_read_only = on;
-   SELECT count(*) FROM public.purchases WHERE supplier_id IS NULL;
-   SELECT count(*) FROM public.purchases;"
-→ EXIT=0
-→ 301
-→ 317
-```
-
-Saved: `purchases-sql-count.txt`
-
-UI badge reads the same predicate via PostgREST:
-
-```ts
-supabase.from("purchases").select("id", { count: "exact", head: true }).is("supplier_id", null)
-```
-
-So the number shown next to «بدون تأمین‌کننده» is the same 301 (until data changes).
+| Row | Requirement | Status |
+|-----|-------------|--------|
+| A4 | Remove «نامشخص» / `SUPPLIER_UNKNOWN`; supplier required in zod + UI; map `SUPPLIER_REQUIRED` → «تأمین‌کننده الزامی است» | Done |
+| A5 | «+ تأمین‌کنندهٔ جدید» quick-create selects new supplier after create | Done |
+| A6 | Filter «بدون تأمین‌کننده» on purchases list + `/accounting/purchase-payments`; UI count = SQL `supplier_id IS NULL` | Done |
 
 ## Files changed
 
-1. `src/routes/_app.accounting.purchase-payments.tsx`
-   - Always-on global `noSupplierCount` query (not limited to unpaid/paid tab)
-   - Badge on the switch with `data-testid="purchase-payments-no-supplier-count"`
-   - Switch placed next to overdue filter
-   - Server-side `.is("supplier_id", null)` when filter on; row cell shows «بدون تأمین‌کننده»
+| File | Change |
+|------|--------|
+| `src/shared/components/PurchaseForm.tsx` | Required `supplier_id` uuid; no `SUPPLIER_UNKNOWN`/«نامشخص»; label «تأمین‌کننده»; button «+ تأمین‌کنندهٔ جدید»; field error; A5 optimistic `setQueryData` + `pendingSupplierId`; Zod v4: `.string().uuid({ message })` (no invalid `required_error`) |
+| `src/hooks/purchase/useCreatePurchase.ts` | `HINT_MESSAGES.SUPPLIER_REQUIRED` + message/details scan |
+| `src/hooks/purchase/useCreatePurchase.supplier-required.test.ts` | Unit tests (hint / message / details) |
+| `src/routes/_app.purchases.tsx` | List + Switch «بدون تأمین‌کننده» + exact-count badge |
+| `src/routes/_app.accounting.purchase-payments.tsx` | Same filter; global exact count (not tab-scoped) |
+| `docs/missions/salesdesk-9-fixes/evidence/W1/purchases-ui.md` | This file |
+| `docs/missions/salesdesk-9-fixes/evidence/W1/purchaseErrorMessage-test.txt` | Unit test stdout EXIT=0 |
+| `docs/missions/salesdesk-9-fixes/evidence/W1/tsc-after-ui.txt` | After zod fix: **0** `PurchaseForm` errors |
+| `docs/missions/salesdesk-9-fixes/evidence/W1/purchases-sql-count.txt` | SQL null=301 / total=317 |
+| `docs/missions/salesdesk-9-fixes/evidence/W1/a4-before.txt` | NULL insert ACCEPTED before trigger; REFUSED `SUPPLIER_REQUIRED` after |
 
-2. `src/routes/_app.purchases.tsx`
-   - Replaced EmptyState-only page with list: id, number, date, product, supplier
-   - Same filter + SQL-matching badge count
-   - Create button kept
+## Labels (exact)
 
-## Before → after (E4)
+- «تأمین‌کننده»
+- «+ تأمین‌کنندهٔ جدید»
+- «بدون تأمین‌کننده»
+- «تأمین‌کننده الزامی است» ← `SUPPLIER_REQUIRED`
 
-| Probe | Before (HEAD `95abed85` A6 first pass / earlier EmptyState) | After |
-|-------|---------------------------------------------------------------|-------|
-| `/purchases` | EmptyState «لیست خریدها در فاز بعدی» **or** list without id column / total-all count when filter off | List with id+number+date+product+supplier; badge = SQL null count |
-| purchase-payments count | Tab-scoped count (`paid_at` filter) → would not match `SELECT count(*) … IS NULL` | Global count query; badge always visible when count > 0 |
-| SQL null rows | 301 (unchanged) | UI designed to display 301 |
+## Pattern followed
 
-## Typecheck
+- Item 229 `PersonModal` + `pendingSupplierId` race fix; A5 seeds `purchase-form-suppliers` cache so required Select validates immediately.
+- Error mapping: HINT_MESSAGES + raw scan (trigger puts ASCII in `SQLERRM` — see `a4-before.txt`).
+- Filter: Switch like overdue/unassigned filters; count via `{ count: 'exact', head: true }.is('supplier_id', null)`.
 
-Full `tsc --noEmit` still exits 2 with many pre-existing errors outside A6 (see `typecheck-a6-baseline.txt`).  
-Scoped filter for these two route files: `a6-tsc-scoped.txt` (empty = no errors in A6 files).
+## Data shape (source)
+
+- `purchases.supplier_id` nullable uuid — types + `W1-tmp-purchases.txt`.
+- Trigger (parallel): ASCII `SUPPLIER_REQUIRED` — `a4-before.txt`.
+- Quick-create: `PersonInlineResult.legacy_id` → `suppliers.id`.
+
+## Baseline / build (E3)
+
+- Full `tsc --noEmit` EXIT=2 (~80 pre-existing project errors).
+- After A4 zod fix: `PurchaseForm` error count **0** (`tsc-after-ui.txt`).
+- `npx tsx --test src/hooks/purchase/useCreatePurchase.supplier-required.test.ts` → EXIT=0, 3 pass.
+
+## E4 — before / after
+
+### A4 mapping
+- Before: no `SUPPLIER_REQUIRED` in HINT_MESSAGES (Wave 0).
+- After: unit test asserts Persian label for hint/message/details.
+
+### A4 form
+- Before: `SUPPLIER_UNKNOWN` + «نامشخص» → NULL save.
+- After: ripgrep clean of those tokens; zod blocks empty supplier.
+
+### A6 count
+- SQL: **301** rows with `supplier_id IS NULL` (`purchases-sql-count.txt`).
+- UI badge uses the same exact-count query on `/purchases` and purchase-payments.
+
+## States
+
+| Surface | loading | empty | error | success |
+|---------|---------|-------|-------|---------|
+| PurchaseForm | mutation spinner | — | toast + field error | toast + reset |
+| `/purchases` | Loader2 | EmptyState | destructive card | table |
+| purchase-payments | Loader2 | «موردی یافت نشد» | existing | table + filter |
 
 ## Not verified here
 
-- Playwright acceptance test `salesdesk-9-fixes-w1-acceptance.spec.ts` test 3 against live :3100 (needs redeploy of this SHA).
-- Visual/browser click of the switch in this session.
+- Live Playwright against :3100 for PersonModal (existing `e2e/persons/inline-supplier-create.spec.ts`).
+- Full `vite build` (project tsc debt unrelated).
 
 ## Out of scope
 
-- Work/ticket files (A1–A3) — not touched.
-- PurchaseForm A4/A5 — already done; not changed.
+- DB trigger body (parallel).
+- Work/ticket UI.
+- `D:\AfraKalaTest\app`.
+
+## Verdict
+
+**COMPLETE** — A4/A5/A6 UI+zod with E3 (unit test, tsc scoped) and E4 (mapping + form + SQL count 301).

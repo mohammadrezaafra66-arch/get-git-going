@@ -18,6 +18,7 @@ export interface WorkItemEvent {
 export const EVENT_FIELD_LABELS: Record<string, string> = {
   status: "وضعیت",
   assignee: "مسئول",
+  assignee_id: "مسئول",
   priority: "اولویت",
   title: "عنوان",
   body: "شرح",

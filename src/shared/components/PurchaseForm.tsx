@@ -55,9 +55,7 @@ import {
 
 const schema = z.object({
   product_id: z.string().uuid({ message: "انتخاب محصول الزامی است" }),
-  supplier_id: z
-    .string({ required_error: "تأمین‌کننده الزامی است" })
-    .uuid({ message: "تأمین‌کننده الزامی است" }),
+  supplier_id: z.string().uuid({ message: "تأمین‌کننده الزامی است" }),
   payment_term_id: z.string().uuid({ message: "انتخاب زمان تسویه الزامی است" }),
   purchase_price: z
     .number({ message: "قیمت خرید الزامی است" })

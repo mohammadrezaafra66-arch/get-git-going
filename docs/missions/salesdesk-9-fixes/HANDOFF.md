@@ -1,6 +1,6 @@
 ﻿# HANDOFF — salesdesk-9-fixes
 Updated: 2026-09-21T19:45:00Z · Worktree: D:\AfraKalaTest\wt-salesdesk-9-fixes · Branch: feature/salesdesk-9-fixes @ ccc40c44 · Base: feature/sales-desk @ c1ea61a1
-Current: Wave 1 — done · 3100 runs: ccc40c44 (healthy)
+Current: Wave 2 — cherry-pick aa63de1c conflicts resolving · 3100 runs: ccc40c44 (healthy) · HEAD: 9630af5a (cherry-pick in progress)
 
 ## Rows
 | Row | Node | Class | Status | Evidence |
