@@ -1,0 +1,1 @@
+﻿{"Status":"healthy","FailingStreak":0,"Log":[{"Start":"2026-09-21T23:13:39.632738289Z","End":"2026-09-21T23:13:39.991278633Z","ExitCode":0,"Output":"{\"ok\":true,\"status\":\"healthy\",\"checks\":{\"database\":{\"state\":\"up\",\"ms\":37},\"whatsapp\":{\"state\":\"up\",\"ms\":26,\"detail\":\"HTTP 404\"}},\"durationMs\":38}"}]}

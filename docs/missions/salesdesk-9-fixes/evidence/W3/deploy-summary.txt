@@ -1,0 +1,12 @@
+W3-OPS deploy gate §8.8
+UTC: 2026-09-21T23:16Z
+HEAD: bc10ec3f
+APP_GIT_SHA: bc10ec3f
+health: healthy
+HTTP: 200 BYTES=6891 url=http://192.168.170.8:3100/
+compose_safety: PASS (only web differs; context D:\AfraKalaTest\wt-salesdesk-9-fixes)
+playwright: PASS e2e/missions/salesdesk-9-fixes-w1-smoke.spec.ts via W1 smoke config
+ERROR_LINES: 74
+TSC_EXIT: 2 (expected with residual errors)
+NPX_RESOLVED: C:\nvm4w\nodejs\npx.cmd
+PLAYWRIGHT_RESOLVED: D:\AfraKalaTest\wt-salesdesk-9-fixes\node_modules\.bin\playwright.cmd
