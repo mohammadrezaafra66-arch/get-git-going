@@ -83,6 +83,7 @@ const HINT_MESSAGES: Record<string, string> = {
   PURCHASE_PAYMENT_TERM_INACTIVE: "زمان تسویه انتخاب‌شده فعال نیست.",
   PURCHASE_SUPPLIER_INVALID: "تأمین‌کنندهٔ انتخاب‌شده معتبر نیست.",
   PURCHASE_SUPPLIER_INACTIVE: "تأمین‌کنندهٔ انتخاب‌شده فعال نیست.",
+  SUPPLIER_REQUIRED: "تأمین‌کننده الزامی است",
   PURCHASE_WAREHOUSE_INVALID: "انبار انتخاب‌شده معتبر نیست.",
   PURCHASE_WAREHOUSE_INACTIVE: "انبار انتخاب‌شده فعال نیست.",
   PURCHASE_CURRENCY_INVALID: "ارز انتخاب‌شده برای سند خرید پشتیبانی نمی‌شود.",
@@ -107,12 +108,23 @@ const HINT_MESSAGES: Record<string, string> = {
   INVALID_ALLOCATION: "مقدار تخصیص معتبر نیست.",
   OVER_ALLOCATION_CONFIRMATION_REQUIRED: "مقدار تخصیص از مقدار باقی‌مانده بیشتر است.",
   OVER_ALLOCATION_NOTE_REQUIRED: "برای تخصیص مازاد باید دلیل ثبت شود.",
+  // Wave 1 / A4 — trigger raises ASCII code SUPPLIER_REQUIRED (hint or message).
+  SUPPLIER_REQUIRED: "تأمین‌کننده الزامی است",
 };
 
 export function purchaseErrorMessage(err: unknown): string {
-  const e = err as { hint?: string; message?: string; code?: string } | null;
+  const e = err as {
+    hint?: string;
+    message?: string;
+    code?: string;
+    details?: string;
+  } | null;
 
   if (e?.hint && HINT_MESSAGES[e.hint]) return HINT_MESSAGES[e.hint];
+
+  // Trigger may put the ASCII code in message/details rather than HINT.
+  const raw = [e?.hint, e?.message, e?.details].filter(Boolean).join(" ");
+  if (/\bSUPPLIER_REQUIRED\b/.test(raw)) return HINT_MESSAGES.SUPPLIER_REQUIRED;
 
   // Persian text raised by a database trigger (for example the inventory
   // trigger) is already operator-readable — pass it through.

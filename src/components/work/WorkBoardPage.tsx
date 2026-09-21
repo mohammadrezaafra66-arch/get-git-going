@@ -29,6 +29,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { formatJalaliDateTime } from "@/lib/messenger/format";
 import {
   acceptMerge,
   dismissMerge,
@@ -132,7 +133,7 @@ export function WorkBoardPage() {
           priority === ALL ? undefined : (priority as WorkItemPriority),
         openOnly: status === ALL && openOnly ? true : undefined,
         search: search.trim() || undefined,
-        limit: 100,
+        limit: 200,
       });
       let filtered = rows;
       if (workMode !== ALL) {
@@ -330,6 +331,68 @@ export function WorkBoardPage() {
     } finally {
       setMergeBusy(null);
     }
+  }
+
+  const openItems = useMemo(
+    () => items.filter((i) => i.status !== "done" && i.status !== "cancelled"),
+    [items],
+  );
+  const closedItems = useMemo(
+    () => items.filter((i) => i.status === "done" || i.status === "cancelled"),
+    [items],
+  );
+
+  function renderItemRow(item: WorkItem) {
+    return (
+      <li
+        key={item.id}
+        className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div className="min-w-0">
+          <Link
+            to="/operations/work/$itemId"
+            params={{ itemId: item.id }}
+            className="block truncate font-medium text-slate-800 hover:text-teal-800"
+          >
+            {item.title}
+          </Link>
+          <div className="mt-1 flex flex-wrap gap-1.5 text-xs text-slate-600">
+            <span>ایجاد کننده: {item.creator_id?.slice(0, 8) ?? "—"}</span>
+            <span>·</span>
+            <span>مسئول: {item.assignee_id?.slice(0, 8) ?? "—"}</span>
+            <span>·</span>
+            <span>تاریخ ثبت: {formatJalaliDateTime(item.created_at)}</span>
+            {item.completed_at && (
+              <>
+                <span>·</span>
+                <span>
+                  تاریخ بسته شدن: {formatJalaliDateTime(item.completed_at)}
+                </span>
+              </>
+            )}
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            <Badge variant="secondary">{STATUS_LABELS[item.status]}</Badge>
+            <Badge variant="outline">{KIND_LABELS[item.kind]}</Badge>
+            <Badge variant="outline">{PRIORITY_LABELS[item.priority]}</Badge>
+            {item.decision_bucket && (
+              <Badge variant="outline">
+                {BUCKET_LABELS[item.decision_bucket]}
+              </Badge>
+            )}
+            <Badge variant="outline">{MODE_LABELS[item.work_mode]}</Badge>
+            {item.group_name && (
+              <Badge variant="outline">{item.group_name}</Badge>
+            )}
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/operations/work/$itemId" params={{ itemId: item.id }}>
+            جزئیات
+          </Link>
+        </Button>
+      </li>
+    );
   }
 
   return (
@@ -594,46 +657,34 @@ export function WorkBoardPage() {
             </div>
           )}
 
-          <ul className="divide-y divide-slate-100">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <Link
-                    to="/operations/work/$itemId"
-                    params={{ itemId: item.id }}
-                    className="block truncate font-medium text-slate-800 hover:text-teal-800"
-                  >
-                    {item.title}
-                  </Link>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    <Badge variant="secondary">{STATUS_LABELS[item.status]}</Badge>
-                    <Badge variant="outline">{KIND_LABELS[item.kind]}</Badge>
-                    <Badge variant="outline">{PRIORITY_LABELS[item.priority]}</Badge>
-                    {item.decision_bucket && (
-                      <Badge variant="outline">
-                        {BUCKET_LABELS[item.decision_bucket]}
-                      </Badge>
-                    )}
-                    <Badge variant="outline">{MODE_LABELS[item.work_mode]}</Badge>
-                    {item.group_name && (
-                      <Badge variant="outline">{item.group_name}</Badge>
-                    )}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link
-                    to="/operations/work/$itemId"
-                    params={{ itemId: item.id }}
-                  >
-                    جزئیات
-                  </Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-6">
+            <div>
+              <h3 className="mb-1 text-sm font-semibold text-slate-800">
+                در حال اجرا ({openItems.length})
+              </h3>
+              <ul className="divide-y divide-slate-100">
+                {openItems.length === 0 ? (
+                  <li className="py-4 text-sm text-slate-500">موردی نیست</li>
+                ) : (
+                  openItems.map(renderItemRow)
+                )}
+              </ul>
+            </div>
+            {!openOnly && (
+              <div>
+                <h3 className="mb-1 text-sm font-semibold text-slate-800">
+                  بسته شده ({closedItems.length})
+                </h3>
+                <ul className="divide-y divide-slate-100">
+                  {closedItems.length === 0 ? (
+                    <li className="py-4 text-sm text-slate-500">موردی نیست</li>
+                  ) : (
+                    closedItems.map(renderItemRow)
+                  )}
+                </ul>
+              </div>
+            )}
+          </div>
         </section>
       </div>
 

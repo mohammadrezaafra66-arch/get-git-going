@@ -133,6 +133,10 @@ export type UpdateWorkItemPatch = Partial<
 
 export interface ListWorkItemsFilters {
   status?: WorkItemStatus | WorkItemStatus[];
+  /** Exclude done/cancelled when true. */
+  openOnly?: boolean;
+  /** Only done/cancelled. */
+  closedOnly?: boolean;
   kind?: WorkItemKind;
   priority?: WorkItemPriority;
   assignee_id?: string;
@@ -140,8 +144,6 @@ export interface ListWorkItemsFilters {
   topic_id?: string | null;
   decision_bucket?: WorkDecisionBucket;
   decision_bucket_date?: string;
-  /** Exclude done/cancelled when true (default false). */
-  openOnly?: boolean;
   search?: string;
   limit?: number;
 }
@@ -159,3 +161,17 @@ export type UpdateWorkTopicPatch = Partial<
 
 /** Jaccard similarity threshold used by DB scan and TS enrichment. */
 export const WORK_MERGE_SIMILARITY_THRESHOLD = 0.35;
+
+/** Open ticket = not done/cancelled. */
+export const WORK_OPEN_STATUSES: WorkItemStatus[] = [
+  "pending",
+  "in_progress",
+  "testing",
+];
+
+/** Closed ticket = done or cancelled. */
+export const WORK_CLOSED_STATUSES: WorkItemStatus[] = ["done", "cancelled"];
+
+export function isWorkItemClosed(status: WorkItemStatus): boolean {
+  return status === "done" || status === "cancelled";
+}

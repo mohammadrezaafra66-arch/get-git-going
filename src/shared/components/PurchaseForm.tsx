@@ -2,9 +2,9 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown, Loader2, Coins, Plus } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, Coins } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -16,14 +16,13 @@ import {
   type CreatePurchaseResult,
 } from "@/hooks/purchase/useCreatePurchase";
 import { cn } from "@/lib/utils";
-import { toFaDigits, formatDateFa } from "@/lib/i18n/formatters";
+import { toFaDigits } from "@/lib/i18n/formatters";
 import { CURRENCY_LABELS as PRICING_CURRENCY_LABELS } from "@/lib/pricing/constants";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { PersonModal } from "@/components/persons/PersonModal";
@@ -54,11 +53,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-const SUPPLIER_UNKNOWN = "__none__";
-
 const schema = z.object({
   product_id: z.string().uuid({ message: "انتخاب محصول الزامی است" }),
-  supplier_id: z.string().nullable(),
+  supplier_id: z
+    .string({ required_error: "تأمین‌کننده الزامی است" })
+    .uuid({ message: "تأمین‌کننده الزامی است" }),
   payment_term_id: z.string().uuid({ message: "انتخاب زمان تسویه الزامی است" }),
   purchase_price: z
     .number({ message: "قیمت خرید الزامی است" })
@@ -86,7 +85,7 @@ type FormValues = z.infer<typeof schema>;
 
 const defaultValues: FormValues = {
   product_id: "",
-  supplier_id: null,
+  supplier_id: "" as unknown as FormValues["supplier_id"],
   payment_term_id: "",
   purchase_price: undefined as unknown as number,
   currency: "toman",
@@ -129,9 +128,10 @@ export function PurchaseForm({
   submitLabel,
   onSuccess,
 }: PurchaseFormProps = {}) {
-  // `user` and `queryClient` are no longer needed here: created_by is taken
-  // from auth.uid() inside the RPC (never trusted from the client), and the
-  // purchases cache is invalidated by useCreatePurchase.
+  // created_by is taken from auth.uid() inside the RPC (never trusted from the
+  // client). queryClient is used only to optimistically insert a quick-created
+  // supplier so the required Select can resolve before refetch finishes (A5).
+  const queryClient = useQueryClient();
   const productLocked = !!lockedFields?.includes("product_id");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [personModalOpen, setPersonModalOpen] = useState(false);
@@ -255,8 +255,11 @@ export function PurchaseForm({
   const onConfirm = () => {
     setConfirmOpen(false);
     const values = form.getValues();
-    const supplierId =
-      values.supplier_id && values.supplier_id !== SUPPLIER_UNKNOWN ? values.supplier_id : null;
+    const supplierId = values.supplier_id;
+    if (!supplierId) {
+      form.setError("supplier_id", { message: "تأمین‌کننده الزامی است" });
+      return;
+    }
 
     mutation.mutate(
       {
@@ -433,7 +436,9 @@ export function PurchaseForm({
       {/* تأمین‌کننده */}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <Label>تأمین‌کننده</Label>
+          <Label>
+            تأمین‌کننده <span className="text-destructive">*</span>
+          </Label>
           {/*
             Item 229 — inline creation. Before this, a purchase from a supplier
             that did not exist yet forced the user to abandon the form, go to
@@ -447,19 +452,19 @@ export function PurchaseForm({
             size="sm"
             onClick={() => setPersonModalOpen(true)}
           >
-            <Plus className="ml-1 h-3 w-3" />
-            تأمین‌کنندهٔ جدید
+            + تأمین‌کنندهٔ جدید
           </Button>
         </div>
         <Select
-          value={form.watch("supplier_id") ?? SUPPLIER_UNKNOWN}
-          onValueChange={(v) => form.setValue("supplier_id", v === SUPPLIER_UNKNOWN ? null : v)}
+          value={form.watch("supplier_id") || undefined}
+          onValueChange={(v) =>
+            form.setValue("supplier_id", v, { shouldDirty: true, shouldValidate: true })
+          }
         >
           <SelectTrigger>
             <SelectValue placeholder="انتخاب تأمین‌کننده" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={SUPPLIER_UNKNOWN}>نامشخص</SelectItem>
             {suppliers.map((s) => (
               <SelectItem key={s.id} value={s.id}>
                 {s.name}
@@ -467,6 +472,9 @@ export function PurchaseForm({
             ))}
           </SelectContent>
         </Select>
+        {errors.supplier_id && (
+          <p className="text-xs text-destructive">{errors.supplier_id.message}</p>
+        )}
       </div>
 
       <PersonModal
@@ -474,11 +482,20 @@ export function PurchaseForm({
         onOpenChange={setPersonModalOpen}
         context="supplier"
         onSuccess={async (result) => {
-          // Record the intent, then refresh the list. The effect above performs
-          // the actual selection once the new supplier is rendered as an option
-          // — selecting here would race the render and silently no-op.
+          // A5: seed the list so the required SelectItem exists in the same
+          // commit as pendingSupplierId; the effect then selects + validates.
           if (result.legacy_id) {
-            setPendingSupplierId(result.legacy_id);
+            const id = result.legacy_id;
+            const name = result.display_name;
+            queryClient.setQueryData(
+              ["purchase-form-suppliers"],
+              (old: Array<{ id: string; name: string }> | undefined) => {
+                const list = old ?? [];
+                if (list.some((s) => s.id === id)) return list;
+                return [...list, { id, name }].sort((a, b) => a.name.localeCompare(b.name, "fa"));
+              },
+            );
+            setPendingSupplierId(id);
           }
           await refetchSuppliers();
         }}
