@@ -13,6 +13,7 @@ import { RoleGuard } from "@/components/rbac/RoleGuard";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -33,34 +34,34 @@ type PurchaseRow = {
   id: string;
   number: string | null;
   purchase_date: string;
-  total_amount: number;
-  currency: string | null;
   supplier_id: string | null;
   product: { name: string | null } | null;
   supplier: { name: string | null } | null;
 };
 
 /**
- * Wave 1 / A6 — minimal purchases list with «بدون تأمین‌کننده» filter.
+ * Wave 1 / A6 — purchases list with «بدون تأمین‌کننده» filter.
  *
- * Filter is applied server-side (`supplier_id IS NULL`) and the displayed
- * count comes from an exact-count query so UI count equals SQL count.
+ * Filter is applied server-side (`supplier_id IS NULL`). The badge count comes
+ * from an exact-count query so UI count equals
+ * `SELECT count(*) FROM purchases WHERE supplier_id IS NULL`.
  */
 function PurchasesPage() {
   const [noSupplierOnly, setNoSupplierOnly] = useState(false);
 
-  const countQ = useQuery({
-    queryKey: ["purchases-list-count", noSupplierOnly],
+  /** Always fetch so the switch badge matches SQL even before the filter is on. */
+  const noSupplierCountQ = useQuery({
+    queryKey: ["purchases-no-supplier-count"],
     queryFn: async () => {
-      let q = supabase
+      const { count, error } = await supabase
         .from("purchases")
-        .select("id", { count: "exact", head: true });
-      if (noSupplierOnly) q = q.is("supplier_id", null);
-      const { count, error } = await q;
+        .select("id", { count: "exact", head: true })
+        .is("supplier_id", null);
       if (error) throw error;
       return count ?? 0;
     },
   });
+  const noSupplierCount = noSupplierCountQ.data ?? 0;
 
   const listQ = useQuery({
     queryKey: ["purchases", "list", noSupplierOnly],
@@ -69,7 +70,7 @@ function PurchasesPage() {
         .from("purchases")
         .select(
           `
-          id, number, purchase_date, total_amount, currency, supplier_id,
+          id, number, purchase_date, supplier_id,
           product:products(name),
           supplier:suppliers(name)
         `,
@@ -84,8 +85,7 @@ function PurchasesPage() {
   });
 
   const rows = listQ.data ?? [];
-  const totalCount = countQ.data ?? 0;
-  const isLoading = listQ.isLoading || countQ.isLoading;
+  const isLoading = listQ.isLoading || noSupplierCountQ.isLoading;
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -112,13 +112,25 @@ function PurchasesPage() {
             />
             <Label htmlFor="purchases-no-supplier" className="cursor-pointer text-xs">
               بدون تأمین‌کننده
+              {noSupplierCount > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="mr-1.5"
+                  data-testid="purchases-no-supplier-count"
+                >
+                  {toFaDigits(String(noSupplierCount))}
+                </Badge>
+              )}
             </Label>
           </div>
-          <div className="text-xs text-muted-foreground" data-testid="purchases-no-supplier-count">
-            {noSupplierOnly
-              ? `${toFaDigits(String(totalCount))} خرید بدون تأمین‌کننده`
-              : `${toFaDigits(String(totalCount))} خرید`}
-          </div>
+          {noSupplierOnly && (
+            <div className="text-xs text-muted-foreground">
+              {toFaDigits(String(noSupplierCount))} خرید بدون تأمین‌کننده
+              {rows.length !== noSupplierCount
+                ? ` (نمایش ${toFaDigits(String(rows.length))})`
+                : ""}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -138,7 +150,7 @@ function PurchasesPage() {
           title={noSupplierOnly ? "خریدی بدون تأمین‌کننده نیست" : "هنوز خریدی ثبت نشده"}
           description={
             noSupplierOnly
-              ? "هیچ ردیفی با supplier_id خالی پیدا نشد."
+              ? "همهٔ خریدهای موجود تأمین‌کننده دارند."
               : "برای ثبت یک خرید جدید روی دکمه «ثبت خرید جدید» کلیک کنید."
           }
         />
@@ -149,39 +161,32 @@ function PurchasesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="text-right">شناسه</TableHead>
                     <TableHead className="text-right">شماره</TableHead>
+                    <TableHead className="text-right">تاریخ</TableHead>
                     <TableHead className="text-right">محصول</TableHead>
                     <TableHead className="text-right">تأمین‌کننده</TableHead>
-                    <TableHead className="text-right">تاریخ</TableHead>
-                    <TableHead className="text-right">مبلغ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {rows.map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell className="font-mono text-xs">{r.number ?? "—"}</TableCell>
-                      <TableCell>{r.product?.name ?? "—"}</TableCell>
-                      <TableCell>
-                        {r.supplier_id ? (r.supplier?.name ?? "—") : "بدون تأمین‌کننده"}
+                      <TableCell className="max-w-[8rem] truncate font-mono text-[10px] text-muted-foreground">
+                        {r.id}
                       </TableCell>
+                      <TableCell className="font-mono text-xs">{r.number ?? "—"}</TableCell>
                       <TableCell>
                         {toFaDigits(formatDateFa(new Date(r.purchase_date)))}
                       </TableCell>
+                      <TableCell>{r.product?.name ?? "—"}</TableCell>
                       <TableCell>
-                        {toFaDigits(Math.round(Number(r.total_amount)).toLocaleString("en-US"))}
-                        {r.currency === "usd" ? " $" : r.currency === "aed" ? " د.إ" : " تومان"}
+                        {r.supplier_id ? (r.supplier?.name ?? "—") : "بدون تأمین‌کننده"}
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
-            {noSupplierOnly && rows.length < totalCount && (
-              <p className="border-t px-3 py-2 text-xs text-muted-foreground">
-                نمایش {toFaDigits(String(rows.length))} از {toFaDigits(String(totalCount))} — شمارش
-                کل برابر SQL است.
-              </p>
-            )}
           </CardContent>
         </Card>
       )}

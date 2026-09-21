@@ -179,20 +179,23 @@ function PurchasePaymentsPage() {
   /** Wave 1 / A6 — server-side filter supplier_id IS NULL. */
   const [noSupplierOnly, setNoSupplierOnly] = useState(false);
 
+  /**
+   * A6 — global SQL count: `purchases.supplier_id IS NULL`.
+   * Not scoped to the unpaid/paid tab so the UI number matches
+   * `SELECT count(*) FROM purchases WHERE supplier_id IS NULL`.
+   */
   const noSupplierCountQ = useQuery({
-    queryKey: ["purchase-payments-no-supplier-count", tab],
-    enabled: noSupplierOnly,
+    queryKey: ["purchase-payments-no-supplier-count"],
     queryFn: async () => {
-      let q = supabase
+      const { count, error } = await supabase
         .from("purchases")
         .select("id", { count: "exact", head: true })
         .is("supplier_id", null);
-      q = tab === "unpaid" ? q.is("paid_at", null) : q.not("paid_at", "is", null);
-      const { count, error } = await q;
       if (error) throw error;
       return count ?? 0;
     },
   });
+  const noSupplierCount = noSupplierCountQ.data ?? 0;
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["purchase-payments", tab, noSupplierOnly],
@@ -372,17 +375,6 @@ function PurchasePaymentsPage() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
-                  <Switch
-                    checked={noSupplierOnly}
-                    onCheckedChange={setNoSupplierOnly}
-                    id="pp-no-supplier"
-                    data-testid="filter-no-supplier-payments"
-                  />
-                  <Label htmlFor="pp-no-supplier" className="cursor-pointer text-xs">
-                    بدون تأمین‌کننده
-                  </Label>
-                </div>
                 {tab === "unpaid" && (
                   <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
                     <Switch
@@ -395,6 +387,26 @@ function PurchasePaymentsPage() {
                     </Label>
                   </div>
                 )}
+                <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                  <Switch
+                    checked={noSupplierOnly}
+                    onCheckedChange={setNoSupplierOnly}
+                    id="pp-no-supplier"
+                    data-testid="filter-no-supplier-payments"
+                  />
+                  <Label htmlFor="pp-no-supplier" className="cursor-pointer text-xs">
+                    بدون تأمین‌کننده
+                    {noSupplierCount > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="mr-1.5"
+                        data-testid="purchase-payments-no-supplier-count"
+                      >
+                        {toFaDigits(String(noSupplierCount))}
+                      </Badge>
+                    )}
+                  </Label>
+                </div>
                 <div className="flex items-center gap-2">
                   <Label className="text-xs text-muted-foreground">مرتب‌سازی:</Label>
                   <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -416,10 +428,9 @@ function PurchasePaymentsPage() {
 
           <div className="mb-2 px-1 text-xs text-muted-foreground">
             {noSupplierOnly ? (
-              <span data-testid="purchase-payments-no-supplier-count">
-                {toFaDigits(String(noSupplierCountQ.data ?? filteredRows.length))} خرید بدون
-                تأمین‌کننده
-                {filteredRows.length !== (noSupplierCountQ.data ?? filteredRows.length)
+              <span>
+                {toFaDigits(String(noSupplierCount))} خرید بدون تأمین‌کننده
+                {filteredRows.length !== noSupplierCount
                   ? ` (نمایش ${toFaDigits(String(filteredRows.length))})`
                   : ""}
               </span>
