@@ -7,6 +7,7 @@
 export {
   createSalesInteraction,
   linkSalesInteractionDeal,
+  isMissingDealIdColumnError,
   updateSalesInteractionStatus,
   setSalesInteractionFollowUp,
   type CreateSalesInteractionInput,

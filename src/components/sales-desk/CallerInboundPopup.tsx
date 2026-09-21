@@ -632,6 +632,7 @@ export function CallerInboundPopup() {
                     </TabsList>
                     <TabsContent value="note" className="mt-3">
                       <CallNoteForm
+                        key={active.callKey}
                         compact
                         personId={active.personId}
                         personName={active.displayName}

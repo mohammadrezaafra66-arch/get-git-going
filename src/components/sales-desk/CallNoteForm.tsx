@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -48,8 +48,43 @@ type Props = {
   showAddDeal?: boolean;
 };
 
+function draftPayload(input: {
+  kind: "call" | "note";
+  body: string;
+  title: string;
+  followUpDate: string | null;
+  followUpTime: string;
+  linkedDealId: string | null;
+}): Omit<CallNoteDraft, "updatedAt"> {
+  return {
+    kind: input.kind,
+    body: input.body,
+    title: input.title,
+    followUpDate: input.followUpDate,
+    followUpTime: input.followUpTime,
+    dealId: input.linkedDealId,
+  };
+}
+
+function draftHasContent(
+  payload: Omit<CallNoteDraft, "updatedAt">,
+  defaultKind: "call" | "note",
+): boolean {
+  return Boolean(
+    payload.body.trim() ||
+      payload.title.trim() ||
+      payload.followUpDate ||
+      payload.dealId ||
+      payload.kind !== defaultKind,
+  );
+}
+
 /**
  * فرم خلاصه تماس یا یادداشت دستی (بدون نیاز به Issabel).
+ *
+ * B4: when draftKey changes, flush in-memory fields to the *previous* key,
+ * skip one persist tick for the new key (avoids stale-body overwrite), then load.
+ * Parent should also pass key={draftKey} so React remounts on switch.
  */
 export function CallNoteForm({
   personId,
@@ -83,8 +118,29 @@ export function CallNoteForm({
     dealId ?? stored?.dealId ?? null,
   );
 
-  // Reload when switching active call (draftKey change)
+  const activeKeyRef = useRef<string | null>(draftKey);
+  const skipPersistOnceRef = useRef(false);
+
+  // Switch / remount sync: flush previous key, then load target (skip stale persist)
   useEffect(() => {
+    const prevKey = activeKeyRef.current;
+    if (prevKey && prevKey !== draftKey) {
+      const flush = draftPayload({
+        kind,
+        body,
+        title,
+        followUpDate,
+        followUpTime,
+        linkedDealId,
+      });
+      if (draftHasContent(flush, defaultKind)) {
+        saveCallDraft(prevKey, flush);
+      }
+      skipPersistOnceRef.current = true;
+    }
+
+    activeKeyRef.current = draftKey;
+
     if (!draftKey) return;
     const d = loadCallDraft(draftKey);
     setKind(d?.kind ?? defaultKind);
@@ -93,6 +149,8 @@ export function CallNoteForm({
     setFollowUpDate(d?.followUpDate ?? null);
     setFollowUpTime(d?.followUpTime ?? "09:00");
     setLinkedDealId(dealId ?? d?.dealId ?? null);
+    // intentionally only when draftKey / dealId / defaultKind change — not on every keystroke
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flush uses render snapshot at switch
   }, [draftKey, defaultKind, dealId]);
 
   useEffect(() => {
@@ -101,24 +159,22 @@ export function CallNoteForm({
     }
   }, [dealId]);
 
-  // Persist draft while typing
+  // Persist draft while typing — never with stale body under a newly switched key
   useEffect(() => {
     if (!draftKey) return;
-    const payload: Omit<CallNoteDraft, "updatedAt"> = {
+    if (skipPersistOnceRef.current) {
+      skipPersistOnceRef.current = false;
+      return;
+    }
+    const payload = draftPayload({
       kind,
       body,
       title,
       followUpDate,
       followUpTime,
-      dealId: linkedDealId,
-    };
-    const hasContent =
-      body.trim() ||
-      title.trim() ||
-      followUpDate ||
-      linkedDealId ||
-      kind !== defaultKind;
-    if (!hasContent) return;
+      linkedDealId,
+    });
+    if (!draftHasContent(payload, defaultKind)) return;
     saveCallDraft(draftKey, payload);
   }, [
     draftKey,

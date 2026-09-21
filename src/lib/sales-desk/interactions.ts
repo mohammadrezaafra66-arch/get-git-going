@@ -67,8 +67,23 @@ export async function createSalesInteraction(
 }
 
 /**
+ * Soft-fail only when deal_id column is absent (migration 564 not applied).
+ * FK / RLS / permission errors must NOT match — they must throw.
+ */
+export function isMissingDealIdColumnError(message: string): boolean {
+  const msg = message || "";
+  return (
+    /column\s+["']?deal_id["']?\s+(?:of\s+\S+\s+)?does not exist/i.test(msg) ||
+    /deal_id.*does not exist/i.test(msg) ||
+    /Could not find.*(?:['"]deal_id['"]|column.*deal_id)/i.test(msg) ||
+    /Could not find the ['"]?deal_id['"]? column/i.test(msg) ||
+    /schema cache.*deal_id|deal_id.*schema cache/i.test(msg)
+  );
+}
+
+/**
  * Set sales_interactions.deal_id after create (column from migration 564).
- * No-op / soft-fail if column not applied yet.
+ * Soft-fail only if column missing; FK/constraint errors throw.
  */
 export async function linkSalesInteractionDeal(input: {
   id: string;
@@ -81,7 +96,7 @@ export async function linkSalesInteractionDeal(input: {
 
   if (error) {
     const msg = error.message || "";
-    if (/deal_id|column/i.test(msg)) {
+    if (isMissingDealIdColumnError(msg)) {
       // Migration not live — leave interaction unlinked; UI still saved.
       return;
     }
