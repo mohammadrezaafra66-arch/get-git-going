@@ -1,4 +1,6 @@
-SET client_encoding = 'UTF8';
+SET client_encoding='UTF8';
+
+-- 562-down: restore completed_at = done-only (copy/staging only).
 
 CREATE OR REPLACE FUNCTION public.work_items_before_write()
 RETURNS trigger
@@ -38,3 +40,5 @@ BEGIN
   RETURN NEW;
 END;
 $fn$;
+
+DELETE FROM supabase_migrations.schema_migrations WHERE version = '20260921220200';

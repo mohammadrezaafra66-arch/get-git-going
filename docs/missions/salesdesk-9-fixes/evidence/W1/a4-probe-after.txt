@@ -1,3 +1,6 @@
+rc=0
+NOTICE:  A4_PROBE_OK err=SUPPLIER_REQUIRED
 BEGIN
 DO
 ROLLBACK
+persist_test9fix=0

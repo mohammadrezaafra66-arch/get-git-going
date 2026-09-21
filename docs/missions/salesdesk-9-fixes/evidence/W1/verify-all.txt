@@ -1,0 +1,8 @@
+trig=trg_work_items_before_write
+trig=trg_work_items_log_events
+trig=trg_work_items_updated_at
+purch=trg_purchases_require_supplier
+cols=id,work_item_id,actor_id,event_at,field,old_value,new_value
+fn_has_cancelled=yes
+persist_test9fix=0
+persist_wi_test9fix=0
