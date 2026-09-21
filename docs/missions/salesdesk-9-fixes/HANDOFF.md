@@ -1,5 +1,5 @@
 # HANDOFF — salesdesk-9-fixes
-Updated: 2026-09-21T21:59:00Z · Worktree: D:\AfraKalaTest\wt-salesdesk-9-fixes · Branch: feature/salesdesk-9-fixes @ dcf18a3ad185bca73b9842bbf67c652c1481aa1f · Base: feature/sales-desk @ c1ea61a1
+Updated: 2026-09-21T22:01:00Z · Worktree: D:\AfraKalaTest\wt-salesdesk-9-fixes · Branch: feature/salesdesk-9-fixes @ 2f5f4525bb5229d8acad40603021c336ef043418 · Base: feature/sales-desk @ c1ea61a1
 Current: Wave 2 done · 3100 runs: 8a8b61e3 (healthy)
 
 ## Rows
@@ -15,7 +15,7 @@ Current: Wave 2 done · 3100 runs: 8a8b61e3 (healthy)
 | D… | Wave 4 | — | TODO | |
 
 ## Confirmed facts
-- Worktree branch is `feature/salesdesk-9-fixes`; DOC commit HEAD is `dcf18a3ad185bca73b9842bbf67c652c1481aa1f` (`git rev-parse HEAD` at docs close) — E3.
+- Worktree branch is `feature/salesdesk-9-fixes`; DOC commit HEAD is `2f5f4525bb5229d8acad40603021c336ef043418` (`git rev-parse HEAD` after push) — E3.
 - Base commit `feature/sales-desk` @ `c1ea61a1` appears in `git log` as parent of mission branch history — E3.
 - Container `afrakala-lan-web`: `APP_GIT_SHA=8a8b61e3`, health `healthy`; `GET http://192.168.170.8:3100/` → HTTP 200 (DOC re-probe 2026-09-21T21:56:48Z) — E3.
 - Compose safety: only `web` context differs; verdict SAFE — `evidence/W2/compose-safety.txt` — E2.

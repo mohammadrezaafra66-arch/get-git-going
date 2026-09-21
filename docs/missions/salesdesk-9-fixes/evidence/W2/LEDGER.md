@@ -1,7 +1,7 @@
 ﻿# Wave 2 ledger — B1–B5
 Updated: 2026-09-21T21:57:44Z
 Worktree: D:\AfraKalaTest\wt-salesdesk-9-fixes
-Branch: feature/salesdesk-9-fixes @ dcf18a3ad185bca73b9842bbf67c652c1481aa1f (DOC commit; 3100 deploy SHA below)
+Branch: feature/salesdesk-9-fixes @ 2f5f4525bb5229d8acad40603021c336ef043418 (DOC commit; 3100 deploy SHA below)
 Base HEAD before W2: 00e4a6c027caf3b840eb6b9e43139540242782d0
 3100 runs: 8a8b61e3 (healthy; HTTP 200) — sources: `compose-safety.txt`, `http-smoke.txt`, DOC docker re-probe
 Typecheck: 74 → 74 (≤74) — `fe-report.md` / `fe-tsc-*.txt`

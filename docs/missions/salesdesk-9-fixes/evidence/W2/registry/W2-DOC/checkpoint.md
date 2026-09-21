@@ -8,7 +8,7 @@
 - worktree: `D:\AfraKalaTest\wt-salesdesk-9-fixes`
 - branch: `feature/salesdesk-9-fixes`
 - HEAD_at_start: `264276e08cc9f350ca4800c80cd4f28a2f9c5e1f`
-- HEAD_after_docs: `dcf18a3ad185bca73b9842bbf67c652c1481aa1f`
+- HEAD_after_docs: `2f5f4525bb5229d8acad40603021c336ef043418` (pushed)
 - 3100: `APP_GIT_SHA=8a8b61e3` healthy HTTP 200 (re-probed)
 
 ## Deliverables
