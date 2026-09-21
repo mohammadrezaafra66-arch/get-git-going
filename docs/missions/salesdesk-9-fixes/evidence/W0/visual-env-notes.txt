@@ -1,0 +1,2 @@
+PLAYWRIGHT_BROWSERS_PATH=C:\Users\AFRA\AppData\Local\ms-playwright
+AFRAKALA_LAN_ENV=D:\AfraKalaTest\app\deploy\lan\.env.lan (env var only, no copy)
