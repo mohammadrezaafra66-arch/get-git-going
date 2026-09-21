@@ -20,6 +20,11 @@
  sales_interaction_items_product_id_idx
 (3 rows)
 
-ERROR:  column "cmd" does not exist
-LINE 1: SELECT polname, cmd::text
-                        ^
+            polname             | polcmd 
+--------------------------------+--------
+ sales_interaction_items_delete | d
+ sales_interaction_items_insert | a
+ sales_interaction_items_select | r
+ sales_interaction_items_update | w
+(4 rows)
+

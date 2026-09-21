@@ -9,7 +9,7 @@ SELECT indexname FROM pg_indexes
 WHERE schemaname = 'public' AND tablename = 'sales_interaction_items'
 ORDER BY 1;
 
-SELECT polname, cmd::text
+SELECT polname, polcmd::text
 FROM pg_policy
 WHERE polrelid = 'public.sales_interaction_items'::regclass
 ORDER BY 1;
