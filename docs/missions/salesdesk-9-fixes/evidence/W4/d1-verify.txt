@@ -1,0 +1,84 @@
+all_ok=true
+col_activity_type_id=true
+col_due_at=true
+col_due_has_time=true
+col_original_due_at=true
+col_done_at=true
+col_result_note=true
+col_deal_id=true
+kind_note_2=true
+kind_request_4=true
+mapped_note_sort0_n2=true
+unmapped_request_4=true
+hex_sort_0=true
+hex_sort_1=true
+hex_sort_2=true
+v573_used=true
+
+DECISION: legacy next_follow_up_at → due_at + original_due_at with due_has_time=true when due_at null (call/note). Owner=salesperson_id, creator=author_id. deal_id already from 564.
+
+=== new columns ===
+   column_name    |        data_type         | is_nullable | column_default 
+------------------+--------------------------+-------------+----------------
+ activity_type_id | uuid                     | YES         | 
+ deal_id          | uuid                     | YES         | 
+ done_at          | timestamp with time zone | YES         | 
+ due_at           | timestamp with time zone | YES         | 
+ due_has_time     | boolean                  | NO          | false
+ original_due_at  | timestamp with time zone | YES         | 
+ result_note      | text                     | YES         | 
+(7 rows)
+
+=== FK activity_type_id ===
+                 conname                  |                                def                                 
+------------------------------------------+--------------------------------------------------------------------
+ sales_interactions_activity_type_id_fkey | FOREIGN KEY (activity_type_id) REFERENCES sales_activity_types(id)
+(1 row)
+
+=== indexes ===
+                  indexname                  |                                                                       indexdef                                                                        
+---------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------------------------
+ sales_interactions_activity_type_id_idx     | CREATE INDEX sales_interactions_activity_type_id_idx ON public.sales_interactions USING btree (activity_type_id) WHERE (activity_type_id IS NOT NULL)
+ sales_interactions_deal_id_idx              | CREATE INDEX sales_interactions_deal_id_idx ON public.sales_interactions USING btree (deal_id) WHERE (deal_id IS NOT NULL)
+ sales_interactions_salesperson_due_open_idx | CREATE INDEX sales_interactions_salesperson_due_open_idx ON public.sales_interactions USING btree (salesperson_id, due_at) WHERE (done_at IS NULL)
+(3 rows)
+
+=== kind counts (must match baseline note=2 request=4) ===
+  kind   | n 
+---------+---
+ note    | 2
+ request | 4
+(2 rows)
+
+=== mapped counts by type title hex + sort_order ===
+ sort_order |                   title_hex                    | n 
+------------+------------------------------------------------+---
+          0 | db8cd8a7d8afd8afd8a7d8b4d8aa20d8b3d8a7d8afd987 | 2
+(1 row)
+
+=== unmapped by kind ===
+  kind   | n 
+---------+---
+ request | 4
+(1 row)
+
+=== due_* backfill from next_follow_up_at ===
+ due_copied 
+------------
+          0
+(1 row)
+
+=== version 573 present ===
+ v573_used 
+-----------
+ t
+(1 row)
+
+=== type hex 0/1/2 ===
+ sort_order |                   title_hex                    
+------------+------------------------------------------------
+          0 | db8cd8a7d8afd8afd8a7d8b4d8aa20d8b3d8a7d8afd987
+          1 | d8aad985d8a7d8b320d988d8b1d988d8afdb8c
+          2 | d8aad985d8a7d8b320d8aed8b1d988d8acdb8c
+(3 rows)
+

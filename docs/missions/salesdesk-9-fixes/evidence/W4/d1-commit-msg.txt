@@ -1,0 +1,6 @@
+feat(salesdesk): فیلدهای فعالیت روی sales_interactions و backfill نوع (موج ۴ D1)
+
+چه چیزی تغییر کرد: migration 573 ستون‌های activity_type_id/due_*/done_at/result_note + ایندکس + map call/note؛ revert؛ شواهد baseline/apply/verify/revert؛ CONTRACTS next=574؛ deal_id از 564 دست‌نخورده.
+چرا: D1 · N16 · EXTEND — فعالیت‌ها روی همان جدول بدون تغییر kind؛ due از next_follow_up_at برای D5/D7.
+شواهد: E4 — d1-baseline.txt (activity_* غایب؛ kind note=2 request=4) → d1-apply EXIT=0 → d1-verify all_ok؛ E3 revert round-trip d1-revert-probe + d1-reapply.
+تأییدنشده: ردیف call زنده در این کپی نبود (outbound/inbound map=0)؛ UI D3+.

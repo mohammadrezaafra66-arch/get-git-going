@@ -85,6 +85,7 @@ Current: **Wave 3 DONE** · Wave 4 next · 3100 runs: `APP_GIT_SHA=42392d3f` (he
 - (prior waves retained) Cherry-pick aa63de1c keep HEAD; history.ts `assignee_id`→مسئول; W2 B2 medium TOCTOU residual.
 - Wave 3 C2: after critic REJECT for missing zod, FE added `createDealInteractionSchema` (`c4bcafe9`) rather than owner waiver — matches EXECUTION §5 C2 UI+zod+trigger — `critic-c2-rereview.md`.
 - Wave 3 OPS used existing W1 playwright smoke on redeploy (`playwright-smoke-a2.txt`); full §9 Wave 3 browser script left to owner `ACCEPTANCE.md` — same pattern as W2-OPS.
+- Wave 4 D1 (573): keep `deal_id` from 564 (no new FK). Map call/note → `activity_type_id` without changing `kind`; leave request NULL. Copy legacy `next_follow_up_at` → `due_at`/`original_due_at` with `due_has_time=true` when due was null — evidence `evidence/W4/d1-verify.txt`.
 
 ## Blockers
 

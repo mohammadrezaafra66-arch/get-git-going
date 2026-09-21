@@ -11,3 +11,4 @@
 Next free after this wave: 576
 CONTRACTS next free was stale at 565; live highest applied before W4 = 571.
 D2 applied 572 (`20260922050000`) on LAN copy — see `d2-apply.txt` / `d2-hex-verify.txt`.
+D1 applied 573 (`20260922050100`) on LAN copy — see `d1-apply.txt` / `d1-verify.txt` / `d1-revert-probe.txt` (round-trip).
