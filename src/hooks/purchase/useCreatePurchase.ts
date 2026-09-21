@@ -108,8 +108,6 @@ const HINT_MESSAGES: Record<string, string> = {
   INVALID_ALLOCATION: "مقدار تخصیص معتبر نیست.",
   OVER_ALLOCATION_CONFIRMATION_REQUIRED: "مقدار تخصیص از مقدار باقی‌مانده بیشتر است.",
   OVER_ALLOCATION_NOTE_REQUIRED: "برای تخصیص مازاد باید دلیل ثبت شود.",
-  // Wave 1 / A4 — trigger raises ASCII code SUPPLIER_REQUIRED (hint or message).
-  SUPPLIER_REQUIRED: "تأمین‌کننده الزامی است",
 };
 
 export function purchaseErrorMessage(err: unknown): string {

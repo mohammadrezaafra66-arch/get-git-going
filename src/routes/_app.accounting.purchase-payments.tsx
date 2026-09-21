@@ -304,6 +304,9 @@ function PurchasePaymentsPage() {
         return daysSince(r.purchase_date) > d;
       });
     }
+    if (noSupplierOnly) {
+      out = out.filter((r) => r.supplier_id == null);
+    }
     const sorted = [...out];
     sorted.sort((a, b) => {
       switch (sortBy) {
@@ -323,7 +326,7 @@ function PurchasePaymentsPage() {
       }
     });
     return sorted;
-  }, [rows, debouncedSearch, sortBy, overdueOnly, tab]);
+  }, [rows, debouncedSearch, sortBy, overdueOnly, noSupplierOnly, tab]);
 
   return (
     <div className="space-y-4 pb-10" dir="rtl">
