@@ -1,8 +1,14 @@
 ﻿# W4-DE-D2 checkpoint
 - started: 2026-09-22T04:39:58+05:00
-- updated: 2026-09-22T04:44:30+05:00
-- state: committing
-- prior_HEAD: fbb19478026550304beb8e48822dd206cdde66c3
-- apply: INSERT 0 18, version 20260922050000 (d2-apply.txt)
-- hex: all_ok=true 18/18 (d2-hex-verify.txt)
-- next: commit + push feature/salesdesk-9-fixes
+- updated: 2026-09-22T04:45:30+05:00
+- state: done
+- HEAD: 355c93ec6e0b25de352ac4111944319b6e6b7b62
+- branch: feature/salesdesk-9-fixes
+- push: fbb19478..355c93ec origin/feature/salesdesk-9-fixes (d2-push.txt EXIT=0)
+- migration: supabase/migrations/20260922050000_572_sales_activity_types.sql
+- version: 20260922050000
+- seeded_rows: 18
+- hex_verify: PASS all_ok=true
+- sample_0_hex (یادداشت ساده): db8cd8a7d8afd8afd8a7d8b4d8aa20d8b3d8a7d8afd987
+- sample_17_hex (فاکتورلاین): d981d8a7daa9d8aad988d8b1d984d8a7db8cd986
+- did_not: D1+
