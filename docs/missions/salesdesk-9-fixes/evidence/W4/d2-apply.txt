@@ -1,0 +1,35 @@
+﻿md5_ok f48e43be703bedbf86aece88f8f267ca
+node : psql:/tmp/mig-20260922050000_572_sales_activity_types.sql:59: NOTICE:  policy "sales_activity_types_select" for 
+relation "public.sales_activity_types" does not exist, skipping
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-b5c73bcd-080f-4447-bb4f-93395ca7d55d.ps1:115 char:303
++ ... .length);"; node docs/missions/salesdesk-9-fixes/evidence/W4/apply-mi ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql:/tmp/mig-2...exist, skipping:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+psql:/tmp/mig-20260922050000_572_sales_activity_types.sql:64: NOTICE:  policy "sales_activity_types_insert" for 
+relation "public.sales_activity_types" does not exist, skipping
+psql:/tmp/mig-20260922050000_572_sales_activity_types.sql:71: NOTICE:  policy "sales_activity_types_update" for 
+relation "public.sales_activity_types" does not exist, skipping
+SET
+SET
+CREATE TABLE
+COMMENT
+CREATE INDEX
+INSERT 0 18
+ALTER TABLE
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+REVOKE
+REVOKE
+GRANT
+GRANT
+
+INSERT 0 1
+
+rest_restarted
+DONE {"file":"20260922050000_572_sales_activity_types.sql","version":"20260922050000","md5":"f48e43be703bedbf86aece88f8f267ca","applied_at":"2026-09-21T23:42:44.238Z"}

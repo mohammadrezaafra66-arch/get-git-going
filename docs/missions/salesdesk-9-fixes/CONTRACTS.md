@@ -89,12 +89,12 @@ UI «تاریخ بسته شدن» / close-reopen triggers maintain `completed_at
 
 | Column | Type |
 |--------|------|
-| `id` | uuid PK |
+| `id` | uuid PK DEFAULT gen_random_uuid() |
 | `title` | text NOT NULL |
 | `sort_order` | int NOT NULL |
 | `is_active` | boolean NOT NULL DEFAULT true |
 
-Seed order per §6 (یادداشت ساده + Didar 1–17).
+Seed order per §6 (یادداشت ساده + Didar 1–17). Migration **572** (`20260922050000`).
 
 ### Purchases (no new tables)
 
@@ -132,13 +132,19 @@ Exact module keys (Wave 3 FE, migration 571):
 | `deal-lost-reasons` | `/settings/deal-lost-reasons` | C8 settings catalog |
 | `deal-lost-report` | `/sales/reports/deal-lost` | C8 lost-reasons report |
 
+Wave 4 placeholder (D4 role_permissions; page not yet):
+
+| Module key | Route | Reason |
+|------------|-------|--------|
+| `sales-activities` | `/operations/sales-desk/activities` (TBD) | D4 activities page — seed types live in mig 572 |
+
 Also deal detail (no dedicated module; gated by sales role): `/operations/sales-desk/deals/$dealId`
 
 ## Migration numbering
 
 - Directory: `supabase/migrations/`
 - Convention: `YYYYMMDDHHMMSS_NNN_snake_name.sql`
-- Next free NNN after highest on base: **565** (Wave 2 applied 563–564; Wave 1 used 560–562; duplicates exist at 551, 554, 558)
+- Next free NNN after highest on base: **573** (Wave 4 D2 used **572** `20260922050000_572_sales_activity_types`; Wave 3 used 565–571; Wave 2 applied 563–564; Wave 1 used 560–562; duplicates exist at 551, 554, 558)
 - One migration per concern; each has `docs/missions/salesdesk-9-fixes/revert/<file>`
 
 ## Decisions recorded with contracts
