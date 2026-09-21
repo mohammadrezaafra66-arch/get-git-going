@@ -1,0 +1,6 @@
+ mentions_draft | mentions_enum | def_len 
+----------------+---------------+---------
+ f              | f             |   14384
+(1 row)
+
+ERROR:  invalid regular expression: invalid repetition count(s)

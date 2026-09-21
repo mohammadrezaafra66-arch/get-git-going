@@ -1,0 +1,3 @@
+=== C6_search_287 ===
+ERROR:  unauthenticated
+CONTEXT:  PL/pgSQL function search_product_ids(text,integer) line 6 at RAISE

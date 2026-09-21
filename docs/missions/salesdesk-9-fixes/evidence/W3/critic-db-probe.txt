@@ -1,0 +1,102 @@
+=== mig_versions_565_571 ===
+    version     
+----------------
+ 20260922040000
+ 20260922040100
+ 20260922040200
+ 20260922040300
+ 20260922040400
+ 20260922040500
+ 20260922040600
+(7 rows)
+
+=== status_check_def ===
+                                               status_check                                               
+----------------------------------------------------------------------------------------------------------
+ CHECK ((status = ANY (ARRAY['open'::text, 'won'::text, 'lost'::text, 'cancelled'::text, 'done'::text])))
+(1 row)
+
+=== seed_sayer_hex ===
+    title_hex     | is_active 
+------------------+-----------
+ d8b3d8a7db8cd8b1 | t
+(1 row)
+
+=== notify_title_pos ===
+ title_pos 
+-----------
+       781
+(1 row)
+
+=== columns_and_tables ===
+    column_name    
+-------------------
+ lost_at
+ lost_reason_id
+ lost_reason_note
+ lost_reason_other
+ salesperson_id
+ won_at
+(6 rows)
+
+  column_name   
+----------------
+ interaction_id
+(1 row)
+
+        items_tbl        
+-------------------------
+ sales_interaction_items
+(1 row)
+
+ lost_reasons_tbl  
+-------------------
+ deal_lost_reasons
+(1 row)
+
+=== role_permissions_w3 ===
+         module         |      role_name      | can_view | can_create | can_update | can_export 
+------------------------+---------------------+----------+------------+------------+------------
+ deal-lost-reasons      | accountant          | f        | f          | f          | f
+ deal-lost-reasons      | admin               | t        | t          | t          | f
+ deal-lost-reasons      | manager             | t        | t          | t          | f
+ deal-lost-reasons      | purchase_specialist | f        | f          | f          | f
+ deal-lost-reasons      | sales               | t        | f          | f          | f
+ deal-lost-reasons      | site                | f        | f          | f          | f
+ deal-lost-reasons      | viewer              | f        | f          | f          | f
+ deal-lost-report       | accountant          | f        | f          | f          | f
+ deal-lost-report       | admin               | t        | f          | f          | t
+ deal-lost-report       | manager             | t        | f          | f          | t
+ deal-lost-report       | purchase_specialist | f        | f          | f          | f
+ deal-lost-report       | sales               | t        | f          | f          | f
+ deal-lost-report       | site                | f        | f          | f          | f
+ deal-lost-report       | viewer              | f        | f          | f          | f
+ sales-deals-for-others | accountant          | f        | f          | f          | f
+ sales-deals-for-others | admin               | t        | f          | f          | t
+ sales-deals-for-others | manager             | t        | f          | f          | t
+ sales-deals-for-others | purchase_specialist | f        | f          | f          | f
+ sales-deals-for-others | sales               | t        | f          | f          | f
+ sales-deals-for-others | site                | f        | f          | f          | f
+ sales-deals-for-others | viewer              | f        | f          | f          | f
+(21 rows)
+
+=== still_null_request ===
+ still_null_request 
+--------------------
+                  0
+(1 row)
+
+=== C2_INSERT_null_salesperson ===
+BEGIN
+DO
+ROLLBACK
+=== C8_lost_without_reason ===
+BEGIN
+DO
+ROLLBACK
+=== compute_employee_score_unchanged_probe ===
+        proname         | src_len 
+------------------------+---------
+ compute_employee_score |   13435
+(1 row)
+
