@@ -23,7 +23,6 @@ import {
 } from "@/lib/calls/call-drafts";
 import {
   createSalesInteraction,
-  type SalesInteractionKind,
 } from "@/lib/sales-desk";
 import {
   PersianFollowUpFields,
@@ -194,7 +193,7 @@ export function CallNoteForm({
       const nextFollowUpAt = combineTehranFollowUpIso(followUpDate, followUpTime);
       return createSalesInteraction({
         personId,
-        kind: kind as SalesInteractionKind,
+        kind,
         body: trimmed,
         title: title.trim() || null,
         customerId,

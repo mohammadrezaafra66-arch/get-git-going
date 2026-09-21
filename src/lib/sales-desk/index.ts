@@ -19,6 +19,12 @@ export {
 export { salesDeskErrorMessage } from "./errors";
 
 export {
+  createDealInteractionSchema,
+  parseCreateDealInteraction,
+  type CreateDealInteractionParsed,
+} from "./schema";
+
+export {
   searchDealProducts,
   type DealProductSearchHit,
 } from "./product-search";

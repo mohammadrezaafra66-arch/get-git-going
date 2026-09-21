@@ -22,6 +22,8 @@ import { searchPersons } from "@/lib/persons/functions";
 import {
   createSalesInteraction,
   salesDeskErrorMessage,
+  parseCreateDealInteraction,
+  createDealInteractionSchema,
 } from "@/lib/sales-desk";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -99,29 +101,29 @@ export function QuickRequestForm({
   const mutation = useMutation({
     mutationFn: async () => {
       if (!personId) throw new Error("ابتدا شخص را انتخاب کنید");
-      if (!salespersonId) {
-        throw new Error("مسئول معامله الزامی است");
-      }
       const trimmed = body.trim();
       if (!trimmed) throw new Error("متن درخواست الزامی است");
       const nextFollowUpAt = combineTehranFollowUpIso(followUpDate, followUpTime);
-      return createSalesInteraction({
-        personId,
-        kind: "request",
-        body: trimmed,
-        title: title.trim() || null,
-        customerId,
-        salespersonId,
-        callLogId,
-        nextFollowUpAt,
-        source: callLogId ? "caller_popup" : "sales_desk",
-        status: "open",
-        items: productLines.map((l) => ({
-          productId: l.productId,
-          quantity: l.quantity,
-          note: l.note || null,
-        })),
-      });
+      // C2 — zod requires salespersonId uuid before createSalesInteraction
+      return createSalesInteraction(
+        parseCreateDealInteraction({
+          personId,
+          kind: "request" as const,
+          body: trimmed,
+          title: title.trim() || null,
+          customerId: customerId || null,
+          salespersonId,
+          callLogId: callLogId || null,
+          nextFollowUpAt,
+          source: callLogId ? "caller_popup" : "sales_desk",
+          status: "open" as const,
+          items: productLines.map((l) => ({
+            productId: l.productId,
+            quantity: l.quantity,
+            note: l.note || null,
+          })),
+        }),
+      );
     },
     onSuccess: (id) => {
       toast.success("معامله ثبت شد");
@@ -145,7 +147,8 @@ export function QuickRequestForm({
   });
 
   const onSubmit = () => {
-    if (!salespersonId) {
+    const sp = createDealInteractionSchema.shape.salespersonId.safeParse(salespersonId);
+    if (!sp.success) {
       setSalespersonError("مسئول معامله الزامی است");
       return;
     }

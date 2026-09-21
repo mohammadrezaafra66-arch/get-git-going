@@ -12,17 +12,16 @@ import {
   insertSalesInteractionItems,
   type SalesInteractionItemInput,
 } from "./items";
+import { parseCreateDealInteraction } from "./schema";
 
 export type SalesInteractionKind = "request" | "call" | "note";
 export type SalesInteractionStatus = "open" | "won" | "lost" | "cancelled" | "done";
 
-export type CreateSalesInteractionInput = {
+type CreateSalesInteractionBase = {
   personId: string;
-  kind: SalesInteractionKind;
   body?: string;
   title?: string | null;
   customerId?: string | null;
-  salespersonId?: string | null;
   callLogId?: string | null;
   nextFollowUpAt?: string | null;
   source?: string;
@@ -35,6 +34,17 @@ export type CreateSalesInteractionInput = {
   /** C6 — persist to sales_interaction_items after create. */
   items?: SalesInteractionItemInput[];
 };
+
+/** kind=request requires non-empty salespersonId (zod + trigger RESPONSIBLE_REQUIRED). */
+export type CreateSalesInteractionInput =
+  | (CreateSalesInteractionBase & {
+      kind: "request";
+      salespersonId: string;
+    })
+  | (CreateSalesInteractionBase & {
+      kind: "call" | "note";
+      salespersonId?: string | null;
+    });
 
 type UntypedRpc = (
   fn: string,
@@ -49,13 +59,24 @@ function rpc(): UntypedRpc {
 export async function createSalesInteraction(
   input: CreateSalesInteractionInput,
 ): Promise<string> {
+  // C2 — zod gate for deals before RPC (UI may also validate; lib must not skip).
+  let salespersonId: string | null = input.salespersonId ?? null;
+  if (input.kind === "request") {
+    const parsed = parseCreateDealInteraction({
+      ...input,
+      body: input.body ?? "",
+      salespersonId: input.salespersonId,
+    });
+    salespersonId = parsed.salespersonId;
+  }
+
   const { data, error } = await rpc()("sales_interaction_create", {
     p_person_id: input.personId,
     p_kind: input.kind,
     p_body: input.body ?? "",
     p_title: input.title ?? null,
     p_customer_id: input.customerId ?? null,
-    p_salesperson_id: input.salespersonId ?? null,
+    p_salesperson_id: salespersonId,
     p_call_log_id: input.callLogId ?? null,
     p_next_follow_up_at: input.nextFollowUpAt ?? null,
     p_source: input.source ?? "manual",
