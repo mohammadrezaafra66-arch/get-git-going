@@ -1,0 +1,25 @@
+{
+  "job_id": "W2-FE",
+  "state": "done",
+  "attempt": 1,
+  "deadline": "2026-09-21T21:45:00Z",
+  "budget": { "minutes": 90 },
+  "checkpoint": "docs/missions/salesdesk-9-fixes/evidence/W2/registry/W2-FE/checkpoint.md",
+  "heartbeat_every": 60,
+  "killable": false,
+  "result": {
+    "verdict": "COMPLETE",
+    "rows": {
+      "B1": "DONE",
+      "B2": "DONE",
+      "B3": "DONE",
+      "B4": "DONE",
+      "B5": "DONE"
+    },
+    "typecheck_errors": 74,
+    "unit_tests": "16 pass",
+    "report": "docs/missions/salesdesk-9-fixes/evidence/W2/fe-report.md",
+    "notes": "deal_id UPDATE soft-fails until migration 564; live AMI probe not run"
+  },
+  "next_action": null
+}

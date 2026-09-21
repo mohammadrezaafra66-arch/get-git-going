@@ -6,6 +6,7 @@
  */
 export {
   createSalesInteraction,
+  linkSalesInteractionDeal,
   updateSalesInteractionStatus,
   setSalesInteractionFollowUp,
   type CreateSalesInteractionInput,

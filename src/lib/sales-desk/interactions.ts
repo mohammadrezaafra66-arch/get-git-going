@@ -22,6 +22,11 @@ export type CreateSalesInteractionInput = {
   nextFollowUpAt?: string | null;
   source?: string;
   status?: SalesInteractionStatus;
+  /**
+   * Link call/note to a deal (request) row via sales_interactions.deal_id.
+   * Applied with a follow-up UPDATE when the column exists (migration 564).
+   */
+  dealId?: string | null;
 };
 
 type UntypedRpc = (
@@ -53,7 +58,35 @@ export async function createSalesInteraction(
   if (typeof data !== "string" || !data) {
     throw new Error("sales_interaction_create مقدار شناسه برنگرداند.");
   }
+
+  if (input.dealId) {
+    await linkSalesInteractionDeal({ id: data, dealId: input.dealId });
+  }
+
   return data;
+}
+
+/**
+ * Set sales_interactions.deal_id after create (column from migration 564).
+ * No-op / soft-fail if column not applied yet.
+ */
+export async function linkSalesInteractionDeal(input: {
+  id: string;
+  dealId: string;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("sales_interactions" as never)
+    .update({ deal_id: input.dealId } as never)
+    .eq("id" as never, input.id as never);
+
+  if (error) {
+    const msg = error.message || "";
+    if (/deal_id|column/i.test(msg)) {
+      // Migration not live — leave interaction unlinked; UI still saved.
+      return;
+    }
+    throw new Error(error.message);
+  }
 }
 
 export async function updateSalesInteractionStatus(input: {

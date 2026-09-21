@@ -14,12 +14,26 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { groupCallsByCardKey } from "@/lib/calls/call-card-key";
+import {
+  loadCallDraft,
+  saveCallDraft,
+} from "@/lib/calls/call-drafts";
 import {
   CALLER_ID_SETTINGS_QUERY_KEY,
   DEFAULT_CALLER_ID_SETTINGS,
+  callerIdCardTtlMs,
   fetchCallerIdSettings,
 } from "@/lib/calls/caller-id-settings";
-import { filterCallsForCallerId } from "@/lib/calls/filter-calls-for-caller-id";
+import {
+  openCallerBroadcast,
+  shouldPresentCallCard,
+  type CallerBroadcastHandle,
+} from "@/lib/calls/caller-broadcast";
+import {
+  filterCallsForCallerId,
+  passesOnlyMyCustomers,
+} from "@/lib/calls/filter-calls-for-caller-id";
 import {
   fetchRecentInboundForPopup,
   fetchRecentRingEventsForPopup,
@@ -33,23 +47,27 @@ import { QuickRequestForm } from "./QuickRequestForm";
 
 const RING_POLL_MS = 1_000;
 const CDR_POLL_MS = 5_000;
-const CARD_TTL_MS = 5_000;
 const MAX_CARDS = 4;
 
 type CallContext = {
+  callKey: string;
   call: RecentInboundCall;
+  extensions: string[];
   displayName: string;
   responsibleName: string | null;
+  responsibleUserId: string | null;
   personId: string | null;
   customerId: string | null;
   phoneHint: string | null;
   isUnknown: boolean;
   isOutbound: boolean;
+  dealId: string | null;
 };
 
 type ToastCard = {
   key: string;
   call: RecentInboundCall;
+  extensions: string[];
   displayName: string;
   phoneHint: string | null;
   isUnknown: boolean;
@@ -57,7 +75,11 @@ type ToastCard = {
   expiresAt: number;
 };
 
-async function resolveCallContext(call: RecentInboundCall): Promise<CallContext> {
+async function resolveCallContext(
+  call: RecentInboundCall,
+  callKey: string,
+  extensions: string[],
+): Promise<CallContext> {
   const meta = call.metadata ?? {};
   const phoneHint =
     (typeof meta.raw_number === "string" && meta.raw_number) ||
@@ -66,17 +88,22 @@ async function resolveCallContext(call: RecentInboundCall): Promise<CallContext>
   const unknownFlag = meta.unknown_number === true;
   const isOutbound = call.direction === "outbound";
   const linkedPersonId = call.customer_id;
+  const draft = loadCallDraft(callKey);
 
   if (!linkedPersonId) {
     return {
+      callKey,
       call,
+      extensions,
       displayName: phoneHint ? toFaDigits(phoneHint) : "شماره ناشناس",
       responsibleName: null,
+      responsibleUserId: null,
       personId: null,
       customerId: null,
       phoneHint,
       isUnknown: true,
       isOutbound,
+      dealId: draft?.dealId ?? null,
     };
   }
 
@@ -99,37 +126,49 @@ async function resolveCallContext(call: RecentInboundCall): Promise<CallContext>
     | {
         id: string;
         name: string | null;
+        responsible_id: string | null;
         responsible: { full_name: string | null } | null;
       }
     | undefined;
 
   return {
+    callKey,
     call,
+    extensions,
     displayName:
       person?.display_name ||
       firstCustomer?.name ||
       (phoneHint ? toFaDigits(phoneHint) : "تماس‌گیرنده"),
     responsibleName: firstCustomer?.responsible?.full_name ?? null,
+    responsibleUserId: firstCustomer?.responsible_id ?? null,
     personId: person?.id ?? linkedPersonId,
     customerId: firstCustomer?.id ?? null,
     phoneHint,
     isUnknown: unknownFlag || !person,
     isOutbound,
+    dealId: draft?.dealId ?? null,
   };
 }
 
 /**
  * Caller ID: compact cards bottom-right; click opens full form sheet.
+ * B1 group by call key · B2 BroadcastChannel · B3 TTL/settings · B4 drafts · B5 deal.
  */
 export function CallerInboundPopup() {
   const { user } = useAuth();
   const userId = user?.id ?? null;
   const shownRef = useRef<Set<string>>(new Set());
+  const remoteClaimedRef = useRef<Set<string>>(new Set());
+  const remoteDismissedRef = useRef<Set<string>>(new Set());
+  const bcRef = useRef<CallerBroadcastHandle | null>(null);
   const mountAtMsRef = useRef(Date.now());
   const primedRef = useRef(false);
   const [cards, setCards] = useState<ToastCard[]>([]);
-  const [active, setActive] = useState<CallContext | null>(null);
+  /** Open sheet contexts keyed by call key — switching never discards drafts */
+  const [openCalls, setOpenCalls] = useState<Record<string, CallContext>>({});
+  const [activeKey, setActiveKey] = useState<string | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [dealFormKey, setDealFormKey] = useState<string | null>(null);
 
   const settingsQ = useQuery({
     enabled: !!userId,
@@ -140,6 +179,7 @@ export function CallerInboundPopup() {
 
   const settings = settingsQ.data ?? DEFAULT_CALLER_ID_SETTINGS;
   const pollingOn = !!userId && settings.enabled;
+  const cardTtlMs = callerIdCardTtlMs(settings);
 
   const extensionsQ = useQuery({
     enabled: pollingOn,
@@ -166,7 +206,27 @@ export function CallerInboundPopup() {
     refetchOnWindowFocus: true,
   });
 
-  // Expire cards every second
+  // B2 — cross-tab sync
+  useEffect(() => {
+    const handle = openCallerBroadcast((msg) => {
+      if (msg.type === "dismiss" || msg.type === "open") {
+        remoteDismissedRef.current.add(msg.key);
+        shownRef.current.add(msg.key);
+        setCards((prev) => prev.filter((c) => c.key !== msg.key));
+      } else if (msg.type === "claim" || msg.type === "shown") {
+        remoteClaimedRef.current.add(msg.key);
+        shownRef.current.add(msg.key);
+        setCards((prev) => prev.filter((c) => c.key !== msg.key));
+      }
+    });
+    bcRef.current = handle;
+    return () => {
+      handle?.close();
+      bcRef.current = null;
+    };
+  }, []);
+
+  // Expire cards every ~400ms
   useEffect(() => {
     const t = window.setInterval(() => {
       const now = Date.now();
@@ -187,15 +247,20 @@ export function CallerInboundPopup() {
       [...ringRows, ...cdrRows],
       settings,
       myExts,
+      { currentUserId: userId },
     );
+
+    // B1 — one card per logical call
+    const groups = groupCallsByCardKey(filtered);
 
     const mountAt = mountAtMsRef.current;
 
     if (!primedRef.current) {
-      for (const call of filtered) {
-        const createdMs = Date.parse(call.created_at ?? call.started_at ?? "") || 0;
+      for (const g of groups) {
+        const createdMs =
+          Date.parse(g.primary.created_at ?? g.primary.started_at ?? "") || 0;
         if (createdMs > 0 && createdMs < mountAt - 500) {
-          shownRef.current.add(call.id);
+          shownRef.current.add(g.key);
         }
       }
       primedRef.current = true;
@@ -204,36 +269,65 @@ export function CallerInboundPopup() {
     let cancelled = false;
 
     (async () => {
-      for (const call of filtered) {
-        if (shownRef.current.has(call.id)) continue;
-
-        const createdMs = Date.parse(call.created_at ?? call.started_at ?? "") || 0;
-        if (createdMs > 0 && createdMs < mountAt - 500) {
-          shownRef.current.add(call.id);
+      for (const g of groups) {
+        if (
+          !shouldPresentCallCard({
+            key: g.key,
+            localShown: shownRef.current,
+            remoteClaimed: remoteClaimedRef.current,
+            remoteDismissed: remoteDismissedRef.current,
+          })
+        ) {
           continue;
         }
 
-        shownRef.current.add(call.id);
+        const createdMs =
+          Date.parse(g.primary.created_at ?? g.primary.started_at ?? "") || 0;
+        if (createdMs > 0 && createdMs < mountAt - 500) {
+          shownRef.current.add(g.key);
+          continue;
+        }
+
+        // Claim primary before async resolve so other tabs skip
+        shownRef.current.add(g.key);
+        bcRef.current?.post({
+          type: "claim",
+          key: g.key,
+          tabId: bcRef.current.tabId,
+        });
+
         try {
-          const ctx = await resolveCallContext(call);
+          const ctx = await resolveCallContext(g.primary, g.key, g.extensions);
           if (cancelled) return;
 
+          if (
+            !passesOnlyMyCustomers(settings, userId, ctx.responsibleUserId)
+          ) {
+            continue;
+          }
+
           const card: ToastCard = {
-            key: call.id,
-            call,
+            key: g.key,
+            call: g.primary,
+            extensions: g.extensions,
             displayName: ctx.displayName,
             phoneHint: ctx.phoneHint,
             isUnknown: ctx.isUnknown,
             isOutbound: ctx.isOutbound,
-            expiresAt: Date.now() + CARD_TTL_MS,
+            expiresAt: Date.now() + cardTtlMs,
           };
 
           setCards((prev) => {
             const without = prev.filter((c) => c.key !== card.key);
-            // Newer at bottom: append; drop oldest from top if > MAX
             const next = [...without, card];
             while (next.length > MAX_CARDS) next.shift();
             return next;
+          });
+
+          bcRef.current?.post({
+            type: "shown",
+            key: g.key,
+            tabId: bcRef.current.tabId,
           });
         } catch {
           /* marked shown */
@@ -247,6 +341,8 @@ export function CallerInboundPopup() {
   }, [
     pollingOn,
     settings,
+    cardTtlMs,
+    userId,
     extensionsQ.data,
     ringQ.data,
     ringQ.isLoading,
@@ -254,22 +350,46 @@ export function CallerInboundPopup() {
     inboundQ.isLoading,
   ]);
 
-  const dismissCard = (key: string) => {
+  const dismissCard = (key: string, broadcast = true) => {
     setCards((prev) => prev.filter((c) => c.key !== key));
+    shownRef.current.add(key);
+    if (broadcast && bcRef.current) {
+      bcRef.current.post({
+        type: "dismiss",
+        key,
+        tabId: bcRef.current.tabId,
+      });
+    }
   };
 
   const openCard = async (card: ToastCard) => {
-    dismissCard(card.key);
+    dismissCard(card.key, true);
     try {
-      const ctx = await resolveCallContext(card.call);
-      setActive(ctx);
+      const ctx = await resolveCallContext(
+        card.call,
+        card.key,
+        card.extensions,
+      );
+      setOpenCalls((prev) => ({ ...prev, [ctx.callKey]: ctx }));
+      setActiveKey(ctx.callKey);
+      setDealFormKey(null);
       setPanelOpen(true);
+      bcRef.current?.post({
+        type: "open",
+        key: card.key,
+        tabId: bcRef.current.tabId,
+      });
     } catch {
       /* ignore */
     }
   };
 
+  const active = activeKey ? openCalls[activeKey] ?? null : null;
+  const openKeys = Object.keys(openCalls);
   const TitleIcon = active?.isOutbound ? PhoneOutgoing : PhoneIncoming;
+
+  const callLogIdFor = (ctx: CallContext) =>
+    ctx.call.id.startsWith("ring:") ? undefined : ctx.call.id;
 
   return (
     <>
@@ -305,6 +425,11 @@ export function CallerInboundPopup() {
                   {card.phoneHint ? (
                     <p className="text-xs text-muted-foreground" dir="ltr">
                       {toFaDigits(card.phoneHint)}
+                    </p>
+                  ) : null}
+                  {card.extensions.length > 0 ? (
+                    <p className="text-[11px] text-muted-foreground" dir="ltr">
+                      داخلی: {card.extensions.join(", ")}
                     </p>
                   ) : null}
                 </button>
@@ -362,6 +487,11 @@ export function CallerInboundPopup() {
                         </span>
                       </p>
                     ) : null}
+                    {active.extensions.length > 0 ? (
+                      <p className="text-xs text-muted-foreground" dir="ltr">
+                        داخلی‌ها: {active.extensions.join(", ")}
+                      </p>
+                    ) : null}
                     {active.call.started_at ? (
                       <p className="text-xs text-muted-foreground">
                         زمان تماس: {formatDateTimeFa(active.call.started_at)}
@@ -374,6 +504,31 @@ export function CallerInboundPopup() {
               </div>
             </SheetDescription>
           </SheetHeader>
+
+          {/* B4 — active-call switcher; drafts survive */}
+          {openKeys.length > 1 ? (
+            <div className="flex flex-wrap gap-1.5" dir="rtl">
+              {openKeys.map((k) => {
+                const c = openCalls[k]!;
+                const label = c.displayName || k.slice(0, 12);
+                return (
+                  <Button
+                    key={k}
+                    type="button"
+                    size="sm"
+                    variant={k === activeKey ? "default" : "outline"}
+                    className="max-w-[9rem] truncate"
+                    onClick={() => {
+                      setActiveKey(k);
+                      setDealFormKey(null);
+                    }}
+                  >
+                    {label}
+                  </Button>
+                );
+              })}
+            </div>
+          ) : null}
 
           {active ? (
             <div className="space-y-4 pb-6">
@@ -388,17 +543,20 @@ export function CallerInboundPopup() {
                         .select("id, person_id, name")
                         .eq("id", c.id)
                         .maybeSingle();
-                      setActive((prev) =>
-                        prev
-                          ? {
-                              ...prev,
-                              customerId: data?.id ?? c.id,
-                              personId: data?.person_id ?? prev.personId,
-                              displayName: data?.name ?? c.name,
-                              isUnknown: false,
-                            }
-                          : prev,
-                      );
+                      setOpenCalls((prev) => {
+                        const cur = prev[active.callKey];
+                        if (!cur) return prev;
+                        return {
+                          ...prev,
+                          [active.callKey]: {
+                            ...cur,
+                            customerId: data?.id ?? c.id,
+                            personId: data?.person_id ?? cur.personId,
+                            displayName: data?.name ?? c.name,
+                            isUnknown: false,
+                          },
+                        };
+                      });
                     })();
                   }}
                 />
@@ -424,41 +582,101 @@ export function CallerInboundPopup() {
               </div>
 
               {active.personId ? (
-                <Tabs defaultValue="request">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="request">ثبت درخواست</TabsTrigger>
-                    <TabsTrigger value="note">خلاصه تماس</TabsTrigger>
-                  </TabsList>
-                  <TabsContent value="request" className="mt-3">
+                dealFormKey === active.callKey ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium">افزودن معامله</p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setDealFormKey(null)}
+                      >
+                        بازگشت به خلاصه تماس
+                      </Button>
+                    </div>
                     <QuickRequestForm
                       compact
                       initialPersonId={active.personId}
                       initialPersonName={active.displayName}
                       customerId={active.customerId}
-                      callLogId={
-                        active.call.id.startsWith("ring:")
-                          ? undefined
-                          : active.call.id
-                      }
-                      onCreated={() => setPanelOpen(false)}
+                      callLogId={callLogIdFor(active)}
+                      submitLabel="ثبت معامله"
+                      onCreated={(dealId) => {
+                        const existing = loadCallDraft(active.callKey);
+                        saveCallDraft(active.callKey, {
+                          kind: existing?.kind ?? "call",
+                          body: existing?.body ?? "",
+                          title: existing?.title ?? "",
+                          followUpDate: existing?.followUpDate ?? null,
+                          followUpTime: existing?.followUpTime ?? "09:00",
+                          dealId,
+                        });
+                        setOpenCalls((prev) => {
+                          const cur = prev[active.callKey];
+                          if (!cur) return prev;
+                          return {
+                            ...prev,
+                            [active.callKey]: { ...cur, dealId },
+                          };
+                        });
+                        setDealFormKey(null);
+                      }}
                     />
-                  </TabsContent>
-                  <TabsContent value="note" className="mt-3">
-                    <CallNoteForm
-                      compact
-                      personId={active.personId}
-                      personName={active.displayName}
-                      customerId={active.customerId}
-                      callLogId={
-                        active.call.id.startsWith("ring:")
-                          ? undefined
-                          : active.call.id
-                      }
-                      defaultKind="call"
-                      onCreated={() => setPanelOpen(false)}
-                    />
-                  </TabsContent>
-                </Tabs>
+                  </div>
+                ) : (
+                  <Tabs defaultValue="note">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="note">خلاصه تماس</TabsTrigger>
+                      <TabsTrigger value="request">ثبت درخواست</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="note" className="mt-3">
+                      <CallNoteForm
+                        compact
+                        personId={active.personId}
+                        personName={active.displayName}
+                        customerId={active.customerId}
+                        callLogId={callLogIdFor(active)}
+                        defaultKind="call"
+                        draftKey={active.callKey}
+                        dealId={active.dealId}
+                        showAddDeal
+                        onAddDeal={() => setDealFormKey(active.callKey)}
+                        onDealIdChange={(id) => {
+                          setOpenCalls((prev) => {
+                            const cur = prev[active.callKey];
+                            if (!cur) return prev;
+                            return {
+                              ...prev,
+                              [active.callKey]: { ...cur, dealId: id },
+                            };
+                          });
+                        }}
+                        onCreated={() => {
+                          const closedKey = active.callKey;
+                          setOpenCalls((prev) => {
+                            const next = { ...prev };
+                            delete next[closedKey];
+                            const rest = Object.keys(next);
+                            setActiveKey(rest[0] ?? null);
+                            if (rest.length === 0) setPanelOpen(false);
+                            return next;
+                          });
+                        }}
+                      />
+                    </TabsContent>
+                    <TabsContent value="request" className="mt-3">
+                      <QuickRequestForm
+                        compact
+                        initialPersonId={active.personId}
+                        initialPersonName={active.displayName}
+                        customerId={active.customerId}
+                        callLogId={callLogIdFor(active)}
+                        onCreated={() => setPanelOpen(false)}
+                      />
+                    </TabsContent>
+                  </Tabs>
+                )
               ) : (
                 <p className="text-sm text-muted-foreground">
                   ابتدا «ثبت شخص» را بزنید تا بتوانید درخواست یا خلاصه تماس ثبت کنید.

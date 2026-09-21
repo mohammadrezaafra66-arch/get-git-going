@@ -33,6 +33,8 @@ type Props = {
   callLogId?: string | null;
   compact?: boolean;
   onCreated?: (id: string) => void;
+  /** Optional submit button label (B5 uses «افزودن معامله» path separately). */
+  submitLabel?: string;
 };
 
 /**
@@ -45,6 +47,7 @@ export function QuickRequestForm({
   callLogId = null,
   compact = false,
   onCreated,
+  submitLabel = "ثبت درخواست",
 }: Props) {
   const qc = useQueryClient();
   const searchFn = useServerFn(searchPersons);
@@ -252,7 +255,7 @@ export function QuickRequestForm({
         {mutation.isPending ? (
           <Loader2 className="ml-2 h-4 w-4 animate-spin" />
         ) : null}
-        ثبت درخواست
+        {submitLabel}
       </Button>
     </div>
   );
