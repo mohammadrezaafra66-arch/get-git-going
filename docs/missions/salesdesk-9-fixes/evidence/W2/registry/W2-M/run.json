@@ -26,7 +26,8 @@
       "docs/missions/salesdesk-9-fixes/evidence/W2/check-probe.txt"
     ],
     "verify_exit": 0,
-    "pushed": null
+    "head": "f12bb8c8a20d76b2f04e27a1abbcba8b2abd7b44",
+    "pushed": true
   },
   "next_action": null
 }
