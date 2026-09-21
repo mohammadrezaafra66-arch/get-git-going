@@ -1,22 +1,18 @@
 # W2-DOC checkpoint
 
-- job_id: W2-DOC
+- job_id: W2-DOC (close update)
 - result: **DONE**
-- deadline_at: 2026-09-21T23:00:00Z
-- budget: 30min
-- updated_at: 2026-09-21T21:57:44Z
+- updated_at: 2026-09-21T22:34:59Z
 - worktree: `D:\AfraKalaTest\wt-salesdesk-9-fixes`
 - branch: `feature/salesdesk-9-fixes`
-- HEAD_at_start: `264276e08cc9f350ca4800c80cd4f28a2f9c5e1f`
-- HEAD_after_docs: `2f5f4525bb5229d8acad40603021c336ef043418` (pushed)
-- 3100: `APP_GIT_SHA=8a8b61e3` healthy HTTP 200 (re-probed)
+- worktree_HEAD_at_pass: `b2b1a42e0e523c10d6fe522140dbc7b5e8f9cc35`
+- product_fix: `b1cc9a884b1265ead48483979c2f3a9a53827889`
+- 3100: `APP_GIT_SHA=e7446bb2` healthy (docker exec)
 
-## Deliverables
-- `evidence/W2/ACCEPTANCE.md` — Persian owner script B1–B5
-- `verify/W2-selfcheck.md` — fresh-eyes checks; overall PARTIAL
-- `HANDOFF.md` — §11 shape; Wave 2 done; next C1
-- `evidence/W2/LEDGER.md` — final statuses
+## This pass
+- HANDOFF Wave 2 close: B1–B5 DONE; B2 medium TOCTOU noted; next Wave 3 C1
+- `verify/W2-selfcheck.md` — B4/B5 RESULTS → PASS after critic CONFIRM
+- `evidence/W2/LEDGER.md` + ACCEPTANCE 3100 SHA → e7446bb2
 
 ## Notes
-- Text files only; no product code.
-- Did not stage unrelated untracked `evidence/W1/*` or other agents' dirty files.
+- Text files only; did not stage other agents' untracked evidence or W2-M dirty checkpoint.

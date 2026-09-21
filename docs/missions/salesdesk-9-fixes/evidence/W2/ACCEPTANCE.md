@@ -4,7 +4,7 @@
 
 **محیط:** `http://192.168.170.8:3100`  
 **حساب:** `test.sales@afrakala.local` / `AfraTest!1404`  
-**نسخهٔ مورد انتظار روی ۲۳۰۰:** `APP_GIT_SHA=8a8b61e3` (healthy) — منبع: `evidence/W2/compose-safety.txt`، `evidence/W2/http-smoke.txt`، `docker exec afrakala-lan-web printenv APP_GIT_SHA`.
+**نسخهٔ مورد انتظار روی ۲۳۰۰:** `APP_GIT_SHA=e7446bb2` (healthy) — شامل fix B4/B5 (`b1cc9a88`); تأیید: `docker exec afrakala-lan-web printenv APP_GIT_SHA`.
 
 متن خلاصهٔ §9: با چهار تب باز، تماسی که روی چند داخلی زنگ می‌خورد فقط یک کارت دارد؛ فرم نیمه‌کاره با تماس بعدی دست نمی‌خورد و قابل برگشت است؛ «مدت نمایش» و «فقط تماس‌های داخلی خودم» کار می‌کند؛ «افزودن معامله» از فرم تماس معامله را با مشتری پرشده می‌سازد و یادداشت تماس به آن وصل است.
 
@@ -100,4 +100,5 @@
 - Migrations 563–564 روی DB تست اعمال شد — `applied-20260921230000_563.txt`, `applied-20260921230100_564.txt`, `orch-db-verify.txt`.
 - Unit Caller ID: ۱۶ pass — `fe-unit-tests.txt` / `orch-unit-tsx.txt`.
 - پروب زندهٔ hook دو داخلی → یک کلید کارت — `b1-hook-probe.md`.
-- Deploy وب: safety SAFE، `APP_GIT_SHA=8a8b61e3`، HTTP 200 — `compose-safety.txt`, `http-smoke.txt`.
+- Deploy وب پس از fix: `APP_GIT_SHA=e7446bb2` healthy — DOC docker re-probe؛ safety اولیه SAFE — `compose-safety.txt`.
+- Critic: B1–B3 CONFIRM؛ B4/B5 پس از fix CONFIRM — `critic.md`, `critic-rereview.md`.
