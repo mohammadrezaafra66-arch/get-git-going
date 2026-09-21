@@ -1,0 +1,37 @@
+W1 / A3 — FIRST RUN (before work_item_events migration applied)
+Captured: 2026-09-21 during Wave 1 probe authoring, before another specialist
+applied 560 to afrakala. Re-run of the same catalog query later returned true.
+
+Command:
+  docker exec afrakala-lan-db psql -U postgres -d afrakala -A -t -c "SELECT to_regclass('public.work_item_events');"
+
+Result (exit 0):
+  <empty>   — to_regclass returned NULL (table absent)
+
+Follow-up boolean check in the same session:
+  SELECT to_regclass('public.work_item_events') IS NOT NULL;
+  → f
+
+Implication for the BUILD row:
+  e2e/missions/salesdesk-9-fixes-w1-a3-history.spec.ts asserting
+  `to_regclass(...) IS NOT NULL` would FAIL on this baseline.
+  After migration 560 the same assertion is expected to PASS; the UI
+  «سابقه» path may still fail until WorkItemDetailPage is wired and 3100
+  is redeployed from this worktree.
+
+Later same-day re-probe (post-apply, for contrast — not a first-run fail):
+  SELECT to_regclass('public.work_item_events');
+  → work_item_events
+  Rolled-back status UPDATE produced events_delta ≥ 1.
+
+=== FIRST RUN of UI path (3100 still on pre-Wave-1 web build) ===
+Command (RESOLVED_PLAYWRIGHT=...node_modules\.bin\playwright.cmd):
+  playwright test --config=docs/missions/salesdesk-9-fixes/evidence/W1/playwright.w1.config.ts
+  e2e/missions/salesdesk-9-fixes-w1-a3-history.spec.ts
+
+Result (excerpt, exit 1 for the UI-path test):
+  x  detail page renders a سابقه section (UI path)
+  Error: ticket detail must show the «سابقه» timeline heading
+  Locator: getByText('سابقه') — element(s) not found
+
+Full suite log: evidence/W1/w1-first-run.txt
