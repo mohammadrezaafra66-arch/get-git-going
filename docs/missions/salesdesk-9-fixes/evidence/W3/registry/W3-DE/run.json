@@ -1,11 +1,23 @@
 ﻿{
   "job_id": "W3-DE",
-  "state": "running",
+  "state": "done",
   "attempt": 1,
   "deadline_at": "2026-09-22T04:30:00Z",
   "budget": { "minutes": 45 },
   "checkpoint_path": "docs/missions/salesdesk-9-fixes/evidence/W3/registry/W3-DE/checkpoint.md",
   "heartbeat_every": 60,
   "killable": false,
-  "started_at": "2026-09-22T03:40:00Z"
+  "started_at": "2026-09-22T03:40:00Z",
+  "finished_at": "2026-09-22T03:48:00Z",
+  "head": "6b66e922718b15a8acfa5d03b4ecb7e509151897",
+  "commits": [
+    "16d8957a",
+    "6e10835e",
+    "e5b32b11",
+    "32e956f5",
+    "47b06109",
+    "6b66e922"
+  ],
+  "migrations": ["565", "566", "567", "568", "569", "570"],
+  "blocked_rows": []
 }
