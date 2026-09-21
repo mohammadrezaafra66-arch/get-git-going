@@ -1,0 +1,44 @@
+[
+  {
+    "id": "ring:ba72fe9f-c100-4d18-bef9-4f4d18d63d42",
+    "started_at": "2026-09-21 21:51:52.033+00",
+    "created_at": "2026-09-21 21:51:52.125663+00",
+    "extension": "403",
+    "linkedid": "TEST-9FIX-B1-1790027512033",
+    "uniqueid": "TEST-9FIX-B1-1790027512033-a",
+    "metadata": {
+      "raw": {
+        "ext": "403",
+        "probe": "B1",
+        "marker": "[TEST-9FIX]"
+      },
+      "direction": "inbound",
+      "raw_number": "09000000101",
+      "unknown_number": true,
+      "stripped_number": "09000000101",
+      "linkedid": "TEST-9FIX-B1-1790027512033",
+      "uniqueid": "TEST-9FIX-B1-1790027512033-a"
+    }
+  },
+  {
+    "id": "ring:2b61c599-1cbe-448d-8716-cfae809336e6",
+    "started_at": "2026-09-21 21:51:52.033+00",
+    "created_at": "2026-09-21 21:51:52.141342+00",
+    "extension": "412",
+    "linkedid": "TEST-9FIX-B1-1790027512033",
+    "uniqueid": "TEST-9FIX-B1-1790027512033-b",
+    "metadata": {
+      "raw": {
+        "ext": "412",
+        "probe": "B1",
+        "marker": "[TEST-9FIX]"
+      },
+      "direction": "inbound",
+      "raw_number": "09000000101",
+      "unknown_number": true,
+      "stripped_number": "09000000101",
+      "linkedid": "TEST-9FIX-B1-1790027512033",
+      "uniqueid": "TEST-9FIX-B1-1790027512033-b"
+    }
+  }
+]

@@ -1,0 +1,23 @@
+{
+  "linkedid": "TEST-9FIX-B1-1790027512033",
+  "phone": "09000000101",
+  "extA": "403",
+  "extB": "412",
+  "eventAt": "2026-09-21T21:51:52.033Z",
+  "results": [
+    {
+      "extension": "403",
+      "http": 200,
+      "ok": true,
+      "id": "ba72fe9f-c100-4d18-bef9-4f4d18d63d42",
+      "duplicate": false
+    },
+    {
+      "extension": "412",
+      "http": 200,
+      "ok": true,
+      "id": "2b61c599-1cbe-448d-8716-cfae809336e6",
+      "duplicate": false
+    }
+  ]
+}
