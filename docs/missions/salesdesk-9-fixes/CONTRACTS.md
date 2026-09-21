@@ -130,7 +130,7 @@ Exact module keys recorded when routes are created (Wave 3/4).
 
 - Directory: `supabase/migrations/`
 - Convention: `YYYYMMDDHHMMSS_NNN_snake_name.sql`
-- Next free NNN after highest on base: **560** (confirmed unused at Wave 0; duplicates exist at 551, 554, 558)
+- Next free NNN after highest on base: **565** (Wave 2 applied 563–564; Wave 1 used 560–562; duplicates exist at 551, 554, 558)
 - One migration per concern; each has `docs/missions/salesdesk-9-fixes/revert/<file>`
 
 ## Decisions recorded with contracts

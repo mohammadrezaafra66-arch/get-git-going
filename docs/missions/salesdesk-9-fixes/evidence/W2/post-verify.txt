@@ -1,0 +1,37 @@
+     column_name      | data_type | is_nullable | column_default 
+----------------------+-----------+-------------+----------------
+ display_seconds      | integer   | NO          | 15
+ enabled              | boolean   | NO          | true
+ only_my_customers    | boolean   | NO          | false
+ only_my_extension    | boolean   | NO          | false
+ show_inbound         | boolean   | NO          | true
+ show_others_outbound | boolean   | NO          | false
+ show_outbound        | boolean   | NO          | true
+(7 rows)
+
+                    conname                    |                              def                              
+-----------------------------------------------+---------------------------------------------------------------
+ user_caller_id_settings_display_seconds_check | CHECK (((display_seconds >= 5) AND (display_seconds <= 120)))
+(1 row)
+
+ column_name | data_type | is_nullable | column_default 
+-------------+-----------+-------------+----------------
+ deal_id     | uuid      | YES         | 
+(1 row)
+
+             conname             |                           def                           
+---------------------------------+---------------------------------------------------------
+ sales_interactions_deal_id_fkey | FOREIGN KEY (deal_id) REFERENCES sales_interactions(id)
+(1 row)
+
+           indexname            |                                                          indexdef                                                          
+--------------------------------+----------------------------------------------------------------------------------------------------------------------------
+ sales_interactions_deal_id_idx | CREATE INDEX sales_interactions_deal_id_idx ON public.sales_interactions USING btree (deal_id) WHERE (deal_id IS NOT NULL)
+(1 row)
+
+    version     
+----------------
+ 20260921230000
+ 20260921230100
+(2 rows)
+
