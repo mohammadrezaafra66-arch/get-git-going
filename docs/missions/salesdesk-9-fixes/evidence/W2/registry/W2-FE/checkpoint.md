@@ -8,6 +8,8 @@
 | worktree | `D:\AfraKalaTest\wt-salesdesk-9-fixes` |
 | branch | `feature/salesdesk-9-fixes` |
 | baseline_HEAD | `00e4a6c027caf3b840eb6b9e43139540242782d0` |
+| final_HEAD | `d9734cb80a0ac16da6ff58b9a6c5e13e3f349c0e` |
+| push | `7f7097e6..d9734cb8` origin/feature/salesdesk-9-fixes |
 | killable | no |
 | deadline_at | 2026-09-21T21:45:00Z |
 
