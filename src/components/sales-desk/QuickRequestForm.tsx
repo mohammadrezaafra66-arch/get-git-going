@@ -17,13 +17,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useDebounce } from "@/hooks/use-debounce";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { searchPersons } from "@/lib/persons/functions";
-import { createSalesInteraction } from "@/lib/sales-desk";
+import {
+  createSalesInteraction,
+  salesDeskErrorMessage,
+} from "@/lib/sales-desk";
 import { supabase } from "@/integrations/supabase/client";
 import {
   PersianFollowUpFields,
   combineTehranFollowUpIso,
 } from "./PersianFollowUpFields";
+import {
+  RequestedProductsBlock,
+  type RequestedProductLine,
+} from "./RequestedProductsBlock";
 
 type Props = {
   /** اگر از پاپ‌آپ تماس باز شود، شخص از قبل مشخص است. */
@@ -33,12 +41,12 @@ type Props = {
   callLogId?: string | null;
   compact?: boolean;
   onCreated?: (id: string) => void;
-  /** Optional submit button label (B5 uses «افزودن معامله» path separately). */
+  /** Optional submit button label. Default «افزودن معامله». */
   submitLabel?: string;
 };
 
 /**
- * فرم ثبت سریع درخواست مشتری (kind=request).
+ * فرم افزودن معامله (kind=request).
  */
 export function QuickRequestForm({
   initialPersonId = null,
@@ -47,9 +55,10 @@ export function QuickRequestForm({
   callLogId = null,
   compact = false,
   onCreated,
-  submitLabel = "ثبت درخواست",
+  submitLabel = "افزودن معامله",
 }: Props) {
   const qc = useQueryClient();
+  const { profile } = useAuth();
   const searchFn = useServerFn(searchPersons);
 
   const [personId, setPersonId] = useState<string | null>(initialPersonId);
@@ -58,9 +67,12 @@ export function QuickRequestForm({
   const debounced = useDebounce(query, 350);
   const [body, setBody] = useState("");
   const [title, setTitle] = useState("");
-  const [salespersonId, setSalespersonId] = useState<string>("__me__");
+  /** Empty default — no __me__ sentinel (C2). */
+  const [salespersonId, setSalespersonId] = useState<string>("");
+  const [salespersonError, setSalespersonError] = useState<string | null>(null);
   const [followUpDate, setFollowUpDate] = useState<string | null>(null);
   const [followUpTime, setFollowUpTime] = useState("09:00");
+  const [productLines, setProductLines] = useState<RequestedProductLine[]>([]);
 
   const resultsQ = useQuery({
     queryKey: ["sales-desk", "person-picker", debounced],
@@ -87,12 +99,11 @@ export function QuickRequestForm({
   const mutation = useMutation({
     mutationFn: async () => {
       if (!personId) throw new Error("ابتدا شخص را انتخاب کنید");
+      if (!salespersonId) {
+        throw new Error("مسئول معامله الزامی است");
+      }
       const trimmed = body.trim();
       if (!trimmed) throw new Error("متن درخواست الزامی است");
-      const sp =
-        salespersonId === "__me__" || salespersonId === ""
-          ? null
-          : salespersonId;
       const nextFollowUpAt = combineTehranFollowUpIso(followUpDate, followUpTime);
       return createSalesInteraction({
         personId,
@@ -100,19 +111,27 @@ export function QuickRequestForm({
         body: trimmed,
         title: title.trim() || null,
         customerId,
-        salespersonId: sp,
+        salespersonId,
         callLogId,
         nextFollowUpAt,
         source: callLogId ? "caller_popup" : "sales_desk",
         status: "open",
+        items: productLines.map((l) => ({
+          productId: l.productId,
+          quantity: l.quantity,
+          note: l.note || null,
+        })),
       });
     },
     onSuccess: (id) => {
-      toast.success("درخواست ثبت شد");
+      toast.success("معامله ثبت شد");
       setBody("");
       setTitle("");
       setFollowUpDate(null);
       setFollowUpTime("09:00");
+      setSalespersonId("");
+      setSalespersonError(null);
+      setProductLines([]);
       if (!initialPersonId) {
         setPersonId(null);
         setPersonName(null);
@@ -121,8 +140,20 @@ export function QuickRequestForm({
       qc.invalidateQueries({ queryKey: ["sales-desk"] });
       onCreated?.(id);
     },
-    onError: (e: Error) => toast.error(e.message || "ثبت درخواست ناموفق بود"),
+    onError: (e: Error) =>
+      toast.error(salesDeskErrorMessage(e.message) || "افزودن معامله ناموفق بود"),
   });
+
+  const onSubmit = () => {
+    if (!salespersonId) {
+      setSalespersonError("مسئول معامله الزامی است");
+      return;
+    }
+    setSalespersonError(null);
+    mutation.mutate();
+  };
+
+  const authorDisplay = profile?.full_name?.trim() || "کاربر جاری";
 
   const form = (
     <div className="space-y-3" dir="rtl">
@@ -209,6 +240,12 @@ export function QuickRequestForm({
         />
       </div>
 
+      <RequestedProductsBlock
+        lines={productLines}
+        onChange={setProductLines}
+        disabled={mutation.isPending}
+      />
+
       <div className="space-y-1.5">
         <Label htmlFor="sd-req-body">متن درخواست</Label>
         <Textarea
@@ -221,14 +258,19 @@ export function QuickRequestForm({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label>کارشناس فروش (اختیاری)</Label>
-          <Select value={salespersonId} onValueChange={setSalespersonId}>
-            <SelectTrigger>
-              <SelectValue placeholder="خودم / بدون ارجاع" />
+        <div className="space-y-1.5">
+          <Label>مسئول معامله</Label>
+          <Select
+            value={salespersonId || undefined}
+            onValueChange={(v) => {
+              setSalespersonId(v);
+              setSalespersonError(null);
+            }}
+          >
+            <SelectTrigger className={salespersonError ? "border-destructive" : undefined}>
+              <SelectValue placeholder="انتخاب مسئول معامله" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__me__">خودم (بدون ارجاع صریح)</SelectItem>
               {(staffQ.data ?? []).map((p) => (
                 <SelectItem key={p.id} value={p.id}>
                   {p.full_name || p.id.slice(0, 8)}
@@ -236,6 +278,13 @@ export function QuickRequestForm({
               ))}
             </SelectContent>
           </Select>
+          {salespersonError ? (
+            <p className="text-xs text-destructive">{salespersonError}</p>
+          ) : null}
+        </div>
+        <div className="space-y-1.5">
+          <Label>ایجاد کننده معامله</Label>
+          <Input value={authorDisplay} readOnly disabled className="bg-muted/40" />
         </div>
       </div>
 
@@ -250,7 +299,7 @@ export function QuickRequestForm({
       <Button
         type="button"
         disabled={mutation.isPending || !personId}
-        onClick={() => mutation.mutate()}
+        onClick={onSubmit}
       >
         {mutation.isPending ? (
           <Loader2 className="ml-2 h-4 w-4 animate-spin" />
@@ -265,7 +314,7 @@ export function QuickRequestForm({
   return (
     <Card dir="rtl">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">ثبت سریع درخواست</CardTitle>
+        <CardTitle className="text-base font-semibold">افزودن معامله</CardTitle>
       </CardHeader>
       <CardContent>{form}</CardContent>
     </Card>

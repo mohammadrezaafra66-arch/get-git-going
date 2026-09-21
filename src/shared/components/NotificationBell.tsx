@@ -68,6 +68,15 @@ export function NotificationBell() {
       navigate({ to: "/sales/stock-alerts" });
     } else if (n.reference_type === "sales_quote" && n.reference_id) {
       navigate({ to: "/sales/quotes/$quoteId", params: { quoteId: n.reference_id } });
+    } else if (
+      (n.type === "sales_interaction_assigned" ||
+        n.reference_type === "sales_interaction") &&
+      n.reference_id
+    ) {
+      navigate({
+        to: "/operations/sales-desk/deals/$dealId",
+        params: { dealId: n.reference_id },
+      });
     } else {
       navigate({ to: "/notifications" });
     }

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -5,68 +6,134 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   updateSalesInteractionStatus,
+  salesDeskErrorMessage,
   type SalesInteractionStatus,
 } from "@/lib/sales-desk";
-
-const OUTCOMES: { status: SalesInteractionStatus; label: string; variant: "default" | "outline" | "secondary" }[] = [
-  { status: "won", label: "موفق", variant: "default" },
-  { status: "lost", label: "ناموفق", variant: "outline" },
-  { status: "done", label: "انجام شد", variant: "secondary" },
-  { status: "cancelled", label: "لغو", variant: "outline" },
-];
+import { LostReasonDialog, type LostReasonSubmit } from "./LostReasonDialog";
 
 type Props = {
   interactionId: string;
   currentStatus?: string;
   onUpdated?: (status: SalesInteractionStatus) => void;
   disabled?: boolean;
+  /** Show reopen button when status is won/lost */
+  allowReopen?: boolean;
 };
 
 /**
- * دکمه‌های نتیجه برای یک interaction باز (موفق / ناموفق / …).
+ * دکمه‌های نتیجه برای یک interaction باز (موفق شد / ناموفق شد / …).
  */
 export function OutcomeButtons({
   interactionId,
   currentStatus,
   onUpdated,
   disabled,
+  allowReopen = true,
 }: Props) {
+  const [lostOpen, setLostOpen] = useState(false);
+
   const mutation = useMutation({
-    mutationFn: (status: SalesInteractionStatus) =>
-      updateSalesInteractionStatus({ id: interactionId, status }),
-    onSuccess: (_id, status) => {
+    mutationFn: (input: {
+      status: SalesInteractionStatus;
+      lost?: LostReasonSubmit;
+    }) =>
+      updateSalesInteractionStatus({
+        id: interactionId,
+        status: input.status,
+        lostReasonId: input.lost?.lostReasonId,
+        lostReasonNote: input.lost?.lostReasonNote,
+        lostReasonOther: input.lost?.lostReasonOther,
+      }),
+    onSuccess: (_id, vars) => {
       toast.success("وضعیت به‌روز شد");
-      onUpdated?.(status);
+      setLostOpen(false);
+      onUpdated?.(vars.status);
     },
-    onError: (e: Error) => toast.error(e.message || "به‌روزرسانی ناموفق بود"),
+    onError: (e: Error) =>
+      toast.error(salesDeskErrorMessage(e.message) || "به‌روزرسانی ناموفق بود"),
   });
 
   if (currentStatus && currentStatus !== "open") {
     return (
-      <span className="text-xs text-muted-foreground">
-        وضعیت: {salesInteractionStatusLabel(currentStatus)}
-      </span>
+      <div className="flex flex-wrap items-center gap-2" dir="rtl">
+        <span className="text-xs text-muted-foreground">
+          وضعیت: {salesInteractionStatusLabel(currentStatus)}
+        </span>
+        {allowReopen && (currentStatus === "won" || currentStatus === "lost") ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={disabled || mutation.isPending}
+            onClick={() => mutation.mutate({ status: "open" })}
+          >
+            {mutation.isPending && mutation.variables?.status === "open" ? (
+              <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+            ) : null}
+            جاری
+          </Button>
+        ) : null}
+      </div>
     );
   }
 
   return (
-    <div className="flex flex-wrap gap-1.5" dir="rtl">
-      {OUTCOMES.map((o) => (
+    <>
+      <div className="flex flex-wrap gap-1.5" dir="rtl">
         <Button
-          key={o.status}
           type="button"
           size="sm"
-          variant={o.variant}
+          variant="default"
           disabled={disabled || mutation.isPending}
-          onClick={() => mutation.mutate(o.status)}
+          onClick={() => mutation.mutate({ status: "won" })}
         >
-          {mutation.isPending && mutation.variables === o.status ? (
+          {mutation.isPending && mutation.variables?.status === "won" ? (
             <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
           ) : null}
-          {o.label}
+          موفق شد
         </Button>
-      ))}
-    </div>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={disabled || mutation.isPending}
+          onClick={() => setLostOpen(true)}
+        >
+          ناموفق شد
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          disabled={disabled || mutation.isPending}
+          onClick={() => mutation.mutate({ status: "done" })}
+        >
+          {mutation.isPending && mutation.variables?.status === "done" ? (
+            <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          انجام شد
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={disabled || mutation.isPending}
+          onClick={() => mutation.mutate({ status: "cancelled" })}
+        >
+          {mutation.isPending && mutation.variables?.status === "cancelled" ? (
+            <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
+          ) : null}
+          لغو
+        </Button>
+      </div>
+
+      <LostReasonDialog
+        open={lostOpen}
+        onOpenChange={setLostOpen}
+        pending={mutation.isPending && mutation.variables?.status === "lost"}
+        onConfirm={(lost) => mutation.mutate({ status: "lost", lost })}
+      />
+    </>
   );
 }
 
@@ -82,7 +149,7 @@ export function salesInteractionStatusLabel(s: string): string {
     case "cancelled":
       return "لغو";
     case "open":
-      return "باز";
+      return "جاری";
     default:
       return s;
   }

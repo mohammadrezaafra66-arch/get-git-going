@@ -66,6 +66,12 @@ export const Route = createFileRoute("/_app/sales/quotes/new")({
   // Reads the same ALLOWED_ROLES constant the requireAnyRole call below uses, so the client
   // gate and the server guard cannot drift apart.
   staticData: { gate: { kind: "anyRole", allowed: ALLOWED_ROLES } },
+  validateSearch: (search: Record<string, unknown>): { interactionId?: string } => ({
+    interactionId:
+      typeof search.interactionId === "string" && search.interactionId.length > 0
+        ? search.interactionId
+        : undefined,
+  }),
   beforeLoad: async () => {
     // Phase 6.7 — was a hand-rolled ensureAuthReady() guard, which redirected
     // authenticated users to /login on any server-rendered navigation.
@@ -78,6 +84,13 @@ function NewQuotePage() {
   const navigate = useNavigate();
   const { user, roles } = useAuth();
   const canEditPriceFreely = roles.includes("admin") || roles.includes("manager");
+  const { interactionId: dealInteractionId } = Route.useSearch();
+  /** C9 — deal responsible + interaction link applied after create. */
+  const [dealPrefill, setDealPrefill] = useState<{
+    interactionId: string;
+    salespersonId: string | null;
+  } | null>(null);
+  const [dealPrefillDone, setDealPrefillDone] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -281,6 +294,87 @@ function NewQuotePage() {
     setCustomerSearch("");
   };
 
+  // C9 — prefill from deal (interactionId search param)
+  useEffect(() => {
+    if (!dealInteractionId || dealPrefillDone) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: deal, error } = await supabase
+          .from("sales_interactions" as never)
+          .select(
+            "id, customer_id, salesperson_id, person_id" as never,
+          )
+          .eq("id" as never, dealInteractionId as never)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!deal || cancelled) return;
+        const d = deal as unknown as {
+          id: string;
+          customer_id: string | null;
+          salesperson_id: string | null;
+          person_id: string;
+        };
+        setDealPrefill({
+          interactionId: d.id,
+          salespersonId: d.salesperson_id,
+        });
+
+        if (d.customer_id) {
+          const { data: cust } = await supabase
+            .from("customers")
+            .select("id, name, phone")
+            .eq("id", d.customer_id)
+            .maybeSingle();
+          if (cust && !cancelled) {
+            selectCustomer({
+              id: cust.id,
+              name: cust.name,
+              phone: cust.phone,
+            });
+          }
+        }
+
+        const { data: itemRows } = await supabase
+          .from("sales_interaction_items" as never)
+          .select(
+            "product_id, quantity, note, product:products(id, name, sku)" as never,
+          )
+          .eq("interaction_id" as never, d.id as never);
+        const rows = (itemRows ?? []) as unknown as Array<{
+          product_id: string;
+          quantity: number;
+          note: string | null;
+          product: { id: string; name: string; sku: string | null } | null;
+        }>;
+        if (rows.length > 0 && !cancelled) {
+          const draftItems: DraftQuoteItem[] = rows.map((r) => ({
+            key: safeRandomUUID(),
+            product_id: r.product_id,
+            free_item_name: null,
+            sku_snapshot: r.product?.sku ?? null,
+            title_snapshot: r.product?.name ?? "محصول",
+            sale_price_type_id: null,
+            quantity: Number(r.quantity) || 1,
+            unit_price: 0,
+            discount_amount: 0,
+            source: "manual" as const,
+            warehouse_id: null,
+          }));
+          setItems(draftItems);
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "پیش‌پر کردن از معامله ناموفق بود");
+      } finally {
+        if (!cancelled) setDealPrefillDone(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealInteractionId, dealPrefillDone]);
+
   // sale price types (cached)
   const { data: priceTypes = [] } = useQuery({
     queryKey: ["sale-price-types-active"],
@@ -379,6 +473,21 @@ function NewQuotePage() {
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
       if (!result?.id) throw new Error("پاسخ نامعتبر از سرور.");
+
+      // C9 — link quote to deal + set salesperson_id = deal responsible
+      if (dealPrefill) {
+        const patch: Record<string, unknown> = {
+          interaction_id: dealPrefill.interactionId,
+        };
+        if (dealPrefill.salespersonId) {
+          patch.salesperson_id = dealPrefill.salespersonId;
+        }
+        const { error: linkErr } = await supabase
+          .from("sales_quotes" as never)
+          .update(patch as never)
+          .eq("id" as never, result.id as never);
+        if (linkErr) throw new Error(linkErr.message);
+      }
 
       return result;
     },

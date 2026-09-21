@@ -124,7 +124,15 @@ New routes needing rows (module without rows = open to all — avoid):
 - Page «فعالیت‌ها»
 - Report «دلایل شکست»
 
-Exact module keys recorded when routes are created (Wave 3/4).
+Exact module keys (Wave 3 FE, migration 571):
+
+| Module key | Route | Reason |
+|------------|-------|--------|
+| `sales-deals-for-others` | `/operations/sales-desk/deals-for-others` | C5 report — author≠salesperson |
+| `deal-lost-reasons` | `/settings/deal-lost-reasons` | C8 settings catalog |
+| `deal-lost-report` | `/sales/reports/deal-lost` | C8 lost-reasons report |
+
+Also deal detail (no dedicated module; gated by sales role): `/operations/sales-desk/deals/$dealId`
 
 ## Migration numbering
 

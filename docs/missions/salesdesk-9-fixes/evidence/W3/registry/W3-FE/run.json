@@ -1,0 +1,28 @@
+﻿{
+  "job_id": "W3-FE",
+  "state": "done",
+  "attempt": 1,
+  "deadline_at": "2026-09-22T06:30:00Z",
+  "budget": { "minutes": 90 },
+  "checkpoint_path": "docs/missions/salesdesk-9-fixes/evidence/W3/registry/W3-FE/checkpoint.md",
+  "heartbeat_every": 60,
+  "killable": false,
+  "started_at": "2026-09-22T03:55:00Z",
+  "finished_at": "2026-09-22T04:15:00Z",
+  "depends_on": "W3-DE@0b8fe5ff",
+  "head_before": "0b8fe5ff",
+  "tsc_baseline": 74,
+  "tsc_after": 74,
+  "rows": {
+    "C1": "done",
+    "C2": "done",
+    "C3": "done",
+    "C4": "done",
+    "C5": "done",
+    "C6": "done",
+    "C7": "done",
+    "C8": "done",
+    "C9": "done"
+  },
+  "blocked": []
+}

@@ -3,9 +3,11 @@ import { PhoneCall, Activity, Sparkles } from "lucide-react";
 
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FollowUpsToday,
   MyMonthStatsCard,
+  MyWorkDeals,
   QuickRequestForm,
   SalesDeskShell,
   SalesDeskTiltCard,
@@ -26,7 +28,7 @@ function SalesDeskPage() {
   return (
     <SalesDeskShell
       title="میز فروش"
-      description="خلاصه امروز، ثبت سریع درخواست و آمار تماس — با یا بدون مرکز تلفن."
+      description="خلاصه امروز، افزودن معامله و آمار تماس — با یا بدون مرکز تلفن."
       fallbackTo="/dashboard"
       actions={
         <div className="flex flex-wrap gap-2">
@@ -42,6 +44,11 @@ function SalesDeskPage() {
               مشتریان
             </Link>
           </Button>
+          <Button asChild variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm">
+            <Link to="/operations/sales-desk/deals-for-others">
+              معاملات ثبت‌شده برای دیگران
+            </Link>
+          </Button>
         </div>
       }
     >
@@ -53,27 +60,51 @@ function SalesDeskPage() {
         <SalesDeskLiveStatus />
       </div>
 
-      <section aria-label="خلاصه امروز من">
-        <h2 className="mb-3 text-sm font-semibold text-teal-900/80">خلاصه امروز من</h2>
-        <SalesDeskTiltCard delayMs={40}>
-          <div className="p-4 sm:p-5">
-            <FollowUpsToday />
-          </div>
-        </SalesDeskTiltCard>
-      </section>
+      <Tabs defaultValue="today" dir="rtl" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="today">خلاصه امروز من</TabsTrigger>
+          <TabsTrigger value="my-work">کارهای من</TabsTrigger>
+          <TabsTrigger value="add">افزودن معامله</TabsTrigger>
+        </TabsList>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SalesDeskTiltCard delayMs={120}>
-          <div className="p-1">
-            <QuickRequestForm />
+        <TabsContent value="today" className="space-y-4">
+          <section aria-label="خلاصه امروز من">
+            <SalesDeskTiltCard delayMs={40}>
+              <div className="p-4 sm:p-5">
+                <FollowUpsToday />
+              </div>
+            </SalesDeskTiltCard>
+          </section>
+          <SalesDeskTiltCard delayMs={120}>
+            <div className="p-1">
+              <MyMonthStatsCard />
+            </div>
+          </SalesDeskTiltCard>
+        </TabsContent>
+
+        <TabsContent value="my-work">
+          <SalesDeskTiltCard delayMs={40}>
+            <div className="p-1">
+              <MyWorkDeals mode="my-work" title="کارهای من" />
+            </div>
+          </SalesDeskTiltCard>
+        </TabsContent>
+
+        <TabsContent value="add">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SalesDeskTiltCard delayMs={40}>
+              <div className="p-1">
+                <QuickRequestForm />
+              </div>
+            </SalesDeskTiltCard>
+            <SalesDeskTiltCard delayMs={120}>
+              <div className="p-1">
+                <MyMonthStatsCard />
+              </div>
+            </SalesDeskTiltCard>
           </div>
-        </SalesDeskTiltCard>
-        <SalesDeskTiltCard delayMs={200}>
-          <div className="p-1">
-            <MyMonthStatsCard />
-          </div>
-        </SalesDeskTiltCard>
-      </div>
+        </TabsContent>
+      </Tabs>
     </SalesDeskShell>
   );
 }

@@ -601,7 +601,7 @@ export function CallerInboundPopup() {
                       initialPersonName={active.displayName}
                       customerId={active.customerId}
                       callLogId={callLogIdFor(active)}
-                      submitLabel="ثبت معامله"
+                      submitLabel="افزودن معامله"
                       onCreated={(dealId) => {
                         const existing = loadCallDraft(active.callKey);
                         saveCallDraft(active.callKey, {
@@ -628,7 +628,7 @@ export function CallerInboundPopup() {
                   <Tabs defaultValue="note">
                     <TabsList className="grid w-full grid-cols-2">
                       <TabsTrigger value="note">خلاصه تماس</TabsTrigger>
-                      <TabsTrigger value="request">ثبت درخواست</TabsTrigger>
+                      <TabsTrigger value="request">افزودن معامله</TabsTrigger>
                     </TabsList>
                     <TabsContent value="note" className="mt-3">
                       <CallNoteForm

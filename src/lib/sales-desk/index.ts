@@ -10,10 +10,33 @@ export {
   isMissingDealIdColumnError,
   updateSalesInteractionStatus,
   setSalesInteractionFollowUp,
+  loadDealById,
   type CreateSalesInteractionInput,
   type SalesInteractionKind,
   type SalesInteractionStatus,
 } from "./interactions";
+
+export { salesDeskErrorMessage } from "./errors";
+
+export {
+  searchDealProducts,
+  type DealProductSearchHit,
+} from "./product-search";
+
+export {
+  insertSalesInteractionItems,
+  listSalesInteractionItems,
+  type SalesInteractionItemInput,
+  type SalesInteractionItemRow,
+} from "./items";
+
+export {
+  listDealLostReasons,
+  createDealLostReason,
+  setDealLostReasonActive,
+  LOST_REASON_OTHER_TITLE,
+  type DealLostReason,
+} from "./lost-reasons";
 
 export { fetchMyMonthStats, type SalesMyMonthStats } from "./stats";
 
