@@ -2,7 +2,7 @@
 
 **Worktree:** `D:\AfraKalaTest\wt-salesdesk-9-fixes`  
 **Branch:** `feature/salesdesk-9-fixes`  
-**HEAD at write:** see `git rev-parse HEAD` below (commits include `95abed85`, `25ae63b2`)
+**UI commits:** `95abed85` (metadata/history/closedOnly), `25ae63b2` (profile names + board/topic cleanup)
 
 ## Files changed (tickets UI scope)
 
@@ -63,17 +63,13 @@ rg "closedOnly|listWorkItemEvents|isMissingRelationError" src/lib/work
 ```
 Hits confirmed in Detail / Board / Topic + `history.ts` / `items.ts`.
 
-### Commits (E3)
-```text
-95abed85 feat(work,purchases): Wave 1 ticket metadata, history, supplier required
-25ae63b2 fix(work): remove duplicate openItems and wire profile names
-```
+### Typecheck (E3)
+`npx tsc --noEmit` on this host reports many pre-existing errors outside work UI
+(audit / invoices / automation / …). Filtered scan of `src/lib/work` and
+`src/components/work` in that run: **no matches** (no work-path TS errors in the sample).
 
-### Typecheck
-Full `npm run typecheck` is slow on this host (~5+ min). Filtered check against work paths should be run after evidence write; known baseline lives in `evidence/W1/tsc-baseline.txt` / `typecheck-baseline.txt` from parallel Wave 1 agents.
-
-### Runtime UI (not automated in this agent turn)
-- Browser walk of `/operations/work` and `/operations/work/$itemId` deferred to W1 acceptance / `e2e/missions/salesdesk-9-fixes-w1-a3-history.spec.ts` (schema OR «سابقه» heading).
+### Runtime UI
+- Browser walk deferred to W1 acceptance / `e2e/missions/salesdesk-9-fixes-w1-a3-history.spec.ts`.
 - Profile names require live `profiles` rows matching `creator_id`/`assignee_id`.
 
 ## Untested / out of scope
