@@ -1,0 +1,50 @@
+﻿=== BEFORE (expect SUCCESS) ===
+BEGIN
+DO
+ROLLBACK
+
+
+=== AFTER (expect RESPONSIBLE_REQUIRED) ===
+BEGIN
+DO
+ROLLBACK
+ still_null_request 
+--------------------
+                  0
+(1 row)
+
+ snapshot_rows 
+---------------
+             3
+(1 row)
+
+
+
+=== APPLY ===
+md5_ok 77243910dc9a421b8bd93c3139d2d6ba
+node : psql:/tmp/mig-20260922040000_565_sales_interactions_responsible_required.sql:60: NOTICE:  trigger 
+"trg_sales_interactions_require_responsible" for relation "public.sales_interactions" does not exist, skipping
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-58bc8b1a-79d1-4dcf-bfa0-96f9d1281842.ps1:114 char:1
++ node docs/missions/salesdesk-9-fixes/evidence/W3/apply-migration.mjs  ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql:/tmp/mig-2...exist, skipping:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+SET
+SET
+CREATE TABLE
+INSERT 0 3
+UPDATE 3
+CREATE FUNCTION
+REVOKE
+REVOKE
+GRANT
+GRANT
+DROP TRIGGER
+CREATE TRIGGER
+
+INSERT 0 1
+
+rest_restarted
+DONE {"file":"20260922040000_565_sales_interactions_responsible_required.sql","version":"20260922040000","md5":"77243910dc9a421b8bd93c3139d2d6ba","applied_at":"2026-09-21T22:44:01.847Z"}
+

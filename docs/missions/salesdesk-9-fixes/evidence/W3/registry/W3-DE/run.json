@@ -1,0 +1,11 @@
+﻿{
+  "job_id": "W3-DE",
+  "state": "running",
+  "attempt": 1,
+  "deadline_at": "2026-09-22T04:30:00Z",
+  "budget": { "minutes": 45 },
+  "checkpoint_path": "docs/missions/salesdesk-9-fixes/evidence/W3/registry/W3-DE/checkpoint.md",
+  "heartbeat_every": 60,
+  "killable": false,
+  "started_at": "2026-09-22T03:40:00Z"
+}
