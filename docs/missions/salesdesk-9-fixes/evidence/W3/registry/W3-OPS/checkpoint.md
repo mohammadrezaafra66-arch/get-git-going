@@ -1,19 +1,18 @@
 ﻿# W3-OPS
 
-## Deploy gate §8.8 — 2026-09-21T23:16Z
+## Attempt 2 — redeploy after C2 zod — 2026-09-21T23:30Z
 
 | Check | Result |
 |-------|--------|
-| Worktree HEAD | `bc10ec3f` |
-| Compose safety | **PASS** — only `web` differs (context → worktree) |
-| `APP_GIT_SHA` | `bc10ec3f` (match) |
+| Worktree HEAD | `42392d3f` (contains `c4bcafe9`) |
+| Compose safety | **PASS** — only `web` differs |
+| `APP_GIT_SHA` | `42392d3f` (match) |
 | Health | `healthy` |
 | HTTP `http://192.168.170.8:3100/` | **200** (6891 bytes) |
-| Playwright smoke | **PASS** — `salesdesk-9-fixes-w1-smoke.spec.ts` (میز فروش) |
-| `tsc --noEmit` ERROR_LINES | **74** (≤74) |
+| Playwright smoke | **PASS** — میز فروش |
 
-## Evidence paths
-- `evidence/W3/compose-base.yml`, `compose-resolved.yml`, `compose-safety.txt`
-- `evidence/W3/deploy-up.txt`, `rest-restart.txt`
-- `evidence/W3/app-git-sha.txt`, `web-health.txt`, `http-probe.txt`
-- `evidence/W3/playwright-smoke.txt`, `tsc-ops.txt`
+## Evidence (a2)
+- `compose-base-a2.yml`, `compose-resolved-a2.yml`, `compose-safety-a2.txt`
+- `deploy-up-a2.txt`, `rest-restart-a2.txt`
+- `app-git-sha-a2.txt`, `web-health-a2.txt`, `http-probe-a2.txt`
+- `playwright-smoke-a2.txt`
