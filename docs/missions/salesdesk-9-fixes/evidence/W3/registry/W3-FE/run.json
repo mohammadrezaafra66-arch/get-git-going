@@ -1,18 +1,20 @@
 ﻿{
   "job_id": "W3-FE",
   "state": "done",
-  "attempt": 1,
-  "deadline_at": "2026-09-22T06:30:00Z",
+  "attempt": 2,
+  "deadline_at": "2026-09-22T06:15:00Z",
   "budget": { "minutes": 90 },
   "checkpoint_path": "docs/missions/salesdesk-9-fixes/evidence/W3/registry/W3-FE/checkpoint.md",
   "heartbeat_every": 60,
   "killable": false,
   "started_at": "2026-09-22T03:55:00Z",
-  "finished_at": "2026-09-22T04:15:00Z",
+  "finished_at": "2026-09-22T04:26:00Z",
   "depends_on": "W3-DE@0b8fe5ff",
-  "head_before": "0b8fe5ff",
+  "head_before": "bf5c9260",
+  "head_after": "c4bcafe9",
   "tsc_baseline": 74,
   "tsc_after": 74,
+  "c2_zod_test_exit": 0,
   "rows": {
     "C1": "done",
     "C2": "done",
@@ -24,5 +26,6 @@
     "C8": "done",
     "C9": "done"
   },
-  "blocked": []
+  "blocked": [],
+  "fix_note": "attempt2: added zod createDealInteractionSchema for C2 critic REJECT"
 }
