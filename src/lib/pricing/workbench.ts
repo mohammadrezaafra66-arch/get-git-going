@@ -158,9 +158,9 @@ export async function updateProductStock(
 
 /**
  * ثبت قیمت خرید جدید برای یک محصول:
- *  - رکورد فعال قبلی (در صورت وجود) را expire می‌کند
- *  - یک رکورد جدید فعال می‌سازد
- *  - اگر تأمین‌کننده‌ای از قبل ثبت نشده، باید supplier_id داده شود
+ *  - همهٔ ردیف‌های فعال همان محصول را expire می‌کند (نه فقط previousPriceId)
+ *  - یک رکورد جدید فعال می‌سازد؛ effective_at را DB با DEFAULT now() می‌زند
+ *    تا اختلاف ساعت مرورگر/سرور باعث سقوط بازمحاسبهٔ صف نشود
  */
 export async function upsertPurchasePrice(opts: {
   productId: string;
@@ -171,8 +171,7 @@ export async function upsertPurchasePrice(opts: {
   previousPrice: number | null;
   actorId: string;
 }): Promise<void> {
-  const { productId, newPrice, currency, supplierId, previousPriceId, previousPrice, actorId } =
-    opts;
+  const { productId, newPrice, currency, supplierId, previousPrice, actorId } = opts;
 
   if (!Number.isFinite(newPrice) || newPrice <= 0) {
     throw new Error("قیمت معتبر نیست.");
@@ -181,21 +180,20 @@ export async function upsertPurchasePrice(opts: {
   const nowIso = new Date().toISOString();
   const expiresIso = addMonthsIso(new Date(), 6);
 
-  // expire previous active row
-  if (previousPriceId) {
-    const { error: upErr } = await supabase
-      .from("purchase_prices")
-      .update({ is_active: false, expires_at: nowIso })
-      .eq("id", previousPriceId);
-    if (upErr) throw upErr;
-  }
+  // Expire EVERY active row for this product (stale multi-active caused sale collapse).
+  const { error: upErr } = await supabase
+    .from("purchase_prices")
+    .update({ is_active: false, expires_at: nowIso })
+    .eq("product_id", productId)
+    .eq("is_active", true);
+  if (upErr) throw upErr;
 
   const { error: insErr } = await supabase.from("purchase_prices").insert({
     product_id: productId,
     supplier_id: supplierId ?? null,
     purchase_price: newPrice,
     currency,
-    effective_at: nowIso,
+    // omit effective_at → DB DEFAULT now()
     expires_at: expiresIso,
     is_active: true,
     registered_by: actorId,

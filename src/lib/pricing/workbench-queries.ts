@@ -304,10 +304,11 @@ export async function fetchWorkbenchRowsV2(opts: {
   const [ppRes, spRes, ownRes, tagRes, parentCatRes] = await Promise.all([
     supabase
       .from("purchase_prices")
-      .select("id, product_id, supplier_id, purchase_price, currency, effective_at")
+      .select("id, product_id, supplier_id, purchase_price, currency, effective_at, expires_at")
       .in("product_id", productIds)
       .eq("is_active", true)
       .lte("effective_at", nowIso)
+      .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
       .order("effective_at", { ascending: false }),
     // ⚠️ فیلتر نوع‌قیمت حذف نشود. `publishProductPrices` برای هر محصول یک ردیف
     // به‌ازای هر نوع‌قیمت فعال می‌نویسد (نقدی، چکی، همکاری) و همه یک `computed_at`
