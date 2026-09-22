@@ -1,5 +1,5 @@
 ﻿# F5 checkpoint
-updated: 2026-09-22T15:12:30+05:00
+updated: 2026-09-22T15:16:00+05:00
 state: PASS
 item: F5 A2/A5
 deadline_at: 2026-09-22T18:30:00+05:00
@@ -19,3 +19,6 @@ killable: false
 ## E4 failability (prior)
 - Earlier A5 run failed: purchase_count=0 (fragile form fill before c1-pattern harden) — see conversation f5-run first attempt
 - Mid A2 run failed: body still «در حال بررسی جلسه» after goto without wait — fixed by same-page assert after بستن
+
+## Commit
+- HEAD after F5 test commit: 073e9e3e
