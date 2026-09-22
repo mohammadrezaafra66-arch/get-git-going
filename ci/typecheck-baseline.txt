@@ -1,0 +1,48 @@
+# Typecheck baseline (count|file|TScode|message).
+# Growth is allowed only via an explicit commit whose message explains why.
+# Shrinking (clearing errors) is always allowed and does not require a baseline edit.
+# Generated / maintained for Staging Check gate: scripts/ci/typecheck-against-baseline.mjs
+# Union of max counts across: origin/staging, origin/main, 40db298b, origin/feature/sales-desk, origin/integration/3100-20260922
+1|src/components/torob-ops/TorobOpsFindingsPage.tsx|TS2322|Type '{ findingId: string; status: "cancelled" | "cheaper_competitor" | "suspected_bait" | "manual_review" | "confirmed_bait" | "legitimate_competitor" | "queued_for_report" | "reporting" | "reported" | "report_failed"; reviewNote?: string | undefined; } & { ...; }' is not assignable to type '{ findingId: string; status: "cancelled" | "cheaper_competitor" | "suspected_bait" | "manual_review" | "confirmed_bait" | "legitimate_competitor"; opsSession?: string | undefined; reviewNote?: string | undefined; }'.
+1|src/components/torob-ops/TorobOpsFindingsPage.tsx|TS2322|Type '{ findingId: string; status: "cancelled" | "cheaper_competitor" | "suspected_bait" | "manual_review" | "confirmed_bait" | "legitimate_competitor" | "reported"; reviewNote?: string | undefined; } & { ...; }' is not assignable to type '{ findingId: string; status: "cancelled" | "cheaper_competitor" | "suspected_bait" | "manual_review" | "confirmed_bait" | "legitimate_competitor"; opsSession?: string | undefined; reviewNote?: string | undefined; }'.
+1|src/components/torob-ops/TorobOpsSettingsPage.tsx|TS18046|'res' is of type 'unknown'.
+1|src/lib/accounting/functions.ts|TS2307|Cannot find module '@/integrations/supabase/server' or its corresponding type declarations.
+2|src/lib/accounting/functions.ts|TS2339|Property 'errors' does not exist on type 'ZodError<unknown>'.
+3|src/lib/accounting/functions.ts|TS2345|Argument of type '({ next }: { next: any; }) => Promise<any>' is not assignable to parameter of type 'readonly (AnyRequestMiddleware | AnyFunctionMiddleware | AnyServerFn)[]'.
+1|src/lib/accounting/functions.ts|TS2345|Argument of type '(paymentId: string) => Promise<{ success: true; }>' is not assignable to parameter of type 'ServerFn<Register, "POST", unknown, undefined, Promise<{ success: true; }>, true>'.
+3|src/lib/accounting/functions.ts|TS2349|This expression is not callable.
+3|src/lib/accounting/functions.ts|TS7031|Binding element 'next' implicitly has an 'any' type.
+1|src/lib/audit/index.ts|TS2307|Cannot find module '@/integrations/supabase/server' or its corresponding type declarations.
+2|src/lib/audit/index.ts|TS2554|Expected 2-3 arguments, but got 1.
+3|src/lib/audit/index.ts|TS7006|Parameter 'log' implicitly has an 'any' type.
+1|src/lib/invoices/functions.ts|TS2307|Cannot find module '@/integrations/supabase/server' or its corresponding type declarations.
+2|src/lib/invoices/functions.ts|TS2339|Property 'errors' does not exist on type 'ZodError<unknown>'.
+3|src/lib/invoices/functions.ts|TS2345|Argument of type '({ next }: { next: any; }) => Promise<any>' is not assignable to parameter of type 'readonly (AnyRequestMiddleware | AnyFunctionMiddleware | AnyServerFn)[]'.
+1|src/lib/invoices/functions.ts|TS2345|Argument of type '(invoiceId: string) => Promise<{ success: true; }>' is not assignable to parameter of type 'ServerFn<Register, "POST", unknown, undefined, Promise<{ success: true; }>, true>'.
+3|src/lib/invoices/functions.ts|TS2349|This expression is not callable.
+3|src/lib/invoices/functions.ts|TS7031|Binding element 'next' implicitly has an 'any' type.
+1|src/lib/navigation/registry.ts|TS2322|Type '"person-merge-pending"' is not assignable to type '"pending-users" | "pricing-recompute-queue"'.
+1|src/lib/torob-ops/functions.ts|TS2345|Argument of type '({ data, context }: ServerFnCtx<Register, "POST", readonly [FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { academy_courses: { Row: { created_at: string; created_by: string | null; ... 4 more ...; updated_at: string; }; Insert: { ...; }; Upda...' is not assignable to parameter of type 'ServerFn<Register, "POST", readonly [FunctionMiddlewareAfterServer<{}, unknown, undefined, { supabase: SupabaseClient<Database, "public", "public", { Tables: { academy_courses: { Row: { created_at: string; created_by: string | null; ... 4 more ...; updated_at: string; }; Insert: { ...; }; Update: { ...; }; Relations...'.
+1|src/lib/torob-ops/functions.ts|TS7006|Parameter 'a' implicitly has an 'any' type.
+1|src/lib/torob-ops/functions.ts|TS7006|Parameter 'b' implicitly has an 'any' type.
+1|src/lib/torob-ops/scan.server.ts|TS2322|Type 'BaitCheckResult' is not assignable to type '{ signals: string[]; strong: boolean; sellerDomain: string | null; httpStatus: number | null; phones: string[]; enriched: boolean; snippet: string | undefined; }'.
+1|src/routes/_app.admin.automation.tsx|TS2345|Argument of type '"job_type"' is not assignable to parameter of type 'never'.
+1|src/routes/_app.admin.automation.tsx|TS2352|Conversion of type 'SelectQueryError<"column 'id' does not exist on 'profiles'."> | SelectQueryError<"column 'id' does not exist on 'academy_courses'."> | ... 190 more ... | SelectQueryError<...>' to type 'TorobTableRow | null' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+2|src/routes/_app.admin.automation.tsx|TS2367|This comparison appears to be unintentional because the types 'false | undefined' and 'true' have no overlap.
+1|src/routes/_app.admin.automation.tsx|TS2769|No overload matches this call.
+2|src/routes/_app.admin.sales-reminders.tsx|TS2322|Type 'boolean' is not assignable to type 'never'.
+1|src/routes/_app.admin.sales-reminders.tsx|TS2322|Type 'number' is not assignable to type 'never'.
+3|src/routes/_app.admin.sales-reminders.tsx|TS2322|Type 'string' is not assignable to type 'never'.
+3|src/routes/_app.admin.sales-reminders.tsx|TS2345|Argument of type '"id"' is not assignable to parameter of type 'never'.
+1|src/routes/_app.admin.sales-reminders.tsx|TS2352|Conversion of type '(SelectQueryError<"column 'id' does not exist on 'profiles'."> | SelectQueryError<"column 'id' does not exist on 'academy_courses'."> | ... 190 more ... | SelectQueryError<...>)[]' to type 'Reminder[]' may be a mistake because neither type sufficiently overlaps with the other. If this was intentional, convert the expression to 'unknown' first.
+5|src/routes/_app.admin.sales-reminders.tsx|TS2769|No overload matches this call.
+1|src/routes/_app.persons_.merge.tsx|TS2345|Argument of type '"person_detect_merge_candidates"' is not assignable to parameter of type '"_capital_alloc_used" | "_dyn_compute_row_values" | "_ensure_credit_balance" | "_latest_active_capital_setting" | "_mi_require_privileged" | "_obs_compute_row_values" | ... 270 more ... | "vote_on_appeal"'.
+1|src/routes/_app.products.index.tsx|TS7006|Parameter 'index' implicitly has an 'any' type.
+2|src/routes/_app.products.index.tsx|TS7006|Parameter 'l' implicitly has an 'any' type.
+4|src/routes/_app.products.index.tsx|TS7006|Parameter 'p' implicitly has an 'any' type.
+1|src/routes/_app.products.index.tsx|TS7006|Parameter 'r' implicitly has an 'any' type.
+2|src/routes/_app.products.index.tsx|TS7053|Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"active" | "inactive" | "discontinued", "default" | "destructive" | "outline" | "secondary">'.
+2|src/routes/_app.products.index.tsx|TS7053|Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"active" | "inactive" | "discontinued", string>'.
+2|src/routes/_app.products.index.tsx|TS7053|Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"available" | "unavailable" | "limited" | "unknown", "default" | "destructive" | "outline" | "secondary">'.
+2|src/routes/_app.products.index.tsx|TS7053|Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"available" | "unavailable" | "limited" | "unknown", string>'.
+2|src/routes/_app.products.index.tsx|TS7053|Element implicitly has an 'any' type because expression of type 'any' can't be used to index type 'Record<"iranian" | "foreign", string>'.
