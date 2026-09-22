@@ -4,7 +4,9 @@
  * Each check asserts UI content from the source (file:line cited in comments),
  * never only an HTTP status. Screenshots go under R2_EVIDENCE_DIR/screenshots.
  *
- *   $env:AFRAKALA_LAN_ENV = "D:\AfraKalaTest\app\deploy\lan\.env.lan"
+ * Auth: minted JWT via storageStateForRole (e2e/helpers/role-session.ts) —
+ * same pattern as e2e/torob-ops/*.spec.ts; no password mutation.
+ *
  *   $env:R2_EVIDENCE_DIR  = "D:\AfraKalaTest\research\release-line\r1-r2\evidence\G2\restored-features"
  *   npx playwright test e2e/release-r2/restored-features.spec.ts --workers=1
  */
@@ -19,7 +21,8 @@ const BASE_URL = process.env.E2E_BASE_URL ?? "http://192.168.170.8:3100";
 const SUPABASE_URL = `http://192.168.170.8:${lanEnv().SUPABASE_API_PORT}`;
 const EVIDENCE_DIR = process.env.R2_EVIDENCE_DIR ?? "";
 const MODULE_PASSWORD = process.env.TOROB_OPS_E2E_PASSWORD ?? "";
-const PRODUCTS_PAGE_SIZE = 20; // src/lib/products/constants.ts:51
+/** src/lib/products/constants.ts:51 */
+const PRODUCTS_PAGE_SIZE = 20;
 
 test.describe.configure({ mode: "serial" });
 test.setTimeout(180_000);
@@ -60,6 +63,10 @@ async function unlockTorobIfPossible(page: Page) {
 
 test.beforeAll(() => {
   expect(EVIDENCE_DIR, "R2_EVIDENCE_DIR must be set (outside the worktree)").toBeTruthy();
+  expect(
+    path.resolve(EVIDENCE_DIR).toLowerCase().includes("wt-release-r2"),
+    "R2_EVIDENCE_DIR must not be inside the R2 worktree",
+  ).toBe(false);
   mkdirSync(path.join(EVIDENCE_DIR, "screenshots"), { recursive: true });
 });
 
@@ -68,13 +75,12 @@ test("/persons/merge — paging, bulk merge, merge suggestions", async ({ page }
   await settle(page);
   // PersonMergePage.tsx:362-364 — page chrome
   await expect(page.getByText("بررسی اشخاص تکراری").first()).toBeVisible({ timeout: 30_000 });
-  // PersonMergePage.tsx:350 — merge suggestions (2a2792ff / b4b6413e port)
+  // PersonMergePage.tsx:350 — merge suggestions (2a2792ff / b4b6413e)
   await expect(page.getByRole("button", { name: /پیشنهاد ادغام‌ها/ })).toBeVisible();
-  // PersonMergePage.tsx:402-446 — paging controls (ee13f79f)
-  // Visible when queue non-empty; otherwise empty-state still proves the page.
+  // PersonMergePage.tsx:402-446 — paging (ee13f79f); :477 bulk
   const empty = page.getByText("هیچ جفت مشکوکی در انتظار بررسی نیست.");
   const pageSize = page.getByText("در هر صفحه");
-  const bulk = page.getByRole("button", { name: /ادغام گروهی/ }); // PersonMergePage.tsx:477
+  const bulk = page.getByRole("button", { name: /ادغام گروهی/ });
   if ((await empty.count()) > 0) {
     await expect(empty).toBeVisible();
   } else {
@@ -89,7 +95,7 @@ test("/persons/merge — paging, bulk merge, merge suggestions", async ({ page }
 test("/settings/caller-id — settings form", async ({ page }) => {
   await page.goto("/settings/caller-id", { waitUntil: "domcontentloaded" });
   await settle(page);
-  // _app.settings.caller-id.tsx:61-64
+  // _app.settings.caller-id.tsx:61-64 (77ca4856)
   await expect(page.getByText("تنظیمات Caller ID").first()).toBeVisible({ timeout: 30_000 });
   // _app.settings.caller-id.tsx:72-74
   await expect(page.getByText("Caller ID فعال باشد")).toBeVisible();
@@ -99,7 +105,7 @@ test("/settings/caller-id — settings form", async ({ page }) => {
 test("work taxonomy catalog screen", async ({ page }) => {
   await page.goto("/operations/work/settings", { waitUntil: "domcontentloaded" });
   await settle(page);
-  // WorkTaxonomiesSettingsPage.tsx:154-157 (77ca4856 catalog surface)
+  // WorkTaxonomiesSettingsPage.tsx:154-157 (77ca4856)
   await expect(page.getByText("تنظیمات طبقه‌بندی تیکت").first()).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId("work-taxonomies-settings")).toBeVisible();
   await expect(page.getByRole("tab", { name: "گروه‌ها" })).toBeVisible();
@@ -143,6 +149,7 @@ test("products label filter applied before paging (992a8061)", async ({ page }) 
   expect(cleaned.length).toBeLessThanOrEqual(PRODUCTS_PAGE_SIZE);
 
   for (const sku of cleaned) {
+    if (sku === "—") continue;
     const has = dbScalar(`
       select count(*)::text
         from products p
@@ -197,15 +204,16 @@ test("ticket page: همکاری pin + Caller ID footer entry", async ({ page }) 
   // Open tickets board; pins live in AppSidebar (owner-reported missing on prod).
   await page.goto("/operations/work", { waitUntil: "domcontentloaded" });
   await settle(page);
-  // Prefer a concrete work-item URL when one exists.
-  const itemId = dbScalar(`select id::text from work_items order by created_at desc nulls last limit 1`);
+  const itemId = dbScalar(
+    `select id::text from work_items order by created_at desc nulls last limit 1`,
+  );
   if (/^[0-9a-f-]{36}$/i.test(itemId)) {
     await page.goto(`/operations/work/${itemId}`, { waitUntil: "domcontentloaded" });
     await settle(page);
   }
-  // AppSidebar.tsx:669-675 — button that opens «همکاری» (sidebar pin, collaboration module)
+  // AppSidebar.tsx:669-675 — button that opens «همکاری» (c1ea61a1)
   await expect(page.getByRole("link", { name: "همکاری" }).first()).toBeVisible({ timeout: 30_000 });
-  // AppSidebar.tsx:930-936 — caller-ID settings at bottom of sidebar
+  // AppSidebar.tsx:930-936 — caller-ID settings at bottom of sidebar (77ca4856)
   await expect(page.getByRole("link", { name: "Caller ID" }).first()).toBeVisible();
   await shot(page, "ticket-collab-caller-id");
 });
