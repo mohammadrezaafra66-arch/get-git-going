@@ -1,0 +1,17 @@
+SEED
+{
+  "stamp": "f471408515",
+  "salesperson_id": "00ebe9d3-b467-453c-89d6-08bab46335c2",
+  "deal_red": "cc84206e-0ad7-4484-87f8-9ba9733a1bb3",
+  "deal_green": "58e9a092-51ad-48bc-8174-69070c7865cc",
+  "deal_grey": "1367eb8a-54fc-4b91-accf-6dc2cfe915c3",
+  "deal_yellow": "11dc8d87-fa1d-41b6-afac-ce03b7c8252d",
+  "act_red": "b2e69943-5712-441a-89cd-db4872c68bea",
+  "act_green": "365da29c-67fb-4c4a-a852-0ab3c5883795",
+  "act_grey": "61d8c340-4aae-4e92-acec-abf32a4b3fa4",
+  "act_remind": "dd124e17-741a-464b-925c-217f434a53e2",
+  "act_postpone": "7a4bc55a-da2b-44f1-bb86-c29f322121fd",
+  "remind_due_at": "2026-09-22T10:05:29.819351+00:00",
+  "postpone_original": "2026-09-23T10:03:29.819351+00:00"
+}
+RPC=3

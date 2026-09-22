@@ -1,0 +1,14 @@
+E4 failability — F5 prior fails (before final harden)
+
+1) f5-run2.txt — A5 timeout 180s on payment-term xpath click (A2 passed)
+   Error: Test timeout of 180000ms exceeded at termTrigger.click()
+
+2) Early A5 (conversation first f5-run) — purchase_count Received: 0
+   Error: marked purchase with new supplier must exist
+
+3) f5-run4.txt — A2 reload race
+   Error: closed detail must show «تاریخ بسته شدن»
+   Received: «در حال بررسی جلسه کاربری...»
+
+PASS: f5-run.txt EXIT_CODE=0 — 2 passed (12.1s)
+APP_GIT_SHA=e2d67d0e

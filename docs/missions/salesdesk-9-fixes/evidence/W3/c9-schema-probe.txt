@@ -1,0 +1,15 @@
+  column_name   | data_type | is_nullable 
+----------------+-----------+-------------
+ interaction_id | uuid      | YES
+(1 row)
+
+            indexname            
+---------------------------------
+ sales_quotes_interaction_id_idx
+(1 row)
+
+             conname              |                      pg_get_constraintdef                      
+----------------------------------+----------------------------------------------------------------
+ sales_quotes_interaction_id_fkey | FOREIGN KEY (interaction_id) REFERENCES sales_interactions(id)
+(1 row)
+

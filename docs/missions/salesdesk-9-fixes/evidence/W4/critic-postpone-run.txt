@@ -1,0 +1,11 @@
+﻿node : NOTICE:  POSTPONE_KEEP keep=t orig_eq=t due_changed=t
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-00d1e59b-f0a8-4b46-8581-dcdfee6ffc24.ps1:120 char:1
++ node docs/missions/salesdesk-9-fixes/evidence/W4/critic-postpone-prob ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (NOTICE:  POSTPO...t due_changed=t:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+BEGIN
+DO
+ROLLBACK
+

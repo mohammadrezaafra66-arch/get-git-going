@@ -1,0 +1,17 @@
+﻿{
+  "job_id": "W3-OPS",
+  "state": "done",
+  "attempt": 2,
+  "deadline_at": "2026-09-22T06:30:00Z",
+  "budget": { "minutes": 40 },
+  "checkpoint_path": "docs/missions/salesdesk-9-fixes/evidence/W3/registry/W3-OPS/checkpoint.md",
+  "heartbeat_every": 60,
+  "killable": false,
+  "HEAD": "42392d3f",
+  "APP_GIT_SHA": "42392d3f",
+  "contains_c4bcafe9": true,
+  "health": "healthy",
+  "http_status": 200,
+  "compose_safety": "PASS",
+  "playwright": "pass"
+}

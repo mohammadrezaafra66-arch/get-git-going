@@ -1,0 +1,33 @@
+{
+  "job_id": "W2-M",
+  "state": "done",
+  "attempt": 1,
+  "deadline": "2026-09-21T20:30:00Z",
+  "budget": { "minutes": 45 },
+  "checkpoint": "docs/missions/salesdesk-9-fixes/evidence/W2/registry/W2-M/checkpoint.md",
+  "heartbeat_every": 60,
+  "killable": false,
+  "result": {
+    "status": "DONE",
+    "versions": ["20260921230000", "20260921230100"],
+    "migrations": [
+      "supabase/migrations/20260921230000_563_user_caller_id_settings_display.sql",
+      "supabase/migrations/20260921230100_564_sales_interactions_deal_id.sql"
+    ],
+    "reverts": [
+      "docs/missions/salesdesk-9-fixes/revert/563_user_caller_id_settings_display.sql",
+      "docs/missions/salesdesk-9-fixes/revert/564_sales_interactions_deal_id.sql"
+    ],
+    "evidence": [
+      "docs/missions/salesdesk-9-fixes/evidence/W2/pre-probe-live.txt",
+      "docs/missions/salesdesk-9-fixes/evidence/W2/applied-20260921230000_563.txt",
+      "docs/missions/salesdesk-9-fixes/evidence/W2/applied-20260921230100_564.txt",
+      "docs/missions/salesdesk-9-fixes/evidence/W2/post-verify.txt",
+      "docs/missions/salesdesk-9-fixes/evidence/W2/check-probe.txt"
+    ],
+    "verify_exit": 0,
+    "head": "f12bb8c8a20d76b2f04e27a1abbcba8b2abd7b44",
+    "pushed": true
+  },
+  "next_action": null
+}

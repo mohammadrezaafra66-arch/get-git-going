@@ -1,0 +1,10 @@
+
+Running 1 test using 1 worker
+
+(node:24452) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium-collab] › e2e\collaboration\inquiry-sla.slow.spec.ts:10:3 › D6/D7 inquiry SLA @slow › D6 SLA transitions and D7 penalty @slow (11.1m)
+
+  Slow test file: [chromium-collab] › e2e\collaboration\inquiry-sla.slow.spec.ts (11.1m)
+  Consider running tests from slow files in parallel. See: https://playwright.dev/docs/test-parallel
+  1 passed (11.1m)

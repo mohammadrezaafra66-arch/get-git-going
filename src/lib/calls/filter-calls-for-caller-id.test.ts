@@ -4,7 +4,10 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { filterCallsForCallerId } from "./filter-calls-for-caller-id";
+import {
+  filterCallsForCallerId,
+  passesOnlyMyCustomers,
+} from "./filter-calls-for-caller-id";
 import type { CallerIdSettings } from "./caller-id-settings";
 
 const base: CallerIdSettings = {
@@ -12,6 +15,9 @@ const base: CallerIdSettings = {
   show_inbound: true,
   show_outbound: true,
   show_others_outbound: false,
+  display_seconds: 15,
+  only_my_extension: false,
+  only_my_customers: false,
 };
 
 const sample = [
@@ -84,5 +90,79 @@ describe("filterCallsForCallerId", () => {
       ["412"],
     );
     assert.deepEqual(out, []);
+  });
+
+  it("only_my_extension keeps inbound+outbound on my exts only", () => {
+    const out = filterCallsForCallerId(
+      sample,
+      { ...base, only_my_extension: true, show_others_outbound: true },
+      ["412"],
+    );
+    assert.deepEqual(
+      out.map((c) => c.id),
+      ["o-mine"],
+    );
+  });
+
+  it("only_my_customers defers until customerResolved", () => {
+    const unresolved = [
+      {
+        id: "i1",
+        direction: "inbound",
+        extension: "401",
+        customerResolved: false as const,
+      },
+    ];
+    const kept = filterCallsForCallerId(
+      unresolved,
+      { ...base, only_my_customers: true },
+      ["401"],
+      { currentUserId: "user-a" },
+    );
+    assert.equal(kept.length, 1);
+
+    const resolvedOther = filterCallsForCallerId(
+      [
+        {
+          id: "i1",
+          direction: "inbound",
+          extension: "401",
+          customerResolved: true,
+          responsibleUserId: "other",
+        },
+      ],
+      { ...base, only_my_customers: true },
+      ["401"],
+      { currentUserId: "user-a" },
+    );
+    assert.equal(resolvedOther.length, 0);
+
+    const resolvedMine = filterCallsForCallerId(
+      [
+        {
+          id: "i1",
+          direction: "inbound",
+          extension: "401",
+          customerResolved: true,
+          responsibleUserId: "user-a",
+        },
+      ],
+      { ...base, only_my_customers: true },
+      ["401"],
+      { currentUserId: "user-a" },
+    );
+    assert.equal(resolvedMine.length, 1);
+  });
+});
+
+describe("passesOnlyMyCustomers", () => {
+  it("allows all when setting off", () => {
+    assert.equal(passesOnlyMyCustomers(base, "u1", null), true);
+  });
+  it("requires match when on", () => {
+    const s = { ...base, only_my_customers: true };
+    assert.equal(passesOnlyMyCustomers(s, "u1", "u1"), true);
+    assert.equal(passesOnlyMyCustomers(s, "u1", "u2"), false);
+    assert.equal(passesOnlyMyCustomers(s, "u1", null), false);
   });
 });

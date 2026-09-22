@@ -1,0 +1,40 @@
+md5=64619866f83af441b2d64153f62fcaab
+activity_cols_gone=true
+kind_unchanged=true
+v573_gone=true
+deal_id_kept=true
+
+SET
+DROP INDEX
+DROP INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+COMMENT
+COMMENT
+DELETE 1
+
+ column_name 
+-------------
+(0 rows)
+
+  kind   | n 
+---------+---
+ note    | 2
+ request | 4
+(2 rows)
+
+ v573_used 
+-----------
+ f
+(1 row)
+
+ column_name 
+-------------
+ deal_id
+(1 row)
+

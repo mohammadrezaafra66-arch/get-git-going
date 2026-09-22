@@ -1,0 +1,7 @@
+# Wave 0/1 — build `web` from the salesdesk-9-fixes worktree only.
+# Used with: docker compose -f docker-compose.yml -f <this> …
+# Must not change any service other than web.build.context.
+services:
+  web:
+    build:
+      context: D:\AfraKalaTest\wt-salesdesk-9-fixes

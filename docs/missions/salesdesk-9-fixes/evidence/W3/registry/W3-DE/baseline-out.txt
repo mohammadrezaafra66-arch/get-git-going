@@ -1,0 +1,38 @@
+    version     
+----------------
+ 20260921220000
+ 20260921220100
+ 20260921220200
+ 20260921230000
+ 20260921230100
+(5 rows)
+
+ null_salesperson_request 
+--------------------------
+                        3
+(1 row)
+
+ null_salesperson_any 
+----------------------
+                    5
+(1 row)
+
+ column_name | data_type 
+-------------+-----------
+ deal_id     | uuid
+(1 row)
+
+ deal_lost_reasons 
+-------------------
+ 
+(1 row)
+
+ sales_interaction_items 
+-------------------------
+ 
+(1 row)
+
+ column_name 
+-------------
+(0 rows)
+

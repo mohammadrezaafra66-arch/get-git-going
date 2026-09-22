@@ -1,4 +1,11 @@
-import { createFileRoute, isRedirect, Outlet, redirect } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  isRedirect,
+  Outlet,
+  redirect,
+  useNavigate,
+  useRouterState,
+} from "@tanstack/react-router";
 import { AppShell } from "@/components/layout/AppShell";
 import { RouteRoleGate } from "@/components/layout/RouteRoleGate";
 import { Button } from "@/components/ui/button";
@@ -111,6 +118,9 @@ function AppLayoutContent() {
   } = useAuth();
   const [showDiag, setShowDiag] = useState(false);
   const [stuckLoading, setStuckLoading] = useState(false);
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const searchStr = useRouterState({ select: (s) => s.location.searchStr });
 
   const isRefreshing = loading || profileLoading || rolesLoading;
 
@@ -122,6 +132,25 @@ function AppLayoutContent() {
     const id = window.setTimeout(() => setStuckLoading(true), 6_000);
     return () => window.clearTimeout(id);
   }, [isRefreshing]);
+
+  // Cold session: after auth is ready, never leave an unauthenticated visitor on a
+  // guarded shell. SSR beforeLoad skips the check; requirePermission also passes
+  // when there is no window — so the client layout must enforce /login.
+  useEffect(() => {
+    if (!initialized || isRefreshing || user || authError) return;
+    const returnPath = `${pathname}${searchStr || ""}`;
+    logAuthDiagnostic("redirect.login", "_app.layout: no user after auth ready", {
+      pathname,
+    });
+    void navigate({
+      to: "/login",
+      search:
+        returnPath.startsWith("/") && !returnPath.startsWith("/login")
+          ? { redirect: returnPath }
+          : {},
+      replace: true,
+    });
+  }, [initialized, isRefreshing, user, authError, pathname, searchStr, navigate]);
 
   const copyDiagnostics = async () => {
     const diag = getAuthDiagnostics();
@@ -199,6 +228,12 @@ function AppLayoutContent() {
         </div>
       </div>
     );
+  }
+
+  // No user and no transient authError: hold the loading screen while the
+  // effect above navigates to /login (avoids flashing the guarded shell).
+  if (!user) {
+    return <AuthLoadingScreen />;
   }
 
   return (

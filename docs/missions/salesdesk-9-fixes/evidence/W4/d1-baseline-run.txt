@@ -1,0 +1,68 @@
+﻿=== columns (activity_* / due_* / done_at / result_note) ===
+ column_name | data_type | is_nullable | column_default 
+-------------+-----------+-------------+----------------
+ deal_id     | uuid      | YES         | 
+(1 row)
+
+=== all sales_interactions columns ===
+    column_name    |        data_type         | is_nullable 
+-------------------+--------------------------+-------------
+ id                | uuid                     | NO
+ person_id         | uuid                     | NO
+ customer_id       | uuid                     | YES
+ kind              | text                     | NO
+ title             | text                     | YES
+ body              | text                     | NO
+ status            | text                     | NO
+ outcome_note      | text                     | YES
+ salesperson_id    | uuid                     | YES
+ author_id         | uuid                     | NO
+ call_log_id       | uuid                     | YES
+ next_follow_up_at | timestamp with time zone | YES
+ followed_up_at    | timestamp with time zone | YES
+ source            | text                     | NO
+ created_at        | timestamp with time zone | NO
+ updated_at        | timestamp with time zone | NO
+ deal_id           | uuid                     | YES
+ won_at            | timestamp with time zone | YES
+ lost_at           | timestamp with time zone | YES
+ lost_reason_id    | uuid                     | YES
+ lost_reason_note  | text                     | YES
+ lost_reason_other | text                     | YES
+(22 rows)
+
+=== kind counts ===
+  kind   | n 
+---------+---
+ note    | 2
+ request | 4
+(2 rows)
+
+=== call/note with call_log direction (sample map preview) ===
+ kind | call_log_direction | has_follow_up | n 
+------+--------------------+---------------+---
+ note |                    | f             | 2
+(1 row)
+
+=== request rows (should stay unmapped) ===
+ request_n 
+-----------
+         4
+(1 row)
+
+=== version 573 unused? ===
+ v573_used 
+-----------
+ f
+(1 row)
+
+=== activity types 0/1/2 hex ===
+ sort_order |                   title_hex                    
+------------+------------------------------------------------
+          0 | db8cd8a7d8afd8afd8a7d8b4d8aa20d8b3d8a7d8afd987
+          1 | d8aad985d8a7d8b320d988d8b1d988d8afdb8c
+          2 | d8aad985d8a7d8b320d8aed8b1d988d8acdb8c
+(3 rows)
+
+
+EXIT=0 wrote d1-baseline.txt

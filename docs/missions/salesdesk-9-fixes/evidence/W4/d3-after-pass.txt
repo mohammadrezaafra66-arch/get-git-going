@@ -1,0 +1,19 @@
+W4-FE D3 · N17 · after-pass
+timestamp: 2026-09-22T05:15:00+05:00
+
+Before: d3-before-fail.txt / FINDINGS N17 ABSENT (0 Persian done-flow strings in src)
+After: d3-d7-grep-after.txt shows labels in ActivityForm.tsx + ActivityDoneControls.tsx + activities.ts
+
+Key files:
+- src/lib/sales-desk/activities.ts — create/mark/revert
+- src/components/sales-desk/ActivityForm.tsx
+- src/components/sales-desk/ActivityDoneControls.tsx
+- src/components/sales-desk/InteractionTimeline.tsx
+- src/routes/_app.operations.sales-desk_.deals.$dealId.tsx (tab فعالیت‌ها)
+
+Owner-only write: salesperson_id === auth.uid(); others read-only.
+Revert clears done_at + result_note.
+«ذخیره و ایجاد فعالیت دیگر» resets form / opens create-another.
+
+E3: Persian strings present (d3-d7-grep-after.txt)
+E4: before 0 matches → after ≥10 matches for done-flow labels

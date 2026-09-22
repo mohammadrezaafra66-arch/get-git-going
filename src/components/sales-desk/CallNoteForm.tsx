@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -16,8 +16,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  clearCallDraft,
+  loadCallDraft,
+  saveCallDraft,
+  type CallNoteDraft,
+} from "@/lib/calls/call-drafts";
+import {
   createSalesInteraction,
-  type SalesInteractionKind,
 } from "@/lib/sales-desk";
 import {
   PersianFollowUpFields,
@@ -32,10 +37,53 @@ type Props = {
   defaultKind?: "call" | "note";
   compact?: boolean;
   onCreated?: (id: string) => void;
+  /** B1/B4 call-card key — drafts keyed in localStorage */
+  draftKey?: string | null;
+  /** Linked deal id from «افزودن معامله» (B5) */
+  dealId?: string | null;
+  onDealIdChange?: (dealId: string | null) => void;
+  /** Opens deal form without discarding note draft */
+  onAddDeal?: () => void;
+  showAddDeal?: boolean;
 };
+
+function draftPayload(input: {
+  kind: "call" | "note";
+  body: string;
+  title: string;
+  followUpDate: string | null;
+  followUpTime: string;
+  linkedDealId: string | null;
+}): Omit<CallNoteDraft, "updatedAt"> {
+  return {
+    kind: input.kind,
+    body: input.body,
+    title: input.title,
+    followUpDate: input.followUpDate,
+    followUpTime: input.followUpTime,
+    dealId: input.linkedDealId,
+  };
+}
+
+function draftHasContent(
+  payload: Omit<CallNoteDraft, "updatedAt">,
+  defaultKind: "call" | "note",
+): boolean {
+  return Boolean(
+    payload.body.trim() ||
+      payload.title.trim() ||
+      payload.followUpDate ||
+      payload.dealId ||
+      payload.kind !== defaultKind,
+  );
+}
 
 /**
  * فرم خلاصه تماس یا یادداشت دستی (بدون نیاز به Issabel).
+ *
+ * B4: when draftKey changes, flush in-memory fields to the *previous* key,
+ * skip one persist tick for the new key (avoids stale-body overwrite), then load.
+ * Parent should also pass key={draftKey} so React remounts on switch.
  */
 export function CallNoteForm({
   personId,
@@ -45,13 +93,98 @@ export function CallNoteForm({
   defaultKind = "call",
   compact = false,
   onCreated,
+  draftKey = null,
+  dealId = null,
+  onDealIdChange,
+  onAddDeal,
+  showAddDeal = false,
 }: Props) {
   const qc = useQueryClient();
-  const [kind, setKind] = useState<"call" | "note">(defaultKind);
-  const [body, setBody] = useState("");
-  const [title, setTitle] = useState("");
-  const [followUpDate, setFollowUpDate] = useState<string | null>(null);
-  const [followUpTime, setFollowUpTime] = useState("09:00");
+  const stored = draftKey ? loadCallDraft(draftKey) : null;
+
+  const [kind, setKind] = useState<"call" | "note">(
+    stored?.kind ?? defaultKind,
+  );
+  const [body, setBody] = useState(stored?.body ?? "");
+  const [title, setTitle] = useState(stored?.title ?? "");
+  const [followUpDate, setFollowUpDate] = useState<string | null>(
+    stored?.followUpDate ?? null,
+  );
+  const [followUpTime, setFollowUpTime] = useState(
+    stored?.followUpTime ?? "09:00",
+  );
+  const [linkedDealId, setLinkedDealId] = useState<string | null>(
+    dealId ?? stored?.dealId ?? null,
+  );
+
+  const activeKeyRef = useRef<string | null>(draftKey);
+  const skipPersistOnceRef = useRef(false);
+
+  // Switch / remount sync: flush previous key, then load target (skip stale persist)
+  useEffect(() => {
+    const prevKey = activeKeyRef.current;
+    if (prevKey && prevKey !== draftKey) {
+      const flush = draftPayload({
+        kind,
+        body,
+        title,
+        followUpDate,
+        followUpTime,
+        linkedDealId,
+      });
+      if (draftHasContent(flush, defaultKind)) {
+        saveCallDraft(prevKey, flush);
+      }
+      skipPersistOnceRef.current = true;
+    }
+
+    activeKeyRef.current = draftKey;
+
+    if (!draftKey) return;
+    const d = loadCallDraft(draftKey);
+    setKind(d?.kind ?? defaultKind);
+    setBody(d?.body ?? "");
+    setTitle(d?.title ?? "");
+    setFollowUpDate(d?.followUpDate ?? null);
+    setFollowUpTime(d?.followUpTime ?? "09:00");
+    setLinkedDealId(dealId ?? d?.dealId ?? null);
+    // intentionally only when draftKey / dealId / defaultKind change — not on every keystroke
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- flush uses render snapshot at switch
+  }, [draftKey, defaultKind, dealId]);
+
+  useEffect(() => {
+    if (dealId !== undefined && dealId !== null) {
+      setLinkedDealId(dealId);
+    }
+  }, [dealId]);
+
+  // Persist draft while typing — never with stale body under a newly switched key
+  useEffect(() => {
+    if (!draftKey) return;
+    if (skipPersistOnceRef.current) {
+      skipPersistOnceRef.current = false;
+      return;
+    }
+    const payload = draftPayload({
+      kind,
+      body,
+      title,
+      followUpDate,
+      followUpTime,
+      linkedDealId,
+    });
+    if (!draftHasContent(payload, defaultKind)) return;
+    saveCallDraft(draftKey, payload);
+  }, [
+    draftKey,
+    kind,
+    body,
+    title,
+    followUpDate,
+    followUpTime,
+    linkedDealId,
+    defaultKind,
+  ]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -60,7 +193,7 @@ export function CallNoteForm({
       const nextFollowUpAt = combineTehranFollowUpIso(followUpDate, followUpTime);
       return createSalesInteraction({
         personId,
-        kind: kind as SalesInteractionKind,
+        kind,
         body: trimmed,
         title: title.trim() || null,
         customerId,
@@ -68,6 +201,7 @@ export function CallNoteForm({
         nextFollowUpAt,
         source: callLogId ? "caller_popup" : "manual",
         status: "open",
+        dealId: linkedDealId,
       });
     },
     onSuccess: (id) => {
@@ -76,6 +210,9 @@ export function CallNoteForm({
       setTitle("");
       setFollowUpDate(null);
       setFollowUpTime("09:00");
+      setLinkedDealId(null);
+      onDealIdChange?.(null);
+      if (draftKey) clearCallDraft(draftKey);
       qc.invalidateQueries({ queryKey: ["sales-desk"] });
       onCreated?.(id);
     },
@@ -133,16 +270,29 @@ export function CallNoteForm({
         onTimeChange={setFollowUpTime}
       />
 
-      <Button
-        type="button"
-        disabled={mutation.isPending}
-        onClick={() => mutation.mutate()}
-      >
-        {mutation.isPending ? (
-          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+      {linkedDealId ? (
+        <p className="text-xs text-muted-foreground" dir="ltr">
+          معامله مرتبط: {linkedDealId.slice(0, 8)}…
+        </p>
+      ) : null}
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          disabled={mutation.isPending}
+          onClick={() => mutation.mutate()}
+        >
+          {mutation.isPending ? (
+            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+          ) : null}
+          ثبت
+        </Button>
+        {showAddDeal && onAddDeal ? (
+          <Button type="button" variant="outline" onClick={onAddDeal}>
+            افزودن معامله
+          </Button>
         ) : null}
-        ثبت
-      </Button>
+      </div>
     </div>
   );
 

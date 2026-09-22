@@ -1,0 +1,67 @@
+BEGIN
+CREATE TABLE
+GRANT
+GRANT
+INSERT 0 1
+INSERT 0 1
+              set_config              
+--------------------------------------
+ 05098088-2849-43f4-8eb5-7c473c3832ec
+(1 row)
+
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+SET
+DO
+RESET
+              set_config              
+--------------------------------------
+ ea9b35dd-fd57-4905-9355-50ca8646d4d1
+(1 row)
+
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+SET
+DO
+DO
+RESET
+ set_config 
+------------
+ 
+(1 row)
+
+UPDATE 1
+              set_config              
+--------------------------------------
+ 05098088-2849-43f4-8eb5-7c473c3832ec
+(1 row)
+
+  set_config   
+---------------
+ authenticated
+(1 row)
+
+SET
+DO
+RESET
+        step         | ok |                detail                
+---------------------+----+--------------------------------------
+ a_author_set_result | t  | ACTIVITY_OWNER_ONLY
+ b_owner_set_result  | t  | ok
+ c_owner_revert      | t  | ok
+ created             | t  | 4658f134-8529-40c0-b29c-cf96dbd57301
+ d_author_revert     | t  | ACTIVITY_OWNER_ONLY
+(5 rows)
+
+ all_abcd_pass 
+---------------
+ t
+(1 row)
+
+ROLLBACK

@@ -1,0 +1,17 @@
+﻿{
+  "job_id": "FIX-F3",
+  "state": "FAIL",
+  "attempt": 1,
+  "deadline": "2026-09-22T15:30:00+05:00",
+  "budget": { "minutes": 90 },
+  "checkpoint": "docs/missions/salesdesk-9-fixes/evidence/FIX/registry/F3/checkpoint.md",
+  "results": {
+    "C9": "FAIL",
+    "C5": "PASS",
+    "leftover_markers": 0
+  },
+  "product_fix_needed": [
+    "src/routes/_app.sales.quotes.new.tsx"
+  ],
+  "killable": false
+}

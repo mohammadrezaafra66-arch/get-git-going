@@ -1,0 +1,28 @@
+   kind   |    column_name    | data_type | column_default | is_nullable 
+----------+-------------------+-----------+----------------+-------------
+ settings | display_seconds   | integer   | 15             | NO
+ settings | only_my_customers | boolean   | false          | NO
+ settings | only_my_extension | boolean   | false          | NO
+(3 rows)
+
+  kind   | column_name | data_type | is_nullable 
+---------+-------------+-----------+-------------
+ deal_id | deal_id     | uuid      | YES
+(1 row)
+
+    version     
+----------------
+ 20260921230000
+ 20260921230100
+(2 rows)
+
+                    conname                    |                     pg_get_constraintdef                      
+-----------------------------------------------+---------------------------------------------------------------
+ user_caller_id_settings_display_seconds_check | CHECK (((display_seconds >= 5) AND (display_seconds <= 120)))
+(1 row)
+
+             conname             |                  pg_get_constraintdef                   
+---------------------------------+---------------------------------------------------------
+ sales_interactions_deal_id_fkey | FOREIGN KEY (deal_id) REFERENCES sales_interactions(id)
+(1 row)
+

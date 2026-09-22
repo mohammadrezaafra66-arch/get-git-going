@@ -1,0 +1,10 @@
+﻿rg : rg: supabase/migrations/20260922050*.sql: The filename, directory name, or volume label syntax is incorrect. (os 
+error 123)
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-d6cbd67b-c270-48c9-bf12-90a55dc583c6.ps1:125 char:1
++ rg -n "\btasks\b" supabase/migrations/20260922050*.sql docs/missions/ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (rg: supabase/mi... (os error 123):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+rg: docs/missions/salesdesk-9-fixes/revert/57*.sql: The filename, directory name, or volume label syntax is incorrect. 
+(os error 123)

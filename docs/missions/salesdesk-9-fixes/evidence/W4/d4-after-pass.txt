@@ -1,0 +1,21 @@
+W4-FE D4 · N18 · after-pass
+timestamp: 2026-09-22T05:15:00+05:00
+
+Migration 574 applied: d4-apply.txt EXIT=0
+Verify: d4-d6-verify.txt — role_permissions sales-activities for admin/manager/sales can_view=t
+RPC count_open_activities_due_today_or_overdue live (uses tehran_today)
+
+Key files:
+- supabase/migrations/20260922050200_574_role_permissions_sales_activities.sql
+- docs/missions/salesdesk-9-fixes/revert/574_role_permissions_sales_activities.sql
+- src/routes/_app.operations.sales-desk_.activities.tsx
+- src/lib/navigation/registry.ts (nav «فعالیت‌ها»)
+- src/lib/rbac/roles.ts (ModuleKey sales-activities)
+- src/components/layout/AppSidebar.tsx (red badge via RPC)
+- src/routeTree.gen.ts (generated)
+
+Buckets: گذشته تا امروز / تاریخ گذشته (N) / امروز (N) / فردا / تا آخر هفته / تاریخ دیگر
+Filters: انجام نشده | انجام شده | همه فعالیت ها
+
+Before: FINDINGS N18 ABSENT
+After: route + labels + mig live

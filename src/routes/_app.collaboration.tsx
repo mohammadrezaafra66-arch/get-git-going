@@ -61,7 +61,7 @@ function CollaborationPage() {
       icon: MessageSquare,
       gradient: "from-blue-500 to-blue-600",
       badge: unread,
-      allowedRoles: ["admin", "manager", "sales", "accountant", "viewer"],
+      allowedRoles: ["admin", "manager", "sales", "accountant", "purchase_specialist"],
       help: COLLAB_HELP.hubMessages,
     },
     {
@@ -71,7 +71,7 @@ function CollaborationPage() {
       icon: ShoppingCart,
       gradient: "from-emerald-500 to-emerald-600",
       badge: purchase,
-      allowedRoles: ["admin", "manager", "sales"],
+      allowedRoles: ["admin", "manager", "sales", "purchase_specialist"],
       help: COLLAB_HELP.hubPurchase,
     },
     {

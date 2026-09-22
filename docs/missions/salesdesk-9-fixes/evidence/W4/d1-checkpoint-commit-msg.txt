@@ -1,0 +1,6 @@
+docs(missions): checkpoint نهایی W4-DE-D1 پس از push
+
+چه چیزی تغییر کرد: checkpoint state=done + d1-push.txt
+چرا: B-8 registry بستن ردیف D1 پس از push موفق.
+شواهد: E3 — git push 4c59cae9..9b557dcd EXIT=0 (d1-push.txt)
+تأییدنشده: —

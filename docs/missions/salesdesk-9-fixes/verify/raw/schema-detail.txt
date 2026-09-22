@@ -1,0 +1,177 @@
+ enumlabel 
+-----------
+(0 rows)
+
+           tgname            
+-----------------------------
+ trg_work_items_log_events
+ trg_work_items_before_write
+ trg_work_items_updated_at
+(3 rows)
+
+                                pg_get_functiondef                                 
+-----------------------------------------------------------------------------------
+ CREATE OR REPLACE FUNCTION public.work_items_before_write()                      +
+  RETURNS trigger                                                                 +
+  LANGUAGE plpgsql                                                                +
+  SET search_path TO 'public'                                                     +
+ AS $function$                                                                    +
+ BEGIN                                                                            +
+   IF TG_OP = 'INSERT' THEN                                                       +
+     IF auth.uid() IS NOT NULL THEN                                               +
+       NEW.creator_id := auth.uid();                                              +
+     END IF;                                                                      +
+     IF NEW.creator_id IS NULL THEN                                               +
+       RAISE EXCEPTION 'work_items: creator_id required'                          +
+         USING ERRCODE = 'not_null_violation';                                    +
+     END IF;                                                                      +
+   END IF;                                                                        +
+                                                                                  +
+   IF NEW.status = 'in_progress' AND NEW.claimed_due_at IS NULL THEN              +
+     RAISE EXCEPTION 'work_items: claimed_due_at required when status=in_progress'+
+       USING ERRCODE = 'check_violation';                                         +
+   END IF;                                                                        +
+                                                                                  +
+   IF NEW.decision_bucket IS NULL THEN                                            +
+     NEW.decision_bucket_date := NULL;                                            +
+   ELSIF NEW.decision_bucket_date IS NULL THEN                                    +
+     NEW.decision_bucket_date := (now() AT TIME ZONE 'Asia/Tehran')::date;        +
+   END IF;                                                                        +
+                                                                                  +
+   IF NEW.status IN ('done', 'cancelled') THEN                                    +
+     IF NEW.completed_at IS NULL THEN                                             +
+       NEW.completed_at := now();                                                 +
+     END IF;                                                                      +
+   ELSIF TG_OP = 'UPDATE'                                                         +
+         AND OLD.status IN ('done', 'cancelled')                                  +
+         AND NEW.status IS DISTINCT FROM OLD.status                               +
+         AND NEW.status NOT IN ('done', 'cancelled') THEN                         +
+     NEW.completed_at := NULL;                                                    +
+   END IF;                                                                        +
+                                                                                  +
+   RETURN NEW;                                                                    +
+ END;                                                                             +
+ $function$                                                                       +
+ 
+(1 row)
+
+           tgname            |         proname         
+-----------------------------+-------------------------
+ trg_work_items_log_events   | work_items_log_events
+ trg_work_items_before_write | work_items_before_write
+ trg_work_items_updated_at   | set_updated_at
+(3 rows)
+
+     column_name     
+---------------------
+ id
+ number
+ supplier_id
+ status
+ total_amount
+ notes
+ created_by
+ created_at
+ updated_at
+ product_id
+ purchase_price
+ currency
+ quantity
+ purchase_date
+ payment_term_id
+ cash_price
+ cash_price_currency
+ paid_at
+ paid_by
+ warehouse_id
+ supplier_person_id
+(21 rows)
+
+         module         |      role_name      | can_view 
+------------------------+---------------------+----------
+ deal-lost-reasons      | accountant          | f
+ deal-lost-reasons      | admin               | t
+ deal-lost-reasons      | manager             | t
+ deal-lost-reasons      | purchase_specialist | f
+ deal-lost-reasons      | sales               | t
+ deal-lost-reasons      | site                | f
+ deal-lost-reasons      | viewer              | f
+ deal-lost-report       | accountant          | f
+ deal-lost-report       | admin               | t
+ deal-lost-report       | manager             | t
+ deal-lost-report       | purchase_specialist | f
+ deal-lost-report       | sales               | t
+ deal-lost-report       | site                | f
+ deal-lost-report       | viewer              | f
+ sales                  | accountant          | t
+ sales                  | admin               | t
+ sales                  | manager             | t
+ sales                  | purchase_specialist | f
+ sales                  | sales               | t
+ sales                  | site                | f
+ sales                  | viewer              | f
+ sales-activities       | accountant          | f
+ sales-activities       | admin               | t
+ sales-activities       | manager             | t
+ sales-activities       | purchase_specialist | f
+ sales-activities       | sales               | t
+ sales-activities       | site                | f
+ sales-activities       | viewer              | f
+ sales-deals-for-others | accountant          | f
+ sales-deals-for-others | admin               | t
+ sales-deals-for-others | manager             | t
+ sales-deals-for-others | purchase_specialist | f
+ sales-deals-for-others | sales               | t
+ sales-deals-for-others | site                | f
+ sales-deals-for-others | viewer              | f
+(35 rows)
+
+BEGIN
+CREATE TABLE
+DO
+       step        |                                        detail                                         
+-------------------+---------------------------------------------------------------------------------------
+ pick              | ef1d91f6-3a99-4870-9761-727e1b0b0f09 status=pending c0=null
+ to_done           | c1=2026-09-22 03:21:16.16019+00
+ to_completed_fail | new row for relation "work_items" violates check constraint "work_items_status_check"
+ to_closed_fail    | new row for relation "work_items" violates check constraint "work_items_status_check"
+ back_pending      | c2=null
+(5 rows)
+
+ROLLBACK
+       attname       | attnotnull |        def        
+---------------------+------------+-------------------
+ id                  | t          | gen_random_uuid()
+ number              | f          | 
+ supplier_id         | f          | 
+ status              | t          | 'draft'::text
+ total_amount        | t          | 0
+ notes               | f          | 
+ created_by          | f          | 
+ created_at          | t          | now()
+ updated_at          | t          | now()
+ product_id          | f          | 
+ purchase_price      | f          | 
+ currency            | f          | 
+ quantity            | t          | 1
+ purchase_date       | t          | CURRENT_DATE
+ payment_term_id     | t          | 
+ cash_price          | f          | 
+ cash_price_currency | f          | 
+ paid_at             | f          | 
+ paid_by             | f          | 
+ warehouse_id        | f          | 
+ supplier_person_id  | f          | 
+(21 rows)
+
+BEGIN
+CREATE TABLE
+DO
+DO
+        step        | ok |        err        
+--------------------+----+-------------------
+ default_insert     | f  | SUPPLIER_REQUIRED
+ supplier_null_only | f  | SUPPLIER_REQUIRED
+(2 rows)
+
+ROLLBACK

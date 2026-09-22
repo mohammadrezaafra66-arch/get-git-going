@@ -1,0 +1,6 @@
+feat(sales-desk): تعویق و یادآور فعالیت در زنگوله (موج ۴ D6)
+
+چه چیزی تغییر کرد: mig 575 reminder_* + materialize RPC؛ poll زنگوله بدون pg_cron
+چرا: N20 — یادآور فقط با ساعت؛ original_due_at در تعویق حفظ می‌شود
+شواهد: E3 — d6-apply.txt EXIT=0؛ tsc-after-w4-fe.txt count=74
+تأییدنشده: شلیک واقعی یادآور با due_at گذشته در UI

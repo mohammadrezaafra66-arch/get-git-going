@@ -1,0 +1,6 @@
+feat(sales-desk): صفحه فعالیت‌ها و مجوزها (موج ۴ D4)
+
+چه چیزی تغییر کرد: route فعالیت‌ها، mig 574، بج قرمز با tehran_today RPC
+چرا: N18 — سطل‌های موعد و فیلتر انجام‌شده/نشده
+شواهد: E3 — d4-apply.txt EXIT=0؛ d4-d6-verify.txt role_permissions
+تأییدنشده: رندر زنده روی ۳۱۰۰

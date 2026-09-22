@@ -1,0 +1,6 @@
+﻿docs(missions): sync W4-DE-D1 checkpoint HEAD to 48b024a4
+
+چه چیزی تغییر کرد: checkpoint HEAD پس از commit شواهد push
+چرا: registry با tip شاخه هم‌خوان باشد.
+شواهد: E3 — git rev-parse HEAD = 48b024a4
+تأییدنشده: —

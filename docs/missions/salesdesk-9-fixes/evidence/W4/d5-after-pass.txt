@@ -1,0 +1,12 @@
+W4-FE D5 · N19 · after-pass
+timestamp: 2026-09-22T05:15:00+05:00
+
+Before: FINDINGS N19 ABSENT (no traffic-light on deal lists)
+After:
+- FollowUpTrafficLightIcon.tsx — yellow/red/green/grey
+- MyWorkDeals.tsx — lights on open deals + filter «معاملاتی که فعالیتی روی آن‌ها نیست»
+- activities.ts followUpLightsForDeals / dealIdsWithNoOpenActivity
+
+Shown on «کارهای من» (also embedded in میز فروش tab).
+
+E4: grep «معاملاتی که فعالیتی» → MyWorkDeals.tsx (d3-d7-grep-after.txt)

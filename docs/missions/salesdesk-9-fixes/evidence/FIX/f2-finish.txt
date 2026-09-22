@@ -1,0 +1,48 @@
+
+Running 3 tests using 1 worker
+
+(node:34724) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9588) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4080) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41696) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F2_MARKER_COUNTS {"call_ring_events":0,"sales_interactions":0,"persons":0,"customers":0}
+  x  1 e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:277:3 › F2 — caller popup B2/B4/B5 › B2 — cross-tab dismiss sync + single primary claim (46.8s)
+  -  2 e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:358:3 › F2 — caller popup B2/B4/B5 › B4 — draft survives switch; cleared on save
+  -  3 e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:423:3 › F2 — caller popup B2/B4/B5 › B5 — افزودن معامله from call note sets deal_id
+
+
+  1) e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:277:3 › F2 — caller popup B2/B4/B5 › B2 — cross-tab dismiss sync + single primary claim 
+
+    Error: expect(received).toBeGreaterThanOrEqual(expected)
+
+    Expected: >= 1
+    Received:    0
+
+    Call Log:
+    - Timeout 35000ms exceeded while waiting on the predicate
+
+      170 |       intervals: [400, 600, 800],
+      171 |     })
+    > 172 |     .toBeGreaterThanOrEqual(1);
+          |      ^
+      173 |
+      174 |   // Settle BroadcastChannel claim election (~1–2 poll cycles)
+      175 |   await pages[0]!.waitForTimeout(1500);
+        at waitForSingleCard (D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:172:6)
+        at D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:341:11
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f2-F-c2f75-s-sync-single-primary-claim\error-context.md
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f2-F-c2f75-s-sync-single-primary-claim\error-context.md
+
+  1 failed
+    e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:277:3 › F2 — caller popup B2/B4/B5 › B2 — cross-tab dismiss sync + single primary claim 
+  2 did not run

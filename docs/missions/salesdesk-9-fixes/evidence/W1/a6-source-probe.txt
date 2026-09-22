@@ -1,0 +1,71 @@
+﻿=== A6 source probe 2026-09-22T00:04:38.4940499+05:00 ===
+HEAD=ccc40c44439999973029d46f14079abf60ecd2ba
+
+--- label exact «بدون تأمین‌کننده» ---
+_app.purchases.tsx:43:* Wave 1 / A6 — purchases list with «بدون تأمین‌کننده» filter.
+_app.purchases.tsx:114:بدون تأمین‌کننده
+_app.purchases.tsx:128:{toFaDigits(String(noSupplierCount))} خرید بدون تأمین‌کننده
+_app.purchases.tsx:150:title={noSupplierOnly ? "خریدی بدون تأمین‌کننده نیست" : "هنوز خریدی ثبت نشده"}
+_app.purchases.tsx:183:{r.supplier_id ? (r.supplier?.name ?? "—") : "بدون تأمین‌کننده"}
+_app.accounting.purchase-payments.tsx:86:/** Wave 1 / A6 — needed for «بدون تأمین‌کننده» filter (SQL: supplier_id IS NULL). */
+_app.accounting.purchase-payments.tsx:398:بدون تأمین‌کننده
+_app.accounting.purchase-payments.tsx:432:{toFaDigits(String(noSupplierCount))} خرید بدون تأمین‌کننده
+_app.accounting.purchase-payments.tsx:483:<span className="text-muted-foreground">بدون تأمین‌کننده</span>
+
+--- .is('supplier_id', null) / is("supplier_id", null) ---
+_app.purchases.tsx:59:.is("supplier_id", null);
+_app.purchases.tsx:80:if (noSupplierOnly) q = q.is("supplier_id", null);
+_app.accounting.purchase-payments.tsx:193:.is("supplier_id", null);
+_app.accounting.purchase-payments.tsx:217:if (noSupplierOnly) q = q.is("supplier_id", null);
+
+--- columns (id/number/date/product/supplier) purchases ---
+21:TableHead,
+22:TableHeader,
+36:purchase_date: string;
+37:supplier_id: string | null;
+39:supplier: { name: string | null } | null;
+45:* Filter is applied server-side (`supplier_id IS NULL`). The badge count comes
+47:* `SELECT count(*) FROM purchases WHERE supplier_id IS NULL`.
+50:const [noSupplierOnly, setNoSupplierOnly] = useState(false);
+53:const noSupplierCountQ = useQuery({
+54:queryKey: ["purchases-no-supplier-count"],
+59:.is("supplier_id", null);
+64:const noSupplierCount = noSupplierCountQ.data ?? 0;
+67:queryKey: ["purchases", "list", noSupplierOnly],
+73:id, number, purchase_date, supplier_id,
+75:supplier:suppliers(name)
+78:.order("purchase_date", { ascending: false })
+80:if (noSupplierOnly) q = q.is("supplier_id", null);
+88:const isLoading = listQ.isLoading || noSupplierCountQ.isLoading;
+108:checked={noSupplierOnly}
+109:onCheckedChange={setNoSupplierOnly}
+110:id="purchases-no-supplier"
+111:data-testid="filter-no-supplier"
+113:<Label htmlFor="purchases-no-supplier" className="cursor-pointer text-xs">
+115:{noSupplierCount > 0 && (
+119:data-testid="purchases-no-supplier-count"
+121:{toFaDigits(String(noSupplierCount))}
+126:{noSupplierOnly && (
+128:{toFaDigits(String(noSupplierCount))} خرید بدون تأمین‌کننده
+129:{rows.length !== noSupplierCount
+150:title={noSupplierOnly ? "خریدی بدون تأمین‌کننده نیست" : "هنوز خریدی ثبت نشده"}
+152:noSupplierOnly
+153:? "هیچ ردیفی با supplier_id خالی پیدا نشد."
+162:<TableHeader>
+164:<TableHead className="text-right">شناسه</TableHead>
+165:<TableHead className="text-right">شماره</TableHead>
+166:<TableHead className="text-right">تاریخ</TableHead>
+167:<TableHead className="text-right">محصول</TableHead>
+168:<TableHead className="text-right">تأمین‌کننده</TableHead>
+170:</TableHeader>
+173:<TableRow key={r.id}>
+175:{r.id}
+177:<TableCell className="font-mono text-xs">{r.number ?? "—"}</TableCell>
+179:{toFaDigits(formatDateFa(new Date(r.purchase_date)))}
+181:<TableCell>{r.product?.name ?? "—"}</TableCell>
+183:{r.supplier_id ? (r.supplier?.name ?? "—") : "بدون تأمین‌کننده"}
+
+--- SQL count (from purchases-sql-count.txt) ---
+SET
+301
+317

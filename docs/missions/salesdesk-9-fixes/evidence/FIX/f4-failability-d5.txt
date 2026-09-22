@@ -1,0 +1,49 @@
+
+Running 1 test using 1 worker
+
+(node:33232) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42556) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31536) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42732) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39168) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18952) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 e2e\missions\salesdesk-9-fixes-fix-f4.spec.ts:278:3 › F4 — D5 [TEST-9FIX] traffic lights + filter › D5 — red/green/grey/yellow icons + no-activity filter (8.4s)
+
+
+  1) e2e\missions\salesdesk-9-fixes-fix-f4.spec.ts:278:3 › F4 — D5 [TEST-9FIX] traffic lights + filter › D5 — red/green/grey/yellow icons + no-activity filter 
+
+    Error: D5 red = overdue
+
+    expect(locator).toBeVisible() failed
+
+    Locator: locator('ul.space-y-2 > li').filter({ hasText: '[TEST-9FIX] F4 deal-red f469827589' }).getByLabel('WRONG-MUST-FAIL-فعالیت عقب‌افتاده')
+    Expected: visible
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - D5 red = overdue with timeout 5000ms
+      - waiting for locator('ul.space-y-2 > li').filter({ hasText: '[TEST-9FIX] F4 deal-red f469827589' }).getByLabel('WRONG-MUST-FAIL-فعالیت عقب‌افتاده')
+
+
+      313 |       redRow.getByLabel(LIGHT_TITLE.red),
+      314 |       "D5 red = overdue",
+    > 315 |     ).toBeVisible();
+          |       ^
+      316 |     await expect(
+      317 |       greenRow.getByLabel(LIGHT_TITLE.green),
+      318 |       "D5 green = today",
+        at D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f4.spec.ts:315:7
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f4-F-88252-ow-icons-no-activity-filter\error-context.md
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f4-F-88252-ow-icons-no-activity-filter\error-context.md
+
+  1 failed
+    e2e\missions\salesdesk-9-fixes-fix-f4.spec.ts:278:3 › F4 — D5 [TEST-9FIX] traffic lights + filter › D5 — red/green/grey/yellow icons + no-activity filter 

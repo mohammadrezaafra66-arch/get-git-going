@@ -1,0 +1,9 @@
+﻿git : To https://github.com/mohammadrezaafra66-arch/get-git-going.git
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-cc54fe95-3a76-4b49-8f64-db6bde547513.ps1:115 char:52
++ ... sk-9-fixes; git push -u origin feature/salesdesk-9-fixes 2>&1 | Out-F ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (To https://gith...t-git-going.git:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   fbb19478..355c93ec  feature/salesdesk-9-fixes -> feature/salesdesk-9-fixes
+branch 'feature/salesdesk-9-fixes' set up to track 'origin/feature/salesdesk-9-fixes'.
