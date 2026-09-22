@@ -72,3 +72,28 @@ export {
   type DossierCallLog,
   type SalesDossierBundle,
 } from "./dossier";
+
+export {
+  listSalesActivityTypes,
+  createSalesActivity,
+  markActivityDone,
+  revertActivityDone,
+  postponeActivityDue,
+  setActivityReminder,
+  listActivities,
+  listOpenDueTodayOrOverdue,
+  countOpenDueTodayOrOverdue,
+  followUpLightsForDeals,
+  dealIdsWithNoOpenActivity,
+  listActivitiesForDeal,
+  fetchTehranToday,
+  bucketForDueAt,
+  materializeDueActivityReminders,
+  kindForActivitySortOrder,
+  type SalesActivityType,
+  type SalesActivityRow,
+  type ActivityDoneFilter,
+  type ActivityBucket,
+  type FollowUpTrafficLight,
+  type CreateSalesActivityInput,
+} from "./activities";

@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  ActivityDoneControls,
+  ActivityForm,
   OutcomeButtons,
   SalesDeskShell,
   salesInteractionStatusLabel,
@@ -18,6 +20,7 @@ import {
 import {
   loadDealById,
   listSalesInteractionItems,
+  listActivitiesForDeal,
 } from "@/lib/sales-desk";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,6 +72,12 @@ function DealDetailPage() {
         salesperson_id: string | null;
       }>;
     },
+    staleTime: 15_000,
+  });
+
+  const activitiesQ = useQuery({
+    queryKey: ["sales-desk", "deal-activities", dealId],
+    queryFn: () => listActivitiesForDeal(dealId),
     staleTime: 15_000,
   });
 
@@ -170,6 +179,7 @@ function DealDetailPage() {
             <TabsList>
               <TabsTrigger value="items">محصولات درخواستی</TabsTrigger>
               <TabsTrigger value="quotes">پیش‌فاکتورها</TabsTrigger>
+              <TabsTrigger value="activities">فعالیت‌ها</TabsTrigger>
             </TabsList>
             <TabsContent value="items" className="mt-3">
               <Card>
@@ -223,6 +233,58 @@ function DealDetailPage() {
                           <span className="text-xs text-muted-foreground">
                             {formatDateTimeFa(q.created_at)}
                           </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="activities" className="mt-3 space-y-3">
+              <ActivityForm
+                personId={deal.person_id}
+                customerId={deal.customer_id}
+                dealId={deal.id}
+                compact
+                onCreated={() => {
+                  void activitiesQ.refetch();
+                  qc.invalidateQueries({ queryKey: ["sales-desk"] });
+                }}
+              />
+              <Card>
+                <CardContent className="space-y-2 p-3">
+                  {activitiesQ.isLoading ? (
+                    <p className="text-sm text-muted-foreground">…</p>
+                  ) : (activitiesQ.data ?? []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">فعالیتی نیست.</p>
+                  ) : (
+                    <ul className="space-y-2">
+                      {(activitiesQ.data ?? []).map((a) => (
+                        <li
+                          key={a.id}
+                          className="rounded-md border border-border/60 bg-muted/10 p-2.5 text-sm"
+                        >
+                          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                            <Badge variant="secondary" className="text-[10px]">
+                              {a.activity_type?.title ?? "فعالیت"}
+                            </Badge>
+                            <Badge variant="outline" className="text-[10px]">
+                              {a.done_at ? "انجام شده" : "انجام نشده"}
+                            </Badge>
+                            {a.title ? (
+                              <span className="font-medium">{a.title}</span>
+                            ) : null}
+                          </div>
+                          {a.body ? (
+                            <p className="line-clamp-3 text-muted-foreground">{a.body}</p>
+                          ) : null}
+                          <ActivityDoneControls
+                            activity={a}
+                            onUpdated={() => {
+                              void activitiesQ.refetch();
+                              qc.invalidateQueries({ queryKey: ["sales-desk"] });
+                            }}
+                          />
                         </li>
                       ))}
                     </ul>

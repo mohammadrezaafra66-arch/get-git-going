@@ -15,3 +15,6 @@ export { MyWorkDeals } from "./MyWorkDeals";
 export { RequestedProductsBlock } from "./RequestedProductsBlock";
 export type { RequestedProductLine } from "./RequestedProductsBlock";
 export { LostReasonDialog } from "./LostReasonDialog";
+export { ActivityForm } from "./ActivityForm";
+export { ActivityDoneControls } from "./ActivityDoneControls";
+export { FollowUpTrafficLightIcon } from "./FollowUpTrafficLightIcon";
