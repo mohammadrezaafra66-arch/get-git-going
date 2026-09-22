@@ -3,25 +3,43 @@
 ## HANDOFF STATE
 
 ```
+STATUS: PARTIAL — integration STOPPED at Phase 1 (src conflicts + migration timestamp collisions)
+INTEGRATION_WORKTREE: D:\AfraKalaTest\wt-integration-3100
+INTEGRATION_BRANCH: integration/3100-20260922 @ 92a5f5af (collab + salesdesk only)
+PURCHASE_TIP: 40db298b — NOT merged (aborted)
+CONFLICTS: src/routes/_app.persons_.merge.tsx ; src/routeTree.gen.ts
+MIGRATION_COLLISIONS: 20260916210000 and 20260916220000 (person_merge vs torob_ops Path A)
+DEPLOYED_APP_GIT_SHA: 106ae89a (unchanged; no deploy)
+COLLAB_RELEASE: release/collab-20260922 @ d78a5c4e (still not on 3100 as sole deploy)
+D6_CRON: still LIVE on TEST (jobid 26)
+PHASE6_VERIFY: NOT RUN
+REPORT: docs/qa/integration-3100-report-20260922.md
+OWNER_NEXT:
+  1) Resolve src conflicts + renumber colliding purchase migrations
+  2) Re-merge purchase into integration/3100-20260922
+  3) Resume Phase 2–5 of integration mission; deploy only from integration branch
+```
+
+### Integration attempt 2026-09-22 (append)
+
+- Created `integration/3100-20260922` from `origin/release/collab-20260922`.
+- Merged `origin/feature/salesdesk-9-fixes` (`--no-ff` → `92a5f5af`) cleanly.
+- Merge of `origin/feature/purchase-prices-single-active` aborted: conflicts in `src/` (persons merge route + routeTree.gen.ts).
+- Same-timestamp migration collisions: `20260916210000` / `20260916220000` (person_merge vs torob Path A).
+- No deploy; 3100 remains `106ae89a`. Details: `docs/qa/integration-3100-report-20260922.md`.
+
+---
+
+## Prior HANDOFF (collab release stop at Phase 5 ancestry)
+
+```
 STATUS: PARTIAL — STOPPED at Phase 5 (ancestry)
 PHASE: 5 STOP; 6 skipped; 7 docs+push
 WORKTREE: D:\AfraKalaTest\wt-collab-release
 BRANCH: release/collab-20260922
-HEAD: a693edff
-DEPLOYED_APP_GIT_SHA: 106ae89a  (changed during run; was c96791df at Phase 0)
-ANCESTRY: FAIL — 106ae89a is NOT ancestor of HEAD
-COMPOSE_PROJECT: afrakala-lan
-ENV_FILE: D:\AfraKalaTest\app\deploy\lan\.env.lan
-TICK_PROBE: PASS (ROLLBACK, no 42P10)
-OPEN_GT_10M: 0
-D6_CRON: LIVE on TEST — jobid=26 afrakala-tick-inquiries-1min active database=afrakala
-SLA_GATE_INQUIRY: d2dc0de7-65eb-4d5a-9cb1-44ae59dc010e reached warning_5min without manual tick
-TYPECHECK: 74 errors total; 0 in touched files
-TEST_SERVER: NOT READY (code not deployed; E2E not re-run)
-OWNER_NEXT:
-  1) Resolve who owns deployed 106ae89a on 3100
-  2) When clear, deploy from this worktree after ancestry check passes
-  3) Run Phase 6 E2E; then use prod checklist (DB name postgres)
+HEAD: a693edff / later d78a5c4e on remote
+DEPLOYED_APP_GIT_SHA: 106ae89a
+ANCESTRY: FAIL — 106ae89a is NOT ancestor of collab HEAD alone
 ```
 
 ---
