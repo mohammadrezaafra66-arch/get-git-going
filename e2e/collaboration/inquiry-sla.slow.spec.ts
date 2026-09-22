@@ -1,26 +1,28 @@
 import { test, expect } from "@playwright/test";
 import { createInquiryApi, seedInquiryGroup, asUuid } from "./_helpers/fixtures";
-import { countSql, dbScalar, jwtFor, rpc } from "./_helpers/client";
+import { countSql, dbScalar, dbScalarOn } from "./_helpers/client";
 
 /**
- * D6/D7 — SLA wiring. Tag @slow. Total wait ≤ 12 minutes, poll every 60s.
- * If nothing calls tick_inquiries, statuses never change → FAIL P1 built-not-wired.
+ * D6/D7 — SLA wiring via scheduled ticker only. Tag @slow.
+ * Total wait ≤ 12 minutes, poll every 60s. NO manual tick_inquiries.
  */
 test.describe("D6/D7 inquiry SLA @slow", () => {
   test("D6 SLA transitions and D7 penalty @slow", async () => {
     test.setTimeout(13 * 60_000);
     test.slow();
 
-    const cronExists = dbScalar(
-      `select to_regclass('cron.job') is not null`,
+    const cronJob = dbScalarOn(
+      "postgres",
+      `select count(*)::text from cron.job where jobname='afrakala-tick-inquiries-1min' and active and database='afrakala'`,
     );
     const tickFn = dbScalar(
       `select count(*) from pg_proc where proname='tick_inquiries'`,
     );
     test.info().annotations.push({
       type: "D6-wire",
-      description: `cron_job_relation=${cronExists} tick_inquiries_fn=${tickFn}`,
+      description: `cron_job_active=${cronJob} tick_inquiries_fn=${tickFn}`,
     });
+    expect(Number(cronJob), "cron job afrakala-tick-inquiries-1min must be active").toBeGreaterThan(0);
 
     const { groupId, purchaserId } = await seedInquiryGroup("D6");
     const created = await createInquiryApi("sales", groupId, purchaserId);
@@ -32,11 +34,10 @@ test.describe("D6/D7 inquiry SLA @slow", () => {
     const deadline = start + 12 * 60_000;
 
     while (Date.now() < deadline) {
-      // Observe whether anything auto-ticks; also try calling tick as admin (documents if callable)
-      await rpc(jwtFor("admin"), "tick_inquiries", {});
+      // Observe only — scheduled ticker advances status; do NOT call tick_inquiries.
       const status = dbScalar(`select status::text from inquiries where id='${inquiryId}'`);
       const hist = countSql(
-        `select count(*) from inquiry_status_history where inquiry_id='${inquiryId}'`,
+        `select count(*) from inquiry_status_history where inquiry_id='${inquiryId}' and reason='auto-tick'`,
       );
       timeline.push({ t: Math.round((Date.now() - start) / 1000), status, hist });
       if (
@@ -62,7 +63,6 @@ test.describe("D6/D7 inquiry SLA @slow", () => {
       statusesSeen.has("critical_10min") ||
       statusesSeen.has("transfer_available");
 
-    // D7 penalty for purchaser
     const penalties = countSql(
       `select count(*) from performance_penalties
        where inquiry_id='${inquiryId}'`,
@@ -74,17 +74,12 @@ test.describe("D6/D7 inquiry SLA @slow", () => {
     );
     test.info().annotations.push({
       type: "D7",
-      description: `penalties=${penalties} score_events_20m=${scoreEvents} final=${finalStatus} cron=${cronExists}`,
+      description: `penalties=${penalties} score_events_20m=${scoreEvents} final=${finalStatus} cron_job=${cronJob}`,
     });
 
-    if (cronExists === "f" || cronExists === "false") {
-      // Built but not cron-wired — still may progress if we called tick_inquiries
-      if (!progressed) {
-        expect(progressed, `SLA never progressed; timeline=${JSON.stringify(timeline)} cron absent`).toBe(true);
-      }
-    } else {
-      expect(progressed).toBe(true);
-    }
+    expect(progressed, `SLA never progressed without manual tick; timeline=${JSON.stringify(timeline)}`).toBe(
+      true,
+    );
 
     if (statusesSeen.has("critical_10min") || statusesSeen.has("transfer_available")) {
       expect(penalties + scoreEvents).toBeGreaterThan(0);

@@ -107,7 +107,7 @@ test.describe("A — Collaboration hub", () => {
   test("A6 unauthenticated routes redirect to login", async ({ browser }) => {
     const ctx = await browser.newContext({ storageState: { cookies: [], origins: [] } });
     const page = await ctx.newPage();
-    for (const route of ["/collaboration", "/messages", "/messages/inquiries"]) {
+    for (const route of ["/collaboration", "/messages", "/messages/inquiries", "/dashboard"]) {
       await page.goto(route, { waitUntil: "domcontentloaded" });
       await expect
         .poll(() => page.url(), { timeout: 15_000 })

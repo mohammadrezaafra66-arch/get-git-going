@@ -50,7 +50,8 @@ export const HUB_CARDS: Record<string, string[]> = {
   manager: ["پیام‌ها", "فضای خرید", "کارت‌های قرمز من", "رسیدهای تحویل", "اسناد", "امتیازها"],
   sales: ["پیام‌ها", "فضای خرید", "کارت‌های قرمز من", "رسیدهای تحویل", "امتیازها"],
   accountant: ["پیام‌ها", "کارت‌های قرمز من", "اسناد", "امتیازها"],
-  viewer: ["پیام‌ها", "امتیازها"],
+  // Viewer: no messenger hub card (role_permissions load blocked for viewer-only).
+  viewer: ["امتیازها"],
 };
 
 export const HUB_ROUTES: Record<string, string> = {

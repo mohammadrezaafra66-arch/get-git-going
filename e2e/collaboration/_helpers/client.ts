@@ -2,6 +2,7 @@ import { lanEnv, mintJwt, rest, restUrl, errMessage, type RestResult } from "../
 import { dbScalar, dbRows } from "../../helpers/db";
 import { storageStateForRole, authStorageKey, type TestRole } from "../../helpers/role-session";
 import { APP_URL, USER_IDS, type CollabRole } from "./constants";
+import { execFileSync } from "node:child_process";
 
 export { dbScalar, dbRows, mintJwt, rest, restUrl, errMessage, lanEnv };
 export type { RestResult };
@@ -15,16 +16,28 @@ export function anonKey(): string {
 }
 
 export function supabaseUrl(): string {
-  const raw = lanEnv().SUPABASE_URL || "http://192.168.170.8:9000";
-  // LAN .env may use docker hostname "kong" which does not resolve on the host
-  if (/kong/i.test(raw) || raw.includes("localhost") || raw.includes("127.0.0.1")) {
-    return "http://192.168.170.8:9000";
-  }
-  return raw;
+  // Host Playwright must never use the docker-compose hostname `kong`.
+  return "http://192.168.170.8:9000";
 }
 
 export function storageBaseUrl(): string {
   return "http://192.168.170.8:9000";
+}
+
+/** Read-only scalar against a named DB in the LAN container (e.g. postgres for cron.job). */
+export function dbScalarOn(database: string, sql: string): string {
+  const normalized = sql.trim().replace(/\s+/g, " ").toLowerCase();
+  if (!normalized.startsWith("select ") && !normalized.startsWith("with ")) {
+    throw new Error(`Refusing non-read-only SQL: ${sql}`);
+  }
+  if (/\b(insert|update|delete|drop|alter|create|truncate|grant|revoke)\b/i.test(normalized)) {
+    throw new Error(`Refusing mutating SQL: ${sql}`);
+  }
+  return execFileSync(
+    "docker",
+    ["exec", "afrakala-lan-db", "psql", "-U", "postgres", "-d", database, "-A", "-t", "-c", sql],
+    { encoding: "utf8" },
+  ).trim();
 }
 
 /** Map collab role to role-session TestRole (sales2 -> sales email path via mint). */
