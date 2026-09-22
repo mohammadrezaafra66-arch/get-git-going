@@ -1,0 +1,5 @@
+﻿PLAYWRIGHT_RESOLVED=D:\AfraKalaTest\wt-salesdesk-9-fixes\node_modules\.bin\playwright.cmd
+FINAL_RUN_EXIT=0
+FINAL_RUN=docs/missions/salesdesk-9-fixes/evidence/FIX/f2-run.txt
+B2=PASS B4=PASS B5=PASS
+MARKER_COUNTS_AFTER={"call_ring_events":0,"sales_interactions":0,"persons":0,"customers":0}
