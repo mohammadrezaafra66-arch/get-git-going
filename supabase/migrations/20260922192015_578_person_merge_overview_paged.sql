@@ -1,7 +1,7 @@
 SET client_encoding = 'UTF8';
 
 -- =============================================================================
--- 557 — Paginated person_merge_candidates_overview
+-- 578 — Paginated person_merge_candidates_overview
 -- =============================================================================
 -- Large pending queues (hundreds of pairs) make the merge review page hang when
 -- every side's identifiers/aliases/contexts are loaded at once. Limit/offset

@@ -32,12 +32,16 @@ Docs: `c7096026`, `b0caa21b`, `6a870aff`.
 
 ---
 
-## Migration timestamp collisions (kept)
+## Migration timestamp collisions (resolved on R2)
 
-| Timestamp | Salesdesk/collab/integration | Purchase (excluded) |
-|-----------|------------------------------|---------------------|
-| `20260916210000` | `557_person_merge_overview_paged.sql` | `557_torob_ops_path_a.sql` |
-| `20260916220000` | `558_person_merge_helper_grants.sql` | `558_torob_ops_correlation.sql` |
+Person-merge files were renamed off the colliding timestamps (R2 G2.4):
+
+| Old (colliding) | New |
+|-----------------|-----|
+| `20260916210000_557_person_merge_overview_paged.sql` | `20260922192015_578_person_merge_overview_paged.sql` |
+| `20260916220000_558_person_merge_helper_grants.sql` | `20260922192115_579_person_merge_helper_grants.sql` |
+
+Torob Path A keeps `20260916210000_557_torob_ops_path_a.sql` / `20260916220000_558_torob_ops_correlation.sql`.
 
 ---
 
@@ -50,10 +54,10 @@ Owner: pre-existing on 3100, unrelated to this release; deploy changes no DB sta
 | `20260912140000` | `523_…` | **Production-only by design** — never apply/record on test |
 | `20260913101000` | `533_…` | Owner follow-up |
 | `20260913102000` | `534_…` | Owner follow-up (`cron_run_log` absent) |
-| `20260916210000` | `557_…` | Owner follow-up (paginated overview fn live) |
-| `20260916220000` | `558_…` | Owner follow-up |
+| `20260922192015` | `578_person_merge_overview_paged.sql` | Was `20260916210000_557_…` (renamed R2 G2.4); paginated overview |
+| `20260922192115` | `579_person_merge_helper_grants.sql` | Was `20260916220000_558_…` (renamed R2 G2.4) |
 
-**Salesdesk issue:** `558` — `authenticated` EXECUTE on `_person_merge_repoint` measured **false**. Persons merge UI may get permission denied. Out of scope for this deploy.
+**Salesdesk issue:** helper grants (`579`, was `558`) — `authenticated` EXECUTE on `_person_merge_repoint` measured **false**. Persons merge UI may get permission denied. Out of scope for the 3100 deploy; R2 carries the renamed migration.
 
 ---
 

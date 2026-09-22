@@ -1,6 +1,6 @@
 SET client_encoding = 'UTF8';
 
--- 558 — restore EXECUTE on person_merge helpers for authenticated.
+-- 579 — restore EXECUTE on person_merge helpers for authenticated.
 --
 -- Migration 463 revoked EXECUTE on public._person_merge_repoint from
 -- authenticated under the false premise that person_merge is SECURITY DEFINER

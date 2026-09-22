@@ -28,7 +28,7 @@ RULE: deploy 3100 only from integration/3100-20260922
 - Created `integration/3100-20260922` from `origin/release/collab-20260922`.
 - Merged `origin/feature/salesdesk-9-fixes` (`--no-ff` → `92a5f5af`) cleanly.
 - Merge of `origin/feature/purchase-prices-single-active` aborted: conflicts in `src/` (persons merge route + routeTree.gen.ts).
-- Same-timestamp migration collisions: `20260916210000` / `20260916220000` (person_merge vs torob Path A).
+- Same-timestamp migration collisions: `20260916210000` / `20260916220000` (person_merge vs torob Path A) — resolved on R2 by renaming person_merge to `20260922192015_578_…` / `20260922192115_579_…`.
 - No deploy; 3100 remains `106ae89a`. Details: `docs/qa/integration-3100-report-20260922.md`.
 
 ---
