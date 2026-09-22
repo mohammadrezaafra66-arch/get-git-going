@@ -62,21 +62,35 @@ if ([string]::IsNullOrWhiteSpace($pw)) { Fail "POSTGRES_PASSWORD missing in .env
 
 # --- git ---
 Log "STEP verify git"
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 git fetch origin 2>&1 | Out-Host
+$fetchCode = $LASTEXITCODE
+$ErrorActionPreference = $prevEap
+if ($fetchCode -ne 0) { Fail ("git fetch failed exit=" + $fetchCode) }
+
 $branch = (git rev-parse --abbrev-ref HEAD).Trim()
 $head = (git rev-parse --short HEAD).Trim()
 Log ("BRANCH=" + $branch)
 Log ("HEAD=" + $head)
 if ($branch -ne $ExpectedBranch) {
   Log ("Checking out " + $ExpectedBranch)
+  $ErrorActionPreference = "Continue"
   git checkout $ExpectedBranch 2>&1 | Out-Host
-  if ($LASTEXITCODE -ne 0) { Fail ("git checkout " + $ExpectedBranch + " failed") }
+  $coCode = $LASTEXITCODE
   git pull origin $ExpectedBranch 2>&1 | Out-Host
-  if ($LASTEXITCODE -ne 0) { Fail "git pull failed" }
+  $pullCode = $LASTEXITCODE
+  $ErrorActionPreference = $prevEap
+  if ($coCode -ne 0) { Fail ("git checkout " + $ExpectedBranch + " failed") }
+  if ($pullCode -ne 0) { Fail "git pull failed" }
   $branch = (git rev-parse --abbrev-ref HEAD).Trim()
   $head = (git rev-parse --short HEAD).Trim()
 } else {
+  $ErrorActionPreference = "Continue"
   git pull origin $ExpectedBranch 2>&1 | Out-Host
+  $pullCode = $LASTEXITCODE
+  $ErrorActionPreference = $prevEap
+  if ($pullCode -ne 0) { Fail "git pull failed" }
   $head = (git rev-parse --short HEAD).Trim()
 }
 if ($branch -ne $ExpectedBranch) { Fail ("Expected branch " + $ExpectedBranch + " got " + $branch) }
