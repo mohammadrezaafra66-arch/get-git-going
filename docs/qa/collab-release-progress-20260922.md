@@ -3,22 +3,17 @@
 ## HANDOFF STATE
 
 ```
-STATUS: PARTIAL — STOPPED at Phase 2 (5 migration versions not in ledger)
+STATUS: COMPLETE — 3100 READY on integration SHA 6a870aff
 INTEGRATION_WORKTREE: D:\AfraKalaTest\wt-integration-3100
-INTEGRATION_BRANCH: integration/3100-20260922 @ c7096026 (collab + salesdesk)
-PURCHASE: EXCLUDED — owner follow-up (not integrated)
-DEPLOYED_APP_GIT_SHA: 106ae89a (unchanged; deploy not reached)
-LEDGER_MISSING:
-  20260912140000 523_close_anon_table_grants_for_production_shape.sql
-  20260913101000 533_pg_cron_http_scheduler.sql
-  20260913102000 534_cron_run_log.sql (cron_run_log table ABSENT)
-  20260916210000 557_person_merge_overview_paged.sql (fn live; ledger gap)
-  20260916220000 558_person_merge_helper_grants.sql (repoint grant FALSE)
-OWNER_NEXT:
-  1) Record and/or apply the five ledger gaps (do not blind re-run)
-  2) Resume Phase 3 typecheck → deploy → Phase 5 (pricing EXCLUDED)
-  3) Purchase remains separate follow-up after renumber + conflict resolve
+INTEGRATION_BRANCH: integration/3100-20260922 @ 6a870aff
+DEPLOYED_APP_GIT_SHA: 6a870aff
+PURCHASE: EXCLUDED — owner follow-up
+LEDGER_GAPS: exempted (523 prod-only; 533/534/557/558 follow-up)
+SALESDESK_FLAG: 558 _person_merge_repoint EXECUTE=false
+PHASE5: collab A6/A3/C6/C11/D6/D7 PASS; C4 flake run2 only (P2);
+        salesdesk f3/f4/f5 PASS; auth smoke PASS; pricing EXCLUDED
 REPORT: docs/qa/integration-3100-report-20260922.md
+RULE: deploy 3100 only from integration/3100-20260922
 ```
 
 ### Integration resume 2026-09-22 (purchase excluded)

@@ -1,0 +1,12 @@
+
+Running 5 tests using 1 worker
+
+(node:30560) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chrome] › docs\qa\integration-auth-smoke.spec.ts:26:3 › integration auth smoke › cold session redirects to login (3.5s)
+  ok 2 [chrome] › docs\qa\integration-auth-smoke.spec.ts:37:5 › integration auth smoke › warm admin opens guarded routes without login bounce (4.3s)
+  ok 3 [chrome] › docs\qa\integration-auth-smoke.spec.ts:37:5 › integration auth smoke › warm manager opens guarded routes without login bounce (3.5s)
+  ok 4 [chrome] › docs\qa\integration-auth-smoke.spec.ts:37:5 › integration auth smoke › warm sales opens guarded routes without login bounce (3.1s)
+  ok 5 [chrome] › docs\qa\integration-auth-smoke.spec.ts:37:5 › integration auth smoke › warm accountant opens guarded routes without login bounce (3.2s)
+
+  5 passed (20.1s)

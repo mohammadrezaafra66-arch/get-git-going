@@ -2,103 +2,143 @@
 
 > **Rule for all agents:** From now on, deploy to 3100 only from `integration/3100-20260922` (merge your feature branch into it first); never deploy a single feature branch to 3100.
 
-**3100 status: NOT READY** (deploy pending)
+**3100 status: READY**
 
-**STATUS: IN PROGRESS** — Phase 2 exempted; continuing Phase 3+.
+**STATUS: COMPLETE** — integration SHA deployed; Phase 5 gates met (one non-P0 flake classified).
 
 ---
 
-## Owner decision (follow-up)
+## Owner decisions
 
-| Branch | Status |
-|--------|--------|
-| `release/collab-20260922` (`d78a5c4e`) | **Integrated** |
-| `feature/salesdesk-9-fixes` (`106ae89a`) | **Integrated** |
-| `feature/purchase-prices-single-active` (`40db298b`) | **Not integrated — owner follow-up** (excluded; conflicts/migrations not touched) |
-
-Pricing Phase 5 item 4: **EXCLUDED**.
+| Item | Decision |
+|------|----------|
+| `feature/purchase-prices-single-active` | **Not integrated — owner follow-up** |
+| Phase 5.4 pricing smoke | **EXCLUDED** |
+| Five ledger gaps | **Exempted** (do not apply/record); see below |
 
 ---
 
 ## Branches merged
 
-| Step | Result | Commit |
-|------|--------|--------|
-| Worktree from `origin/release/collab-20260922` | OK | `integration/3100-20260922` |
-| `--no-ff` `origin/feature/salesdesk-9-fixes` | OK | `92a5f5af` |
-| Purchase merge | **Not attempted** (owner exclude) | — |
-| Stop docs | OK | `c7096026` |
+| Tip | SHA | In HEAD? |
+|-----|-----|----------|
+| `origin/release/collab-20260922` | `d78a5c4e` | yes |
+| `origin/feature/salesdesk-9-fixes` | `106ae89a` | yes |
+| `origin/feature/purchase-prices-single-active` | `40db298b` | **no** (excluded) |
 
-Integration HEAD at Phase 2: **`c7096026`**.  
-Deployed 3100: **`106ae89a`** (unchanged; deploy not reached).  
-Ancestry precheck would PASS (`106ae89a` ⊂ HEAD).
+Merge commit: `92a5f5af` (salesdesk into collab).  
+Docs: `c7096026`, `b0caa21b`, `6a870aff`.  
+**Deployed:** `APP_GIT_SHA=6a870aff` (= `git rev-parse --short HEAD`).
 
 ---
 
-## Migration timestamp collisions (kept for owner follow-up)
+## Migration timestamp collisions (kept)
 
-When purchase is re-integrated later, these same-timestamp collisions remain:
-
-| Timestamp | On salesdesk / collab / integration | On purchase |
-|-----------|-------------------------------------|-------------|
+| Timestamp | Salesdesk/collab/integration | Purchase (excluded) |
+|-----------|------------------------------|---------------------|
 | `20260916210000` | `557_person_merge_overview_paged.sql` | `557_torob_ops_path_a.sql` |
 | `20260916220000` | `558_person_merge_helper_grants.sql` | `558_torob_ops_correlation.sql` |
 
-Series-number overlap (different timestamps):
+---
 
-| Version | File |
-|---------|------|
-| `20260922160000` | purchase: `560_purchase_prices_single_active.sql` (ledger already has this version) |
-| `20260922180000` | collab: `560_schedule_tick_inquiries.sql` (in ledger; cron job 26 live) |
+## Pre-existing ledger gaps (exempted)
+
+Owner: pre-existing on 3100, unrelated to this release; deploy changes no DB state. **Do not apply or record.**
+
+| Version | File | Note |
+|---------|------|------|
+| `20260912140000` | `523_…` | **Production-only by design** — never apply/record on test |
+| `20260913101000` | `533_…` | Owner follow-up |
+| `20260913102000` | `534_…` | Owner follow-up (`cron_run_log` absent) |
+| `20260916210000` | `557_…` | Owner follow-up (paginated overview fn live) |
+| `20260916220000` | `558_…` | Owner follow-up |
+
+**Salesdesk issue:** `558` — `authenticated` EXECUTE on `_person_merge_repoint` measured **false**. Persons merge UI may get permission denied. Out of scope for this deploy.
 
 ---
 
-## Phase 2 — Migration ledger check → **EXEMPTED by owner**
+## Phase 3 — Typecheck
 
-Compared every `supabase/migrations/<14-digit>_*.sql` version on integration HEAD to `supabase_migrations.schema_migrations` on `afrakala`.
-
-- Disk unique versions: **745**
-- Ledger rows: **741**
-- Gaps found: **5**
-
-### Pre-existing ledger gaps (exempted)
-
-Owner decision: these gaps are pre-existing on 3100, unrelated to this release, and this deploy changes no DB state. **Do not apply or record any of them.**
-
-| Version | File | Disposition |
-|---------|------|-------------|
-| `20260912140000` | `523_close_anon_table_grants_for_production_shape.sql` | **Production-only by design** — must never be applied or recorded on test |
-| `20260913101000` | `533_pg_cron_http_scheduler.sql` | Owner follow-up (exempted) |
-| `20260913102000` | `534_cron_run_log.sql` | Owner follow-up (exempted); `cron_run_log` absent on afrakala |
-| `20260916210000` | `557_person_merge_overview_paged.sql` | Owner follow-up (exempted); paginated overview fn already live |
-| `20260916220000` | `558_person_merge_helper_grants.sql` | Owner follow-up (exempted) |
-
-**Salesdesk issue (flagged):** migration `558` intent is not fully live — `authenticated` EXECUTE on `public._person_merge_repoint(text,text,uuid,uuid)` measured **false** (while `_person_merge_count_refs` is true). Persons merge from UI may hit `permission denied for function _person_merge_repoint`. Track as a salesdesk follow-up; out of scope for this integration deploy.
-
-Gate for this release: **PASS (exempted)** — proceed to Phase 3.
+- Command: `npm run typecheck` (DISABLE_LOVABLE_MCP=1)
+- **ERROR_COUNT=74** (≤74) → **PASS**
+- Merge-touched `src/lib/navigation/registry.ts` still has pre-existing `person-merge-pending` TS2322 (not introduced by this integration)
 
 ---
 
-## Phases 3–5
+## Phase 4 — Deploy
 
-| Phase | Status |
+```
+$env:DISABLE_LOVABLE_MCP="1"
+$env:GIT_SHA=(git rev-parse --short HEAD)   # 6a870aff
+$env:BUILD_TIME=2026-09-22T17:51:53
+docker compose -p afrakala-lan --env-file D:\AfraKalaTest\app\deploy\lan\.env.lan `
+  -f deploy/lan/docker-compose.yml up -d --build --no-deps web
+docker restart afrakala-lan-rest
+```
+
+| Check | Result |
 |-------|--------|
-| 3 Typecheck | **PASS** — 74 errors (≤74); merge-changed `registry.ts` person-merge-pending is pre-existing |
-| 4 Deploy | pending |
-| 5 Collab / salesdesk / auth verify | pending |
-| 5.4 Pricing smoke | **EXCLUDED** |
-| READY gate | pending |
+| Ancestry precheck (`106ae89a` ⊂ HEAD) | PASS |
+| `APP_GIT_SHA` | `6a870aff` |
+| `/login` | 200 |
+| `/api/healthz` | 200 |
+| Yellow test banner (`محیط تست`) | visible |
 
 ---
 
-## Prior Phase 1 note
+## Phase 5 — Verification
 
-Purchase was previously aborted on `src/` conflicts (`_app.persons_.merge.tsx`, `routeTree.gen.ts`). Owner later excluded purchase entirely for this integration — those conflicts were not revisited.
+Evidence under `docs/qa/integration-evidence/`.
+
+### 5.1 Collaboration
+
+| Run | Command | Exit | Result |
+|-----|---------|------|--------|
+| Non-slow #1 | `playwright test --config=e2e/collaboration/playwright.config.ts --grep-invert @slow` | **0** | **51 passed** (1.3m) |
+| Non-slow #2 | same | **1** | **50 passed, 1 failed** (C4 realtime) |
+| SLA @slow | `--grep @slow` | **0** | **1 passed** (11.1m) |
+
+Gate items:
+
+| Item | Verdict | Evidence |
+|------|---------|----------|
+| A6 | **PASS** | hub.spec A6 ok run1 |
+| A3 (viewer no پیام‌ها) | **PASS** | A1–A3 viewer ok run1 |
+| C6 / C6b upload | **PASS** | C6 + C6b ok run1 |
+| C11 work_items | **PASS** | C11 ok run1 |
+| D6 cron SLA | **PASS** | slow: cron_job_active=1; status→transfer_available without manual tick |
+| D7 penalty | **PASS** | slow annotation `penalties=1` `final=transfer_available` |
+
+**Failure classified:** C4 realtime on run2 only — `realtime misses 3/3`. Run1 C4 **passed**. Classification: **environment / flake (P2)** — not a product regression from this deploy; not P0.
+
+### 5.2 Salesdesk regression
+
+| Suite | Config | Exit | Result |
+|-------|--------|------|--------|
+| fix-f3 | `docs/missions/.../playwright.fix-f3.config.ts` | 0 | 2 passed |
+| fix-f4 | `.../playwright.fix-f4.config.ts` | 0 | 3 passed |
+| fix-f5 | `.../playwright.fix-f5.config.ts` | 0 | 2 passed |
+
+No new regressions vs prior salesdesk green.
+
+### 5.3 Auth guard (app-wide cold-session fix)
+
+`docs/qa/playwright.integration-auth.config.ts` → **exit 0, 5 passed** (20s): cold → `/login`; warm admin/manager/sales/accountant open `/dashboard`, `/sales/quotes`, `/pricing/my-workbench`, `/collaboration`, `/messages`, `/sales` without login bounce.
+
+### 5.4 Pricing branch smoke
+
+**EXCLUDED** (purchase branch not integrated).
+
+---
+
+## Unresolved (non-blocking)
+
+1. C4 realtime flake (P2) — observe realtime infra on 3100 if it worsens.
+2. Ledger gaps 533/534/557/558 — owner follow-up; **558 repoint grant** = salesdesk issue.
+3. Purchase branch — renumber colliding migrations + resolve `src/` conflicts before merge.
 
 ---
 
 ## Worktree
 
-- Path: `D:\AfraKalaTest\wt-integration-3100`
-- Branch: `integration/3100-20260922` @ `b0caa21b`
-- Main repo `D:\AfraKalaTest\app` untouched for git ops
+- `D:\AfraKalaTest\wt-integration-3100` · `integration/3100-20260922` @ `6a870aff`
