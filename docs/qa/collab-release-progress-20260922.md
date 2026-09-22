@@ -3,22 +3,30 @@
 ## HANDOFF STATE
 
 ```
-STATUS: PARTIAL — integration STOPPED at Phase 1 (src conflicts + migration timestamp collisions)
+STATUS: PARTIAL — STOPPED at Phase 2 (5 migration versions not in ledger)
 INTEGRATION_WORKTREE: D:\AfraKalaTest\wt-integration-3100
-INTEGRATION_BRANCH: integration/3100-20260922 @ 92a5f5af (collab + salesdesk only)
-PURCHASE_TIP: 40db298b — NOT merged (aborted)
-CONFLICTS: src/routes/_app.persons_.merge.tsx ; src/routeTree.gen.ts
-MIGRATION_COLLISIONS: 20260916210000 and 20260916220000 (person_merge vs torob_ops Path A)
-DEPLOYED_APP_GIT_SHA: 106ae89a (unchanged; no deploy)
-COLLAB_RELEASE: release/collab-20260922 @ d78a5c4e (still not on 3100 as sole deploy)
-D6_CRON: still LIVE on TEST (jobid 26)
-PHASE6_VERIFY: NOT RUN
-REPORT: docs/qa/integration-3100-report-20260922.md
+INTEGRATION_BRANCH: integration/3100-20260922 @ c7096026 (collab + salesdesk)
+PURCHASE: EXCLUDED — owner follow-up (not integrated)
+DEPLOYED_APP_GIT_SHA: 106ae89a (unchanged; deploy not reached)
+LEDGER_MISSING:
+  20260912140000 523_close_anon_table_grants_for_production_shape.sql
+  20260913101000 533_pg_cron_http_scheduler.sql
+  20260913102000 534_cron_run_log.sql (cron_run_log table ABSENT)
+  20260916210000 557_person_merge_overview_paged.sql (fn live; ledger gap)
+  20260916220000 558_person_merge_helper_grants.sql (repoint grant FALSE)
 OWNER_NEXT:
-  1) Resolve src conflicts + renumber colliding purchase migrations
-  2) Re-merge purchase into integration/3100-20260922
-  3) Resume Phase 2–5 of integration mission; deploy only from integration branch
+  1) Record and/or apply the five ledger gaps (do not blind re-run)
+  2) Resume Phase 3 typecheck → deploy → Phase 5 (pricing EXCLUDED)
+  3) Purchase remains separate follow-up after renumber + conflict resolve
+REPORT: docs/qa/integration-3100-report-20260922.md
 ```
+
+### Integration resume 2026-09-22 (purchase excluded)
+
+- Owner excluded `feature/purchase-prices-single-active`.
+- Phase 2 ledger check: 5 versions on disk not in `schema_migrations` → STOP; nothing applied.
+- Notable: 557 fn live but unrecorded; 558 `_person_merge_repoint` EXECUTE for authenticated is false; 534 `cron_run_log` absent.
+- No deploy. See `docs/qa/integration-3100-report-20260922.md`.
 
 ### Integration attempt 2026-09-22 (append)
 

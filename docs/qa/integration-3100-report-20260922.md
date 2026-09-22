@@ -4,91 +4,101 @@
 
 **3100 status: NOT READY**
 
-**STATUS: PARTIAL** — stopped at Phase 1 (code conflict in `src/` + same-timestamp migration collisions).
+**STATUS: PARTIAL** — stopped at Phase 2 (migration ledger gaps). Purchase branch excluded by owner decision.
 
 ---
 
-## Stop summary
+## Owner decision (follow-up)
 
-Merge of `origin/feature/purchase-prices-single-active` into `integration/3100-20260922` (after successful `--no-ff` merge of salesdesk) produced **content conflicts in `src/`**. Per mission §2 Phase 1: `git merge --abort` and STOP.
+| Branch | Status |
+|--------|--------|
+| `release/collab-20260922` (`d78a5c4e`) | **Integrated** |
+| `feature/salesdesk-9-fixes` (`106ae89a`) | **Integrated** |
+| `feature/purchase-prices-single-active` (`40db298b`) | **Not integrated — owner follow-up** (excluded; conflicts/migrations not touched) |
 
-Current integration HEAD contains **collab + salesdesk only** (purchase tip is **not** an ancestor).
-
-| Tip | SHA | `merge-base --is-ancestor` vs integration HEAD |
-|-----|-----|-----------------------------------------------|
-| `origin/release/collab-20260922` | `d78a5c4e` | PASS (exit 0) |
-| `origin/feature/salesdesk-9-fixes` | `106ae89a` | PASS (exit 0) |
-| `origin/feature/purchase-prices-single-active` | `40db298b` | **FAIL** (exit 1) |
-
-Deployed on 3100 remains `APP_GIT_SHA=106ae89a` (unchanged — no deploy attempted).
+Pricing Phase 5 item 4: **EXCLUDED**.
 
 ---
 
-## Branches merged (partial)
+## Branches merged
 
-| Step | Result | Merge commit |
-|------|--------|--------------|
-| Worktree from `origin/release/collab-20260922` | OK | branch `integration/3100-20260922` |
+| Step | Result | Commit |
+|------|--------|--------|
+| Worktree from `origin/release/collab-20260922` | OK | `integration/3100-20260922` |
 | `--no-ff` `origin/feature/salesdesk-9-fixes` | OK | `92a5f5af` |
-| `--no-ff` `origin/feature/purchase-prices-single-active` | **ABORTED** | — |
+| Purchase merge | **Not attempted** (owner exclude) | — |
+| Stop docs | OK | `c7096026` |
+
+Integration HEAD at Phase 2: **`c7096026`**.  
+Deployed 3100: **`106ae89a`** (unchanged; deploy not reached).  
+Ancestry precheck would PASS (`106ae89a` ⊂ HEAD).
 
 ---
 
-## Conflicts (abort trigger)
+## Migration timestamp collisions (kept for owner follow-up)
 
-| Path | Area | Notes |
-|------|------|-------|
-| `src/routes/_app.persons_.merge.tsx` | `src/` | ours (salesdesk) `78a8f1fe…` vs theirs (purchase) `febf48d0…` — both modified since base |
-| `src/routeTree.gen.ts` | `src/` | generated route tree; both modified (purchase adds torob-ops routes + persons merge wiring) |
-
-**Owner must resolve these manually** (product decision: keep salesdesk persons-merge page behavior vs purchase branch extract/build fix), regenerate `routeTree.gen.ts` if needed, then re-run the purchase merge.
-
----
-
-## Migration timestamp collisions (STOP-grade)
-
-Two different files share the **same full 14-digit timestamp** across tips:
+When purchase is re-integrated later, these same-timestamp collisions remain:
 
 | Timestamp | On salesdesk / collab / integration | On purchase |
 |-----------|-------------------------------------|-------------|
 | `20260916210000` | `557_person_merge_overview_paged.sql` | `557_torob_ops_path_a.sql` |
 | `20260916220000` | `558_person_merge_helper_grants.sql` | `558_torob_ops_correlation.sql` |
 
-Also note series-number overlap (different timestamps — report only, not the STOP rule):
+Series-number overlap (different timestamps):
 
 | Version | File |
 |---------|------|
-| `20260922160000` | purchase: `560_purchase_prices_single_active.sql` |
-| `20260922180000` | collab: `560_schedule_tick_inquiries.sql` |
-
-**Owner action:** renumber purchase’s torob Path A migrations (and any dependents) to unused timestamps **before** merging into integration; never apply both files that share `20260916210000` / `20260916220000` as if they were one ledger row.
+| `20260922160000` | purchase: `560_purchase_prices_single_active.sql` (ledger already has this version) |
+| `20260922180000` | collab: `560_schedule_tick_inquiries.sql` (in ledger; cron job 26 live) |
 
 ---
 
-## Phases not run
+## Phase 2 — Migration ledger check → **STOP**
+
+Compared every `supabase/migrations/<14-digit>_*.sql` version on integration HEAD to `supabase_migrations.schema_migrations` on `afrakala`.
+
+- Disk unique versions: **745**
+- Ledger rows: **741**
+- **Missing from ledger: 5** (gate requires 0)
+
+| Version | File on disk | Introduced / present on | Live DB evidence (read-only) |
+|---------|--------------|-------------------------|------------------------------|
+| `20260912140000` | `523_close_anon_table_grants_for_production_shape.sql` | main/staging/salesdesk/collab/integration (old #437) | Not verified as applied; anon still has 60 public table grants (may be expected residual) |
+| `20260913101000` | `533_pg_cron_http_scheduler.sql` | convergence / all above | Designed as afrakala no-op for cron DDL; no `run_issabel*` on afrakala |
+| `20260913102000` | `534_cron_run_log.sql` | convergence / all above | **`public.cron_run_log` does NOT exist** → likely never applied on afrakala |
+| `20260916210000` | `557_person_merge_overview_paged.sql` | salesdesk / collab / integration | **Applied in effect:** `person_merge_candidates_overview(p_limit,p_offset)` exists — **ledger row missing** |
+| `20260916220000` | `558_person_merge_helper_grants.sql` | salesdesk / collab / integration | **Incomplete:** `authenticated` EXECUTE on `_person_merge_repoint` = **false**; on `_person_merge_count_refs` = true |
+
+**Per mission: did NOT apply any of these. STOP.**
+
+### Owner must do (Phase 2 unblock)
+
+1. For each of the five: decide **record-only** (if already applied) vs **apply then record** (if not). Never re-run a destructive/idempotent-unsafe file blindly.
+2. Priority: **558** (repoint grant false — persons merge UI can fail with permission denied) and **534** (table absent) if still wanted on test.
+3. After ledger matches disk for these five, re-run from Phase 3 (typecheck → deploy → Phase 5). Do **not** apply purchase migrations here.
+
+---
+
+## Phases after Phase 2
 
 | Phase | Status |
 |-------|--------|
-| 2 Migration ledger check | SKIPPED (stopped at Phase 1) |
 | 3 Typecheck | SKIPPED |
-| 4 Deploy to 3100 | SKIPPED (ancestry/deploy not attempted; still `106ae89a`) |
-| 5 Verification (collab / salesdesk / auth / pricing) | SKIPPED |
-| 6 Full READY gate | NOT MET |
+| 4 Deploy | SKIPPED |
+| 5 Collab / salesdesk / auth verify | SKIPPED |
+| 5.4 Pricing smoke | **EXCLUDED** |
+| READY gate | NOT MET |
 
 ---
 
-## What the owner must do
+## Prior Phase 1 note
 
-1. On a human-driven merge (or follow-up agent with permission to resolve `src/`): fix `_app.persons_.merge.tsx` and regenerate `routeTree.gen.ts`.
-2. Renumber purchase migration files that collide on `20260916210000` / `20260916220000` (and verify ledger on `afrakala` already has person_merge versions — do not re-apply).
-3. Re-merge `feature/purchase-prices-single-active` into `integration/3100-20260922`.
-4. Continue from Phase 2 of this mission (ledger → typecheck → deploy → Phase 5 verify).
-5. Until then: **do not** deploy a lone feature branch to 3100; keep using integration once it is complete.
+Purchase was previously aborted on `src/` conflicts (`_app.persons_.merge.tsx`, `routeTree.gen.ts`). Owner later excluded purchase entirely for this integration — those conflicts were not revisited.
 
 ---
 
 ## Worktree
 
 - Path: `D:\AfraKalaTest\wt-integration-3100`
-- Branch: `integration/3100-20260922` @ `92a5f5af` (collab + salesdesk)
-- Main repo `D:\AfraKalaTest\app` was not checked out / merged / committed.
+- Branch: `integration/3100-20260922` @ `c7096026`
+- Main repo `D:\AfraKalaTest\app` untouched for git ops
