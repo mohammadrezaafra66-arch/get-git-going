@@ -149,7 +149,7 @@ function SidebarNavPin3d({
 }
 
 export function AppSidebar() {
-  const { roles, user, signOut } = useAuth();
+  const { roles, user, signOut, permissionsLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -171,7 +171,12 @@ export function AppSidebar() {
   const canSeeAdminOnly = isAdmin || isManager;
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
   const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
-  const visible = useMemo(() => getVisibleNavigationEntries(roles), [roles]);
+  // Recompute when role_permissions finish loading — hasPermissionEx is false until then,
+  // so a [roles]-only memo leaves every module permanently empty/disabled for non-admins.
+  const visible = useMemo(
+    () => getVisibleNavigationEntries(roles),
+    [roles, permissionsLoading],
+  );
   const canSeeTickets = useMemo(
     () => visible.some((entry) => entry.route === "/operations/work"),
     [visible],
