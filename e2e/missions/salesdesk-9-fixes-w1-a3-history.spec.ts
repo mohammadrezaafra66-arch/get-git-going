@@ -150,8 +150,9 @@ test.describe("W1 A3 — UI «سابقه» OR schema (mission OR)", () => {
     });
     await page.waitForTimeout(1500);
 
+    // Prefer heading role: empty-state copy «هنوز سابقه‌ای…» also contains سابقه.
     await expect(
-      page.getByText("سابقه", { exact: false }),
+      page.getByRole("heading", { name: "سابقه" }),
       "ticket detail must show the «سابقه» timeline heading",
     ).toBeVisible({ timeout: 10_000 });
   });
