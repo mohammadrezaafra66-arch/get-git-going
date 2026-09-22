@@ -28,3 +28,6 @@ evidence:
 - evidence/W4/playwright-install.txt
 - evidence/W4/playwright-smoke.txt
 - evidence/W4/deploy-summary.txt
+
+evidence_commit: 425962fc94e9114dc477c75c7904ea457a93b447
+push: 0c6eeb08..425962fc origin/feature/salesdesk-9-fixes (exit=0)
