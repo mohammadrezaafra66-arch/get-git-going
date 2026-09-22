@@ -166,10 +166,29 @@ async function saveDraftQuoteFromDealPrefill(page: Page): Promise<void> {
   await page.getByTestId("quote-settlement-select").click();
   await page.getByRole("option").first().click();
 
-  // Deal-prefilled items arrive with unit_price=0 — set a price.
-  const priceInput = page.locator("table tbody tr").first().locator('input[type="number"]').nth(1);
-  await priceInput.fill("100000");
-  await page.waitForTimeout(400);
+  // Catalog/product_price prefill may disable unit price (already set from deal).
+  // Only fill when the input is editable and empty/zero (legacy manual path).
+  const priceInput = page
+    .locator("table tbody tr")
+    .first()
+    .locator('input[type="number"]')
+    .nth(1);
+  await expect
+    .poll(async () => {
+      const v = await priceInput.inputValue().catch(() => "");
+      return Number(v) > 0 || (await priceInput.isEnabled());
+    }, { timeout: 15_000 })
+    .toBe(true);
+  if (await priceInput.isEnabled()) {
+    const v = await priceInput.inputValue();
+    if (!v || Number(v) === 0) {
+      await priceInput.fill("100000");
+      await page.waitForTimeout(400);
+    }
+  } else {
+    const prefilled = Number(await priceInput.inputValue());
+    expect(prefilled, "disabled unit price must be prefilled > 0").toBeGreaterThan(0);
+  }
 
   await page.getByTestId("quote-save").click();
 
@@ -182,11 +201,15 @@ async function saveDraftQuoteFromDealPrefill(page: Page): Promise<void> {
     // dialog may not appear
   }
 
-  // Surface product rejection clearly (known risk: deal prefill uses source=manual)
+  // Surface product rejection clearly (wait briefly — dialog can lag after credit path)
   const rejected = page.getByRole("dialog", { name: /ثبت پیش‌فاکتور انجام نشد/ });
-  if (await rejected.isVisible().catch(() => false)) {
+  try {
+    await expect(rejected).toBeVisible({ timeout: 5_000 });
     const reason = await rejected.innerText();
-    throw new Error(`C9 quote save rejected by product: ${reason.slice(0, 400)}`);
+    throw new Error(`C9 quote save rejected by product: ${reason.slice(0, 500)}`);
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("C9 quote save rejected")) throw e;
+    // no rejection dialog — fall through to URL assert
   }
 
   await expect(page).toHaveURL(/\/sales\/quotes\/?$/, { timeout: 30_000 });
@@ -281,8 +304,7 @@ test.describe("F3 — C9 [TEST-9FIX] quote-from-deal", () => {
         "f3-c9.txt",
         [
           "STATUS=FAIL",
-          "PRODUCT_BUG=deal prefill sets DraftQuoteItem.source='manual' which validateQuote + create_sales_quote_with_items reject",
-          "PRODUCT_FILE=src/routes/_app.sales.quotes.new.tsx (~source: \"manual\")",
+          "PRODUCT_FIX_NEEDED=attempt-2",
           "KPI_SCORE_BEFORE",
           JSON.stringify(kpiBefore, null, 2),
           "ERROR",
