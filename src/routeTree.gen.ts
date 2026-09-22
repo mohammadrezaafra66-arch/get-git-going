@@ -23,6 +23,7 @@ import { Route as ApiHealthzRouteImport } from './routes/api.healthz'
 import { Route as AppWarehousesRouteImport } from './routes/_app.warehouses'
 import { Route as AppUsersRouteImport } from './routes/_app.users'
 import { Route as AppUpdatesRouteImport } from './routes/_app.updates'
+import { Route as AppTorobOpsRouteImport } from './routes/_app.torob-ops'
 import { Route as AppSuppliersRouteImport } from './routes/_app.suppliers'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppRolesRouteImport } from './routes/_app.roles'
@@ -65,6 +66,11 @@ import { Route as AppWarehousesTransfersRouteImport } from './routes/_app.wareho
 import { Route as AppWarehousesKardexRouteImport } from './routes/_app.warehouses_.kardex'
 import { Route as AppUsersPendingRouteImport } from './routes/_app.users.pending'
 import { Route as AppUsersUserIdRouteImport } from './routes/_app.users.$userId'
+import { Route as AppTorobOpsShopsRouteImport } from './routes/_app.torob-ops_.shops'
+import { Route as AppTorobOpsSettingsRouteImport } from './routes/_app.torob-ops_.settings'
+import { Route as AppTorobOpsRunsRouteImport } from './routes/_app.torob-ops_.runs'
+import { Route as AppTorobOpsFindingsRouteImport } from './routes/_app.torob-ops_.findings'
+import { Route as AppTorobOpsAccountsRouteImport } from './routes/_app.torob-ops_.accounts'
 import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
 import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
@@ -139,6 +145,7 @@ import { Route as AppAdminWorkflowStagesRouteImport } from './routes/_app.admin.
 import { Route as AppAdminWorkflowSettingsRouteImport } from './routes/_app.admin.workflow-settings'
 import { Route as AppAdminVisitorsRouteImport } from './routes/_app.admin.visitors'
 import { Route as AppAdminValidationRulesRouteImport } from './routes/_app.admin.validation-rules'
+import { Route as AppAdminTorobOpsAccessRouteImport } from './routes/_app.admin.torob-ops-access'
 import { Route as AppAdminSystemHealthRouteImport } from './routes/_app.admin.system-health'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminSalesRemindersRouteImport } from './routes/_app.admin.sales-reminders'
@@ -186,6 +193,7 @@ import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quotes.index'
 import { Route as AppGamificationAdminIndexRouteImport } from './routes/_app.gamification.admin.index'
+import { Route as ApiPublicHooksProcessTorobOpsReportQueueRouteImport } from './routes/api/public/hooks/process-torob-ops-report-queue'
 import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/api/public/hooks/process-pricing-queue'
 import { Route as ApiPublicHooksIssabelAmiRingRouteImport } from './routes/api/public/hooks/issabel-ami-ring'
 import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/api/public/hooks/ingest-market-rates'
@@ -301,6 +309,11 @@ const AppUsersRoute = AppUsersRouteImport.update({
 const AppUpdatesRoute = AppUpdatesRouteImport.update({
   id: '/updates',
   path: '/updates',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTorobOpsRoute = AppTorobOpsRouteImport.update({
+  id: '/torob-ops',
+  path: '/torob-ops',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSuppliersRoute = AppSuppliersRouteImport.update({
@@ -514,6 +527,31 @@ const AppUsersUserIdRoute = AppUsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
   getParentRoute: () => AppUsersRoute,
+} as any)
+const AppTorobOpsShopsRoute = AppTorobOpsShopsRouteImport.update({
+  id: '/torob-ops_/shops',
+  path: '/torob-ops/shops',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTorobOpsSettingsRoute = AppTorobOpsSettingsRouteImport.update({
+  id: '/torob-ops_/settings',
+  path: '/torob-ops/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTorobOpsRunsRoute = AppTorobOpsRunsRouteImport.update({
+  id: '/torob-ops_/runs',
+  path: '/torob-ops/runs',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTorobOpsFindingsRoute = AppTorobOpsFindingsRouteImport.update({
+  id: '/torob-ops_/findings',
+  path: '/torob-ops/findings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTorobOpsAccountsRoute = AppTorobOpsAccountsRouteImport.update({
+  id: '/torob-ops_/accounts',
+  path: '/torob-ops/accounts',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppSuppliersSupplierIdRoute = AppSuppliersSupplierIdRouteImport.update({
   id: '/suppliers_/$supplierId',
@@ -903,6 +941,11 @@ const AppAdminValidationRulesRoute = AppAdminValidationRulesRouteImport.update({
   path: '/admin/validation-rules',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminTorobOpsAccessRoute = AppAdminTorobOpsAccessRouteImport.update({
+  id: '/admin/torob-ops-access',
+  path: '/admin/torob-ops-access',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminSystemHealthRoute = AppAdminSystemHealthRouteImport.update({
   id: '/admin/system-health',
   path: '/admin/system-health',
@@ -1156,6 +1199,12 @@ const AppGamificationAdminIndexRoute =
     id: '/admin/',
     path: '/admin/',
     getParentRoute: () => AppGamificationRoute,
+  } as any)
+const ApiPublicHooksProcessTorobOpsReportQueueRoute =
+  ApiPublicHooksProcessTorobOpsReportQueueRouteImport.update({
+    id: '/api/public/hooks/process-torob-ops-report-queue',
+    path: '/api/public/hooks/process-torob-ops-report-queue',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksProcessPricingQueueRoute =
   ApiPublicHooksProcessPricingQueueRouteImport.update({
@@ -1468,6 +1517,7 @@ export interface FileRoutesByFullPath {
   '/roles': typeof AppRolesRoute
   '/sales': typeof AppSalesRouteWithChildren
   '/suppliers': typeof AppSuppliersRoute
+  '/torob-ops': typeof AppTorobOpsRoute
   '/updates': typeof AppUpdatesRoute
   '/users': typeof AppUsersRouteWithChildren
   '/warehouses': typeof AppWarehousesRoute
@@ -1518,6 +1568,7 @@ export interface FileRoutesByFullPath {
   '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/system-health': typeof AppAdminSystemHealthRoute
+  '/admin/torob-ops-access': typeof AppAdminTorobOpsAccessRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/visitors': typeof AppAdminVisitorsRoute
   '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -1592,6 +1643,11 @@ export interface FileRoutesByFullPath {
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/sales/customers': typeof AppSalesCustomersRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/torob-ops/accounts': typeof AppTorobOpsAccountsRoute
+  '/torob-ops/findings': typeof AppTorobOpsFindingsRoute
+  '/torob-ops/runs': typeof AppTorobOpsRunsRoute
+  '/torob-ops/settings': typeof AppTorobOpsSettingsRoute
+  '/torob-ops/shops': typeof AppTorobOpsShopsRoute
   '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
   '/warehouses/kardex': typeof AppWarehousesKardexRoute
@@ -1639,6 +1695,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
+  '/api/public/hooks/process-torob-ops-report-queue': typeof ApiPublicHooksProcessTorobOpsReportQueueRoute
   '/gamification/admin/': typeof AppGamificationAdminIndexRoute
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
@@ -1691,6 +1748,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/roles': typeof AppRolesRoute
   '/suppliers': typeof AppSuppliersRoute
+  '/torob-ops': typeof AppTorobOpsRoute
   '/updates': typeof AppUpdatesRoute
   '/users': typeof AppUsersRouteWithChildren
   '/warehouses': typeof AppWarehousesRoute
@@ -1741,6 +1799,7 @@ export interface FileRoutesByTo {
   '/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/admin/system-health': typeof AppAdminSystemHealthRoute
+  '/admin/torob-ops-access': typeof AppAdminTorobOpsAccessRoute
   '/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/admin/visitors': typeof AppAdminVisitorsRoute
   '/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -1814,6 +1873,11 @@ export interface FileRoutesByTo {
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/sales/customers': typeof AppSalesCustomersRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/torob-ops/accounts': typeof AppTorobOpsAccountsRoute
+  '/torob-ops/findings': typeof AppTorobOpsFindingsRoute
+  '/torob-ops/runs': typeof AppTorobOpsRunsRoute
+  '/torob-ops/settings': typeof AppTorobOpsSettingsRoute
+  '/torob-ops/shops': typeof AppTorobOpsShopsRoute
   '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
   '/warehouses/kardex': typeof AppWarehousesKardexRoute
@@ -1861,6 +1925,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
+  '/api/public/hooks/process-torob-ops-report-queue': typeof ApiPublicHooksProcessTorobOpsReportQueueRoute
   '/gamification/admin': typeof AppGamificationAdminIndexRoute
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
@@ -1917,6 +1982,7 @@ export interface FileRoutesById {
   '/_app/roles': typeof AppRolesRoute
   '/_app/sales': typeof AppSalesRouteWithChildren
   '/_app/suppliers': typeof AppSuppliersRoute
+  '/_app/torob-ops': typeof AppTorobOpsRoute
   '/_app/updates': typeof AppUpdatesRoute
   '/_app/users': typeof AppUsersRouteWithChildren
   '/_app/warehouses': typeof AppWarehousesRoute
@@ -1967,6 +2033,7 @@ export interface FileRoutesById {
   '/_app/admin/sales-reminders': typeof AppAdminSalesRemindersRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
   '/_app/admin/system-health': typeof AppAdminSystemHealthRoute
+  '/_app/admin/torob-ops-access': typeof AppAdminTorobOpsAccessRoute
   '/_app/admin/validation-rules': typeof AppAdminValidationRulesRoute
   '/_app/admin/visitors': typeof AppAdminVisitorsRoute
   '/_app/admin/workflow-settings': typeof AppAdminWorkflowSettingsRoute
@@ -2041,6 +2108,11 @@ export interface FileRoutesById {
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/sales_/customers': typeof AppSalesCustomersRoute
   '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
+  '/_app/torob-ops_/accounts': typeof AppTorobOpsAccountsRoute
+  '/_app/torob-ops_/findings': typeof AppTorobOpsFindingsRoute
+  '/_app/torob-ops_/runs': typeof AppTorobOpsRunsRoute
+  '/_app/torob-ops_/settings': typeof AppTorobOpsSettingsRoute
+  '/_app/torob-ops_/shops': typeof AppTorobOpsShopsRoute
   '/_app/users/$userId': typeof AppUsersUserIdRoute
   '/_app/users/pending': typeof AppUsersPendingRoute
   '/_app/warehouses_/kardex': typeof AppWarehousesKardexRoute
@@ -2088,6 +2160,7 @@ export interface FileRoutesById {
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
+  '/api/public/hooks/process-torob-ops-report-queue': typeof ApiPublicHooksProcessTorobOpsReportQueueRoute
   '/_app/gamification/admin/': typeof AppGamificationAdminIndexRoute
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
@@ -2144,6 +2217,7 @@ export interface FileRouteTypes {
     | '/roles'
     | '/sales'
     | '/suppliers'
+    | '/torob-ops'
     | '/updates'
     | '/users'
     | '/warehouses'
@@ -2194,6 +2268,7 @@ export interface FileRouteTypes {
     | '/admin/sales-reminders'
     | '/admin/settings'
     | '/admin/system-health'
+    | '/admin/torob-ops-access'
     | '/admin/validation-rules'
     | '/admin/visitors'
     | '/admin/workflow-settings'
@@ -2268,6 +2343,11 @@ export interface FileRouteTypes {
     | '/sales/stock-alerts'
     | '/sales/customers'
     | '/suppliers/$supplierId'
+    | '/torob-ops/accounts'
+    | '/torob-ops/findings'
+    | '/torob-ops/runs'
+    | '/torob-ops/settings'
+    | '/torob-ops/shops'
     | '/users/$userId'
     | '/users/pending'
     | '/warehouses/kardex'
@@ -2315,6 +2395,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/issabel-ami-ring'
     | '/api/public/hooks/process-pricing-queue'
+    | '/api/public/hooks/process-torob-ops-report-queue'
     | '/gamification/admin/'
     | '/sales/quotes/'
     | '/academy/$courseId/$lessonId/quiz'
@@ -2367,6 +2448,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/roles'
     | '/suppliers'
+    | '/torob-ops'
     | '/updates'
     | '/users'
     | '/warehouses'
@@ -2417,6 +2499,7 @@ export interface FileRouteTypes {
     | '/admin/sales-reminders'
     | '/admin/settings'
     | '/admin/system-health'
+    | '/admin/torob-ops-access'
     | '/admin/validation-rules'
     | '/admin/visitors'
     | '/admin/workflow-settings'
@@ -2490,6 +2573,11 @@ export interface FileRouteTypes {
     | '/sales/stock-alerts'
     | '/sales/customers'
     | '/suppliers/$supplierId'
+    | '/torob-ops/accounts'
+    | '/torob-ops/findings'
+    | '/torob-ops/runs'
+    | '/torob-ops/settings'
+    | '/torob-ops/shops'
     | '/users/$userId'
     | '/users/pending'
     | '/warehouses/kardex'
@@ -2537,6 +2625,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/issabel-ami-ring'
     | '/api/public/hooks/process-pricing-queue'
+    | '/api/public/hooks/process-torob-ops-report-queue'
     | '/gamification/admin'
     | '/sales/quotes'
     | '/academy/$courseId/$lessonId/quiz'
@@ -2592,6 +2681,7 @@ export interface FileRouteTypes {
     | '/_app/roles'
     | '/_app/sales'
     | '/_app/suppliers'
+    | '/_app/torob-ops'
     | '/_app/updates'
     | '/_app/users'
     | '/_app/warehouses'
@@ -2642,6 +2732,7 @@ export interface FileRouteTypes {
     | '/_app/admin/sales-reminders'
     | '/_app/admin/settings'
     | '/_app/admin/system-health'
+    | '/_app/admin/torob-ops-access'
     | '/_app/admin/validation-rules'
     | '/_app/admin/visitors'
     | '/_app/admin/workflow-settings'
@@ -2716,6 +2807,11 @@ export interface FileRouteTypes {
     | '/_app/sales/stock-alerts'
     | '/_app/sales_/customers'
     | '/_app/suppliers_/$supplierId'
+    | '/_app/torob-ops_/accounts'
+    | '/_app/torob-ops_/findings'
+    | '/_app/torob-ops_/runs'
+    | '/_app/torob-ops_/settings'
+    | '/_app/torob-ops_/shops'
     | '/_app/users/$userId'
     | '/_app/users/pending'
     | '/_app/warehouses_/kardex'
@@ -2763,6 +2859,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/issabel-ami-ring'
     | '/api/public/hooks/process-pricing-queue'
+    | '/api/public/hooks/process-torob-ops-report-queue'
     | '/_app/gamification/admin/'
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
@@ -2811,6 +2908,7 @@ export interface RootRouteChildren {
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
   ApiPublicHooksIssabelAmiRingRoute: typeof ApiPublicHooksIssabelAmiRingRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
+  ApiPublicHooksProcessTorobOpsReportQueueRoute: typeof ApiPublicHooksProcessTorobOpsReportQueueRoute
   ApiAdminAutomationTorobEnqueueRoute: typeof ApiAdminAutomationTorobEnqueueRoute
   ApiPublicBotMarketMatchesResolveRoute: typeof ApiPublicBotMarketMatchesResolveRoute
   ApiPublicBotDynamicTablesTableIdRowsRoute: typeof ApiPublicBotDynamicTablesTableIdRowsRouteWithChildren
@@ -2916,6 +3014,13 @@ declare module '@tanstack/react-router' {
       path: '/updates'
       fullPath: '/updates'
       preLoaderRoute: typeof AppUpdatesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/torob-ops': {
+      id: '/_app/torob-ops'
+      path: '/torob-ops'
+      fullPath: '/torob-ops'
+      preLoaderRoute: typeof AppTorobOpsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/suppliers': {
@@ -3211,6 +3316,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/users/$userId'
       preLoaderRoute: typeof AppUsersUserIdRouteImport
       parentRoute: typeof AppUsersRoute
+    }
+    '/_app/torob-ops_/shops': {
+      id: '/_app/torob-ops_/shops'
+      path: '/torob-ops/shops'
+      fullPath: '/torob-ops/shops'
+      preLoaderRoute: typeof AppTorobOpsShopsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/torob-ops_/settings': {
+      id: '/_app/torob-ops_/settings'
+      path: '/torob-ops/settings'
+      fullPath: '/torob-ops/settings'
+      preLoaderRoute: typeof AppTorobOpsSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/torob-ops_/runs': {
+      id: '/_app/torob-ops_/runs'
+      path: '/torob-ops/runs'
+      fullPath: '/torob-ops/runs'
+      preLoaderRoute: typeof AppTorobOpsRunsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/torob-ops_/findings': {
+      id: '/_app/torob-ops_/findings'
+      path: '/torob-ops/findings'
+      fullPath: '/torob-ops/findings'
+      preLoaderRoute: typeof AppTorobOpsFindingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/torob-ops_/accounts': {
+      id: '/_app/torob-ops_/accounts'
+      path: '/torob-ops/accounts'
+      fullPath: '/torob-ops/accounts'
+      preLoaderRoute: typeof AppTorobOpsAccountsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/suppliers_/$supplierId': {
       id: '/_app/suppliers_/$supplierId'
@@ -3730,6 +3870,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminValidationRulesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/torob-ops-access': {
+      id: '/_app/admin/torob-ops-access'
+      path: '/admin/torob-ops-access'
+      fullPath: '/admin/torob-ops-access'
+      preLoaderRoute: typeof AppAdminTorobOpsAccessRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/system-health': {
       id: '/_app/admin/system-health'
       path: '/admin/system-health'
@@ -4058,6 +4205,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/gamification/admin/'
       preLoaderRoute: typeof AppGamificationAdminIndexRouteImport
       parentRoute: typeof AppGamificationRoute
+    }
+    '/api/public/hooks/process-torob-ops-report-queue': {
+      id: '/api/public/hooks/process-torob-ops-report-queue'
+      path: '/api/public/hooks/process-torob-ops-report-queue'
+      fullPath: '/api/public/hooks/process-torob-ops-report-queue'
+      preLoaderRoute: typeof ApiPublicHooksProcessTorobOpsReportQueueRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/process-pricing-queue': {
       id: '/api/public/hooks/process-pricing-queue'
@@ -4602,6 +4756,7 @@ interface AppRouteChildren {
   AppRolesRoute: typeof AppRolesRoute
   AppSalesRoute: typeof AppSalesRouteWithChildren
   AppSuppliersRoute: typeof AppSuppliersRoute
+  AppTorobOpsRoute: typeof AppTorobOpsRoute
   AppUpdatesRoute: typeof AppUpdatesRoute
   AppUsersRoute: typeof AppUsersRouteWithChildren
   AppWarehousesRoute: typeof AppWarehousesRoute
@@ -4648,6 +4803,7 @@ interface AppRouteChildren {
   AppAdminSalesRemindersRoute: typeof AppAdminSalesRemindersRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
   AppAdminSystemHealthRoute: typeof AppAdminSystemHealthRoute
+  AppAdminTorobOpsAccessRoute: typeof AppAdminTorobOpsAccessRoute
   AppAdminValidationRulesRoute: typeof AppAdminValidationRulesRoute
   AppAdminVisitorsRoute: typeof AppAdminVisitorsRoute
   AppAdminWorkflowSettingsRoute: typeof AppAdminWorkflowSettingsRoute
@@ -4704,6 +4860,11 @@ interface AppRouteChildren {
   AppPurchasesCreateRoute: typeof AppPurchasesCreateRoute
   AppSalesCustomersRoute: typeof AppSalesCustomersRoute
   AppSuppliersSupplierIdRoute: typeof AppSuppliersSupplierIdRoute
+  AppTorobOpsAccountsRoute: typeof AppTorobOpsAccountsRoute
+  AppTorobOpsFindingsRoute: typeof AppTorobOpsFindingsRoute
+  AppTorobOpsRunsRoute: typeof AppTorobOpsRunsRoute
+  AppTorobOpsSettingsRoute: typeof AppTorobOpsSettingsRoute
+  AppTorobOpsShopsRoute: typeof AppTorobOpsShopsRoute
   AppWarehousesKardexRoute: typeof AppWarehousesKardexRoute
   AppWarehousesTransfersRoute: typeof AppWarehousesTransfersRoute
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
@@ -4754,6 +4915,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppRolesRoute: AppRolesRoute,
   AppSalesRoute: AppSalesRouteWithChildren,
   AppSuppliersRoute: AppSuppliersRoute,
+  AppTorobOpsRoute: AppTorobOpsRoute,
   AppUpdatesRoute: AppUpdatesRoute,
   AppUsersRoute: AppUsersRouteWithChildren,
   AppWarehousesRoute: AppWarehousesRoute,
@@ -4802,6 +4964,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminSalesRemindersRoute: AppAdminSalesRemindersRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
   AppAdminSystemHealthRoute: AppAdminSystemHealthRoute,
+  AppAdminTorobOpsAccessRoute: AppAdminTorobOpsAccessRoute,
   AppAdminValidationRulesRoute: AppAdminValidationRulesRoute,
   AppAdminVisitorsRoute: AppAdminVisitorsRoute,
   AppAdminWorkflowSettingsRoute: AppAdminWorkflowSettingsRoute,
@@ -4858,6 +5021,11 @@ const AppRouteChildren: AppRouteChildren = {
   AppPurchasesCreateRoute: AppPurchasesCreateRoute,
   AppSalesCustomersRoute: AppSalesCustomersRoute,
   AppSuppliersSupplierIdRoute: AppSuppliersSupplierIdRoute,
+  AppTorobOpsAccountsRoute: AppTorobOpsAccountsRoute,
+  AppTorobOpsFindingsRoute: AppTorobOpsFindingsRoute,
+  AppTorobOpsRunsRoute: AppTorobOpsRunsRoute,
+  AppTorobOpsSettingsRoute: AppTorobOpsSettingsRoute,
+  AppTorobOpsShopsRoute: AppTorobOpsShopsRoute,
   AppWarehousesKardexRoute: AppWarehousesKardexRoute,
   AppWarehousesTransfersRoute: AppWarehousesTransfersRoute,
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,
@@ -4949,6 +5117,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksIssabelAmiRingRoute: ApiPublicHooksIssabelAmiRingRoute,
   ApiPublicHooksProcessPricingQueueRoute:
     ApiPublicHooksProcessPricingQueueRoute,
+  ApiPublicHooksProcessTorobOpsReportQueueRoute:
+    ApiPublicHooksProcessTorobOpsReportQueueRoute,
   ApiAdminAutomationTorobEnqueueRoute: ApiAdminAutomationTorobEnqueueRoute,
   ApiPublicBotMarketMatchesResolveRoute: ApiPublicBotMarketMatchesResolveRoute,
   ApiPublicBotDynamicTablesTableIdRowsRoute:
@@ -4961,13 +5131,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

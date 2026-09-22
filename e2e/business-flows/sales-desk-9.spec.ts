@@ -197,12 +197,25 @@ test.describe("sales-desk-9 business flow", () => {
   test("0b · source nav registry carries میز فروش + فعالیت تلفنی", () => {
     const registry = readFileSync("src/lib/navigation/registry.ts", "utf8");
     const modules = readFileSync("src/components/layout/primary-modules.ts", "utf8");
+    const sidebar = readFileSync("src/components/layout/AppSidebar.tsx", "utf8");
     expect(registry).toContain('label: "میز فروش"');
     expect(registry).toContain('to: "/operations/sales-desk"');
     expect(registry).toContain('label: "فعالیت تلفنی"');
     expect(registry).toContain('to: "/operations/call-activity"');
     expect(modules).toContain('"/operations/sales-desk"');
     expect(modules).toContain('"/operations/call-activity"');
+    expect(sidebar).toContain('to="/operations/sales-desk"');
+    expect(sidebar).toContain('label="میز فروش"');
+    expect(sidebar).toContain("PhoneCall");
+  });
+
+  test("0c · sidebar pin میز فروش next to تیکت opens sales-desk", async ({ page }) => {
+    await enterApp(page);
+    const pin = page.getByRole("link", { name: "میز فروش", exact: true }).first();
+    await expect(pin).toBeVisible({ timeout: 30_000 });
+    await pin.click();
+    await page.waitForURL("**/operations/sales-desk", { timeout: 30_000 });
+    expect(new URL(page.url()).pathname).toBe("/operations/sales-desk");
   });
 
   test("1 · nav entries: میز فروش + فعالیت تلفنی under فروش", async ({ page }) => {

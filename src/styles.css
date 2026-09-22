@@ -545,3 +545,52 @@
     transform: none !important;
   }
 }
+
+/* ===== Module paper grid (shared, non-accounting) — ~20% FinanceHub affinity ===== */
+/* Tokens mirror FinanceHub (.fh) exactly; accounting routes never receive this class. */
+.module-paper-grid {
+  --paper: #f5f8f7;
+  --grid-fine: #e5edec;
+  --grid-bold: #d4e1df;
+  --module-brand: #007d7e;
+  --module-rule: #c4d4d2;
+  position: relative;
+  isolation: isolate;
+  min-height: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--module-rule) 70%, transparent);
+  border-top: 3px solid var(--module-brand);
+  background:
+    repeating-linear-gradient(to right, var(--grid-fine) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(to bottom, var(--grid-fine) 0 1px, transparent 1px 8px),
+    repeating-linear-gradient(to right, var(--grid-bold) 0 1px, transparent 1px 48px),
+    repeating-linear-gradient(to bottom, var(--grid-bold) 0 1px, transparent 1px 48px),
+    var(--paper);
+  padding: 0.75rem 0.75rem 1rem;
+}
+@media (min-width: 640px) {
+  .module-paper-grid {
+    padding: 1rem 1.25rem 1.25rem;
+  }
+}
+.module-paper-grid > .module-chrome-toolbar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start; /* RTL: leading edge = right */
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+.module-paper-grid > .module-chrome-body {
+  position: relative;
+  z-index: 1;
+}
+/* Calm ERP density cues (Fluent/Fiori-inspired; keep light) */
+.module-paper-grid :where(h1) {
+  letter-spacing: -0.01em;
+}
+.module-paper-grid :where(.border-b.border-border) {
+  border-color: color-mix(in srgb, var(--module-rule) 80%, var(--border));
+}

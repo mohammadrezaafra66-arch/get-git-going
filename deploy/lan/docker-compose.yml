@@ -78,6 +78,12 @@ services:
       # Host cron / Task Scheduler drains pricing_recompute_queue. Empty = endpoint
       # answers 500 and drains nothing (fail-closed for an unconfigured install).
       PRICING_WORKER_TOKEN: ${PRICING_WORKER_TOKEN:-}
+      # Torob Ops Path A — auto-report worker + account session encryption.
+      # Empty worker token => report-queue hook returns 500 (fail-closed).
+      TOROB_OPS_WORKER_TOKEN: ${TOROB_OPS_WORKER_TOKEN:-}
+      TOROB_OPS_ACCOUNT_SECRET: ${TOROB_OPS_ACCOUNT_SECRET:-}
+      TOROB_OPS_WORKER_ACTOR_ID: ${TOROB_OPS_WORKER_ACTOR_ID:-}
+      TOROB_OPS_SIMULATE_SUBMIT: ${TOROB_OPS_SIMULATE_SUBMIT:-}
       # C-4 — اتصال فقط-خواندنی به MySQL مرکز تلفن ایزابل، برای واردسازی CDR.
       # این کلیدها از قبل در .env.lan بودند ولی هرگز به کانتینر پاس داده نمی‌شدند.
       # اندازه‌گیری‌شده روی کانتینر در حال اجرا: `env | grep -c ISSABEL` -> 0.

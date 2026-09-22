@@ -64,6 +64,7 @@ export const salePriceTypeSchema = z.object({
   description: z.string().trim().max(500).optional().or(z.literal("")),
   sort_order: z.coerce.number().int().min(0).default(100),
   is_active: z.boolean().default(true),
+  is_quick_price_only: z.boolean().default(false),
 });
 export type SalePriceTypeFormValues = z.infer<typeof salePriceTypeSchema>;
 

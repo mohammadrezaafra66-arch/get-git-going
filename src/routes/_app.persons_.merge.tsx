@@ -115,11 +115,38 @@ function PersonMergePage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ["person-merge-candidates"],
     enabled: allowed,
-    queryFn: async () => {
+    queryFn: async (): Promise<Candidate[]> => {
       const { data, error } = await supabase.rpc("person_merge_candidates_overview");
       if (error) throw error;
-      return (data ?? []) as unknown as Candidate[];
+      // Migration 557+ returns { items, total, limit, offset }. Older builds
+      // returned a bare array. Treating the object as Candidate[] made
+      // candidates.map throw and the route show "Something went wrong"
+      // even when the queue was empty.
+      const raw = data as unknown;
+      if (Array.isArray(raw)) return raw as Candidate[];
+      const obj = (raw ?? {}) as { items?: Candidate[] };
+      return Array.isArray(obj.items) ? obj.items : [];
     },
+  });
+
+  const detectMutation = useMutation({
+    mutationFn: async () => {
+      const { data, error } = await supabase.rpc("person_detect_merge_candidates", {
+        p_person_id: null,
+      });
+      if (error) throw error;
+      return data as { pending?: number } | null;
+    },
+    onSuccess: (result) => {
+      const pending = Number((result as { pending?: number } | null)?.pending ?? 0);
+      toast.success(
+        pending > 0
+          ? `صف تشخیص به‌روز شد — ${toFaDigits(pending)} جفت در انتظار`
+          : "صف تشخیص به‌روز شد — جفت مشکوکی نیست",
+      );
+      void queryClient.invalidateQueries({ queryKey: ["person-merge-candidates"] });
+    },
+    onError: (e) => toast.error(rpcMessage(e, "بازخوانی صف تشخیص انجام نشد.")),
   });
 
   if (rolesLoading) {
@@ -139,6 +166,20 @@ function PersonMergePage() {
             <ArrowRight className="ml-2 h-4 w-4" />
             بازگشت به اشخاص
           </Link>
+        </Button>
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          disabled={detectMutation.isPending}
+          onClick={() => detectMutation.mutate()}
+        >
+          {detectMutation.isPending ? (
+            <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Merge className="ml-2 h-4 w-4" />
+          )}
+          پیشنهاد ادغام‌ها
         </Button>
         {canOpenCleanup ? (
           <Button asChild variant="outline" size="sm">
@@ -417,11 +458,11 @@ function SidePanel({
 
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground">شناسه‌ها</div>
-        {side.identifiers.length === 0 ? (
+        {(side.identifiers ?? []).length === 0 ? (
           <div className="text-sm text-muted-foreground">—</div>
         ) : (
           <ul className="space-y-1 text-sm">
-            {side.identifiers.map((i) => (
+            {(side.identifiers ?? []).map((i) => (
               <li key={`${i.kind}-${i.value_normalized}`} className="flex flex-wrap gap-x-2">
                 <span className="text-muted-foreground">{IDENTIFIER_LABEL[i.kind] ?? i.kind}:</span>
                 <span dir="ltr">{i.value_raw}</span>
@@ -439,11 +480,11 @@ function SidePanel({
 
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground">نام‌های دیگر</div>
-        {side.aliases.length === 0 ? (
+        {(side.aliases ?? []).length === 0 ? (
           <div className="text-sm text-muted-foreground">—</div>
         ) : (
           <ul className="text-sm">
-            {side.aliases.map((a) => (
+            {(side.aliases ?? []).map((a) => (
               <li key={a.alias}>{a.alias}</li>
             ))}
           </ul>
@@ -452,11 +493,11 @@ function SidePanel({
 
       <div className="space-y-1">
         <div className="text-xs font-medium text-muted-foreground">زمینه‌ها</div>
-        {side.contexts.length === 0 ? (
+        {(side.contexts ?? []).length === 0 ? (
           <div className="text-sm text-muted-foreground">—</div>
         ) : (
           <ul className="text-sm">
-            {side.contexts.map((ctx, idx) => (
+            {(side.contexts ?? []).map((ctx, idx) => (
               <li key={`${ctx.context_kind}-${ctx.ref_id ?? idx}`}>
                 {ctx.context_kind}
                 {ctx.ref_table ? ` · ${ctx.ref_table}` : ""}

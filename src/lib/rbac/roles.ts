@@ -93,7 +93,8 @@ export type ModuleKey =
   | "asan-import"
   | "asan-export"
   | "product-videos"
-  | "platform-releases";
+  | "platform-releases"
+  | "torob-ops";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";

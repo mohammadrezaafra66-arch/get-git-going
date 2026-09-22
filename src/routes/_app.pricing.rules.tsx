@@ -93,7 +93,7 @@ function PricingRulesPage() {
   });
   const saleTypesQ = useQuery({
     queryKey: ["sale-price-types", "active"],
-    queryFn: () => fetchSalePriceTypes(true),
+    queryFn: () => fetchSalePriceTypes(true, { includeQuickPriceOnly: true }),
     staleTime: 60_000,
   });
 

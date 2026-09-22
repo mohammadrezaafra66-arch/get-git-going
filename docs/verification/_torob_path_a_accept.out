@@ -1,0 +1,13 @@
+PASS phase2 enrichment signals=whatsapp_only,phone_only,china_delivery,call_for_price,phone_extracted,no_checkout
+PASS phase2 own_shop insert
+PASS phase2 pagination page_size=25
+PASS phase3 preview status gate
+PASS phase5 quarantine leaves B active
+worker HTTP 200 {"ok":true,"processed":1,"results":[{"findingId":"1c449ae5-ab68-4369-8829-e1b1620f3a02","ok":true,"mode":"auto","detail":"simulate_submit ok; chars=292; url=http://127.0.0.1:53390/bait.html","accountId":"14e47b5a-cc56-452d-9f82-62c066723a36
+PASS phase4 worker auto simulate
+PASS phase4 audit log
+PASS phase6 kill switch
+PASS disposable module credential
+E2E_MODULE_PASSWORD=(redacted)
+E2E_ADMIN_USER_ID=4084224a-cd34-4632-9cbc-3b5f3581cf6e
+ACCEPT_OK

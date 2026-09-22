@@ -41,13 +41,19 @@ export async function fetchShippingRulesLite() {
   return data ?? [];
 }
 
-export async function fetchSalePriceTypes(activeOnly = false) {
+export async function fetchSalePriceTypes(
+  activeOnly = false,
+  opts?: { includeQuickPriceOnly?: boolean },
+) {
+  const includeQuickPriceOnly = opts?.includeQuickPriceOnly === true;
   let q = supabase
     .from("sale_price_types")
-    .select("id, code, title, description, is_active, sort_order")
+    .select("id, code, title, description, is_active, sort_order, is_quick_price_only")
     .order("sort_order", { ascending: true })
     .order("title", { ascending: true });
   if (activeOnly) q = q.eq("is_active", true);
+  // Default: hide types reserved for /pricing/quick-price.
+  if (!includeQuickPriceOnly) q = q.eq("is_quick_price_only", false);
   const { data, error } = await q;
   if (error) throw error;
   return data ?? [];

@@ -116,7 +116,7 @@ jobs:
       - name: Typecheck
         if: ${{ hashFiles('package.json') != '' }}
         shell: bash
-        run: npm run typecheck
+        run: node scripts/ci/typecheck-against-baseline.mjs
 
       - name: Lint legacy baseline
         if: ${{ hashFiles('package.json') != '' }}
