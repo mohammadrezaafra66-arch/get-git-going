@@ -1,0 +1,6 @@
+STATUS=PASS
+sql_count=3
+sql_count_again=3
+badge=3
+fa=۳
+salesperson_id=00ebe9d3-b467-453c-89d6-08bab46335c2

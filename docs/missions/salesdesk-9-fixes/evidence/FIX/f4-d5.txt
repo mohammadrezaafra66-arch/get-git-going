@@ -1,0 +1,3 @@
+LIGHTS_OK
+{"red":"فعالیت عقب‌افتاده","green":"فعالیت امروز","grey":"فعالیت آینده","yellow":"فعالیتی برنامه‌ریزی نشده","deal_red":"cc84206e-0ad7-4484-87f8-9ba9733a1bb3","deal_green":"58e9a092-51ad-48bc-8174-69070c7865cc","deal_grey":"1367eb8a-54fc-4b91-accf-6dc2cfe915c3","deal_yellow":"11dc8d87-fa1d-41b6-afac-ce03b7c8252d"}
+FILTER_OK
