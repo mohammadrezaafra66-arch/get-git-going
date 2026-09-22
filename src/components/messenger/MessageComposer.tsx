@@ -19,6 +19,8 @@ import { transcribeMessengerAudio } from "@/lib/messenger/transcribe.functions";
 import { generateMessageEmbedding } from "@/lib/messenger/embeddings.functions";
 import { InquiryButton } from "./InquiryButton";
 import { CreateWorkFromMessageButton } from "@/components/work/CreateWorkFromMessageButton";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 export function MessageComposer({ groupId }: { groupId: string }) {
   const qc = useQueryClient();
@@ -208,28 +210,40 @@ export function MessageComposer({ groupId }: { groupId: string }) {
           />
         ) : (
           <>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              disabled={disabled}
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="پیوست فایل"
-            >
-              <Paperclip className="h-4 w-4" />
-            </Button>
-            <InquiryButton groupId={groupId} disabled={disabled} />
-            <CreateWorkFromMessageButton
-              messageText={value}
-              disabled={disabled}
-              variant="icon"
-            />
-            <AudioRecorder
-              disabled={disabled || !!file || !!value.trim()}
-              sending={send.isPending}
-              onSend={handleSendAudio}
-              onCancel={() => setRecording(false)}
-            />
+            <div className="flex items-center gap-0.5">
+              <HelpHint text={COLLAB_HELP.composerAttach} ariaLabel="راهنمای پیوست" size={12} />
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                disabled={disabled}
+                onClick={() => fileInputRef.current?.click()}
+                aria-label="پیوست فایل"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="flex items-center gap-0.5">
+              <HelpHint text={COLLAB_HELP.composerInquiry} ariaLabel="راهنمای استعلام قیمت" size={12} />
+              <InquiryButton groupId={groupId} disabled={disabled} />
+            </div>
+            <div className="flex items-center gap-0.5">
+              <HelpHint text={COLLAB_HELP.composerWork} ariaLabel="راهنمای ثبت تیکت" size={12} />
+              <CreateWorkFromMessageButton
+                messageText={value}
+                disabled={disabled}
+                variant="icon"
+              />
+            </div>
+            <div className="flex items-center gap-0.5">
+              <HelpHint text={COLLAB_HELP.composerAudio} ariaLabel="راهنمای ضبط صوت" size={12} />
+              <AudioRecorder
+                disabled={disabled || !!file || !!value.trim()}
+                sending={send.isPending}
+                onSend={handleSendAudio}
+                onCancel={() => setRecording(false)}
+              />
+            </div>
             <Textarea
               value={value}
               onChange={(e) => setValue(e.target.value)}
@@ -240,9 +254,12 @@ export function MessageComposer({ groupId }: { groupId: string }) {
               placeholder="پیام خود را بنویسید… (Enter ارسال، Shift+Enter خط جدید)"
               className="min-h-10 resize-none"
             />
-            <Button onClick={submit} disabled={!canSend} size="icon">
-              {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
+            <div className="flex items-center gap-0.5">
+              <HelpHint text={COLLAB_HELP.composerSend} ariaLabel="راهنمای ارسال پیام" size={12} />
+              <Button onClick={submit} disabled={!canSend} size="icon">
+                {send.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              </Button>
+            </div>
           </>
         )}
       </div>

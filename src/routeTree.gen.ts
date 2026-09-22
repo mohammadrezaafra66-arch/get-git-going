@@ -72,6 +72,7 @@ import { Route as AppTorobOpsRunsRouteImport } from './routes/_app.torob-ops_.ru
 import { Route as AppTorobOpsFindingsRouteImport } from './routes/_app.torob-ops_.findings'
 import { Route as AppTorobOpsAccountsRouteImport } from './routes/_app.torob-ops_.accounts'
 import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
+import { Route as AppSettingsCallerIdRouteImport } from './routes/_app.settings.caller-id'
 import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
 import { Route as AppSalesSendQueueRouteImport } from './routes/_app.sales.send-queue'
@@ -556,6 +557,11 @@ const AppTorobOpsAccountsRoute = AppTorobOpsAccountsRouteImport.update({
 const AppSuppliersSupplierIdRoute = AppSuppliersSupplierIdRouteImport.update({
   id: '/suppliers_/$supplierId',
   path: '/suppliers/$supplierId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsCallerIdRoute = AppSettingsCallerIdRouteImport.update({
+  id: '/settings/caller-id',
+  path: '/settings/caller-id',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSalesCustomersRoute = AppSalesCustomersRouteImport.update({
@@ -1642,6 +1648,7 @@ export interface FileRoutesByFullPath {
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/sales/customers': typeof AppSalesCustomersRoute
+  '/settings/caller-id': typeof AppSettingsCallerIdRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/torob-ops/accounts': typeof AppTorobOpsAccountsRoute
   '/torob-ops/findings': typeof AppTorobOpsFindingsRoute
@@ -1872,6 +1879,7 @@ export interface FileRoutesByTo {
   '/sales/send-queue': typeof AppSalesSendQueueRoute
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/sales/customers': typeof AppSalesCustomersRoute
+  '/settings/caller-id': typeof AppSettingsCallerIdRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/torob-ops/accounts': typeof AppTorobOpsAccountsRoute
   '/torob-ops/findings': typeof AppTorobOpsFindingsRoute
@@ -2107,6 +2115,7 @@ export interface FileRoutesById {
   '/_app/sales/send-queue': typeof AppSalesSendQueueRoute
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/sales_/customers': typeof AppSalesCustomersRoute
+  '/_app/settings/caller-id': typeof AppSettingsCallerIdRoute
   '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/_app/torob-ops_/accounts': typeof AppTorobOpsAccountsRoute
   '/_app/torob-ops_/findings': typeof AppTorobOpsFindingsRoute
@@ -2342,6 +2351,7 @@ export interface FileRouteTypes {
     | '/sales/send-queue'
     | '/sales/stock-alerts'
     | '/sales/customers'
+    | '/settings/caller-id'
     | '/suppliers/$supplierId'
     | '/torob-ops/accounts'
     | '/torob-ops/findings'
@@ -2572,6 +2582,7 @@ export interface FileRouteTypes {
     | '/sales/send-queue'
     | '/sales/stock-alerts'
     | '/sales/customers'
+    | '/settings/caller-id'
     | '/suppliers/$supplierId'
     | '/torob-ops/accounts'
     | '/torob-ops/findings'
@@ -2806,6 +2817,7 @@ export interface FileRouteTypes {
     | '/_app/sales/send-queue'
     | '/_app/sales/stock-alerts'
     | '/_app/sales_/customers'
+    | '/_app/settings/caller-id'
     | '/_app/suppliers_/$supplierId'
     | '/_app/torob-ops_/accounts'
     | '/_app/torob-ops_/findings'
@@ -3357,6 +3369,13 @@ declare module '@tanstack/react-router' {
       path: '/suppliers/$supplierId'
       fullPath: '/suppliers/$supplierId'
       preLoaderRoute: typeof AppSuppliersSupplierIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/caller-id': {
+      id: '/_app/settings/caller-id'
+      path: '/settings/caller-id'
+      fullPath: '/settings/caller-id'
+      preLoaderRoute: typeof AppSettingsCallerIdRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/sales_/customers': {
@@ -4859,6 +4878,7 @@ interface AppRouteChildren {
   AppProductsRegenerateNamesRoute: typeof AppProductsRegenerateNamesRoute
   AppPurchasesCreateRoute: typeof AppPurchasesCreateRoute
   AppSalesCustomersRoute: typeof AppSalesCustomersRoute
+  AppSettingsCallerIdRoute: typeof AppSettingsCallerIdRoute
   AppSuppliersSupplierIdRoute: typeof AppSuppliersSupplierIdRoute
   AppTorobOpsAccountsRoute: typeof AppTorobOpsAccountsRoute
   AppTorobOpsFindingsRoute: typeof AppTorobOpsFindingsRoute
@@ -5020,6 +5040,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsRegenerateNamesRoute: AppProductsRegenerateNamesRoute,
   AppPurchasesCreateRoute: AppPurchasesCreateRoute,
   AppSalesCustomersRoute: AppSalesCustomersRoute,
+  AppSettingsCallerIdRoute: AppSettingsCallerIdRoute,
   AppSuppliersSupplierIdRoute: AppSuppliersSupplierIdRoute,
   AppTorobOpsAccountsRoute: AppTorobOpsAccountsRoute,
   AppTorobOpsFindingsRoute: AppTorobOpsFindingsRoute,

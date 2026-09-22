@@ -10,6 +10,8 @@ import {
 import { InquiryProductPicker, type PickedProduct } from "./InquiryProductPicker";
 import { useGroupPurchasers } from "@/hooks/messenger/useGroupRole";
 import { createInquiry } from "@/lib/messenger/inquiries.functions";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 export function InquiryButton({ groupId, disabled }: { groupId: string; disabled?: boolean }) {
   const qc = useQueryClient();
@@ -69,7 +71,10 @@ export function InquiryButton({ groupId, disabled }: { groupId: string; disabled
       <Dialog open={assigneeOpen} onOpenChange={setAssigneeOpen}>
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader>
-            <DialogTitle>انتخاب مسئول خرید</DialogTitle>
+            <DialogTitle className="flex items-center gap-1.5">
+              انتخاب مسئول خرید
+              <HelpHint text={COLLAB_HELP.composerInquiry} ariaLabel="راهنمای استعلام قیمت" />
+            </DialogTitle>
           </DialogHeader>
           {product && (
             <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm">

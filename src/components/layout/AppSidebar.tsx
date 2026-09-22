@@ -29,6 +29,8 @@ import {
   ScanSearch,
   ClipboardList,
   PhoneCall,
+  Phone,
+  MessageSquare,
   ChevronDown,
   ChevronLeft,
   type LucideIcon,
@@ -75,7 +77,7 @@ const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
 };
 const QUICK_ACCESS_LIMIT = 6;
 
-/** Fixed 3D pins under quick-sales search (ticket + sales desk). */
+/** Fixed 3D pins under quick-sales search (ticket + sales desk + collaboration). */
 function SidebarNavPin3d({
   to,
   label,
@@ -83,7 +85,7 @@ function SidebarNavPin3d({
   compact = false,
   active,
 }: {
-  to: "/operations/work" | "/operations/sales-desk";
+  to: "/operations/work" | "/operations/sales-desk" | "/collaboration";
   label: string;
   icon: LucideIcon;
   compact?: boolean;
@@ -178,9 +180,17 @@ export function AppSidebar() {
     () => visible.some((entry) => entry.route === "/operations/sales-desk"),
     [visible],
   );
+  const canSeeCollaboration = useMemo(
+    () => visible.some((entry) => entry.route === "/collaboration"),
+    [visible],
+  );
   const ticketActive = location.pathname.startsWith("/operations/work");
   const salesDeskActive = location.pathname.startsWith("/operations/sales-desk");
-  const showSidebarPins = canSeeTickets || canSeeSalesDesk;
+  const collaborationActive =
+    location.pathname === "/collaboration" ||
+    location.pathname.startsWith("/collaboration/") ||
+    location.pathname.startsWith("/messages");
+  const showSidebarPins = canSeeTickets || canSeeSalesDesk || canSeeCollaboration;
   const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
   const { favorites, favoriteIdSet, toggleFavorite, maxFavorites } =
     useNavigationFavorites(visible);
@@ -519,6 +529,24 @@ export function AppSidebar() {
                 </TooltipContent>
               </Tooltip>
             )}
+            {canSeeCollaboration && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="hidden group-data-[collapsible=icon]:block">
+                    <SidebarNavPin3d
+                      compact
+                      to="/collaboration"
+                      label="همکاری"
+                      icon={MessageSquare}
+                      active={collaborationActive}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  ارتباطات همکاری
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </SidebarHeader>
 
@@ -599,6 +627,14 @@ export function AppSidebar() {
                       label="تیکت"
                       icon={ClipboardList}
                       active={ticketActive}
+                    />
+                  )}
+                  {canSeeCollaboration && (
+                    <SidebarNavPin3d
+                      to="/collaboration"
+                      label="همکاری"
+                      icon={MessageSquare}
+                      active={collaborationActive}
                     />
                   )}
                 </div>
@@ -853,6 +889,13 @@ export function AppSidebar() {
               >
                 <Bell className="h-3.5 w-3.5" />
                 <span>اعلان‌ها</span>
+              </Link>
+              <Link
+                to="/settings/caller-id"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                <span>Caller ID</span>
               </Link>
               <Link
                 to="/knowledge"

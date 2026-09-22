@@ -21,6 +21,8 @@ import {
 import { Loader2, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/hooks/use-debounce";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 type AssignableRole = "member" | "viewer" | "purchaser";
 type MemberRole = "admin" | AssignableRole;
@@ -183,7 +185,10 @@ export function GroupMembersDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>مدیریت اعضا</DialogTitle>
+          <DialogTitle className="flex items-center gap-1.5">
+            مدیریت اعضا
+            <HelpHint text={COLLAB_HELP.groupMembers} ariaLabel="راهنمای مدیریت اعضا" />
+          </DialogTitle>
           <DialogDescription>اعضای گروه را مشاهده، اضافه یا حذف کنید.</DialogDescription>
         </DialogHeader>
 

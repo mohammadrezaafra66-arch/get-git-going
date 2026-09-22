@@ -25,6 +25,8 @@ import { useGroupRole, useGroupPurchasers } from "@/hooks/messenger/useGroupRole
 import { useInquiries, type InquiryRow, type InquiryStatus } from "@/hooks/messenger/useInquiries";
 import { tickInquiries } from "@/lib/messenger/inquiry-status";
 import { InquiryReplyDialog } from "./InquiryReplyDialog";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 const PRIORITY: Record<InquiryStatus, number> = {
   critical_10min: 0,
@@ -490,7 +492,10 @@ function CompactTransferDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-md">
         <DialogHeader>
-          <DialogTitle>انتقال استعلام به مسئول خرید دیگر</DialogTitle>
+          <DialogTitle className="flex items-center gap-1.5">
+            انتقال استعلام به مسئول خرید دیگر
+            <HelpHint text={COLLAB_HELP.inquiryTransfer} ariaLabel="راهنمای انتقال استعلام" />
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-2">
           {isLoading && (

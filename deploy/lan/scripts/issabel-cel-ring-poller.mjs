@@ -1,5 +1,6 @@
 /**
- * CEL live call poller for Issabel (inbound queue ring + outbound dial).
+ * CEL live call poller for Issabel
+ * (queue ring + direct IVR→ext ring + outbound dial).
  * Single-instance (lock file). Posts only mapped extensions.
  * Logs to deploy/lan/logs/issabel-cel-ring.log — no console UI required.
  */
@@ -7,6 +8,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import mysql from "mysql2/promise";
+import {
+  extensionFromQueueChannel,
+  isQueueMemberStart,
+  parseDirectInbound,
+  parseOutbound,
+  rememberTrunkCaller,
+} from "./issabel-cel-ring-classify.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const lanDir = path.resolve(__dirname, "..");
@@ -137,31 +145,6 @@ async function fetchMapped(env, cache) {
   return set;
 }
 
-function isQueueMemberStart(row) {
-  if (row.eventtype !== "CHAN_START") return false;
-  if ((row.context || "") !== "from-queue") return false;
-  return /^(?:Local)\/(\d{2,6})@from-queue-[^;]+;1$/.test(row.channame || "");
-}
-
-function extensionFromQueueChannel(channame) {
-  const m = (channame || "").match(/^Local\/(\d{2,6})@from-queue-/);
-  return m ? m[1] : null;
-}
-
-/** Outbound: SIP/412 dials an external number (exten length >= 5). */
-function parseOutbound(row) {
-  if (row.eventtype !== "CHAN_START") return null;
-  if ((row.context || "") !== "from-internal") return null;
-  const ch = row.channame || "";
-  const m = ch.match(/^(?:SIP|PJSIP)\/(\d{2,6})-/);
-  if (!m) return null;
-  const dest = (row.exten || "").trim();
-  if (!dest || dest.length < 5 || dest === "s" || dest === "h") return null;
-  // Skip feature codes / short internals
-  if (/^\d{2,4}$/.test(dest)) return null;
-  return { extension: m[1], destNumber: dest };
-}
-
 async function main() {
   acquireLock();
   const env = loadEnv(envPath);
@@ -234,11 +217,7 @@ async function main() {
     for (const row of rows) {
       state.lastId = Number(row.id);
 
-      if (row.eventtype === "CHAN_START" && (row.context || "") === "from-trunk") {
-        const num = (row.cid_num || row.cid_ani || "").trim();
-        if (row.linkedid && num && num.length >= 5) {
-          callers.set(row.linkedid, { number: num, at: now });
-        }
+      if (rememberTrunkCaller(row, callers, now)) {
         continue;
       }
 
@@ -255,7 +234,32 @@ async function main() {
           eventAt: new Date().toISOString(),
           source: "cel",
           direction: "inbound",
-          raw: { cel_id: row.id, context: row.context, channame: row.channame },
+          raw: {
+            cel_id: row.id,
+            context: row.context,
+            channame: row.channame,
+            path: "queue",
+          },
+        });
+        continue;
+      }
+
+      const direct = parseDirectInbound(row, callers);
+      if (direct && mapped.has(direct.extension)) {
+        await emit(env, {
+          extension: direct.extension,
+          callerNumber: direct.callerNumber,
+          linkedid: row.linkedid || null,
+          uniqueid: row.uniqueid || null,
+          eventAt: new Date().toISOString(),
+          source: "cel",
+          direction: "inbound",
+          raw: {
+            cel_id: row.id,
+            context: row.context,
+            channame: row.channame,
+            path: "direct",
+          },
         });
         continue;
       }
