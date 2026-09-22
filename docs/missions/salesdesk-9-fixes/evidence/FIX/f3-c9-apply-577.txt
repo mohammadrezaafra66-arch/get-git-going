@@ -1,0 +1,18 @@
+md5_ok=true
+md5=dddbe1f6124060d99260a663e7681e5e
+apply:
+SET
+SET
+DROP FUNCTION
+CREATE FUNCTION
+REVOKE
+REVOKE
+GRANT
+GRANT
+
+ledger:
+INSERT 0 1
+
+rest:
+afrakala-lan-rest
+

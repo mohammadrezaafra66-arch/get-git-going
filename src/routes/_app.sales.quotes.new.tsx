@@ -546,25 +546,13 @@ function NewQuotePage() {
         p_quote_exception_minutes: activeException?.minutes ?? null,
         p_quote_exception_amount: activeException?.amount ?? null,
         p_quote_exception_text: activeException?.text ?? null,
+        // C9 / mig 577 — link + salesperson_id from deal inside SECURITY DEFINER
+        // (authenticated has no UPDATE on sales_quotes).
+        p_interaction_id: dealPrefill?.interactionId ?? null,
       });
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
       if (!result?.id) throw new Error("پاسخ نامعتبر از سرور.");
-
-      // C9 — link quote to deal + set salesperson_id = deal responsible
-      if (dealPrefill) {
-        const patch: Record<string, unknown> = {
-          interaction_id: dealPrefill.interactionId,
-        };
-        if (dealPrefill.salespersonId) {
-          patch.salesperson_id = dealPrefill.salespersonId;
-        }
-        const { error: linkErr } = await supabase
-          .from("sales_quotes" as never)
-          .update(patch as never)
-          .eq("id" as never, result.id as never);
-        if (linkErr) throw new Error(linkErr.message);
-      }
 
       return result;
     },

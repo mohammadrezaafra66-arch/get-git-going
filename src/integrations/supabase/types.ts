@@ -10921,6 +10921,7 @@ export type Database = {
           p_discount_amount: number
           p_expires_at: string
           p_final_amount: number
+          p_interaction_id?: string
           p_items: Json
           p_quote_exception_amount?: number
           p_quote_exception_minutes?: number

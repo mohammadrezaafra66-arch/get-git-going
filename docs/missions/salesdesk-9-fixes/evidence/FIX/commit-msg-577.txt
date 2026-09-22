@@ -1,0 +1,6 @@
+fix(sales): لینک معامله→پیش‌فاکتور در RPC بدون UPDATE کلاینت
+
+چه چیزی تغییر کرد: مهاجرت 577 پارامتر اختیاری p_interaction_id به create_sales_quote_with_items؛ salesperson_id از ردیف معامله؛ FE آرگومان را می‌فرستد و UPDATE بعد از ساخت حذف شد؛ og102 امضای جدید.
+چرا: JWT فروش روی sales_quotes UPDATE ندارد (SF-1.c4) و C9 با permission denied می‌شکست.
+شواهد: E4 — قبل MISSING_P_INTERACTION_ID (f3-c9-probe-577-before.txt)؛ بعد PROBE_OK=1 match SP/IX/draft (f3-c9-probe-577-after.txt exit 0)؛ LAN apply f3-c9-apply-577.txt؛ tsc ERROR_COUNT=74.
+تأییدنشده: Playwright زنده C9 پس از deploy وب توسط orch.
