@@ -118,8 +118,9 @@ test("work taxonomy catalog screen", async ({ page }) => {
 test("collaboration sidebar pin + in-app help hints", async ({ page }) => {
   await page.goto("/collaboration", { waitUntil: "domcontentloaded" });
   await settle(page);
-  // _app.collaboration.tsx:137 — HelpHint (c1ea61a1)
-  await expect(page.getByLabel("راهنمای مرکز همکاری")).toBeVisible({ timeout: 30_000 });
+  // _app.collaboration.tsx:137 — HelpHint (c1ea61a1). Page may render two matching
+  // aria-labels (header + inline); assert at least one is visible.
+  await expect(page.getByLabel("راهنمای مرکز همکاری").first()).toBeVisible({ timeout: 30_000 });
   // AppSidebar.tsx:669-675 — pin label «همکاری»
   await expect(page.getByRole("link", { name: "همکاری" }).first()).toBeVisible();
   await shot(page, "collaboration-pin-help");
