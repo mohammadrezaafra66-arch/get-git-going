@@ -319,12 +319,11 @@ jobs:
               target_branch == "main"
               and branch != "staging"
               and not is_hotfix_branch(branch)
-              and not is_feature_branch(branch)
               and event_name == "pull_request"
           ):
               violations.append(
-                  f"Release flow violation: PRs to `main` must normally come from `staging`, "
-                  f"a long-lived `feature/*` branch, or an approved `hotfix/WPC-*`, not `{branch}`."
+                  f"Release flow violation: PRs to `main` must come from `staging` "
+                  f"or an approved `hotfix/*`, not `{branch}`."
               )
 
           print("Boundary Guard Report")
