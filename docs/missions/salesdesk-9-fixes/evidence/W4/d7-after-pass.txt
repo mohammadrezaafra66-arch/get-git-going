@@ -1,0 +1,8 @@
+W4-FE D7 · N9 · after-pass
+timestamp: 2026-09-22T05:15:00+05:00
+
+MyWorkDeals.tsx section title «فعالیت‌های امروز و عقب‌افتاده»
+Data: listOpenDueTodayOrOverdue via tehran_today day boundary
+Includes ActivityDoneControls for owner actions.
+
+E4: grep label → MyWorkDeals.tsx:215 (d3-d7-grep-after.txt)
