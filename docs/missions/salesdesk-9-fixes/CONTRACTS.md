@@ -134,11 +134,11 @@ Exact module keys (Wave 3 FE, migration 571):
 | `deal-lost-reasons` | `/settings/deal-lost-reasons` | C8 settings catalog |
 | `deal-lost-report` | `/sales/reports/deal-lost` | C8 lost-reasons report |
 
-Wave 4 placeholder (D4 role_permissions; page not yet):
+Wave 4 D4 (page landed; role_permissions + count RPC in mig 574) — reason recorded 2026-09-22 W4-DOC:
 
 | Module key | Route | Reason |
 |------------|-------|--------|
-| `sales-activities` | `/operations/sales-desk/activities` | D4 activities page — mig 574 role_permissions + count RPC |
+| `sales-activities` | `/operations/sales-desk/activities` | D4 activities page — mig 574 role_permissions + count RPC; UI `_app.operations.sales-desk_.activities.tsx` |
 
 Also deal detail (no dedicated module; gated by sales role): `/operations/sales-desk/deals/$dealId`
 
