@@ -1,7 +1,7 @@
 # FIX-HANDOFF — salesdesk-9-fixes verifier gaps
 
-Updated: 2026-09-22T10:35:00Z · Worktree: `D:\AfraKalaTest\wt-salesdesk-9-fixes` · Branch: `feature/salesdesk-9-fixes` @ `9a217cda`  
-Current: **FINISH DONE** · 3100 `APP_GIT_SHA=9a217cda` (matches HEAD)
+Updated: 2026-09-22T10:40:00Z · Worktree: `D:\AfraKalaTest\wt-salesdesk-9-fixes` · Branch: `feature/salesdesk-9-fixes` @ `a3a5cc88`  
+Current: **FINISH DONE** · 3100 `APP_GIT_SHA=a3a5cc88` (matches HEAD) · pushed `origin/feature/salesdesk-9-fixes`
 
 ## Items
 
@@ -19,10 +19,10 @@ Current: **FINISH DONE** · 3100 `APP_GIT_SHA=9a217cda` (matches HEAD)
 | Gate | Result |
 |------|--------|
 | Typecheck | 74 (`typecheck-finish-151550.txt`) |
-| Deploy §8.8 | `finish-deploy.txt` HEAD=`APP_GIT_SHA=9a217cda` safety=PASS |
+| Deploy §8.8 | `finish-deploy.txt` HEAD=`APP_GIT_SHA=a3a5cc88` safety=PASS |
 | F1–F5 re-run | all pass — see `*-finish*.txt` |
 | Markers | `finish-markers.txt` all zero |
-| Push | this branch |
+| Push | `983e47a3..a3a5cc88` → `origin/feature/salesdesk-9-fixes` |
 
 ## Next action
 
