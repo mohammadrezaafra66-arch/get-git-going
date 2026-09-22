@@ -1,42 +1,5 @@
-﻿APP_GIT_SHA=e2d67d0e
-HEAD=ffb9e2bf10715474654ab931c7f13a8b5ecf46dd
-PLAYWRIGHT_CMD=D:\AfraKalaTest\wt-salesdesk-9-fixes\node_modules\.bin\playwright.cmd
+APP_GIT_SHA=e2d67d0e
+HEAD=5c9dc5f8d2931f3d801c6a08afdf482fbb2aecec
+PLAYWRIGHT_CMD=D:\\AfraKalaTest\\wt-salesdesk-9-fixes\\node_modules\\.bin\\playwright.cmd
 BASE_URL=http://192.168.170.8:3100
-STARTED=2026-09-22T15:11:34.9395673+05:00
-
-Running 2 tests using 1 worker
-
-  ok 1 e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:117:3 › F5 — A2/A5 [TEST-9FIX] › A2 — close then reopen marked ticket (sections + تاریخ بسته شدن) (2.4s)
-F5_MARKER_COUNTS {"work_items":0,"suppliers":0,"purchases":0,"persons":0,"customers":0}
-  ok 2 e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:236:3 › F5 — A2/A5 [TEST-9FIX] › A5 — quick-create supplier and save marked purchase (4.3s)
-
-  2 passed (12.1s)
-
-EXIT_CODE=0
-
---- STDERR ---
-(node:24248) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:42936) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:38000) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:29592) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:22468) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:42480) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:39396) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:33860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:38852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:37772) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:36772) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-(node:13848) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
-(Use `node --trace-warnings ...` to show where the warning was created)
-
+STARTED=2026-09-22T10:14:25.089Z
