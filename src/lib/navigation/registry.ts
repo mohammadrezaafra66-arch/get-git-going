@@ -605,6 +605,13 @@ const NAVIGATION_SEEDS = [
     group: "operations",
   },
   {
+    to: "/operations/sales-desk/activities",
+    label: "فعالیت‌ها",
+    icon: CalendarClock,
+    module: "sales-activities",
+    group: "operations",
+  },
+  {
     to: "/settings/deal-lost-reasons",
     label: "دلایل شکست معامله",
     icon: ScrollText,
@@ -1490,6 +1497,7 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   // _app.operations.sales-desk.tsx / call-activity — requireAnyRole(admin,manager,sales)
   "/operations/sales-desk": ["admin", "manager", "sales"],
   "/operations/sales-desk/deals-for-others": ["admin", "manager", "sales"],
+  "/operations/sales-desk/activities": ["admin", "manager", "sales"],
   "/settings/deal-lost-reasons": ["admin", "manager", "sales"],
   "/sales/reports/deal-lost": ["admin", "manager", "sales"],
   "/operations/call-activity": ["admin", "manager", "sales"],

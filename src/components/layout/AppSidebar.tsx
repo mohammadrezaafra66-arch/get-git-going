@@ -294,6 +294,27 @@ export function AppSidebar() {
     },
   });
 
+  // Wave 4 D4 — red badge: open activities due today/overdue via tehran_today RPC
+  const canSeeActivitiesBadge = hasPermissionEx(
+    roles,
+    "sales-activities",
+    "view",
+  );
+  const { data: activitiesDueCount } = useQuery({
+    queryKey: ["sidebar-activities-due-count", user?.id],
+    enabled: !!user?.id && canSeeActivitiesBadge,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "count_open_activities_due_today_or_overdue" as never,
+        { p_salesperson_id: user!.id } as never,
+      );
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
   // PRICE-RT.4 — small queue alert badge (admin/manager/accountant only).
   const {
     data: pricingQueueHealth,
@@ -364,6 +385,9 @@ export function AppSidebar() {
     const showBadge = item.route === "/users" && isAdmin && (pendingCount ?? 0) > 0;
     const showPricingBadge =
       item.route === "/pricing/recompute-prices" && pricingAlertVariant !== null;
+    const showActivitiesBadge =
+      item.route === "/operations/sales-desk/activities" &&
+      (activitiesDueCount ?? 0) > 0;
     const isFavorite = favoriteIdSet.has(item.id);
     return (
       <div
@@ -407,6 +431,14 @@ export function AppSidebar() {
               }
             >
               {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
+            </span>
+          )}
+          {showActivitiesBadge && (
+            <span
+              className="mr-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white"
+              title="فعالیت‌های امروز و عقب‌افتاده"
+            >
+              {toFaDigits(activitiesDueCount ?? 0)}
             </span>
           )}
         </Link>

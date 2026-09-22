@@ -49,6 +49,9 @@ function SalesDeskPage() {
               معاملات ثبت‌شده برای دیگران
             </Link>
           </Button>
+          <Button asChild variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm">
+            <Link to="/operations/sales-desk/activities">فعالیت‌ها</Link>
+          </Button>
         </div>
       }
     >

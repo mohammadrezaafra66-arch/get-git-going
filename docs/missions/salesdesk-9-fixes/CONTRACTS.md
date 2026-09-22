@@ -25,6 +25,8 @@ If an equivalent already exists, use it and record the mapping here. Do not crea
 | `original_due_at` | timestamptz NULL | Preserved on postpone | None — CREATE |
 | `done_at` | timestamptz NULL | When activity marked done | None — CREATE |
 | `result_note` | text NULL | Result text on completion | None — CREATE |
+| `reminder_enabled` | boolean NOT NULL DEFAULT false | D6 — remind only when `due_has_time`; mig 575 | None — CREATE |
+| `reminder_fired_at` | timestamptz NULL | D6 — set on read-time materialize into notification_queue | None — CREATE |
 
 **Mappings (reuse, do not duplicate):**
 - Deal «مسئول معامله» = existing `salesperson_id` (NULL no longer allowed for new `kind='request'`).
@@ -136,7 +138,7 @@ Wave 4 placeholder (D4 role_permissions; page not yet):
 
 | Module key | Route | Reason |
 |------------|-------|--------|
-| `sales-activities` | `/operations/sales-desk/activities` (TBD) | D4 activities page — seed types live in mig 572 |
+| `sales-activities` | `/operations/sales-desk/activities` | D4 activities page — mig 574 role_permissions + count RPC |
 
 Also deal detail (no dedicated module; gated by sales role): `/operations/sales-desk/deals/$dealId`
 
@@ -144,7 +146,7 @@ Also deal detail (no dedicated module; gated by sales role): `/operations/sales-
 
 - Directory: `supabase/migrations/`
 - Convention: `YYYYMMDDHHMMSS_NNN_snake_name.sql`
-- Next free NNN after highest on base: **574** (Wave 4 D1 used **573** `20260922050100_573_sales_interactions_activity_fields`; D2 used **572** `20260922050000_572_sales_activity_types`; Wave 3 used 565–571; Wave 2 applied 563–564 — including `deal_id` on `sales_interactions`; Wave 1 used 560–562; duplicates exist at 551, 554, 558)
+- Next free NNN after highest on base: **576** (Wave 4 D4 used **574** `20260922050200_574_role_permissions_sales_activities`; D6 used **575** `20260922050300_575_activity_reminder_fields`; D1 used **573**; D2 used **572**; Wave 3 used 565–571; Wave 2 applied 563–564 — including `deal_id` on `sales_interactions`; Wave 1 used 560–562; duplicates exist at 551, 554, 558)
 - One migration per concern; each has `docs/missions/salesdesk-9-fixes/revert/<file>`
 
 ## Decisions recorded with contracts
@@ -153,3 +155,4 @@ Also deal detail (no dedicated module; gated by sales role): `/operations/sales-
 - Activities on `sales_interactions` (ADR-4); `tasks` untouched.
 - Call card grouping is application-layer; `call_ring_events` storage unchanged (one row per extension).
 - Wave 4 D1: `deal_id` already from 564 — do not recreate FK. Activity owner = `salesperson_id`, creator = `author_id` (no new columns). Backfill maps `kind` call/note → activity types without changing `kind`; `request` stays `activity_type_id` NULL. Legacy `next_follow_up_at` copied to `due_at` + `original_due_at` with `due_has_time=true` when `due_at` was null (call/note only) so D5/D7 have due data.
+- Wave 4 D6: `reminder_enabled` / `reminder_fired_at` added in mig **575** because in-app read-time materialize into `notification_queue` needs fire-once tracking; delivery is NotificationBell poll → `materialize_due_activity_reminders()` (SECURITY DEFINER), never pg_cron.

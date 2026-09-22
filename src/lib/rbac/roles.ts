@@ -100,7 +100,9 @@ export type ModuleKey =
   /** Wave 3 salesdesk — تنظیمات دلایل شکست معامله */
   | "deal-lost-reasons"
   /** Wave 3 salesdesk — گزارش دلایل شکست */
-  | "deal-lost-report";
+  | "deal-lost-report"
+  /** Wave 4 salesdesk — صفحه فعالیت‌ها */
+  | "sales-activities";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";
