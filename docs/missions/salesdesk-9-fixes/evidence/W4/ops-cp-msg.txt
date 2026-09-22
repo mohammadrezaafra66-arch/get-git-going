@@ -1,0 +1,6 @@
+docs(missions): تکمیل checkpoint W4-OPS با SHA شواهد
+
+چه چیزی تغییر کرد: checkpoint با evidence_commits
+چرا: sync registry پس از push
+شواهد: E1 — checkpoint.md
+تأییدنشده: —

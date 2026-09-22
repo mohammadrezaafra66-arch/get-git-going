@@ -10,6 +10,8 @@
 - compose_safety: PASS
 - playwright: PASS (salesdesk-9-fixes-w1-smoke)
 - migrations_572_575: present (verify only; not re-applied)
+- evidence_commits: 425962fc (main), 7ec41a61 (push log)
+- note: container APP_GIT_SHA stays 0c6eeb08 (product tip); branch tip advanced with docs-only evidence
 
 ## Evidence
 - `compose-base.yml`
