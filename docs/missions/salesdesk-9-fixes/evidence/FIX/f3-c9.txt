@@ -1,0 +1,25 @@
+STATUS=FAIL
+PRODUCT_BUG=deal prefill sets DraftQuoteItem.source='manual' which validateQuote + create_sales_quote_with_items reject
+PRODUCT_FILE=src/routes/_app.sales.quotes.new.tsx (~source: "manual")
+KPI_SCORE_BEFORE
+{
+  "tag": "before",
+  "employee_id": "ea9b35dd-fd57-4905-9355-50ca8646d4d1",
+  "kpi_today_sum_count": "0|0",
+  "score_accepted_sum_count": "1779400000|9",
+  "score_total_sales_value": "0.0",
+  "score_fn_total_or_normalized": "null",
+  "tehran_today": "2026-09-22"
+}
+ERROR
+C9 quote save rejected by product: ثبت پیش‌فاکتور انجام نشد
+
+دلیل رد شدن در زیر آمده است. می‌توانید یک توضیح یک‌خطی اضافه کنید تا در «درخواست‌های رد شدهٔ من» ثبت شود و بعداً قابل پیگیری باشد.
+
+آیتم 1: این کالا در سیستم تعریف نشده است. برای ثبت پیش‌فاکتور، ابتدا محصول باید توسط حسابداری ساخته شود.
+توضیح شما (اختیاری)
+بستن بدون ثبت
+ثبت دلیل
+Close
+DEAL_ID=93b286d7-6474-41d5-9e85-61fc1db68e7b
+DEAL_TITLE=[TEST-9FIX] C9 deal 1790065099893

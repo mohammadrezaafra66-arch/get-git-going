@@ -1,0 +1,17 @@
+author_id=00ebe9d3-b467-453c-89d6-08bab46335c2
+author_name=کاربر آزمایشی 1
+tehran_today=2026-09-22
+sql_before=0
+ui_before=0
+sql_after=1
+ui_after=1
+deal_title=[TEST-9FIX] C5 deal 1790065184339
+seed={"deal_id":"6a8e02e4-f339-48ac-aab5-28bfe7dc514a","title":"[TEST-9FIX] C5 deal 1790065184339","author_id":"00ebe9d3-b467-453c-89d6-08bab46335c2","salesperson_id":"ea9b35dd-fd57-4905-9355-50ca8646d4d1"}
+seed_out=SET
+                                                                                                  json_build_object                                                                                                   
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ {"deal_id" : "6a8e02e4-f339-48ac-aab5-28bfe7dc514a", "author_id" : "00ebe9d3-b467-453c-89d6-08bab46335c2", "salesperson_id" : "ea9b35dd-fd57-4905-9355-50ca8646d4d1", "title" : "[TEST-9FIX] C5 deal 1790065184339"}
+(1 row)
+
+
+{"deal_id":"6a8e02e4-f339-48ac-aab5-28bfe7dc514a","title":"[TEST-9FIX] C5 deal 1790065184339","author_id":"00ebe9d3-b467-453c-89d6-08bab46335c2","salesperson_id":"ea9b35dd-fd57-4905-9355-50ca8646d4d1"}
