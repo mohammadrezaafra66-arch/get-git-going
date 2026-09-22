@@ -856,6 +856,18 @@ function PurchasePriceDialog({
       if (parsed.data.effective_at) payload.effective_at = dateStartIso(parsed.data.effective_at);
       if (expiresAt) payload.expires_at = dateEndIso(expiresAt);
 
+      // Keep at most one active purchase row per product (stale multi-active → wrong sale recompute).
+      if (values.is_active && parsed.data.product_id) {
+        let expireQ = supabase
+          .from("purchase_prices")
+          .update({ is_active: false, expires_at: new Date().toISOString() })
+          .eq("product_id", parsed.data.product_id)
+          .eq("is_active", true);
+        if (editing?.id) expireQ = expireQ.neq("id", editing.id);
+        const { error: expireErr } = await expireQ;
+        if (expireErr) throw expireErr;
+      }
+
       if (editing?.id) {
         const { error } = await supabase
           .from("purchase_prices")
