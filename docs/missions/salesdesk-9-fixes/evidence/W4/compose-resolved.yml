@@ -1,0 +1,325 @@
+﻿name: afrakala-lan
+services:
+  auth:
+    container_name: afrakala-lan-auth
+    depends_on:
+      db-role-fix:
+        condition: service_completed_successfully
+        required: true
+    environment:
+      API_EXTERNAL_URL: http://192.168.170.8:9000
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      GOTRUE_DB_DATABASE_URL: postgres://supabase_auth_admin:dis-0tAMYhQ-bkdBf6wTXQN037uWJDPo@db:5432/afrakala
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_SECRET: xGP-EqOCnUIgt9xHqWTA7SY6aa3MHmD-Kxoj0M63k5pAUiAeUjIFC7sF7RWxRRhN
+      GOTRUE_MAILER_AUTOCONFIRM: "false"
+      GOTRUE_SITE_URL: http://192.168.170.8:3100
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@afrakala.local
+      GOTRUE_SMTP_HOST: localhost
+      GOTRUE_SMTP_PASS: ""
+      GOTRUE_SMTP_PORT: "587"
+      GOTRUE_SMTP_SENDER_NAME: AfraKala
+      GOTRUE_SMTP_USER: ""
+      GOTRUE_URI_ALLOW_LIST: https://test.myafrakala.ir,https://test.myafrakala.ir/**,http://192.168.170.8:3100,http://192.168.170.8:3100/**
+    image: supabase/gotrue:v2.158.1
+    networks:
+      afrakala-lan-net: null
+    restart: unless-stopped
+  caddy:
+    container_name: afrakala-lan-caddy
+    image: caddy:2.8-alpine
+    networks:
+      afrakala-lan-net: null
+    ports:
+      - mode: ingress
+        target: 443
+        published: "443"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: C:/caddy-config/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+        bind: {}
+      - type: bind
+        source: C:/certs
+        target: /certs
+        read_only: true
+        bind: {}
+  db:
+    container_name: afrakala-lan-db
+    environment:
+      JWT_EXP: "3600"
+      JWT_SECRET: xGP-EqOCnUIgt9xHqWTA7SY6aa3MHmD-Kxoj0M63k5pAUiAeUjIFC7sF7RWxRRhN
+      POSTGRES_DB: afrakala
+      POSTGRES_HOST: /var/run/postgresql
+      POSTGRES_PASSWORD: dis-0tAMYhQ-bkdBf6wTXQN037uWJDPo
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+    healthcheck:
+      test:
+        - CMD
+        - pg_isready
+        - -U
+        - postgres
+        - -h
+        - localhost
+      timeout: 5s
+      interval: 10s
+      retries: 10
+    image: supabase/postgres:15.6.1.139
+    networks:
+      afrakala-lan-net: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: lan-db-data
+        target: /var/lib/postgresql/data
+        volume: {}
+      - type: bind
+        source: D:\AfraKalaTest\app\deploy\supabase\volumes\db\init\00-afrakala-pre-supabase-admin.sh
+        target: /docker-entrypoint-initdb.d/00-afrakala-pre-supabase-admin.sh
+        read_only: true
+        bind: {}
+      - type: bind
+        source: D:\AfraKalaTest\app\deploy\supabase\volumes\db\init\zz-10-afrakala-roles.sh
+        target: /docker-entrypoint-initdb.d/zz-10-afrakala-roles.sh
+        read_only: true
+        bind: {}
+      - type: bind
+        source: D:\AfraKalaTest\app\deploy\supabase\volumes\db\init\zz-20-afrakala-schemas.sql
+        target: /docker-entrypoint-initdb.d/zz-20-afrakala-schemas.sql
+        read_only: true
+        bind: {}
+      - type: bind
+        source: D:\AfraKalaTest\app\deploy\supabase\volumes\db\init\zz-30-afrakala-jwt.sh
+        target: /docker-entrypoint-initdb.d/zz-30-afrakala-jwt.sh
+        read_only: true
+        bind: {}
+      - type: bind
+        source: D:\AfraKalaTest\app\deploy\supabase\volumes\db\init\zzzz-99-afrakala-final-role-passwords.sh
+        target: /docker-entrypoint-initdb.d/zzzz-99-afrakala-final-role-passwords.sh
+        read_only: true
+        bind: {}
+  db-role-fix:
+    container_name: afrakala-lan-db-role-fix
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+    entrypoint:
+      - /bin/bash
+      - /usr/local/bin/db-role-fix.sh
+    environment:
+      POSTGRES_DB: afrakala
+      POSTGRES_PASSWORD: dis-0tAMYhQ-bkdBf6wTXQN037uWJDPo
+    image: supabase/postgres:15.6.1.139
+    networks:
+      afrakala-lan-net: null
+    restart: 'no'
+    volumes:
+      - type: bind
+        source: D:\AfraKalaTest\app\deploy\lan\scripts\db-role-fix.sh
+        target: /usr/local/bin/db-role-fix.sh
+        read_only: true
+        bind: {}
+  kong:
+    container_name: afrakala-lan-kong
+    depends_on:
+      auth:
+        condition: service_started
+        required: true
+      meta:
+        condition: service_started
+        required: true
+      rest:
+        condition: service_started
+        required: true
+      storage:
+        condition: service_started
+        required: true
+    entrypoint:
+      - sh
+      - -c
+      - |
+        set -eu
+        : "$${SUPABASE_ANON_KEY:?SUPABASE_ANON_KEY env var missing}"
+        : "$${SUPABASE_SERVICE_KEY:?SUPABASE_SERVICE_KEY env var missing}"
+        sed \
+          -e "s|\$$SUPABASE_ANON_KEY|$${SUPABASE_ANON_KEY}|g" \
+          -e "s|\$$SUPABASE_SERVICE_KEY|$${SUPABASE_SERVICE_KEY}|g" \
+          /home/kong/kong.yml.template > /home/kong/kong.rendered.yml
+        if grep -q '\$$SUPABASE_ANON_KEY\|\$$SUPABASE_SERVICE_KEY' /home/kong/kong.rendered.yml; then
+          echo "[kong-entrypoint] FATAL: rendered kong.yml still contains literal placeholders" >&2
+          exit 1
+        fi
+        exec /docker-entrypoint.sh kong docker-start
+    environment:
+      DASHBOARD_PASSWORD: changeme
+      DASHBOARD_USERNAME: admin
+      KONG_DATABASE: 'off'
+      KONG_DECLARATIVE_CONFIG: /home/kong/kong.rendered.yml
+      KONG_DNS_ORDER: LAST,A,CNAME
+      KONG_NGINX_HTTP_CLIENT_HEADER_BUFFER_SIZE: 64k
+      KONG_NGINX_HTTP_LARGE_CLIENT_HEADER_BUFFERS: 8 64k
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI
+      SUPABASE_SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NzkwMDU2OTEsImV4cCI6MjA5NDM2NTY5MX0.zP9Y94wOohugV90ydmq0udAkM40xH4QehMMqy5GIW98
+    image: kong:2.8.1
+    networks:
+      afrakala-lan-net: null
+    ports:
+      - mode: ingress
+        target: 8000
+        published: "9000"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: D:\AfraKalaTest\app\deploy\supabase\volumes\api\kong.yml
+        target: /home/kong/kong.yml.template
+        read_only: true
+        bind: {}
+  meta:
+    container_name: afrakala-lan-meta
+    depends_on:
+      db-role-fix:
+        condition: service_completed_successfully
+        required: true
+    environment:
+      PG_META_DB_HOST: db
+      PG_META_DB_NAME: afrakala
+      PG_META_DB_PASSWORD: dis-0tAMYhQ-bkdBf6wTXQN037uWJDPo
+      PG_META_DB_PORT: "5432"
+      PG_META_DB_USER: supabase_admin
+      PG_META_PORT: "8080"
+    image: supabase/postgres-meta:v0.84.2
+    networks:
+      afrakala-lan-net: null
+    restart: unless-stopped
+  rest:
+    container_name: afrakala-lan-rest
+    depends_on:
+      db-role-fix:
+        condition: service_completed_successfully
+        required: true
+    environment:
+      PGRST_APP_SETTINGS_JWT_EXP: "3600"
+      PGRST_APP_SETTINGS_JWT_SECRET: xGP-EqOCnUIgt9xHqWTA7SY6aa3MHmD-Kxoj0M63k5pAUiAeUjIFC7sF7RWxRRhN
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_DB_SCHEMAS: public,storage,graphql_public
+      PGRST_DB_URI: postgres://authenticator:dis-0tAMYhQ-bkdBf6wTXQN037uWJDPo@db:5432/afrakala
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_JWT_SECRET: xGP-EqOCnUIgt9xHqWTA7SY6aa3MHmD-Kxoj0M63k5pAUiAeUjIFC7sF7RWxRRhN
+    image: postgrest/postgrest:v12.2.0
+    networks:
+      afrakala-lan-net: null
+    restart: unless-stopped
+  storage:
+    container_name: afrakala-lan-storage
+    depends_on:
+      db-role-fix:
+        condition: service_completed_successfully
+        required: true
+      rest:
+        condition: service_started
+        required: true
+    environment:
+      ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI
+      DATABASE_URL: postgres://supabase_storage_admin:dis-0tAMYhQ-bkdBf6wTXQN037uWJDPo@db:5432/afrakala
+      ENABLE_IMAGE_TRANSFORMATION: "false"
+      FILE_SIZE_LIMIT: "52428800"
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      GLOBAL_S3_BUCKET: stub
+      PGRST_JWT_SECRET: xGP-EqOCnUIgt9xHqWTA7SY6aa3MHmD-Kxoj0M63k5pAUiAeUjIFC7sF7RWxRRhN
+      POSTGREST_URL: http://rest:3000
+      REGION: stub
+      SERVICE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NzkwMDU2OTEsImV4cCI6MjA5NDM2NTY5MX0.zP9Y94wOohugV90ydmq0udAkM40xH4QehMMqy5GIW98
+      STORAGE_BACKEND: file
+      TENANT_ID: stub
+    image: supabase/storage-api:v1.11.13
+    networks:
+      afrakala-lan-net: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: lan-storage-data
+        target: /var/lib/storage
+        volume: {}
+  web:
+    build:
+      context: D:\AfraKalaTest\wt-salesdesk-9-fixes
+      dockerfile: Dockerfile
+      args:
+        APP_ENV: lan
+        BUILD_TIME: 2026-09-22T05:21:09
+        GIT_SHA: 0c6eeb08
+        VITE_SUPABASE_PROJECT_ID: afrakala-test
+    container_name: afrakala-lan-web
+    depends_on:
+      kong:
+        condition: service_started
+        required: true
+    environment:
+      APP_SUPABASE_PUBLIC_URL: http://192.168.170.8:9000
+      HOST: 0.0.0.0
+      ISSABEL_CDR_DB: asteriskcdrdb
+      ISSABEL_CDR_HOST: 192.168.170.252
+      ISSABEL_CDR_PASSWORD: GVgnhsFlcKfCQJuEDRPoZ8LT
+      ISSABEL_CDR_PORT: "3306"
+      ISSABEL_CDR_USER: afrakala_ro
+      ISSABEL_IMPORT_WORKER_TOKEN: amdqek1lwtfxr63904hyb8sjpcizvo2ug75n
+      LOVABLE_API_KEY: ""
+      MARKETING_TASKS_WORKER_TOKEN: zmd0aufqs4129kyhnj735cr6epgxvwol8bti
+      NODE_ENV: production
+      OCR_ENABLED: "true"
+      OLLAMA_API_KEY: ""
+      OLLAMA_API_URL: http://192.168.170.8:11434
+      OLLAMA_EMBED_MODEL: bge-m3:latest
+      OLLAMA_MODEL: qwen2.5:7b
+      OLLAMA_VISION_MODEL: qwen3.6:latest
+      PORT: "3000"
+      PRICING_WORKER_TOKEN: eik3ltd59zveyli8mv92kvnul4wwuvu8k8huikqk4wx2vrxj
+      SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzc5MDA1NjkxLCJleHAiOjIwOTQzNjU2OTF9.0LMk6WGniEm92wPtTnapSIcuhZpq5au8KnEUCQFPKeI
+      SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoic2VydmljZV9yb2xlIiwiaXNzIjoic3VwYWJhc2UiLCJpYXQiOjE3NzkwMDU2OTEsImV4cCI6MjA5NDM2NTY5MX0.zP9Y94wOohugV90ydmq0udAkM40xH4QehMMqy5GIW98
+      SUPABASE_URL: http://kong:8000
+      VITE_APP_ENV: test
+      VITE_TRUSTED_HOSTS: ""
+      WHATSAPP_PLATFORM_BASE_URL: http://192.168.170.8:8002
+      WHATSAPP_TOP_PRODUCTS_LIMIT: ""
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - -qO-
+        - http://127.0.0.1:3000/api/healthz
+      timeout: 5s
+      interval: 30s
+      retries: 3
+      start_period: 30s
+    image: afrakala-app:lan
+    networks:
+      afrakala-lan-net: null
+    ports:
+      - mode: ingress
+        target: 3000
+        published: "3100"
+        protocol: tcp
+    restart: unless-stopped
+networks:
+  afrakala-lan-net:
+    name: afrakala-lan_afrakala-lan-net
+    driver: bridge
+volumes:
+  lan-db-data:
+    name: afrakala-lan_lan-db-data
+  lan-storage-data:
+    name: afrakala-lan_lan-storage-data
