@@ -1,0 +1,16 @@
+APP_GIT_SHA=2102fc48
+HEAD=2102fc48
+HEAD_FULL=2102fc482cd821b32cdd412eebaa1fea8e3015b8
+EXIT_CODE=0
+finished_at=2026-09-22T09:26:28.712Z
+PLAYWRIGHT=D:\AfraKalaTest\wt-salesdesk-9-fixes\node_modules\.bin\playwright.cmd
+CONFIG=docs\missions\salesdesk-9-fixes\evidence\FIX\playwright.fix-f3.config.ts
+
+Running 2 tests using 1 worker
+
+F3_C9_MARKER_COUNTS {"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}
+  ok 1 e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:256:3 › F3 — C9 [TEST-9FIX] quote-from-deal › C9 — create draft quote from deal; KPI/score unchanged (11.8s)
+F3_C5_MARKER_COUNTS {"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}
+  ok 2 e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:439:3 › F3 — C5 [TEST-9FIX] deals-for-others › C5 — deals-for-others count +1 equals SQL (6.6s)
+
+  2 passed (29.8s)

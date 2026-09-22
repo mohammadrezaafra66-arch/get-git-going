@@ -1,0 +1,28 @@
+=== C6_products_ilike_287 ===
+                  id                  |                     name                     |      sku       | stock_status | is_active 
+--------------------------------------+----------------------------------------------+----------------+--------------+-----------
+ 5f2a5385-f004-41e3-8425-3cc55a0ba80c | جارو رباتیک شیاومی X20 MAX رنگ مشکی          | AFK-2026-00287 | available    | t
+ 14e53be0-1ecc-45c8-a2e5-3b8feaa188ab | یخچال ساید بای ساید ال جی مدل X287 رنگ سفید  | AFK-2026-00007 | unavailable  | t
+ b0ab5def-1fe3-4dc1-9f8e-d8ff2df2eaad | یخچال ساید بای ساید ال جی مدل X287 رنگ سیلور | AFK-2026-00001 | available    | t
+(3 rows)
+
+=== C6_search_fn_src_has_ilike ===
+ has_ilike | p_term_pos 
+-----------+------------
+ t         |         54
+(1 row)
+
+=== C9_quote_cols ===
+  column_name   |       column_default        | is_nullable |  data_type   
+----------------+-----------------------------+-------------+--------------
+ interaction_id |                             | YES         | uuid
+ salesperson_id |                             | YES         | uuid
+ status         | 'draft'::sales_quote_status | NO          | USER-DEFINED
+(3 rows)
+
+=== C9_create_fn_draft ===
+ draft_pos 
+-----------
+         0
+(1 row)
+

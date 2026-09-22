@@ -1,0 +1,22 @@
+APP_GIT_SHA=e2241aed
+HEAD=e2241aed
+CLEANUP_OUT
+SET
+DELETE 0
+DELETE 0
+
+SET
+DELETE 0
+
+SET
+DELETE 0
+
+SET
+UPDATE 0
+DELETE 0
+DELETE 0
+DELETE 0
+
+CLEANUP_DONE
+MARKER_COUNTS
+{"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}

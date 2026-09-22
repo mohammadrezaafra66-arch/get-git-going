@@ -1,0 +1,4 @@
+﻿ jobid | schedule | left 
+-------+----------+------
+(0 rows)
+

@@ -1,0 +1,13 @@
+              expected_title_hex              
+----------------------------------------------
+ d985d98620d985d8b3d8a6d988d98420d8b4d8afd985
+(1 row)
+
+ title_in_fn 
+-------------
+ t
+(1 row)
+
+BEGIN
+CREATE TABLE
+ROLLBACK

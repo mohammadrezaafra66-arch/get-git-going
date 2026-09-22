@@ -1,0 +1,86 @@
+
+## D2 sales_activity_types
+count=18
+sort=0 expected_hex=db8cd8a7d8afd8afd8a7d8b4d8aa20d8b3d8a7d8afd987 got_hex=db8cd8a7d8afd8afd8a7d8b4d8aa20d8b3d8a7d8afd987 title_eq=true hex_eq=true
+sort=1 expected_hex=d8aad985d8a7d8b320d988d8b1d988d8afdb8c got_hex=d8aad985d8a7d8b320d988d8b1d988d8afdb8c title_eq=true hex_eq=true
+sort=2 expected_hex=d8aad985d8a7d8b320d8aed8b1d988d8acdb8c got_hex=d8aad985d8a7d8b320d8aed8b1d988d8acdb8c title_eq=true hex_eq=true
+sort=3 expected_hex=d8a7d8b9d984d8a7d98520d982db8cd985d8aa got_hex=d8a7d8b9d984d8a7d98520d982db8cd985d8aa title_eq=true hex_eq=true
+sort=4 expected_hex=d9bedb8cdaafdb8cd8b1db8c20d98820d981d8b9d8a7d984db8cd8aa20db8cd8a720d8add8b3d8a7d8a820d8b1d8b3d8a7d986db8c got_hex=d9bedb8cdaafdb8cd8b1db8c20d98820d981d8b9d8a7d984db8cd8aa20db8cd8a720d8add8b3d8a7d8a820d8b1d8b3d8a7d986db8c title_eq=true hex_eq=true
+sort=5 expected_hex=d988db8cd8afd8a6d98820da86daa9 got_hex=d988db8cd8afd8a6d98820da86daa9 title_eq=true hex_eq=true
+sort=6 expected_hex=d8aad985d8a7d8b320d8aed8b1d988d8acdb8c20d986d8a720d985d988d981d982 got_hex=d8aad985d8a7d8b320d8aed8b1d988d8acdb8c20d986d8a720d985d988d981d982 title_eq=true hex_eq=true
+sort=7 expected_hex=d988d8b8db8cd981d987 got_hex=d988d8b8db8cd981d987 title_eq=true hex_eq=true
+sort=8 expected_hex=d981db8cd8b420da86daa9 got_hex=d981db8cd8b420da86daa9 title_eq=true hex_eq=true
+sort=9 expected_hex=d9bedb8cd8a7d98520d988d8a7d8aad8b320d8a7d9be20db8cd8a720736d73 got_hex=d9bedb8cd8a7d98520d988d8a7d8aad8b320d8a7d9be20db8cd8a720736d73 title_eq=true hex_eq=true
+sort=10 expected_hex=d8a8d8b1d8b3db8c20d8a7d8b9d8aad8a8d8a7d8b120d98820d985d8a7d986d8afd98720d985d8b9d988d98220d985d8b4d8aad8b1db8c20d8a8d8b1d8a7db8c20d8a7d8b9d984d8a7d98520d982db8cd985d8aa got_hex=d8a8d8b1d8b3db8c20d8a7d8b9d8aad8a8d8a7d8b120d98820d985d8a7d986d8afd98720d985d8b9d988d98220d985d8b4d8aad8b1db8c20d8a8d8b1d8a7db8c20d8a7d8b9d984d8a7d98520d982db8cd985d8aa title_eq=true hex_eq=true
+sort=11 expected_hex=d8aed8b1db8cd8af20d98820da86daa920daa9d8a7d984d8a7 got_hex=d8aed8b1db8cd8af20d98820da86daa920daa9d8a7d984d8a7 title_eq=true hex_eq=true
+sort=12 expected_hex=d8a7d8b1d8b3d8a7d98420d981d8a7daa9d8aad988d8b120d8afd8b120daafd8b1d988d98720d985d8b4d8aad8b1db8c20d98820d981d8a7daa9d8aad988d8b120d8afd8b3d8aadb8c got_hex=d8a7d8b1d8b3d8a7d98420d981d8a7daa9d8aad988d8b120d8afd8b120daafd8b1d988d98720d985d8b4d8aad8b1db8c20d98820d981d8a7daa9d8aad988d8b120d8afd8b3d8aadb8c title_eq=true hex_eq=true
+sort=13 expected_hex=d8a7daa9d8b3d98420d8a7d8acd986d8a7d8b320d8a7d8b1d8b3d8a7d98420d986d8b4d8afd987 got_hex=d8a7daa9d8b3d98420d8a7d8acd986d8a7d8b320d8a7d8b1d8b3d8a7d98420d986d8b4d8afd987 title_eq=true hex_eq=true
+sort=14 expected_hex=d8a7d8b1d8b3d8a7d98420d986d987d8a7db8cdb8c got_hex=d8a7d8b1d8b3d8a7d98420d986d987d8a7db8cdb8c title_eq=true hex_eq=true
+sort=15 expected_hex=d8a7d8b1d8b3d8a7d98420d8a8db8cd8acdaa920db8cd8a720d8b1d8b3db8cd8af20d8afd8b120daafd8b1d988d98720d985d8b4d8aad8b1db8c got_hex=d8a7d8b1d8b3d8a7d98420d8a8db8cd8acdaa920db8cd8a720d8b1d8b3db8cd8af20d8afd8b120daafd8b1d988d98720d985d8b4d8aad8b1db8c title_eq=true hex_eq=true
+sort=16 expected_hex=d8abd8a8d8aa20d8add8b3d8a7d8a8d8afd8a7d8b1db8c got_hex=d8abd8a8d8aa20d8add8b3d8a7d8a8d8afd8a7d8b1db8c title_eq=true hex_eq=true
+sort=17 expected_hex=d981d8a7daa9d8aad988d8b1d984d8a7db8cd986 got_hex=d981d8a7daa9d8aad988d8b1d984d8a7db8cd986 title_eq=true hex_eq=true
+D2_VERDICT_SEED=PASS
+
+## D1 columns + mapping
+cols=
+activity_type_id
+author_id
+deal_id
+done_at
+due_at
+due_has_time
+original_due_at
+result_note
+salesperson_id
+D1_COLS=PASS missing=
+call_note_mapping=
+note|2|2|0
+map_detail=
+note|0|یادداشت ساده|2
+unexpected_kinds=0
+
+## D4 RPC + role_permissions
+rpcs=
+count_open_activities_due_today_or_overdue
+materialize_due_activity_reminders
+tehran_today
+count_rpc_uses_tehran_today=true
+count_rpc_def_snippet=CREATE OR REPLACE FUNCTION public.count_open_activities_due_today_or_overdue(p_salesperson_id uuid DEFAULT NULL::uuid)  RETURNS bigint  LANGUAGE sql  STABLE  SET search_path TO 'public' AS $function$   SELECT count(*)::bigint     FROM public.sales_interactions si    WHERE si.done_at IS NULL      AND si.activity_type_id IS NOT NULL      AND si.due_at IS NOT NULL      AND (si.due_at AT TIME ZONE 'As
+role_permissions_activityish=
+accountant|sales-activities|f|f|f
+admin|sales-activities|t|t|t
+manager|sales-activities|t|t|t
+purchase_specialist|sales-activities|f|f|f
+sales|sales-activities|t|t|t
+site|sales-activities|f|f|f
+viewer|sales-activities|f|f|f
+modules_activ=
+sales-activities
+
+## D6 reminder + no pg_cron
+reminder_cols=
+reminder_enabled
+reminder_fired_at
+cron_activity_jobs=
+ERR:ERROR:  relation "cron.job" does not exist
+LINE 3: FROM cron.job
+             ^
+
+cron_job_count=ERR
+
+## migrations
+schema_migrations_count=737
+w4ish_versions=
+20260426055737
+20260626145739
+20260922050000
+20260922050100
+20260922050200
+20260922050300
+
+## D6 postpone original_due_at semantics (code+db)
+activityish_procs=
+materialize_due_activity_reminders
+
+## tasks untouched
+tasks_column_count=15

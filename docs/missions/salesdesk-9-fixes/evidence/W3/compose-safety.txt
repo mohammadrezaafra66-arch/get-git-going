@@ -1,0 +1,14 @@
+﻿IDENTICAL: auth
+IDENTICAL: caddy
+IDENTICAL: db
+IDENTICAL: db-role-fix
+IDENTICAL: kong
+IDENTICAL: meta
+IDENTICAL: rest
+IDENTICAL: storage
+DIFFERS: web
+
+base_services=9 resolved_services=9
+web_differs=True
+non_web_differs=
+COMPOSE_SAFETY=PASS

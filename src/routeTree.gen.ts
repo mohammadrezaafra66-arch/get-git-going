@@ -69,6 +69,7 @@ import { Route as AppUsersUserIdRouteImport } from './routes/_app.users.$userId'
 import { Route as AppTorobOpsRunsRouteImport } from './routes/_app.torob-ops_.runs'
 import { Route as AppTorobOpsFindingsRouteImport } from './routes/_app.torob-ops_.findings'
 import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
+import { Route as AppSettingsDealLostReasonsRouteImport } from './routes/_app.settings.deal-lost-reasons'
 import { Route as AppSettingsCallerIdRouteImport } from './routes/_app.settings.caller-id'
 import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
 import { Route as AppSalesStockAlertsRouteImport } from './routes/_app.sales.stock-alerts'
@@ -201,6 +202,7 @@ import { Route as ApiAdminCallsImportIssabelRouteImport } from './routes/api.adm
 import { Route as AppSalesCustomersCreditTrainingRouteImport } from './routes/_app.sales_.customers_.credit-training'
 import { Route as AppSalesCustomersCreditAllocationGuideRouteImport } from './routes/_app.sales_.customers_.credit-allocation-guide'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
+import { Route as AppSalesReportsDealLostRouteImport } from './routes/_app.sales.reports.deal-lost'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppPricingSaleListsNewRouteImport } from './routes/_app.pricing.sale-lists_.new'
@@ -209,6 +211,8 @@ import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.person
 import { Route as AppOperationsWorkTopicsRouteImport } from './routes/_app.operations.work_.topics'
 import { Route as AppOperationsWorkSettingsRouteImport } from './routes/_app.operations.work_.settings'
 import { Route as AppOperationsWorkItemIdRouteImport } from './routes/_app.operations.work_.$itemId'
+import { Route as AppOperationsSalesDeskDealsForOthersRouteImport } from './routes/_app.operations.sales-desk_.deals-for-others'
+import { Route as AppOperationsSalesDeskActivitiesRouteImport } from './routes/_app.operations.sales-desk_.activities'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
 import { Route as AppGamificationAdminRewardsRouteImport } from './routes/_app.gamification.admin.rewards'
 import { Route as AppGamificationAdminPurchaseSettingsRouteImport } from './routes/_app.gamification.admin.purchase-settings'
@@ -231,6 +235,7 @@ import { Route as AppSalesCustomersCustomerIdDossierRouteImport } from './routes
 import { Route as AppSalesCustomersCustomerIdCreditRouteImport } from './routes/_app.sales_.customers_.$customerId.credit'
 import { Route as AppPricingSaleListsListIdPublishRouteImport } from './routes/_app.pricing.sale-lists_.$listId.publish'
 import { Route as AppOperationsWorkTopicsTopicIdRouteImport } from './routes/_app.operations.work_.topics_.$topicId'
+import { Route as AppOperationsSalesDeskDealsDealIdRouteImport } from './routes/_app.operations.sales-desk_.deals.$dealId'
 import { Route as AppGamificationAdminManualMetricsGuideRouteImport } from './routes/_app.gamification_.admin_.manual-metrics_.guide'
 import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
 import { Route as ApiPublicBotMarketMatchesCandidatesUpsertRouteImport } from './routes/api.public.bot.market-matches.candidates.upsert'
@@ -540,6 +545,12 @@ const AppSuppliersSupplierIdRoute = AppSuppliersSupplierIdRouteImport.update({
   path: '/suppliers/$supplierId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsDealLostReasonsRoute =
+  AppSettingsDealLostReasonsRouteImport.update({
+    id: '/settings/deal-lost-reasons',
+    path: '/settings/deal-lost-reasons',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSettingsCallerIdRoute = AppSettingsCallerIdRouteImport.update({
   id: '/settings/caller-id',
   path: '/settings/caller-id',
@@ -1245,6 +1256,11 @@ const AppSalesCustomersCreateRoute = AppSalesCustomersCreateRouteImport.update({
   path: '/sales/customers/create',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSalesReportsDealLostRoute = AppSalesReportsDealLostRouteImport.update({
+  id: '/reports/deal-lost',
+  path: '/reports/deal-lost',
+  getParentRoute: () => AppSalesRoute,
+} as any)
 const AppSalesQuotesNewRoute = AppSalesQuotesNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -1287,6 +1303,18 @@ const AppOperationsWorkItemIdRoute = AppOperationsWorkItemIdRouteImport.update({
   path: '/operations/work/$itemId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsSalesDeskDealsForOthersRoute =
+  AppOperationsSalesDeskDealsForOthersRouteImport.update({
+    id: '/operations/sales-desk_/deals-for-others',
+    path: '/operations/sales-desk/deals-for-others',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppOperationsSalesDeskActivitiesRoute =
+  AppOperationsSalesDeskActivitiesRouteImport.update({
+    id: '/operations/sales-desk_/activities',
+    path: '/operations/sales-desk/activities',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppOperationsDailyMoodAdminRoute =
   AppOperationsDailyMoodAdminRouteImport.update({
     id: '/admin',
@@ -1417,6 +1445,12 @@ const AppOperationsWorkTopicsTopicIdRoute =
   AppOperationsWorkTopicsTopicIdRouteImport.update({
     id: '/operations/work_/topics_/$topicId',
     path: '/operations/work/topics/$topicId',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppOperationsSalesDeskDealsDealIdRoute =
+  AppOperationsSalesDeskDealsDealIdRouteImport.update({
+    id: '/operations/sales-desk_/deals/$dealId',
+    path: '/operations/sales-desk/deals/$dealId',
     getParentRoute: () => AppRoute,
   } as any)
 const AppGamificationAdminManualMetricsGuideRoute =
@@ -1624,6 +1658,7 @@ export interface FileRoutesByFullPath {
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/sales/customers': typeof AppSalesCustomersRoute
   '/settings/caller-id': typeof AppSettingsCallerIdRoute
+  '/settings/deal-lost-reasons': typeof AppSettingsDealLostReasonsRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/torob-ops/findings': typeof AppTorobOpsFindingsRoute
   '/torob-ops/runs': typeof AppTorobOpsRunsRoute
@@ -1656,6 +1691,8 @@ export interface FileRoutesByFullPath {
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/operations/sales-desk/activities': typeof AppOperationsSalesDeskActivitiesRoute
+  '/operations/sales-desk/deals-for-others': typeof AppOperationsSalesDeskDealsForOthersRoute
   '/operations/work/$itemId': typeof AppOperationsWorkItemIdRoute
   '/operations/work/settings': typeof AppOperationsWorkSettingsRoute
   '/operations/work/topics': typeof AppOperationsWorkTopicsRoute
@@ -1664,6 +1701,7 @@ export interface FileRoutesByFullPath {
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/sales/reports/deal-lost': typeof AppSalesReportsDealLostRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
@@ -1678,6 +1716,7 @@ export interface FileRoutesByFullPath {
   '/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/gamification/admin/manual-metrics/guide': typeof AppGamificationAdminManualMetricsGuideRoute
+  '/operations/sales-desk/deals/$dealId': typeof AppOperationsSalesDeskDealsDealIdRoute
   '/operations/work/topics/$topicId': typeof AppOperationsWorkTopicsTopicIdRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
@@ -1851,6 +1890,7 @@ export interface FileRoutesByTo {
   '/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/sales/customers': typeof AppSalesCustomersRoute
   '/settings/caller-id': typeof AppSettingsCallerIdRoute
+  '/settings/deal-lost-reasons': typeof AppSettingsDealLostReasonsRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/torob-ops/findings': typeof AppTorobOpsFindingsRoute
   '/torob-ops/runs': typeof AppTorobOpsRunsRoute
@@ -1883,6 +1923,8 @@ export interface FileRoutesByTo {
   '/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/operations/sales-desk/activities': typeof AppOperationsSalesDeskActivitiesRoute
+  '/operations/sales-desk/deals-for-others': typeof AppOperationsSalesDeskDealsForOthersRoute
   '/operations/work/$itemId': typeof AppOperationsWorkItemIdRoute
   '/operations/work/settings': typeof AppOperationsWorkSettingsRoute
   '/operations/work/topics': typeof AppOperationsWorkTopicsRoute
@@ -1891,6 +1933,7 @@ export interface FileRoutesByTo {
   '/pricing/sale-lists/new': typeof AppPricingSaleListsNewRoute
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/sales/reports/deal-lost': typeof AppSalesReportsDealLostRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
@@ -1905,6 +1948,7 @@ export interface FileRoutesByTo {
   '/sales/quotes': typeof AppSalesQuotesIndexRoute
   '/academy/$courseId/$lessonId/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/gamification/admin/manual-metrics/guide': typeof AppGamificationAdminManualMetricsGuideRoute
+  '/operations/sales-desk/deals/$dealId': typeof AppOperationsSalesDeskDealsDealIdRoute
   '/operations/work/topics/$topicId': typeof AppOperationsWorkTopicsTopicIdRoute
   '/pricing/sale-lists/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/sales/customers/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
@@ -2083,6 +2127,7 @@ export interface FileRoutesById {
   '/_app/sales/stock-alerts': typeof AppSalesStockAlertsRoute
   '/_app/sales_/customers': typeof AppSalesCustomersRoute
   '/_app/settings/caller-id': typeof AppSettingsCallerIdRoute
+  '/_app/settings/deal-lost-reasons': typeof AppSettingsDealLostReasonsRoute
   '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/_app/torob-ops_/findings': typeof AppTorobOpsFindingsRoute
   '/_app/torob-ops_/runs': typeof AppTorobOpsRunsRoute
@@ -2115,6 +2160,8 @@ export interface FileRoutesById {
   '/_app/gamification/admin/purchase-settings': typeof AppGamificationAdminPurchaseSettingsRoute
   '/_app/gamification/admin/rewards': typeof AppGamificationAdminRewardsRoute
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
+  '/_app/operations/sales-desk_/activities': typeof AppOperationsSalesDeskActivitiesRoute
+  '/_app/operations/sales-desk_/deals-for-others': typeof AppOperationsSalesDeskDealsForOthersRoute
   '/_app/operations/work_/$itemId': typeof AppOperationsWorkItemIdRoute
   '/_app/operations/work_/settings': typeof AppOperationsWorkSettingsRoute
   '/_app/operations/work_/topics': typeof AppOperationsWorkTopicsRoute
@@ -2123,6 +2170,7 @@ export interface FileRoutesById {
   '/_app/pricing/sale-lists_/new': typeof AppPricingSaleListsNewRoute
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
+  '/_app/sales/reports/deal-lost': typeof AppSalesReportsDealLostRoute
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales_/customers_/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/_app/sales_/customers_/credit-training': typeof AppSalesCustomersCreditTrainingRoute
@@ -2137,6 +2185,7 @@ export interface FileRoutesById {
   '/_app/sales/quotes/': typeof AppSalesQuotesIndexRoute
   '/_app/academy_/$courseId_/$lessonId_/quiz': typeof AppAcademyCourseIdLessonIdQuizRoute
   '/_app/gamification_/admin_/manual-metrics_/guide': typeof AppGamificationAdminManualMetricsGuideRoute
+  '/_app/operations/sales-desk_/deals/$dealId': typeof AppOperationsSalesDeskDealsDealIdRoute
   '/_app/operations/work_/topics_/$topicId': typeof AppOperationsWorkTopicsTopicIdRoute
   '/_app/pricing/sale-lists_/$listId/publish': typeof AppPricingSaleListsListIdPublishRoute
   '/_app/sales_/customers_/$customerId/credit': typeof AppSalesCustomersCustomerIdCreditRoute
@@ -2315,6 +2364,7 @@ export interface FileRouteTypes {
     | '/sales/stock-alerts'
     | '/sales/customers'
     | '/settings/caller-id'
+    | '/settings/deal-lost-reasons'
     | '/suppliers/$supplierId'
     | '/torob-ops/findings'
     | '/torob-ops/runs'
@@ -2347,6 +2397,8 @@ export interface FileRouteTypes {
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
+    | '/operations/sales-desk/activities'
+    | '/operations/sales-desk/deals-for-others'
     | '/operations/work/$itemId'
     | '/operations/work/settings'
     | '/operations/work/topics'
@@ -2355,6 +2407,7 @@ export interface FileRouteTypes {
     | '/pricing/sale-lists/new'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
+    | '/sales/reports/deal-lost'
     | '/sales/customers/create'
     | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
@@ -2369,6 +2422,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/'
     | '/academy/$courseId/$lessonId/quiz'
     | '/gamification/admin/manual-metrics/guide'
+    | '/operations/sales-desk/deals/$dealId'
     | '/operations/work/topics/$topicId'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
@@ -2542,6 +2596,7 @@ export interface FileRouteTypes {
     | '/sales/stock-alerts'
     | '/sales/customers'
     | '/settings/caller-id'
+    | '/settings/deal-lost-reasons'
     | '/suppliers/$supplierId'
     | '/torob-ops/findings'
     | '/torob-ops/runs'
@@ -2574,6 +2629,8 @@ export interface FileRouteTypes {
     | '/gamification/admin/purchase-settings'
     | '/gamification/admin/rewards'
     | '/operations/daily-mood/admin'
+    | '/operations/sales-desk/activities'
+    | '/operations/sales-desk/deals-for-others'
     | '/operations/work/$itemId'
     | '/operations/work/settings'
     | '/operations/work/topics'
@@ -2582,6 +2639,7 @@ export interface FileRouteTypes {
     | '/pricing/sale-lists/new'
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
+    | '/sales/reports/deal-lost'
     | '/sales/customers/create'
     | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
@@ -2596,6 +2654,7 @@ export interface FileRouteTypes {
     | '/sales/quotes'
     | '/academy/$courseId/$lessonId/quiz'
     | '/gamification/admin/manual-metrics/guide'
+    | '/operations/sales-desk/deals/$dealId'
     | '/operations/work/topics/$topicId'
     | '/pricing/sale-lists/$listId/publish'
     | '/sales/customers/$customerId/credit'
@@ -2773,6 +2832,7 @@ export interface FileRouteTypes {
     | '/_app/sales/stock-alerts'
     | '/_app/sales_/customers'
     | '/_app/settings/caller-id'
+    | '/_app/settings/deal-lost-reasons'
     | '/_app/suppliers_/$supplierId'
     | '/_app/torob-ops_/findings'
     | '/_app/torob-ops_/runs'
@@ -2805,6 +2865,8 @@ export interface FileRouteTypes {
     | '/_app/gamification/admin/purchase-settings'
     | '/_app/gamification/admin/rewards'
     | '/_app/operations/daily-mood/admin'
+    | '/_app/operations/sales-desk_/activities'
+    | '/_app/operations/sales-desk_/deals-for-others'
     | '/_app/operations/work_/$itemId'
     | '/_app/operations/work_/settings'
     | '/_app/operations/work_/topics'
@@ -2813,6 +2875,7 @@ export interface FileRouteTypes {
     | '/_app/pricing/sale-lists_/new'
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
+    | '/_app/sales/reports/deal-lost'
     | '/_app/sales_/customers_/create'
     | '/_app/sales_/customers_/credit-allocation-guide'
     | '/_app/sales_/customers_/credit-training'
@@ -2827,6 +2890,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/'
     | '/_app/academy_/$courseId_/$lessonId_/quiz'
     | '/_app/gamification_/admin_/manual-metrics_/guide'
+    | '/_app/operations/sales-desk_/deals/$dealId'
     | '/_app/operations/work_/topics_/$topicId'
     | '/_app/pricing/sale-lists_/$listId/publish'
     | '/_app/sales_/customers_/$customerId/credit'
@@ -3298,6 +3362,13 @@ declare module '@tanstack/react-router' {
       path: '/suppliers/$supplierId'
       fullPath: '/suppliers/$supplierId'
       preLoaderRoute: typeof AppSuppliersSupplierIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/deal-lost-reasons': {
+      id: '/_app/settings/deal-lost-reasons'
+      path: '/settings/deal-lost-reasons'
+      fullPath: '/settings/deal-lost-reasons'
+      preLoaderRoute: typeof AppSettingsDealLostReasonsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/caller-id': {
@@ -4224,6 +4295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesCustomersCreateRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/sales/reports/deal-lost': {
+      id: '/_app/sales/reports/deal-lost'
+      path: '/reports/deal-lost'
+      fullPath: '/sales/reports/deal-lost'
+      preLoaderRoute: typeof AppSalesReportsDealLostRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/sales/quotes/new': {
       id: '/_app/sales/quotes/new'
       path: '/new'
@@ -4278,6 +4356,20 @@ declare module '@tanstack/react-router' {
       path: '/operations/work/$itemId'
       fullPath: '/operations/work/$itemId'
       preLoaderRoute: typeof AppOperationsWorkItemIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/sales-desk_/deals-for-others': {
+      id: '/_app/operations/sales-desk_/deals-for-others'
+      path: '/operations/sales-desk/deals-for-others'
+      fullPath: '/operations/sales-desk/deals-for-others'
+      preLoaderRoute: typeof AppOperationsSalesDeskDealsForOthersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/operations/sales-desk_/activities': {
+      id: '/_app/operations/sales-desk_/activities'
+      path: '/operations/sales-desk/activities'
+      fullPath: '/operations/sales-desk/activities'
+      preLoaderRoute: typeof AppOperationsSalesDeskActivitiesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/operations/daily-mood/admin': {
@@ -4434,6 +4526,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsWorkTopicsTopicIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/sales-desk_/deals/$dealId': {
+      id: '/_app/operations/sales-desk_/deals/$dealId'
+      path: '/operations/sales-desk/deals/$dealId'
+      fullPath: '/operations/sales-desk/deals/$dealId'
+      preLoaderRoute: typeof AppOperationsSalesDeskDealsDealIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/gamification_/admin_/manual-metrics_/guide': {
       id: '/_app/gamification_/admin_/manual-metrics_/guide'
       path: '/gamification/admin/manual-metrics/guide'
@@ -4582,6 +4681,7 @@ interface AppSalesRouteChildren {
   AppSalesSendQueueRoute: typeof AppSalesSendQueueRoute
   AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
+  AppSalesReportsDealLostRoute: typeof AppSalesReportsDealLostRoute
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
@@ -4596,6 +4696,7 @@ const AppSalesRouteChildren: AppSalesRouteChildren = {
   AppSalesSendQueueRoute: AppSalesSendQueueRoute,
   AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
+  AppSalesReportsDealLostRoute: AppSalesReportsDealLostRoute,
 }
 
 const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(
@@ -4801,6 +4902,7 @@ interface AppRouteChildren {
   AppPurchasesCreateRoute: typeof AppPurchasesCreateRoute
   AppSalesCustomersRoute: typeof AppSalesCustomersRoute
   AppSettingsCallerIdRoute: typeof AppSettingsCallerIdRoute
+  AppSettingsDealLostReasonsRoute: typeof AppSettingsDealLostReasonsRoute
   AppSuppliersSupplierIdRoute: typeof AppSuppliersSupplierIdRoute
   AppTorobOpsFindingsRoute: typeof AppTorobOpsFindingsRoute
   AppTorobOpsRunsRoute: typeof AppTorobOpsRunsRoute
@@ -4811,6 +4913,8 @@ interface AppRouteChildren {
   AppProductsIndexRoute: typeof AppProductsIndexRoute
   AppAcademyCourseIdLessonIdRoute: typeof AppAcademyCourseIdLessonIdRoute
   AppAccountingReceiptsTrainingRoute: typeof AppAccountingReceiptsTrainingRoute
+  AppOperationsSalesDeskActivitiesRoute: typeof AppOperationsSalesDeskActivitiesRoute
+  AppOperationsSalesDeskDealsForOthersRoute: typeof AppOperationsSalesDeskDealsForOthersRoute
   AppOperationsWorkItemIdRoute: typeof AppOperationsWorkItemIdRoute
   AppOperationsWorkSettingsRoute: typeof AppOperationsWorkSettingsRoute
   AppOperationsWorkTopicsRoute: typeof AppOperationsWorkTopicsRoute
@@ -4822,6 +4926,7 @@ interface AppRouteChildren {
   AppSalesCustomersCreditTrainingRoute: typeof AppSalesCustomersCreditTrainingRoute
   AppAcademyCourseIdLessonIdQuizRoute: typeof AppAcademyCourseIdLessonIdQuizRoute
   AppGamificationAdminManualMetricsGuideRoute: typeof AppGamificationAdminManualMetricsGuideRoute
+  AppOperationsSalesDeskDealsDealIdRoute: typeof AppOperationsSalesDeskDealsDealIdRoute
   AppOperationsWorkTopicsTopicIdRoute: typeof AppOperationsWorkTopicsTopicIdRoute
   AppSalesCustomersCustomerIdCreditRoute: typeof AppSalesCustomersCustomerIdCreditRoute
   AppSalesCustomersCustomerIdDossierRoute: typeof AppSalesCustomersCustomerIdDossierRoute
@@ -4960,6 +5065,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppPurchasesCreateRoute: AppPurchasesCreateRoute,
   AppSalesCustomersRoute: AppSalesCustomersRoute,
   AppSettingsCallerIdRoute: AppSettingsCallerIdRoute,
+  AppSettingsDealLostReasonsRoute: AppSettingsDealLostReasonsRoute,
   AppSuppliersSupplierIdRoute: AppSuppliersSupplierIdRoute,
   AppTorobOpsFindingsRoute: AppTorobOpsFindingsRoute,
   AppTorobOpsRunsRoute: AppTorobOpsRunsRoute,
@@ -4970,6 +5076,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppProductsIndexRoute: AppProductsIndexRoute,
   AppAcademyCourseIdLessonIdRoute: AppAcademyCourseIdLessonIdRoute,
   AppAccountingReceiptsTrainingRoute: AppAccountingReceiptsTrainingRoute,
+  AppOperationsSalesDeskActivitiesRoute: AppOperationsSalesDeskActivitiesRoute,
+  AppOperationsSalesDeskDealsForOthersRoute:
+    AppOperationsSalesDeskDealsForOthersRoute,
   AppOperationsWorkItemIdRoute: AppOperationsWorkItemIdRoute,
   AppOperationsWorkSettingsRoute: AppOperationsWorkSettingsRoute,
   AppOperationsWorkTopicsRoute: AppOperationsWorkTopicsRoute,
@@ -4983,6 +5092,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppAcademyCourseIdLessonIdQuizRoute: AppAcademyCourseIdLessonIdQuizRoute,
   AppGamificationAdminManualMetricsGuideRoute:
     AppGamificationAdminManualMetricsGuideRoute,
+  AppOperationsSalesDeskDealsDealIdRoute:
+    AppOperationsSalesDeskDealsDealIdRoute,
   AppOperationsWorkTopicsTopicIdRoute: AppOperationsWorkTopicsTopicIdRoute,
   AppSalesCustomersCustomerIdCreditRoute:
     AppSalesCustomersCustomerIdCreditRoute,
@@ -5066,13 +5177,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

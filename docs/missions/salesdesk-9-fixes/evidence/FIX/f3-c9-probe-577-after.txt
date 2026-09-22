@@ -1,0 +1,9 @@
+exit=0
+BEGIN
+      sig_check       
+----------------------
+ HAS_P_INTERACTION_ID
+(1 row)
+
+DO
+ROLLBACK

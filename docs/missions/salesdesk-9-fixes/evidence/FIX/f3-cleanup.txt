@@ -1,0 +1,22 @@
+C5_CLEANUP_OUT
+SET
+DELETE 0
+DELETE 0
+
+SET
+DELETE 0
+
+SET
+DELETE 1
+
+SET
+UPDATE 1
+DELETE 1
+DELETE 1
+DELETE 1
+
+CLEANUP_DONE
+
+MARKER_COUNTS
+{"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}
+

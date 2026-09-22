@@ -29,13 +29,17 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { formatJalaliDateTime } from "@/lib/messenger/format";
 import {
   acceptMerge,
   dismissMerge,
   getMorningSummary,
+  isWorkItemClosed,
   listActiveTaxonomies,
   listMergeSuggestions,
   listWorkItems,
+  profileDisplayName,
+  resolveProfileNames,
   setDecisionBucket,
   type WorkDecisionBucket,
   type WorkItem,
@@ -95,6 +99,9 @@ export function WorkBoardPage() {
   const [items, setItems] = useState<WorkItem[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
   const [itemsError, setItemsError] = useState<string | null>(null);
+  const [profileNames, setProfileNames] = useState<Map<string, string>>(
+    () => new Map(),
+  );
 
   const [queue, setQueue] = useState<WorkItem[]>([]);
   const [queueLoading, setQueueLoading] = useState(true);
@@ -132,7 +139,7 @@ export function WorkBoardPage() {
           priority === ALL ? undefined : (priority as WorkItemPriority),
         openOnly: status === ALL && openOnly ? true : undefined,
         search: search.trim() || undefined,
-        limit: 100,
+        limit: 200,
       });
       let filtered = rows;
       if (workMode !== ALL) {
@@ -142,6 +149,14 @@ export function WorkBoardPage() {
         filtered = filtered.filter((r) => (r.group_name ?? "") === group);
       }
       setItems(filtered);
+      try {
+        const names = await resolveProfileNames(
+          filtered.flatMap((r) => [r.creator_id, r.assignee_id]),
+        );
+        setProfileNames(names);
+      } catch {
+        setProfileNames(new Map());
+      }
     } catch (e: unknown) {
       setItemsError(e instanceof Error ? e.message : "خطای ناشناخته");
     } finally {
@@ -235,6 +250,15 @@ export function WorkBoardPage() {
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b, "fa"));
   }, [items, queue, taxonomyGroups]);
+
+  const openItems = useMemo(
+    () => items.filter((i) => !isWorkItemClosed(i.status)),
+    [items],
+  );
+  const closedItems = useMemo(
+    () => items.filter((i) => isWorkItemClosed(i.status)),
+    [items],
+  );
 
   const activeMorningBucket: MorningBucketKey | null = openOnly
     ? "open"
@@ -594,46 +618,26 @@ export function WorkBoardPage() {
             </div>
           )}
 
-          <ul className="divide-y divide-slate-100">
-            {items.map((item) => (
-              <li
-                key={item.id}
-                className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="min-w-0">
-                  <Link
-                    to="/operations/work/$itemId"
-                    params={{ itemId: item.id }}
-                    className="block truncate font-medium text-slate-800 hover:text-teal-800"
-                  >
-                    {item.title}
-                  </Link>
-                  <div className="mt-1 flex flex-wrap gap-1.5">
-                    <Badge variant="secondary">{STATUS_LABELS[item.status]}</Badge>
-                    <Badge variant="outline">{KIND_LABELS[item.kind]}</Badge>
-                    <Badge variant="outline">{PRIORITY_LABELS[item.priority]}</Badge>
-                    {item.decision_bucket && (
-                      <Badge variant="outline">
-                        {BUCKET_LABELS[item.decision_bucket]}
-                      </Badge>
-                    )}
-                    <Badge variant="outline">{MODE_LABELS[item.work_mode]}</Badge>
-                    {item.group_name && (
-                      <Badge variant="outline">{item.group_name}</Badge>
-                    )}
-                  </div>
-                </div>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link
-                    to="/operations/work/$itemId"
-                    params={{ itemId: item.id }}
-                  >
-                    جزئیات
-                  </Link>
-                </Button>
-              </li>
-            ))}
-          </ul>
+          {!itemsLoading && !itemsError && items.length > 0 && (
+            <div className="space-y-5">
+              <TicketSection
+                title="در حال اجرا"
+                count={openItems.length}
+                items={openItems}
+                profileNames={profileNames}
+                showClosedAt={false}
+              />
+              {!(openOnly && status === ALL) && (
+                <TicketSection
+                  title="بسته شده"
+                  count={closedItems.length}
+                  items={closedItems}
+                  profileNames={profileNames}
+                  showClosedAt
+                />
+              )}
+            </div>
+          )}
         </section>
       </div>
 
@@ -694,6 +698,91 @@ function FilterChip({
     >
       {label}
     </button>
+  );
+}
+
+function TicketSection({
+  title,
+  count,
+  items,
+  profileNames,
+  showClosedAt,
+}: {
+  title: string;
+  count: number;
+  items: WorkItem[];
+  profileNames: Map<string, string>;
+  showClosedAt: boolean;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-1.5">
+        <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+          {count}
+        </span>
+      </div>
+      {items.length === 0 ? (
+        <p className="py-2 text-xs text-slate-500">موردی نیست.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {items.map((item) => (
+            <li
+              key={item.id}
+              className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0 flex-1">
+                <Link
+                  to="/operations/work/$itemId"
+                  params={{ itemId: item.id }}
+                  className="block truncate font-medium text-slate-800 hover:text-teal-800"
+                >
+                  {item.title}
+                </Link>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  <Badge variant="secondary">{STATUS_LABELS[item.status]}</Badge>
+                  <Badge variant="outline">{KIND_LABELS[item.kind]}</Badge>
+                  <Badge variant="outline">{PRIORITY_LABELS[item.priority]}</Badge>
+                  {item.decision_bucket && (
+                    <Badge variant="outline">
+                      {BUCKET_LABELS[item.decision_bucket]}
+                    </Badge>
+                  )}
+                  <Badge variant="outline">{MODE_LABELS[item.work_mode]}</Badge>
+                  {item.group_name && (
+                    <Badge variant="outline">{item.group_name}</Badge>
+                  )}
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500">
+                  <span>
+                    ایجاد کننده:{" "}
+                    {profileDisplayName(profileNames, item.creator_id)}
+                  </span>
+                  <span>
+                    مسئول: {profileDisplayName(profileNames, item.assignee_id)}
+                  </span>
+                  <span>تاریخ ثبت: {formatJalaliDateTime(item.created_at)}</span>
+                  {showClosedAt && (
+                    <span>
+                      تاریخ بسته شدن:{" "}
+                      {formatJalaliDateTime(item.completed_at)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" asChild>
+                <Link
+                  to="/operations/work/$itemId"
+                  params={{ itemId: item.id }}
+                >
+                  جزئیات
+                </Link>
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

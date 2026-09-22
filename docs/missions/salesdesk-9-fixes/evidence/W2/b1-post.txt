@@ -1,0 +1,5 @@
+{"TOKEN_SET":true,"TOKEN_LEN":36,"LINKEDID":"TEST-9FIX-B1-1790027512033","EXT_A":"401","EXT_B":"412","PHONE":"09000000101","BASE":"http://127.0.0.1:3000"}
+{"MAP_HTTP":200,"ok":true,"ext_count":2,"has_401":false,"has_412":true,"sample":["403","412"]}
+{"extension":"403","http":200,"ok":true,"id":"ba72fe9f-c100-4d18-bef9-4f4d18d63d42","duplicate":false,"employee_present":true,"error":null,"message":null}
+{"extension":"412","http":200,"ok":true,"id":"2b61c599-1cbe-448d-8716-cfae809336e6","duplicate":false,"employee_present":true,"error":null,"message":null}
+WROTE=/tmp/b1-linkedid.txt

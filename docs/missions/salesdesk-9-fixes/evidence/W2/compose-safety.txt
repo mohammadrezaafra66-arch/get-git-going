@@ -1,0 +1,27 @@
+W2-OPS compose safety check
+timestamp: 2026-09-22T00:43:39
+worktree_HEAD_full: 8a8b61e3f021c6ccad8a50aa3e6717ab803e4662
+worktree_HEAD_short: 8a8b61e3
+GIT_SHA env expected: 8a8b61e3
+base: evidence/W2/compose-base.yml
+resolved: evidence/W2/compose-resolved.yml
+override: docs/missions/salesdesk-9-fixes/compose.worktree.override.yml
+
+base_services (9): auth, caddy, db, db-role-fix, kong, meta, rest, storage, web
+resolved_services (9): auth, caddy, db, db-role-fix, kong, meta, rest, storage, web
+
+IDENTICAL: auth
+IDENTICAL: caddy
+IDENTICAL: db
+IDENTICAL: db-role-fix
+IDENTICAL: kong
+IDENTICAL: meta
+IDENTICAL: rest
+IDENTICAL: storage
+DIFF: service 'web' content differs
+  line~3 BASE:       context: D:\AfraKalaTest\app
+  line~3 RES:        context: D:\AfraKalaTest\wt-salesdesk-9-fixes
+
+web_differs: True (expected true — context only)
+other_service_diffs_count: 0
+VERDICT: SAFE — only web may differ; all other services identical

@@ -1,0 +1,12 @@
+W4-FE D6 · N20 · after-pass (+ reminder DONE via read-time RPC)
+timestamp: 2026-09-22T05:15:00+05:00
+
+Postpone: ActivityDoneControls «به تعویق انداختن» → postponeActivityDue keeps original_due_at
+Reminder UI: ActivityForm «افزودن یادآور برای فعالیت» only when due_has_time
+Delivery: NotificationBell 30s poll → materializeDueActivityReminders() RPC (NO pg_cron)
+
+Migration 575 applied: d6-apply.txt EXIT=0
+Columns reminder_enabled, reminder_fired_at; type sales_activity_reminder; RPC materialize_due_activity_reminders
+Persian defaults via convert_from(decode(hex)) verified in d4-d6-verify.txt
+
+Reminder status: DONE (not BLOCKED) — SECURITY DEFINER RPC called from existing poll.

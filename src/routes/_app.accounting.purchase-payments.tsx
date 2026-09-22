@@ -83,6 +83,8 @@ type Row = {
   paid_by: string | null;
   product: { name: string | null } | null;
   supplier: { name: string | null } | null;
+  /** Wave 1 / A6 — needed for «بدون تأمین‌کننده» filter (SQL: supplier_id IS NULL). */
+  supplier_id: string | null;
   /** Item 231 — the unified person behind this purchase's supplier, if linked. */
   supplier_person_id: string | null;
   payment_term: { name: string | null; days: number | null } | null;
@@ -174,16 +176,36 @@ function PurchasePaymentsPage() {
     "date_desc" | "date_asc" | "amount_desc" | "amount_asc" | "deadline_asc"
   >("date_desc");
   const [overdueOnly, setOverdueOnly] = useState(false);
+  /** Wave 1 / A6 — server-side filter supplier_id IS NULL. */
+  const [noSupplierOnly, setNoSupplierOnly] = useState(false);
+
+  /**
+   * A6 — global SQL count: `purchases.supplier_id IS NULL`.
+   * Not scoped to the unpaid/paid tab so the UI number matches
+   * `SELECT count(*) FROM purchases WHERE supplier_id IS NULL`.
+   */
+  const noSupplierCountQ = useQuery({
+    queryKey: ["purchase-payments-no-supplier-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("purchases")
+        .select("id", { count: "exact", head: true })
+        .is("supplier_id", null);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+  const noSupplierCount = noSupplierCountQ.data ?? 0;
 
   const { data: rows = [], isLoading } = useQuery({
-    queryKey: ["purchase-payments", tab],
+    queryKey: ["purchase-payments", tab, noSupplierOnly],
     queryFn: async () => {
       let q = supabase
         .from("purchases")
         .select(
           `
           id, number, purchase_date, purchase_price, cash_price, quantity,
-          total_amount, currency, paid_at, paid_by, supplier_person_id,
+          total_amount, currency, paid_at, paid_by, supplier_id, supplier_person_id,
           product:products(name),
           supplier:suppliers(name),
           payment_term:payment_terms(name, days)
@@ -192,6 +214,7 @@ function PurchasePaymentsPage() {
         .order("purchase_date", { ascending: false })
         .limit(200);
       q = tab === "unpaid" ? q.is("paid_at", null) : q.not("paid_at", "is", null);
+      if (noSupplierOnly) q = q.is("supplier_id", null);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as unknown as Row[];
@@ -284,6 +307,9 @@ function PurchasePaymentsPage() {
         return daysSince(r.purchase_date) > d;
       });
     }
+    if (noSupplierOnly) {
+      out = out.filter((r) => r.supplier_id == null);
+    }
     const sorted = [...out];
     sorted.sort((a, b) => {
       switch (sortBy) {
@@ -303,7 +329,7 @@ function PurchasePaymentsPage() {
       }
     });
     return sorted;
-  }, [rows, debouncedSearch, sortBy, overdueOnly, tab]);
+  }, [rows, debouncedSearch, sortBy, overdueOnly, noSupplierOnly, tab]);
 
   return (
     <div className="space-y-4 pb-10" dir="rtl">
@@ -361,6 +387,26 @@ function PurchasePaymentsPage() {
                     </Label>
                   </div>
                 )}
+                <div className="flex items-center gap-2 rounded-md border px-3 py-1.5">
+                  <Switch
+                    checked={noSupplierOnly}
+                    onCheckedChange={setNoSupplierOnly}
+                    id="pp-no-supplier"
+                    data-testid="filter-no-supplier-payments"
+                  />
+                  <Label htmlFor="pp-no-supplier" className="cursor-pointer text-xs">
+                    بدون تأمین‌کننده
+                    {noSupplierCount > 0 && (
+                      <Badge
+                        variant="secondary"
+                        className="mr-1.5"
+                        data-testid="purchase-payments-no-supplier-count"
+                      >
+                        {toFaDigits(String(noSupplierCount))}
+                      </Badge>
+                    )}
+                  </Label>
+                </div>
                 <div className="flex items-center gap-2">
                   <Label className="text-xs text-muted-foreground">مرتب‌سازی:</Label>
                   <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -381,8 +427,19 @@ function PurchasePaymentsPage() {
           </Card>
 
           <div className="mb-2 px-1 text-xs text-muted-foreground">
-            {toFaDigits(String(filteredRows.length))} مورد از {toFaDigits(String(rows.length))}{" "}
-            نمایش داده شد
+            {noSupplierOnly ? (
+              <span>
+                {toFaDigits(String(noSupplierCount))} خرید بدون تأمین‌کننده
+                {filteredRows.length !== noSupplierCount
+                  ? ` (نمایش ${toFaDigits(String(filteredRows.length))})`
+                  : ""}
+              </span>
+            ) : (
+              <>
+                {toFaDigits(String(filteredRows.length))} مورد از {toFaDigits(String(rows.length))}{" "}
+                نمایش داده شد
+              </>
+            )}
           </div>
 
           <Card>
@@ -422,7 +479,9 @@ function PurchasePaymentsPage() {
                             <TableCell>
                               {/* Item 231 — link through to the unified person
                                   record when the supplier is linked to one. */}
-                              {r.supplier_person_id ? (
+                              {!r.supplier_id ? (
+                                <span className="text-muted-foreground">بدون تأمین‌کننده</span>
+                              ) : r.supplier_person_id ? (
                                 <Link
                                   to="/persons/$personId/edit"
                                   params={{ personId: r.supplier_person_id }}

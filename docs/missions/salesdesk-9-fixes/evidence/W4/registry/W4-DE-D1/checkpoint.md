@@ -1,0 +1,12 @@
+﻿# W4-DE-D1
+- state: done
+- started: 2026-09-22T04:46:58.8814828+05:00
+- finished: 2026-09-22T04:58:00+05:00
+- heartbeat: 2026-09-22T04:58:00+05:00
+- HEAD: 48b024a4abde3132e3c8e15b7e636696607d6103
+- migration_commit: 9b557dcd557e36e0fa3f53129ba4995928e0f5a3
+- push: origin/feature/salesdesk-9-fixes 4c59cae9..9b557dcd then 9b557dcd..48b024a4 EXIT=0
+- migration: 573 / 20260922050100 APPLIED on LAN copy
+- verify: all_ok=true; kind before/after note=2 request=4; mapped یادداشت ساده n=2; call types n=0 (no call rows)
+- revert-roundtrip: EXIT=0 then reapply EXIT=0
+- verdict: DONE

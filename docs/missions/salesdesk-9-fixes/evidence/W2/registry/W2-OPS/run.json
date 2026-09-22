@@ -1,0 +1,22 @@
+{
+  "job_id": "W2-OPS",
+  "state": "done",
+  "attempt": 1,
+  "deadline": "2026-09-21T22:30:00Z",
+  "budget": { "minutes": 45 },
+  "checkpoint": "docs/missions/salesdesk-9-fixes/evidence/W2/registry/W2-OPS/checkpoint.md",
+  "heartbeat_every": 60,
+  "killable": false,
+  "result": "DONE",
+  "worktree_HEAD": "8a8b61e3f021c6ccad8a50aa3e6717ab803e4662",
+  "APP_GIT_SHA": "8a8b61e3",
+  "http_status": 200,
+  "safety": "SAFE",
+  "playwright": "deferred",
+  "next_action": null,
+  "evidence": {
+    "compose_safety": "docs/missions/salesdesk-9-fixes/evidence/W2/compose-safety.txt",
+    "deploy_web": "docs/missions/salesdesk-9-fixes/evidence/W2/deploy-web.txt",
+    "http_smoke": "docs/missions/salesdesk-9-fixes/evidence/W2/http-smoke.txt"
+  }
+}

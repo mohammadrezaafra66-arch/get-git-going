@@ -1,0 +1,50 @@
+
+Running 2 tests using 1 worker
+
+(node:25812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:9624) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8108) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20120) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20608) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:94:3 › F5 — A2/A5 [TEST-9FIX] › A2 — close then reopen marked ticket (sections + تاریخ بسته شدن) (5.0s)
+(node:31412) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:10232) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23192) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F5_MARKER_COUNTS {"work_items":0,"suppliers":0,"purchases":0,"persons":0,"customers":0}
+  x  2 e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:142:3 › F5 — A2/A5 [TEST-9FIX] › A5 — quick-create supplier and save marked purchase (3.4s)
+
+
+  1) e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:142:3 › F5 — A2/A5 [TEST-9FIX] › A5 — quick-create supplier and save marked purchase 
+
+    Error: locator.click: Error: strict mode violation: getByText('انتخاب زمان تسویه') resolved to 2 elements:
+        1) <span>انتخاب زمان تسویه</span> aka getByRole('combobox').filter({ hasText: 'انتخاب زمان تسویه' })
+        2) <p class="text-xs text-destructive">انتخاب زمان تسویه الزامی است</p> aka getByText('انتخاب زمان تسویه الزامی است')
+
+    Call log:
+      - waiting for getByText('انتخاب زمان تسویه')
+
+
+      168 |
+      169 |     // Payment term — SelectValue placeholder (sidebar also has comboboxes).
+    > 170 |     await page.getByText("انتخاب زمان تسویه").click();
+          |                                               ^
+      171 |     await page.getByRole("option").first().click();
+      172 |
+      173 |     await page.locator("#purchase_price").fill("100000");
+        at D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:170:47
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f5-F-2ab4b-er-and-save-marked-purchase\error-context.md
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f5-F-2ab4b-er-and-save-marked-purchase\error-context.md
+
+  1 failed
+    e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:142:3 › F5 — A2/A5 [TEST-9FIX] › A5 — quick-create supplier and save marked purchase 
+  1 passed (11.9s)

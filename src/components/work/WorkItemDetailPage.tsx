@@ -18,13 +18,20 @@ import {
 import {
   getWorkItem,
   listWorkTopics,
+  listWorkItemEvents,
   updateWorkItem,
+  EVENT_FIELD_LABELS,
+  isWorkItemClosed,
+  resolveProfileNames,
+  profileDisplayName,
   type WorkItem,
+  type WorkItemEvent,
   type WorkItemKind,
   type WorkItemPriority,
   type WorkItemStatus,
   type WorkTopic,
 } from "@/lib/work";
+import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { CalmMindPanel, type CalmMindDraft } from "./CalmMindPanel";
 import { TestReportPanel } from "./TestReportPanel";
 import {
@@ -58,6 +65,10 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [events, setEvents] = useState<WorkItemEvent[]>([]);
+  const [nameById, setNameById] = useState<Map<string, string>>(new Map());
+  /** Last non-closed status for «بازگشایی»; pending if unknown. */
+  const [reopenStatus, setReopenStatus] = useState<WorkItemStatus>("pending");
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -84,9 +95,10 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
     setLoading(true);
     setError(null);
     try {
-      const [row, topicRows] = await Promise.all([
+      const [row, topicRows, eventRows] = await Promise.all([
         getWorkItem(itemId),
         listWorkTopics({ limit: 100 }),
+        listWorkItemEvents(itemId),
       ]);
       if (!row) {
         setError("این تیکت پیدا نشد یا دسترسی ندارید.");
@@ -95,6 +107,7 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
       }
       setItem(row);
       setTopics(topicRows);
+      setEvents(eventRows);
       setTitle(row.title);
       setBody(row.body ?? "");
       setStatus(row.status);
@@ -114,6 +127,15 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
       });
       setCloseLoopHint(false);
       setValidationError(null);
+      if (!isWorkItemClosed(row.status)) {
+        setReopenStatus(row.status);
+      }
+      const names = await resolveProfileNames([
+        row.creator_id,
+        row.assignee_id,
+        ...eventRows.map((e) => e.actor_id),
+      ]);
+      setNameById(names);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "خطای ناشناخته");
     } finally {
@@ -178,8 +200,42 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
       if (updated.status === "done" && updated.work_mode === "request") {
         setCloseLoopHint(true);
       }
+      await load();
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "ذخیره ناموفق بود.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function closeTicket() {
+    setSaving(true);
+    try {
+      if (!isWorkItemClosed(status)) {
+        setReopenStatus(status === "in_progress" ? "pending" : status);
+      }
+      await updateWorkItem(itemId, { status: "done" });
+      toast.success("تیکت بسته شد.");
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "بستن ناموفق بود.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function reopenTicket() {
+    setSaving(true);
+    try {
+      const next =
+        !isWorkItemClosed(reopenStatus) && reopenStatus !== "in_progress"
+          ? reopenStatus
+          : "pending";
+      await updateWorkItem(itemId, { status: next });
+      toast.success("تیکت بازگشایی شد.");
+      await load();
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "بازگشایی ناموفق بود.");
     } finally {
       setSaving(false);
     }
@@ -229,16 +285,66 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
           title={title || "جزئیات تیکت"}
           description="ویرایش کامل فیلدها و تنظیم آرامش ذهن"
           actions={
-            <Button size="sm" disabled={saving} onClick={() => void save()}>
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+            <div className="flex flex-wrap gap-2">
+              {!isWorkItemClosed(status) ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => void closeTicket()}
+                >
+                  بستن
+                </Button>
               ) : (
-                <Save className="h-4 w-4" />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => void reopenTicket()}
+                >
+                  بازگشایی
+                </Button>
               )}
-              ذخیره
-            </Button>
+              <Button size="sm" disabled={saving} onClick={() => void save()}>
+                {saving ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                ذخیره
+              </Button>
+            </div>
           }
         />
+
+        <section className="grid gap-2 rounded-2xl border border-slate-200 bg-white/90 p-4 text-sm shadow-sm sm:grid-cols-3">
+          <div>
+            <div className="text-xs text-slate-500">ایجاد کننده</div>
+            <div className="font-medium text-slate-800">
+              {profileDisplayName(nameById, item.creator_id)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">مسئول</div>
+            <div className="font-medium text-slate-800">
+              {profileDisplayName(nameById, item.assignee_id)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-slate-500">تاریخ ثبت</div>
+            <div className="font-medium text-slate-800">
+              {formatJalaliDateTime(item.created_at)}
+            </div>
+          </div>
+          {isWorkItemClosed(item.status) && (
+            <div className="sm:col-span-3">
+              <div className="text-xs text-slate-500">تاریخ بسته شدن</div>
+              <div className="font-medium text-slate-800">
+                {formatJalaliDateTime(item.completed_at)}
+              </div>
+            </div>
+          )}
+        </section>
 
         {validationError && (
           <Alert className="border-amber-300 bg-amber-50 text-amber-950">
@@ -397,6 +503,43 @@ export function WorkItemDetailPage({ itemId }: { itemId: string }) {
         {(status === "testing" || item.status === "testing") && (
           <TestReportPanel item={item} onSubmitted={() => void load()} />
         )}
+
+        <section className="space-y-3 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm">
+          <h2 className="text-sm font-semibold text-slate-800">سابقه</h2>
+          {events.length === 0 ? (
+            <p className="text-sm text-slate-500">هنوز سابقه‌ای ثبت نشده است.</p>
+          ) : (
+            <ul className="space-y-2">
+              {events.map((ev) => (
+                <li
+                  key={ev.id}
+                  className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 text-sm"
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-medium text-slate-800">
+                      {EVENT_FIELD_LABELS[ev.field] ?? ev.field}
+                    </span>
+                    <span className="text-xs text-slate-500">
+                      {formatJalaliDateTime(ev.event_at)}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-slate-600">
+                    <span className="line-through opacity-70">
+                      {ev.old_value ?? "—"}
+                    </span>
+                    <span className="mx-1">→</span>
+                    <span>{ev.new_value ?? "—"}</span>
+                  </div>
+                  {ev.actor_id && (
+                    <div className="mt-1 text-xs text-slate-500">
+                      {profileDisplayName(nameById, ev.actor_id)}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </div>
   );

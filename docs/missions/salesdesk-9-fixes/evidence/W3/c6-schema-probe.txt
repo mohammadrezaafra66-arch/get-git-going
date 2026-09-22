@@ -1,0 +1,30 @@
+     table_regclass      
+-------------------------
+ sales_interaction_items
+(1 row)
+
+  column_name   |        data_type         | is_nullable |  column_default   
+----------------+--------------------------+-------------+-------------------
+ id             | uuid                     | NO          | gen_random_uuid()
+ interaction_id | uuid                     | NO          | 
+ product_id     | uuid                     | NO          | 
+ quantity       | numeric                  | NO          | 1
+ note           | text                     | YES         | 
+ created_at     | timestamp with time zone | NO          | now()
+(6 rows)
+
+                 indexname                  
+--------------------------------------------
+ sales_interaction_items_interaction_id_idx
+ sales_interaction_items_pkey
+ sales_interaction_items_product_id_idx
+(3 rows)
+
+            polname             | polcmd 
+--------------------------------+--------
+ sales_interaction_items_delete | d
+ sales_interaction_items_insert | a
+ sales_interaction_items_select | r
+ sales_interaction_items_update | w
+(4 rows)
+

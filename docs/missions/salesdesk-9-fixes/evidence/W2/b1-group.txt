@@ -1,0 +1,58 @@
+--- count ---
+ row_count 
+-----------
+         2
+(1 row)
+
+
+{
+  "linkedid": "TEST-9FIX-B1-1790027512033",
+  "db_row_count": 2,
+  "shaped_count": 2,
+  "group_fn_via": "inline-fallback",
+  "group_fn_err": "Unknown file extension \".ts\" for D:\\AfraKalaTest\\wt-salesdesk-9-fixes\\src\\lib\\calls\\call-card-key.ts",
+  "card_keys": [
+    {
+      "id": "ring:ba72fe9f-c100-4d18-bef9-4f4d18d63d42",
+      "extension": "403",
+      "key": "lid:TEST-9FIX-B1-1790027512033"
+    },
+    {
+      "id": "ring:2b61c599-1cbe-448d-8716-cfae809336e6",
+      "extension": "412",
+      "key": "lid:TEST-9FIX-B1-1790027512033"
+    }
+  ],
+  "group_count": 1,
+  "groups": [
+    {
+      "key": "lid:TEST-9FIX-B1-1790027512033",
+      "extensions": [
+        "403",
+        "412"
+      ],
+      "member_count": 2,
+      "member_ids": [
+        "ring:ba72fe9f-c100-4d18-bef9-4f4d18d63d42",
+        "ring:2b61c599-1cbe-448d-8716-cfae809336e6"
+      ]
+    }
+  ],
+  "rows_summary": [
+    {
+      "id": "ba72fe9f-c100-4d18-bef9-4f4d18d63d42",
+      "extension": "403",
+      "linkedid": "TEST-9FIX-B1-1790027512033",
+      "caller_number": "09000000101",
+      "source": "manual"
+    },
+    {
+      "id": "2b61c599-1cbe-448d-8716-cfae809336e6",
+      "extension": "412",
+      "linkedid": "TEST-9FIX-B1-1790027512033",
+      "caller_number": "09000000101",
+      "source": "manual"
+    }
+  ]
+}
+PASS: 2 rows → 1 card group

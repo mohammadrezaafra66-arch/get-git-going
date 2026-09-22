@@ -27,6 +27,8 @@ export async function listWorkItems(
     } else {
       q = q.eq("status", filters.status);
     }
+  } else if (filters.closedOnly) {
+    q = q.in("status", ["done", "cancelled"]);
   } else if (filters.openOnly) {
     q = q.not("status", "in", '("done","cancelled")');
   }

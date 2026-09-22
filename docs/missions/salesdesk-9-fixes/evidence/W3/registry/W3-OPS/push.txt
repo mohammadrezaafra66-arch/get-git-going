@@ -1,0 +1,3 @@
+﻿bc10ec3f..feb1801a  feature/salesdesk-9-fixes -> feature/salesdesk-9-fixes
+feb1801a..83fa3c66  feature/salesdesk-9-fixes -> feature/salesdesk-9-fixes
+PUSH_EXIT=0

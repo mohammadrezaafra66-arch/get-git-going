@@ -6,12 +6,14 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import {
   CALLER_ID_SETTINGS_QUERY_KEY,
   DEFAULT_CALLER_ID_SETTINGS,
+  clampDisplaySeconds,
   fetchCallerIdSettings,
   upsertCallerIdSettings,
   type CallerIdSettings,
@@ -41,7 +43,10 @@ function CallerIdSettingsPage() {
   const saveM = useMutation({
     mutationFn: () => {
       if (!userId) throw new Error("not signed in");
-      return upsertCallerIdSettings(userId, draft);
+      return upsertCallerIdSettings(userId, {
+        ...draft,
+        display_seconds: clampDisplaySeconds(draft.display_seconds),
+      });
     },
     onSuccess: async (saved) => {
       setDraft(saved);
@@ -124,6 +129,55 @@ function CallerIdSettingsPage() {
                 </p>
               </div>
             ) : null}
+          </div>
+
+          <div
+            className={`space-y-3 border-t pt-4 ${!draft.enabled ? "opacity-50" : ""}`}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="cid-display-seconds">
+                مدت زمان نمایش پنجره تماس (ثانیه)
+              </Label>
+              <Input
+                id="cid-display-seconds"
+                type="number"
+                min={5}
+                max={120}
+                disabled={!draft.enabled}
+                value={draft.display_seconds}
+                onChange={(e) =>
+                  setDraft((d) => ({
+                    ...d,
+                    display_seconds: clampDisplaySeconds(e.target.value),
+                  }))
+                }
+              />
+              <p className="text-xs text-muted-foreground">بین ۵ تا ۱۲۰ ثانیه (پیش‌فرض ۱۵).</p>
+            </div>
+
+            <label className="flex cursor-pointer items-center justify-between gap-3">
+              <span className="text-sm">فقط تماس‌های داخلی خودم</span>
+              <Checkbox
+                checked={draft.only_my_extension}
+                disabled={!draft.enabled}
+                onCheckedChange={(v) =>
+                  setDraft((d) => ({ ...d, only_my_extension: v === true }))
+                }
+              />
+            </label>
+            <label className="flex cursor-pointer items-center justify-between gap-3">
+              <span className="text-sm">فقط تماس‌های مربوط به خودم</span>
+              <Checkbox
+                checked={draft.only_my_customers}
+                disabled={!draft.enabled}
+                onCheckedChange={(v) =>
+                  setDraft((d) => ({ ...d, only_my_customers: v === true }))
+                }
+              />
+            </label>
+            <p className="text-xs text-muted-foreground">
+              «مربوط به خودم» = مشتریانی که مسئول‌شان شما هستید.
+            </p>
           </div>
 
           <Button

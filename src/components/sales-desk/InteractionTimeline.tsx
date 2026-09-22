@@ -1,13 +1,21 @@
+import { useMemo, useState } from "react";
 import { Phone, StickyNote, Inbox } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { DossierInteraction } from "@/lib/sales-desk";
+import {
+  listActivitiesForDeal,
+  type SalesActivityRow,
+} from "@/lib/sales-desk/activities";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 import {
   OutcomeButtons,
   salesInteractionStatusLabel,
 } from "./OutcomeButtons";
+import { ActivityDoneControls } from "./ActivityDoneControls";
+import { ActivityForm } from "./ActivityForm";
 
 const KIND_META: Record<string, { label: string; Icon: typeof Phone }> = {
   request: { label: "درخواست", Icon: Inbox },
@@ -22,10 +30,16 @@ type Props = {
   emptyMessage?: string;
   onStatusUpdated?: () => void;
   showOutcomes?: boolean;
+  /** When set, also load deal-linked activities with done controls. */
+  dealId?: string | null;
+  personId?: string | null;
+  personName?: string | null;
+  customerId?: string | null;
+  showActivityForm?: boolean;
 };
 
 /**
- * تایم‌لاین تعاملات فروش (درخواست / تماس / یادداشت).
+ * تایم‌لاین تعاملات فروش (درخواست / تماس / یادداشت) + کنترل انجام فعالیت.
  */
 export function InteractionTimeline({
   items,
@@ -34,18 +48,66 @@ export function InteractionTimeline({
   emptyMessage = "هنوز تعاملی ثبت نشده است.",
   onStatusUpdated,
   showOutcomes = true,
+  dealId = null,
+  personId = null,
+  personName = null,
+  customerId = null,
+  showActivityForm = false,
 }: Props) {
+  const [showForm, setShowForm] = useState(false);
+  const [formReset, setFormReset] = useState(0);
+
+  const activitiesQ = useQuery({
+    queryKey: ["sales-desk", "deal-activities", dealId],
+    enabled: !!dealId,
+    queryFn: () => listActivitiesForDeal(dealId!),
+    staleTime: 15_000,
+  });
+
+  const activityById = useMemo(() => {
+    const m = new Map<string, SalesActivityRow>();
+    for (const a of activitiesQ.data ?? []) m.set(a.id, a);
+    return m;
+  }, [activitiesQ.data]);
+
   return (
     <Card dir="rtl">
       <CardHeader className="pb-2">
         <CardTitle className="text-base font-semibold">تاریخچه تعاملات</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {showActivityForm && personId ? (
+          <div>
+            {!showForm ? (
+              <button
+                type="button"
+                className="text-sm text-primary underline-offset-2 hover:underline"
+                onClick={() => setShowForm(true)}
+              >
+                + ثبت فعالیت
+              </button>
+            ) : (
+              <ActivityForm
+                personId={personId}
+                personName={personName}
+                customerId={customerId}
+                dealId={dealId}
+                compact
+                resetKey={formReset}
+                onCreated={() => {
+                  onStatusUpdated?.();
+                  void activitiesQ.refetch();
+                }}
+              />
+            )}
+          </div>
+        ) : null}
+
         {loading ? (
           <p className="text-sm text-muted-foreground">در حال بارگذاری…</p>
         ) : error ? (
           <p className="text-sm text-destructive">{error}</p>
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && (activitiesQ.data ?? []).length === 0 ? (
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         ) : (
           <ul className="space-y-3">
@@ -55,6 +117,7 @@ export function InteractionTimeline({
                 Icon: StickyNote,
               };
               const Icon = meta.Icon;
+              const activity = activityById.get(row.id);
               return (
                 <li
                   key={row.id}
@@ -63,10 +126,14 @@ export function InteractionTimeline({
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <Icon className="h-3.5 w-3.5 text-muted-foreground" />
                     <Badge variant="secondary" className="text-[10px]">
-                      {meta.label}
+                      {activity?.activity_type?.title ?? meta.label}
                     </Badge>
                     <Badge variant="outline" className="text-[10px]">
-                      {salesInteractionStatusLabel(row.status)}
+                      {activity?.done_at
+                        ? "انجام شده"
+                        : activity
+                          ? "انجام نشده"
+                          : salesInteractionStatusLabel(row.status)}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
                       {formatDateTimeFa(row.created_at)}
@@ -85,7 +152,19 @@ export function InteractionTimeline({
                       پیگیری: {formatDateTimeFa(row.next_follow_up_at)}
                     </p>
                   ) : null}
-                  {showOutcomes && row.status === "open" ? (
+                  {activity ? (
+                    <ActivityDoneControls
+                      activity={activity}
+                      onUpdated={() => {
+                        onStatusUpdated?.();
+                        void activitiesQ.refetch();
+                      }}
+                      onCreateAnother={() => {
+                        setShowForm(true);
+                        setFormReset((n) => n + 1);
+                      }}
+                    />
+                  ) : showOutcomes && row.status === "open" ? (
                     <div className="mt-2">
                       <OutcomeButtons
                         interactionId={row.id}

@@ -94,7 +94,15 @@ export type ModuleKey =
   | "asan-export"
   | "product-videos"
   | "platform-releases"
-  | "torob-ops";
+  | "torob-ops"
+  /** Wave 3 salesdesk — گزارش معاملات ثبت‌شده برای دیگران */
+  | "sales-deals-for-others"
+  /** Wave 3 salesdesk — تنظیمات دلایل شکست معامله */
+  | "deal-lost-reasons"
+  /** Wave 3 salesdesk — گزارش دلایل شکست */
+  | "deal-lost-report"
+  /** Wave 4 salesdesk — صفحه فعالیت‌ها */
+  | "sales-activities";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";

@@ -1,0 +1,7 @@
+STATUS=PASS
+remind_title=[TEST-9FIX] F4 remind f471408515
+before={"id":"dd124e17-741a-464b-925c-217f434a53e2","due_at":"2026-09-22T10:05:29.819351+00:00","original_due_at":"2026-09-22T10:05:29.819351+00:00","reminder_enabled":true,"reminder_fired_at":null,"queue_count":0}
+accelerated={"id":"dd124e17-741a-464b-925c-217f434a53e2","due_at":"2026-09-22T10:03:37.682249+00:00","reminder_fired_at":null,"reminder_enabled":true}
+after_fire={"id":"dd124e17-741a-464b-925c-217f434a53e2","due_at":"2026-09-22T10:03:37.682249+00:00","original_due_at":"2026-09-22T10:05:29.819351+00:00","reminder_enabled":true,"reminder_fired_at":"2026-09-22T10:03:43.931701+00:00","queue_count":1}
+postpone_before={"id":"7a4bc55a-da2b-44f1-bb86-c29f322121fd","due_at":"2026-09-23T10:03:29.819351+00:00","original_due_at":"2026-09-23T10:03:29.819351+00:00","reminder_enabled":false,"reminder_fired_at":null}
+postpone_after={"id":"7a4bc55a-da2b-44f1-bb86-c29f322121fd","due_at":"2026-09-02T12:15:00+00:00","original_due_at":"2026-09-23T10:03:29.819351+00:00","reminder_enabled":false,"reminder_fired_at":null}
