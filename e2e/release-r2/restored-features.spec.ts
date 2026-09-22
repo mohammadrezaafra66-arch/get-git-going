@@ -78,10 +78,13 @@ test("/persons/merge — paging, bulk merge, merge suggestions", async ({ page }
   // PersonMergePage.tsx:350 — merge suggestions (2a2792ff / b4b6413e)
   await expect(page.getByRole("button", { name: /پیشنهاد ادغام‌ها/ })).toBeVisible();
   // PersonMergePage.tsx:402-446 — paging (ee13f79f); :477 bulk
+  // Wait out isLoading first — a sync count() during "در حال بارگذاری..." falsely takes the paging branch.
+  await expect(page.getByText("در حال بارگذاری...")).toHaveCount(0, { timeout: 30_000 });
   const empty = page.getByText("هیچ جفت مشکوکی در انتظار بررسی نیست.");
   const pageSize = page.getByText("در هر صفحه");
   const bulk = page.getByRole("button", { name: /ادغام گروهی/ });
-  if ((await empty.count()) > 0) {
+  await expect(empty.or(pageSize)).toBeVisible({ timeout: 15_000 });
+  if (await empty.isVisible()) {
     await expect(empty).toBeVisible();
   } else {
     await expect(pageSize).toBeVisible();
