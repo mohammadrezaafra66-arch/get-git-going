@@ -98,7 +98,7 @@ Log "STEP migration 560"
 $have = docker exec -e PGPASSWORD=$pw $DbContainer psql -U supabase_admin -d $DbName -t -A -c ("SELECT 1 FROM supabase_migrations.schema_migrations WHERE version = '" + $MigrationVersion + "';")
 $have = ("$have").Trim()
 if ($have -eq "1") {
-  Log ("LEDGER_ALREADY_HAS " + $MigrationVersion + " — skip apply, still verify")
+  Log ("LEDGER_ALREADY_HAS " + $MigrationVersion + " - skip apply, still verify")
 } else {
   Log "Applying migration via stdin"
   # Byte-safe: avoid PowerShell pipeline encoding damage on Persian comments
@@ -184,4 +184,4 @@ foreach ($p in @("/pricing/my-workbench", "/pricing/purchase-prices", "/login"))
 
 Write-Host "===== AFRAKALA_PROD_PURCHASE_SINGLE_ACTIVE_END ====="
 Write-Host ("CUTOVER_OK HEAD=" + $head + " APP_GIT_SHA=" + $appSha + " MULTI_ACTIVE=0 WEB=healthy")
-Write-Host "Manual: Ctrl+F5 on :3000 /pricing/my-workbench — change one purchase price, wait ~30s, sale must not drop to an old base."
+Write-Host "Manual: Ctrl+F5 on :3000 /pricing/my-workbench - change one purchase price, wait ~30s, sale must not drop to an old base."
