@@ -5,13 +5,13 @@ sql_before=0
 ui_before=0
 sql_after=1
 ui_after=1
-deal_title=[TEST-9FIX] C5 deal 1790066753854
-seed={"deal_id":"29f70790-fece-4f72-870c-c09f3dc57114","title":"[TEST-9FIX] C5 deal 1790066753854","author_id":"00ebe9d3-b467-453c-89d6-08bab46335c2","salesperson_id":"ea9b35dd-fd57-4905-9355-50ca8646d4d1"}
+deal_title=[TEST-9FIX] C5 deal 1790069179989
+seed={"deal_id":"d305f3e0-2a80-4fd6-af70-732c24d1f09a","title":"[TEST-9FIX] C5 deal 1790069179989","author_id":"00ebe9d3-b467-453c-89d6-08bab46335c2","salesperson_id":"ea9b35dd-fd57-4905-9355-50ca8646d4d1"}
 seed_out=SET
                                                                                                   json_build_object                                                                                                   
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- {"deal_id" : "29f70790-fece-4f72-870c-c09f3dc57114", "author_id" : "00ebe9d3-b467-453c-89d6-08bab46335c2", "salesperson_id" : "ea9b35dd-fd57-4905-9355-50ca8646d4d1", "title" : "[TEST-9FIX] C5 deal 1790066753854"}
+ {"deal_id" : "d305f3e0-2a80-4fd6-af70-732c24d1f09a", "author_id" : "00ebe9d3-b467-453c-89d6-08bab46335c2", "salesperson_id" : "ea9b35dd-fd57-4905-9355-50ca8646d4d1", "title" : "[TEST-9FIX] C5 deal 1790069179989"}
 (1 row)
 
 
-{"deal_id":"29f70790-fece-4f72-870c-c09f3dc57114","title":"[TEST-9FIX] C5 deal 1790066753854","author_id":"00ebe9d3-b467-453c-89d6-08bab46335c2","salesperson_id":"ea9b35dd-fd57-4905-9355-50ca8646d4d1"}
+{"deal_id":"d305f3e0-2a80-4fd6-af70-732c24d1f09a","title":"[TEST-9FIX] C5 deal 1790069179989","author_id":"00ebe9d3-b467-453c-89d6-08bab46335c2","salesperson_id":"ea9b35dd-fd57-4905-9355-50ca8646d4d1"}

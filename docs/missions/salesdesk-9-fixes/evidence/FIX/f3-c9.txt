@@ -1,5 +1,3 @@
-STATUS=FAIL
-PRODUCT_FIX_NEEDED=attempt-2
 KPI_SCORE_BEFORE
 {
   "tag": "before",
@@ -10,15 +8,27 @@ KPI_SCORE_BEFORE
   "score_fn_total_or_normalized": "null",
   "tehran_today": "2026-09-22"
 }
-ERROR
-C9 quote save rejected by product: ثبت پیش‌فاکتور انجام نشد
 
-دلیل رد شدن در زیر آمده است. می‌توانید یک توضیح یک‌خطی اضافه کنید تا در «درخواست‌های رد شدهٔ من» ثبت شود و بعداً قابل پیگیری باشد.
+KPI_SCORE_AFTER
+{
+  "tag": "after",
+  "employee_id": "ea9b35dd-fd57-4905-9355-50ca8646d4d1",
+  "kpi_today_sum_count": "0|0",
+  "score_accepted_sum_count": "1779400000|9",
+  "score_total_sales_value": "0.0",
+  "score_fn_total_or_normalized": "null",
+  "tehran_today": "2026-09-22"
+}
 
-permission denied for table sales_quotes
-توضیح شما (اختیاری)
-بستن بدون ثبت
-ثبت دلیل
-Close
-DEAL_ID=ed480560-26a1-4f65-a194-26cd690ec3d9
-DEAL_TITLE=[TEST-9FIX] C9 deal 1790066738598
+QUOTE_ROW
+{
+  "quote_id": "5e97b9af-ac5b-47c0-bbbc-b68fcd566272",
+  "status": "draft",
+  "salesperson_id": "ea9b35dd-fd57-4905-9355-50ca8646d4d1",
+  "interaction_id": "45e53c14-504f-4aab-a9a6-9304b834065e",
+  "quote_number": "SQ-2026-000262"
+}
+
+DEAL_ID=45e53c14-504f-4aab-a9a6-9304b834065e
+QUOTE_ID=5e97b9af-ac5b-47c0-bbbc-b68fcd566272
+SHOWS_DEAL_UI=false
