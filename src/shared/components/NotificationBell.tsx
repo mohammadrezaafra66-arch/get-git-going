@@ -10,6 +10,7 @@ import {
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { materializeDueActivityReminders } from "@/lib/sales-desk/activities";
 import { toast } from "sonner";
 
 type NotificationRow = {
@@ -42,6 +43,12 @@ export function NotificationBell() {
 
   const load = async () => {
     if (!user) return;
+    // D6 — read-time materialize due activity reminders (no pg_cron)
+    try {
+      await materializeDueActivityReminders();
+    } catch {
+      /* soft: reminder RPC may be absent before mig 575 */
+    }
     const { data, error } = await supabase
       .from("notification_queue")
       .select("id,title,body,type,reference_type,reference_id,is_read,created_at")
