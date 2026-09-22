@@ -131,8 +131,9 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/sales/credit-rules",
       "/sales/customers/credit-training",
       "/sales/send-queue",
-      // F1 sales-desk — میز فروش + فعالیت تلفنی زیر ماژول فروش
+      // F1 sales-desk — میز فروش + فعالیت تلفنی + فعالیت‌ها زیر ماژول فروش
       "/operations/sales-desk",
+      "/operations/sales-desk/activities",
       "/operations/call-activity",
     ],
   },

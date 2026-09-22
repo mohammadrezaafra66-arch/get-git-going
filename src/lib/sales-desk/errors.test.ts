@@ -19,6 +19,12 @@ describe("salesDeskErrorMessage", () => {
       "دلیل شکست را انتخاب کنید",
     );
   });
+  it("maps ACTIVITY_OWNER_ONLY", () => {
+    assert.equal(
+      salesDeskErrorMessage("ERROR: ACTIVITY_OWNER_ONLY"),
+      "فقط مسئول انجام این فعالیت می‌تواند نتیجه را ثبت کند",
+    );
+  });
   it("passes through other messages", () => {
     assert.equal(salesDeskErrorMessage("دیگر"), "دیگر");
   });
