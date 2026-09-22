@@ -1,9 +1,9 @@
 {
-  "supplier_id": "175a5222-8dc8-4dfc-9fcd-e88e348cb61d",
-  "supplier_name": "[TEST-9FIX] F5 supplier f571897106",
-  "phone": "09000000106",
-  "purchase_id": "3e5b8445-2612-4551-9926-a86f91cdf728",
-  "purchase_notes": "[TEST-9FIX] F5 purchase f571897106",
+  "supplier_id": "03c424f0-dff5-42d2-a12e-9738363ad843",
+  "supplier_name": "[TEST-9FIX] F5 supplier f572067907",
+  "phone": "09000000907",
+  "purchase_id": "910c68fe-12ab-4784-b567-6aeaef65319c",
+  "purchase_notes": "[TEST-9FIX] F5 purchase f572067907",
   "product_id": "0da6176f-5a45-4e27-a453-c62d0932ab43",
   "pass": true
 }
