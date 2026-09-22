@@ -22,11 +22,11 @@ Author: W4-DOC (docs only) · Critic Wave 4: overall **CONFIRM** — `evidence/W
 
 | Row | Node | Class | Expected | Actual | Status |
 |-----|------|-------|----------|--------|--------|
-| B1 | N1 | FIX | Multi-extension ring → one card | DONE — `evidence/W2/ACCEPTANCE.md` | DONE |
-| B2 | N3 | EXTEND | «مدت زمان نمایش پنجره تماس (ثانیه)»; «فقط تماس‌های داخلی خودم»; «فقط تماس‌های مربوط به خودم» | DONE — mig 563; residual medium TOCTOU noted in HANDOFF | DONE |
-| B3 | N2 | FIX | Call grouping key stability | DONE — W2 self-check / ACCEPTANCE | DONE |
-| B4 | N4,N5 | FIX+BUILD | Draft per call; switcher; no discard | DONE — fix `b1cc9a88`; W2 ACCEPTANCE | DONE |
-| B5 | N6 | CONNECT | «افزودن معامله» from call with customer + note linked | DONE — mig 564 `deal_id`; W2 ACCEPTANCE | DONE |
+| B1 | N1, N2 | FIX | One card per call: group by `linkedid` (fallback `uniqueid`, then phone+minute); card lists ringing extensions | DONE — `evidence/W2/ACCEPTANCE.md`; unit `groupCallsByCardKey` | DONE |
+| B2 | N1 | EXTEND | Cross-tab sync via `BroadcastChannel`; open/dismiss in one tab updates others; no duplicate sound/notification | DONE — `caller-broadcast.ts`; live F2 Playwright `f2-run.txt` | DONE |
+| B3 | N3 | EXTEND | Settings `display_seconds` (default 15, CHECK 5–120); «مدت زمان نمایش پنجره تماس (ثانیه)»; «فقط تماس‌های داخلی خودم»; «فقط تماس‌های مربوط به خودم» | DONE — mig 563; W2 ACCEPTANCE | DONE |
+| B4 | N4, N5 | FIX+BUILD | Draft per call; switcher; no discard | DONE — fix `b1cc9a88`; W2 ACCEPTANCE; live F2 | DONE |
+| B5 | N6 | CONNECT | «افزودن معامله» from call with customer + note linked | DONE — mig 564 `deal_id`; W2 ACCEPTANCE; live F2 | DONE |
 
 ### Wave 3 — deals
 
@@ -136,8 +136,11 @@ N28 (Google Sheet) and N31 (pricing-queue worker) are **deferred** per §3.12 �
 | 20260922050100 | 573_sales_interactions_activity_fields | D1 | `revert/573_sales_interactions_activity_fields.sql` |
 | 20260922050200 | 574_role_permissions_sales_activities | D4 | `revert/574_role_permissions_sales_activities.sql` |
 | 20260922050300 | 575_activity_reminder_fields | D6 | `revert/575_activity_reminder_fields.sql` |
+| 20260922050400 | 576_sales_interactions_activity_owner_only | F1/D3 | `revert/576_sales_interactions_activity_owner_only.sql` |
+| 20260922050500 | 577_create_sales_quote_link_deal | F3/C9 | `revert/577_…` (see mission revert dir) |
 
-LAN applied Wave 4 versions: `20260922050000` (572), `20260922050100` (573), `20260922050200` (574), `20260922050300` (575) — orchestrator probe + `deploy-summary.txt` / `migration-ledger.md`.
+LAN applied Wave 4 versions: `20260922050000` (572), `20260922050100` (573), `20260922050200` (574), `20260922050300` (575) — orchestrator probe + `deploy-summary.txt` / `migration-ledger.md`.  
+FIX migrations: `20260922050400` (576 ACTIVITY_OWNER_ONLY), `20260922050500` (577 quote↔deal link) — `evidence/FIX/`.
 
 ## Product commits (Wave 4) and final 3100 SHA
 
@@ -153,6 +156,23 @@ LAN applied Wave 4 versions: `20260922050000` (572), `20260922050100` (573), `20
 
 Gates: typecheck error count 74 (`tsc-after-w4-fe.txt`); compose safety PASS; playwright smoke PASS (`deploy-summary.txt`).
 
+## Verifier findings and fixes
+
+Independent verify (`verify/W1-VERDICT.md` … `W4-VERDICT.md`) vs FIX mission resolutions:
+
+| Verdict item | Verify result | Resolution |
+|--------------|---------------|------------|
+| A1–A6 | CONFIRMED (A2/A5 full click paths not re-run) | **F5** live Playwright: close/reopen ticket + quick-create supplier + marked purchase — `evidence/FIX/f5-run6.txt`, `f5-a2.txt`, `f5-a5.txt` |
+| B1 | CONFIRMED | Unchanged; grouping unit + storage intact |
+| B2 BroadcastChannel | INDETERMINATE (live two-tab not run) | **F2** live Playwright on 3100 — `evidence/FIX/f2-run.txt` |
+| B3 display_seconds | CONFIRMED | Unchanged (REPORT Wave 2 lettering corrected to match §5) |
+| B4 drafts | INDETERMINATE | **F2** live path — `f2-run.txt` |
+| B5 deal from call | INDETERMINATE | **F2** live path — `f2-run.txt` |
+| C5 report KPI | INDETERMINATE / partial | **F3** live — `f3-rerun2.txt` |
+| C9 quote from deal | INDETERMINATE (no quote created) | **F3** + mig 577 RPC link — `f3-rerun2.txt`, `d2697b62` / related |
+| D3 owner-only | CONFIRMED UI; DB trigger ABSENT (FINDING) | **F1** mig 576 `ACTIVITY_OWNER_ONLY` + UI map — `f1-abcd.txt`, `f1-kong-patch.json`, `d2fec671` |
+| D4/D5/D6 | Static / INDETERMINATE live | **F4** seeded UI Playwright + nav fix (`primary-modules` + sidebar permissionsLoading) — `f4-run3.txt`, `e2d67d0e` |
+
 ## Owner test artifacts
 
 - `evidence/W1/ACCEPTANCE.md` — present
@@ -160,6 +180,7 @@ Gates: typecheck error count 74 (`tsc-after-w4-fe.txt`); compose safety PASS; pl
 - `evidence/W3/ACCEPTANCE.md` — present
 - `evidence/W4/ACCEPTANCE.md` — present (this close)
 - Self-checks: `verify/W2-selfcheck.md`, `W3-selfcheck.md`, `W4-selfcheck.md`
+- FIX evidence: `evidence/FIX/` (F1–F5)
 - Ship later: `PRODUCTION-NOTES.md` (DOC does **not** merge or deploy prod)
 
-MISSION COMPLETE
+MISSION PARTIAL — Finish pending (typecheck / deploy / F1–F5 re-run / push)

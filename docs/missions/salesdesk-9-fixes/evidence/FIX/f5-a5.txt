@@ -1,0 +1,9 @@
+{
+  "supplier_id": "175a5222-8dc8-4dfc-9fcd-e88e348cb61d",
+  "supplier_name": "[TEST-9FIX] F5 supplier f571897106",
+  "phone": "09000000106",
+  "purchase_id": "3e5b8445-2612-4551-9926-a86f91cdf728",
+  "purchase_notes": "[TEST-9FIX] F5 purchase f571897106",
+  "product_id": "0da6176f-5a45-4e27-a453-c62d0932ab43",
+  "pass": true
+}

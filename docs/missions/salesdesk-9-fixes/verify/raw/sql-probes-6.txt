@@ -1,0 +1,23 @@
+===== products =====
+ products_reg 
+--------------
+ products
+(1 row)
+
+ count 
+-------
+   356
+(1 row)
+
+
+===== C4 notify =====
+BEGIN
+CREATE TABLE
+ROLLBACK
+
+===== purchase payments count path =====
+ purchases_null_supplier 
+-------------------------
+                     301
+(1 row)
+

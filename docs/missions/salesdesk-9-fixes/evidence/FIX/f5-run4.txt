@@ -1,0 +1,50 @@
+
+Running 2 tests using 1 worker
+
+(node:5320) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7792) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25460) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41368) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12672) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32556) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30680) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32748) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F5_MARKER_COUNTS {"work_items":0,"suppliers":0,"purchases":0,"persons":0,"customers":0}
+  x  1 e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:117:3 › F5 — A2/A5 [TEST-9FIX] › A2 — close then reopen marked ticket (sections + تاریخ بسته شدن) (1.8s)
+  -  2 e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:234:3 › F5 — A2/A5 [TEST-9FIX] › A5 — quick-create supplier and save marked purchase
+
+
+  1) e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:117:3 › F5 — A2/A5 [TEST-9FIX] › A2 — close then reopen marked ticket (sections + تاریخ بسته شدن) 
+
+    Error: closed detail must show «تاریخ بسته شدن»
+
+    expect(received).toMatch(expected)
+
+    Expected pattern: /تاریخ\s*بسته\s*شدن/
+    Received string:  "«محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست»
+    در حال بررسی جلسه کاربری..."
+
+      165 |       closedBody,
+      166 |       "closed detail must show «تاریخ بسته شدن»",
+    > 167 |     ).toMatch(/تاریخ\s*بسته\s*شدن/);
+          |       ^
+      168 |     expect(closedBody).toMatch(/بازگشایی|انجام‌شده/);
+      169 |     expect(closedBody, "history section").toMatch(/سابقه/);
+      170 |
+        at D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:167:7
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f5-F-36f42-et-sections-تاریخ-بسته-شدن-\error-context.md
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f5-F-36f42-et-sections-تاریخ-بسته-شدن-\error-context.md
+
+  1 failed
+    e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:117:3 › F5 — A2/A5 [TEST-9FIX] › A2 — close then reopen marked ticket (sections + تاریخ بسته شدن) 
+  1 did not run

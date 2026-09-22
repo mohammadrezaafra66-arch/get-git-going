@@ -1,0 +1,115 @@
+SET
+===== A2 completed_at on close/reopen =====
+BEGIN
+SELECT 1
+UPDATE 1
+SELECT 1
+ROLLBACK
+===== A3 history delta =====
+BEGIN
+SELECT 1
+SELECT 1
+UPDATE 1
+SELECT 1
+ before_cnt | after_cnt | delta 
+------------+-----------+-------
+          0 |         1 |     1
+(1 row)
+
+ field | old_value | new_value 
+-------+-----------+-----------
+ title | التبغل    | التبغل V
+(1 row)
+
+ROLLBACK
+===== A4 supplier probes =====
+BEGIN
+CREATE TABLE
+DO
+DO
+DO
+     step     | ok |                             err                              
+--------------+----+--------------------------------------------------------------
+ null_insert  | f  | column "purchased_at" of relation "purchases" does not exist
+ null_update  | f  | SUPPLIER_REQUIRED
+ legacy_touch | f  | column "purchased_at" does not exist
+(3 rows)
+
+ROLLBACK
+===== B3 display_seconds bounds =====
+BEGIN
+CREATE TABLE
+DO
+  step  | ok |                                                           err                                                            
+--------+----+--------------------------------------------------------------------------------------------------------------------------
+ set_3  | f  | new row for relation "user_caller_id_settings" violates check constraint "user_caller_id_settings_display_seconds_check"
+ set_15 | t  | 
+(2 rows)
+
+ROLLBACK
+===== C2 responsible required =====
+BEGIN
+CREATE TABLE
+DO
+DO
+    step     | ok |         err          
+-------------+----+----------------------
+ null_insert | f  | RESPONSIBLE_REQUIRED
+ null_update | f  | RESPONSIBLE_REQUIRED
+(2 rows)
+
+ROLLBACK
+===== C7 won_at =====
+BEGIN
+SELECT 1
+UPDATE 1
+SELECT 1
+UPDATE 1
+                  id                  | w0 |       won_at_after_won        | won_at_after_reopen | set_on_won | cleared_on_reopen 
+--------------------------------------+----+-------------------------------+---------------------+------------+-------------------
+ 56333014-d7f5-4baf-a30f-67bb39d50410 |    | 2026-09-22 03:20:23.382582+00 |                     | t          | t
+(1 row)
+
+ROLLBACK
+===== C8 lost reason required =====
+BEGIN
+CREATE TABLE
+DO
+DO
+       step       | ok |         err          
+------------------+----+----------------------
+ lost_no_reason   | f  | LOST_REASON_REQUIRED
+ lost_with_reason | t  | 
+(2 rows)
+
+ROLLBACK
+===== role_permissions cols + salesdesk rows =====
+    column_name     
+--------------------
+ id
+ role_name
+ module
+ can_view
+ can_create
+ can_update
+ can_delete
+ can_approve
+ can_export
+ can_view_sensitive
+ created_at
+ updated_at
+(12 rows)
+
+===== D6 reminder columns =====
+    column_name    
+-------------------
+ reminder_enabled
+ reminder_fired_at
+(2 rows)
+
+===== work_items status distinct =====
+ status  | count | with_completed 
+---------+-------+----------------
+ pending |     3 |              0
+(1 row)
+
