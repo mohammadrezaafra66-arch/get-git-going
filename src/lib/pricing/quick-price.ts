@@ -3,6 +3,12 @@ import { fetchLatestCurrencyRate } from "./queries";
 import { roundSalePrice, type CurrencyCode } from "./constants";
 import { PricingError } from "./engine";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import {
+  pickShippingRulesToApply,
+  shippingRuleAmountToman,
+  shippingRuleMatches,
+  withSelectedProducts,
+} from "./shipping-match";
 
 export interface QuickPriceInput {
   product_name?: string | null;
@@ -136,44 +142,36 @@ export async function calculateQuickSalePrice(
     const { data: shippingRows, error: shippingErr } = await supabase
       .from("shipping_cost_rules")
       .select(
-        "id, title, cost_type, cost_value, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority",
+        "id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority, shipping_cost_rule_products(product_id)",
       )
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("priority", { ascending: true })
       .limit(500);
     if (shippingErr) throw shippingErr;
-    const candidates = (shippingRows ?? []).filter((s: any) => {
-      // quick-price بدون شناسه محصول است؛ قوانین مخصوص یک product خاص نادیده گرفته می‌شوند
-      if (s.product_id) return false;
-      if (s.category_id) {
-        if (!input.category_id) return false;
-        if (s.category_id !== input.category_id) return false;
-      }
-      // quick-price ورودی برند ندارد؛ قوانین مخصوص یک برند خاص نادیده گرفته می‌شوند
-      if (s.brand_id) return false;
-      if (s.product_type && s.product_type !== input.product_type) return false;
-      if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price))
-        return false;
-      if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price))
-        return false;
-      return true;
-    });
-    const specificity = (s: any): number =>
-      (s.category_id ? 100 : 0) + (s.brand_id ? 10 : 0) + (s.product_type ? 1 : 0);
-    candidates.sort((a: any, b: any) => specificity(b) - specificity(a));
-    const sRule = candidates[0];
-    if (sRule) {
-      shipping_rule_used = { id: sRule.id, title: sRule.title };
-      if (sRule.cost_type === "percent") {
-        shipping_cost = Math.round((purchase_price_toman * Number(sRule.cost_value)) / 100);
-      } else if (sRule.cost_type === "currency") {
-        // قوانین ارزی نیازمند نرخ ارز هستند و در quick-price (بدون product) صرفاً نادیده می‌گیریم
-        shipping_cost = 0;
-        shipping_rule_used = null;
-      } else {
-        shipping_cost = Math.round(Number(sRule.cost_value));
-      }
+    const synthetic = {
+      id: "",
+      brand_id: null,
+      category_id: input.category_id ?? null,
+      product_type: input.product_type,
+    };
+    const candidates = (shippingRows ?? [])
+      .map((s) => withSelectedProducts(s as never))
+      .filter((s) => {
+        if (s.product_id || s.brand_id || (s.selected_product_ids?.length ?? 0) > 0) return false;
+        if (s.cost_type === "currency") return false;
+        return shippingRuleMatches(s, synthetic, purchase_price_toman);
+      });
+    const applied = pickShippingRulesToApply(candidates);
+    for (const sRule of applied) {
+      shipping_cost += shippingRuleAmountToman(sRule, purchase_price_toman, () => null).amount;
+      if (!shipping_rule_used) shipping_rule_used = { id: sRule.id, title: sRule.title };
+    }
+    if (applied.length > 1 && shipping_rule_used) {
+      shipping_rule_used = {
+        id: shipping_rule_used.id,
+        title: applied.map((s) => s.title).join(" + "),
+      };
     }
   }
 

@@ -13,6 +13,30 @@ Before any change, read:
 - `README.md`
 - `.lovable/plan.md` if present
 
+## Non-negotiable rules (each one is backed by a real incident)
+
+M1. Production is off-limits to every agent. No `ssh`, `scp`, remote command, HTTP or database connection to `192.168.170.10` or `192.168.1.43`; never run `release/*.ps1` or `deploy/lan/scripts/prod-*.ps1`. The owner releases by hand from a runbook. Incident: agents reported production releases that had not happened.
+M2. Persian text reaches a database only inside a SQL file applied by the method in the SQL section of this file, and every Persian value written is verified by hex round-trip (`encode(convert_to(<col>,'UTF8'),'hex')` equals the hex of the file's literal). Never pipe Persian through PowerShell; only ASCII SQL may be piped. Incident: 11 Tir 1405 — about 460 Persian configuration values and 43 functions destroyed by a PowerShell pipe.
+M3. Before rewriting any function, run `pg_get_functiondef` on the live database and diff it against the file. Incident: a stale file nearly overwrote valid definitions.
+M4. The test database is `afrakala`, connected as `supabase_admin`, always with `-d afrakala`. `postgres` on the test instance is a stale copy. Incident: work done against the stale copy.
+M5. Never edit inside `D:\AfraKalaTest\app`. Every task runs in its own worktree `D:\AfraKalaTest\wt-<name>` on a branch `feature/<name>` created from `origin/staging`. `docker compose` builds from the working tree, so an uncommitted edit goes live and `APP_GIT_SHA` lies. Incident: uncommitted code went live on 3100 and worktrees collided.
+M6. A migration applied to any database is committed and pushed in the same session. `20260913101000` (533) and `20260913102000` (534) are never applied anywhere. Incident: migrations present in a database but in no file.
+M7. `docker restart afrakala-lan-rest` after every migration on the test stack. Incident: "relation does not exist" for tables that existed — PostgREST's schema cache.
+M8. A new module gets `role_permissions` rows for every role in the same migration that creates it; `has_dynamic_permission` grants everyone when no row exists. Incident: modules open to all roles.
+M9. A business rule is enforced by a trigger or a constraint, not only inside an RPC; a direct PostgREST PATCH bypasses an RPC-only rule. Incident: rules bypassed by direct API writes.
+M10. Zero rows from a SELECT means "unknown", not "no data": RLS returns empty silently. Confirm with the admin client or `pg_policies` before concluding anything. Incident: features judged missing because a query returned nothing.
+M11. Before building anything, audit what already exists — routes, tables, functions, menu entries, `role_permissions`, related branches. The recurring failure here is "built but never wired up". Incident: a `tasks` table with zero rows, `/purchase` in no menu, a service worker unregistered by `cache-buster.ts`.
+M12. "Done" requires evidence: the exact command, its full output and exit code, and for anything deployed, `APP_GIT_SHA` on 3100 equal to the tested commit. A claim without evidence is not done. Incident: false completion claims.
+M13. Forbidden git and GitHub: `--force` and `--force-with-lease`, `reset --hard`, `stash`, `clean`, `gh pr merge --admin`, `gh api` writes to settings, rulesets or branch protection, direct pushes to `staging` or `main`, and `/autofix-pr`. Incident: lost work and cancelled runs.
+M14. Never weaken, skip, delete or rewrite a test or a check to make it pass. Fix the code, or stop with a report. Incident: an agent edited a test file until it passed.
+
+## Strongly recommended
+
+O1. Terminal and chat output in English; Persian only inside files — the terminal reverses right-to-left text.
+O2. Unattended runs: never ask the owner; take the least invasive reversible option and record it; keep `HANDOFF.md` current; stop cleanly with a hard-stop line.
+O3. Write `uncertain` instead of guessing.
+O4. Business runs on `sales_quotes`, not `invoices`; the calendar day is `public.tehran_today()`; server time is UTC.
+
 ## Mandatory principles
 
 1. Keep the project self-hostable on Linux + Docker + Supabase Self-host.
@@ -28,7 +52,7 @@ Before any change, read:
 11. Large queries require limit, pagination, indexes, and debounced search/filter.
 12. UI must remain Persian, RTL, mobile-first, and responsive.
 13. Fonts and critical assets must be local.
-14. Do not create parallel modules, routes, tables, services, hooks, or components if an existing implementation exists.
+14. See M11: audit existing wiring before building; do not create a parallel module.
 15. Do not redesign architecture, rename tables/fields, delete code, or refactor broadly unless explicitly approved.
 16. Keep every change small, incremental, low-risk, and testable.
 
@@ -59,10 +83,11 @@ feature/<task>  ──PR──►  staging  ──PR──►  main
 Boundary Guard enforces this on every PR, and it is a required status check: a
 PR into `main` must come from `staging` or an approved `hotfix/*` branch.
 
-Start every task from a fresh `staging`:
+Start every task from a fresh `origin/staging` in its own worktree (see M5):
 
 ```powershell
-git fetch origin; git switch staging; git pull; git switch -c feature/<short-name>
+git fetch origin
+git worktree add -b feature/<short-name> D:\AfraKalaTest\wt-<short-name> origin/staging
 ```
 
 > Until 2026-08-14 this file named `feature/navigation-modernization` as *the*
@@ -82,24 +107,24 @@ you work; the other holds the company's real records.
 | **Database name** | `afrakala` | **`postgres`** |
 | DB container | `afrakala-lan-db` | `afrakala-lan-db` |
 | Web container | `afrakala-lan-web` | `afrakala-lan-web` |
-| What you may do | develop, test, break things | **pull and build only** |
+| What you may do | develop, test, break things (in a worktree; see M5) | **owner only; agents never connect (see M1)** |
 | Ollama | Windows host: `http://192.168.170.8:11434` | — |
+
+**Test database identity: see M4.**
 
 **The database name differs between the two machines.** On production it is
 `postgres`. Running `psql -d afrakala` there fails with `database "afrakala"
 does not exist` — that means you copied a command written for the test server,
 not that production is broken. This exact mistake cost a round-trip on
-2026-08-14.
+2026-08-14. Agents never run that command (see M1).
 
 This is also *not* the Cursor Cloud / `deploy/local/` setup documented at the
 end of this file.
 
-### Production is deploy-only, not untouchable
+### Production is owner-only; agents never connect (see M1)
 
-This file used to say "never touch production, for any reason". That was true
-while production ran two-month-old code and had no migration ledger; it stopped
-being the rule on 2026-08-11, when the owner approved the cutover. What replaces
-it is narrower and stricter where it counts:
+Agents never connect to production. The owner releases by hand from a runbook.
+See M1. The remainder of this subsection is the owner's runbook, not agent work:
 
 - **Never develop on the production laptop.** Code is edited only on the test
   computer. A commit made in `C:\afrakala` exists nowhere else, and the next
@@ -122,10 +147,9 @@ it is narrower and stricter where it counts:
   `GIT_SHA: ${GIT_SHA:-local-unknown}` as a build arg, and `--env-file deploy/lan/.env.lan`
   supplies a value that was pinned there long ago. Without the export the build is CORRECT and
   the label LIES: measured on 2026-08-26, a rebuild of current code stamped
-  `APP_GIT_SHA=1ca72316` — a real commit, but not `HEAD`. The verification step below
-  ("`APP_GIT_SHA` must equal `git rev-parse --short HEAD`") is the only check that the right
-  code is running, so a stale label silently disables the one thing that would catch a failed
-  deploy. To tell them apart when it happens, look for a string only your change contains:
+  `APP_GIT_SHA=1ca72316` — a real commit, but not `HEAD`. The verification step
+  below (see M12) is the only check that the right code is running, so a stale
+  label silently disables the one thing that would catch a failed deploy. To tell them apart when it happens, look for a string only your change contains:
   `docker exec afrakala-lan-web sh -c "grep -rl '<your new symbol>' /app/.output"`.
 
   **Without `--no-deps` the app goes DOWN.** Measured on 2026-08-26: `web` depends on
@@ -167,9 +191,9 @@ After a deploy, confirm the running code is the code you think it is:
 docker inspect afrakala-lan-web --format "{{range .Config.Env}}{{println .}}{{end}}" | Select-String "APP_GIT_SHA"
 ```
 
-`APP_GIT_SHA` must equal `git rev-parse --short HEAD`. Expect
-`afrakala-lan-db-role-fix` to show `Exited (0)`; every other `afrakala-lan-*`
-service must be `Up`.
+See M12: a deploy is not done unless `APP_GIT_SHA` on 3100 equals the tested
+commit. Expect `afrakala-lan-db-role-fix` to show `Exited (0)`; every other
+`afrakala-lan-*` service must be `Up`.
 
 > Note on PowerShell: `build.ps1` / `up.ps1` and `psql` often return exit code 1
 > purely because Windows PowerShell 5.1 treats a native command's stderr as an
@@ -182,9 +206,8 @@ service must be `Up`.
 These are not style preferences. Each one exists because breaking it has
 already cost this project real damage.
 
-1. **Persian SQL must never go through a PowerShell pipe.** On 2026-07-11 a
-   piped migration replaced every non-ASCII byte with `?` and destroyed the
-   Persian text inside 44 database functions.
+1. **Persian SQL — see M2** (SQL file only, hex round-trip, no PowerShell pipe).
+   Delivery method on this machine:
 
    **`docker cp` is NO LONGER the delivery path — amended 2026-08-26.** It is
    broken on this machine at the Docker Desktop mount layer and cannot be
@@ -213,14 +236,12 @@ already cost this project real damage.
                 { input: readFileSync(local) });   // Buffer in, byte-exact
    ```
 
-   **Verify with `md5sum` on both sides every time. Nothing less counts.**
+   **Verify Persian values by hex round-trip (see M2), not `md5sum` alone.**
    Measured 2026-08-26 on the same Persian file: the Git Bash and Node/Buffer
    routes both produced identical md5, while
    `Get-Content -Raw -Encoding UTF8 | docker exec -i` produced **167 bytes
-   against 165** — PowerShell appended a trailing `\r\n`. Note precisely what
-   that was and was not: the Persian bytes were intact, the damage was a line
-   ending. It still fails, because md5-or-nothing is the rule that would have
-   caught 2026-07-11.
+   against 165** — PowerShell appended a trailing `\r\n`. That is why only
+   ASCII SQL may be piped (M2).
 
    **base64 is the fallback** when a transport must be provably ASCII-only:
    `base64 -w0 f.sql | docker exec -i afrakala-lan-db sh -c 'base64 -d > /tmp/f.sql'`
@@ -230,7 +251,8 @@ already cost this project real damage.
    saved as UTF-8 without BOM.
 2. **`--single-transaction` + `-v ON_ERROR_STOP=1` always**, so a partial
    failure rolls back instead of leaving the schema half-applied.
-2b. **RECORD THE LEDGER ROW IN THE SAME BREATH — added 2026-08-27.** Applying by
+2b. **RECORD THE LEDGER ROW IN THE SAME BREATH — added 2026-08-27.** Applied
+   file must also land in git (see M6). Applying by
    `psql` (rule 1) does NOT write to `supabase_migrations.schema_migrations`; only
    the Supabase CLI does. Nothing here ever said so, and by 2026-08-27 the ledger
    held **552 rows against 597 files on disk — 45 applied migrations were
@@ -258,10 +280,7 @@ already cost this project real damage.
 3. **No `DROP TABLE`, `TRUNCATE`, or `DELETE` on a table holding data.**
    Permitted: `CREATE OR REPLACE`, `ALTER TABLE ... ADD COLUMN`,
    `CREATE POLICY`, `INSERT`. (`DROP FUNCTION` is fine — see rule 5.)
-4. **Before `CREATE OR REPLACE FUNCTION`, read the live definition first**
-   (`pg_get_functiondef`) and change only what must change. The database
-   sometimes holds an *older* definition than git; re-applying the git version
-   wholesale can silently change a signature or behaviour.
+4. **Before rewriting any function, see M3.** Then change only what must change.
 5. **Adding a defaulted parameter does not replace a function — it overloads
    it.** The old signature stays, existing calls become ambiguous, and the
    feature breaks at runtime. `DROP FUNCTION` the previous signature in the
@@ -474,13 +493,13 @@ After every `git commit`, immediately run `git push origin HEAD`.
 This applies to every AI agent working in this repo — Claude Code, Codex, Cursor, or any other.
 The goal: GitHub must always mirror the local project's committed state.
 Push only after a commit (which happens at the end of a completed, tested phase), never mid-phase.
-If the push fails (e.g. non-fast-forward), stop and report it — do not force-push.
+If the push fails (e.g. non-fast-forward), stop and report it — see M13.
 
-## When several agents run at once, they share ONE working tree
+## When several agents run at once, each uses its own worktree (see M5)
 
-Parallel missions do **not** get separate clones. Every agent edits the same
-files in `D:\AfraKalaTest\app` and shares the same git index. All of the
-following were observed on 2026-08-08 with six agents running:
+Worktrees only — never edit `D:\AfraKalaTest\app`. See M5. The collisions
+below were observed on 2026-08-08 when six agents shared one tree — they
+are why M5 exists, not a procedure to repeat:
 
 **1. Stage and commit in a single shell invocation.** The index is shared
 process-wide, so this is racy:
@@ -505,15 +524,15 @@ alone fails for a new file with *"did not match any file(s) known to git"*.
 **2. Never `git add -A` or `git add .`.** It sweeps up whatever other missions
 have in flight.
 
-**3. If your commit captures someone else's work anyway: do not fix it.** Do
-not force-push, revert, or reset. Their content is intact on the remote and
-rewriting shared history destroys real work. Report the wrong commit message
-and move on.
+**3. If your commit captures someone else's work anyway: do not fix it.** See
+M13 (no force-push, reset, or rewrite). Their content is intact on the remote
+and rewriting shared history destroys real work. Report the wrong commit
+message and move on.
 
 **4. `git pull --rebase` will usually refuse**, with *"cannot pull with rebase:
 You have unstaged changes"* — caused by other missions' files, not yours. **Do
-not `git stash`**: that yanks another agent's in-flight work out from under
-them. Check divergence without touching the tree instead:
+not `git stash` (see M13)**: that yanks another agent's in-flight work out from
+under them. Check divergence without touching the tree instead:
 
 ```powershell
 git fetch origin $(git rev-parse --abbrev-ref HEAD)

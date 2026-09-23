@@ -166,6 +166,7 @@ import { Route as AppAdminMarketingTaskTemplatesRouteImport } from './routes/_ap
 import { Route as AppAdminMarketingChannelsRouteImport } from './routes/_app.admin.marketing-channels'
 import { Route as AppAdminGamificationRouteImport } from './routes/_app.admin.gamification'
 import { Route as AppAdminDocumentsRouteImport } from './routes/_app.admin.documents'
+import { Route as AppAdminDidarImportRouteImport } from './routes/_app.admin.didar-import'
 import { Route as AppAdminDeliveryReceiptsRouteImport } from './routes/_app.admin.delivery-receipts'
 import { Route as AppAdminCallExtensionsRouteImport } from './routes/_app.admin.call-extensions'
 import { Route as AppAdminAutomationRouteImport } from './routes/_app.admin.automation'
@@ -1057,6 +1058,11 @@ const AppAdminDocumentsRoute = AppAdminDocumentsRouteImport.update({
   path: '/admin/documents',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminDidarImportRoute = AppAdminDidarImportRouteImport.update({
+  id: '/admin/didar-import',
+  path: '/admin/didar-import',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminDeliveryReceiptsRoute =
   AppAdminDeliveryReceiptsRouteImport.update({
     id: '/admin/delivery-receipts',
@@ -1590,6 +1596,7 @@ export interface FileRoutesByFullPath {
   '/admin/automation': typeof AppAdminAutomationRoute
   '/admin/call-extensions': typeof AppAdminCallExtensionsRoute
   '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
+  '/admin/didar-import': typeof AppAdminDidarImportRoute
   '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -1827,6 +1834,7 @@ export interface FileRoutesByTo {
   '/admin/automation': typeof AppAdminAutomationRoute
   '/admin/call-extensions': typeof AppAdminCallExtensionsRoute
   '/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
+  '/admin/didar-import': typeof AppAdminDidarImportRoute
   '/admin/documents': typeof AppAdminDocumentsRoute
   '/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -2067,6 +2075,7 @@ export interface FileRoutesById {
   '/_app/admin/automation': typeof AppAdminAutomationRoute
   '/_app/admin/call-extensions': typeof AppAdminCallExtensionsRoute
   '/_app/admin/delivery-receipts': typeof AppAdminDeliveryReceiptsRoute
+  '/_app/admin/didar-import': typeof AppAdminDidarImportRoute
   '/_app/admin/documents': typeof AppAdminDocumentsRoute
   '/_app/admin/gamification': typeof AppAdminGamificationRouteWithChildren
   '/_app/admin/marketing-channels': typeof AppAdminMarketingChannelsRoute
@@ -2308,6 +2317,7 @@ export interface FileRouteTypes {
     | '/admin/automation'
     | '/admin/call-extensions'
     | '/admin/delivery-receipts'
+    | '/admin/didar-import'
     | '/admin/documents'
     | '/admin/gamification'
     | '/admin/marketing-channels'
@@ -2545,6 +2555,7 @@ export interface FileRouteTypes {
     | '/admin/automation'
     | '/admin/call-extensions'
     | '/admin/delivery-receipts'
+    | '/admin/didar-import'
     | '/admin/documents'
     | '/admin/gamification'
     | '/admin/marketing-channels'
@@ -2784,6 +2795,7 @@ export interface FileRouteTypes {
     | '/_app/admin/automation'
     | '/_app/admin/call-extensions'
     | '/_app/admin/delivery-receipts'
+    | '/_app/admin/didar-import'
     | '/_app/admin/documents'
     | '/_app/admin/gamification'
     | '/_app/admin/marketing-channels'
@@ -4093,6 +4105,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminDocumentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/didar-import': {
+      id: '/_app/admin/didar-import'
+      path: '/admin/didar-import'
+      fullPath: '/admin/didar-import'
+      preLoaderRoute: typeof AppAdminDidarImportRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/delivery-receipts': {
       id: '/_app/admin/delivery-receipts'
       path: '/admin/delivery-receipts'
@@ -4905,6 +4924,7 @@ interface AppRouteChildren {
   AppAdminAutomationRoute: typeof AppAdminAutomationRoute
   AppAdminCallExtensionsRoute: typeof AppAdminCallExtensionsRoute
   AppAdminDeliveryReceiptsRoute: typeof AppAdminDeliveryReceiptsRoute
+  AppAdminDidarImportRoute: typeof AppAdminDidarImportRoute
   AppAdminDocumentsRoute: typeof AppAdminDocumentsRoute
   AppAdminGamificationRoute: typeof AppAdminGamificationRouteWithChildren
   AppAdminMarketingChannelsRoute: typeof AppAdminMarketingChannelsRoute
@@ -5071,6 +5091,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminAutomationRoute: AppAdminAutomationRoute,
   AppAdminCallExtensionsRoute: AppAdminCallExtensionsRoute,
   AppAdminDeliveryReceiptsRoute: AppAdminDeliveryReceiptsRoute,
+  AppAdminDidarImportRoute: AppAdminDidarImportRoute,
   AppAdminDocumentsRoute: AppAdminDocumentsRoute,
   AppAdminGamificationRoute: AppAdminGamificationRouteWithChildren,
   AppAdminMarketingChannelsRoute: AppAdminMarketingChannelsRoute,

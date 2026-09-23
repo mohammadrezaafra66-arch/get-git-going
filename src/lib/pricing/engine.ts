@@ -2,6 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { fetchLatestCurrencyRate, fetchLatestPurchasePrice, fetchProductLite } from "./queries";
 import { roundSalePrice, type CurrencyCode } from "./constants";
 import { formatNumber, toFaDigits } from "@/lib/i18n/formatters";
+import {
+  pickShippingRulesToApply,
+  shippingRuleAmountToman,
+  shippingRuleMatches,
+  withSelectedProducts,
+} from "./shipping-match";
 
 type SbClient = typeof supabase;
 
@@ -191,67 +197,75 @@ export async function calculateSalePrice(
   const effective_settlement_type_id: string | null =
     input.settlement_type_id ?? m.settlement_type_id ?? null;
 
-  // 5) قانون حمل — همیشه از shipping_cost_rules انتخاب می‌شود
-  // (اولویت تطبیق: محصول > برند > دسته > نوع کالا)
+  // 5) قانون حمل — هر قانون منطبق جمع می‌شود؛ پیش‌فرض بی‌محدوده فقط وقتی هیچ‌کدام نخورد.
   let shipping_cost = 0;
   let shipping_rule_used: { id: string; title: string } | null = null;
   const { data: shippingRows, error: shippingErr } = await db
     .from("shipping_cost_rules")
     .select(
-      "id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority",
+      "id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, is_active, sort_order, priority, shipping_cost_rule_products(product_id)",
     )
     .eq("is_active", true)
     .order("sort_order", { ascending: true })
     .order("priority", { ascending: true })
     .limit(500);
   if (shippingErr) throw shippingErr;
-  const candidates = (shippingRows ?? []).filter((s: any) => {
-    if (s.product_id && s.product_id !== product.id) return false;
-    if (s.category_id && s.category_id !== product.category_id) return false;
-    if (s.brand_id && s.brand_id !== product.brand_id) return false;
-    if (s.product_type && s.product_type !== product.product_type) return false;
-    if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price))
-      return false;
-    if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price))
-      return false;
-    return true;
-  });
-  // اولویت‌بندی صریح: محصول > برند > دسته > نوع کالا (نیازمندی ۱۲۷).
-  // مجموع امتیازها باعث می‌شود قانونِ باریک‌ترِ زنجیرهٔ دسته→برند→محصول
-  // (که چند فیلد را هم‌زمان مقید می‌کند) خاص‌تر از قانونِ تک‌بُعدی شمرده شود.
-  const specificity = (s: any): number =>
-    (s.product_id ? 1000 : 0) +
-    (s.brand_id ? 100 : 0) +
-    (s.category_id ? 10 : 0) +
-    (s.product_type ? 1 : 0);
-  candidates.sort((a: any, b: any) => specificity(b) - specificity(a));
-  const sRule = candidates[0];
-  let shipping_currency_rate: number | null = null;
-  if (sRule) {
-    shipping_rule_used = { id: sRule.id, title: sRule.title };
-    if (sRule.cost_type === "percent") {
-      shipping_cost = Math.round((purchase_price_toman * Number(sRule.cost_value)) / 100);
-    } else if (sRule.cost_type === "currency") {
+  const rateCache = new Map<string, number>();
+  const currencyRate = (code: string): number | null => {
+    if (rateCache.has(code)) return rateCache.get(code) ?? null;
+    return null;
+  };
+  const matched = (shippingRows ?? [])
+    .map((s) => withSelectedProducts(s as never))
+    .filter((s) => shippingRuleMatches(s, product, purchase_price_toman));
+  const applied = pickShippingRulesToApply(matched);
+  const shippingParts: string[] = [];
+  for (const sRule of applied) {
+    if (sRule.cost_type === "currency") {
       const code = (sRule.cost_currency ?? "").toString().toLowerCase();
       if (!code)
         throw new PricingError("NO_SHIPPING_CURRENCY", "نوع ارز برای قانون حمل تعیین نشده است.");
-      const { data: rateRows, error: rateErr } = await db
-        .from("currency_rates")
-        .select("rate_to_toman")
-        .eq("currency", code)
-        .eq("is_active", true)
-        .order("effective_at", { ascending: false })
-        .limit(1);
-      if (rateErr) throw rateErr;
-      const rate = rateRows && rateRows[0] ? Number(rateRows[0].rate_to_toman) : 0;
-      if (!rate || rate <= 0) {
-        throw new PricingError("NO_SHIPPING_RATE", `نرخ فعال برای ارز ${code} پیدا نشد.`);
+      if (!rateCache.has(code)) {
+        const { data: rateRows, error: rateErr } = await db
+          .from("currency_rates")
+          .select("rate_to_toman")
+          .eq("currency", code)
+          .eq("is_active", true)
+          .order("effective_at", { ascending: false })
+          .limit(1);
+        if (rateErr) throw rateErr;
+        const rate = rateRows && rateRows[0] ? Number(rateRows[0].rate_to_toman) : 0;
+        if (!rate || rate <= 0) {
+          throw new PricingError("NO_SHIPPING_RATE", `نرخ فعال برای ارز ${code} پیدا نشد.`);
+        }
+        rateCache.set(code, rate);
       }
-      shipping_currency_rate = rate;
-      shipping_cost = Math.round(Number(sRule.cost_value) * rate);
-    } else {
-      shipping_cost = Math.round(Number(sRule.cost_value));
     }
+    let part;
+    try {
+      part = shippingRuleAmountToman(sRule, purchase_price_toman, currencyRate);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg === "NO_SHIPPING_CURRENCY") {
+        throw new PricingError("NO_SHIPPING_CURRENCY", "نوع ارز برای قانون حمل تعیین نشده است.");
+      }
+      if (msg === "NO_SHIPPING_RATE") {
+        throw new PricingError(
+          "NO_SHIPPING_RATE",
+          `نرخ فعال برای ارز ${sRule.cost_currency ?? ""} پیدا نشد.`,
+        );
+      }
+      throw err;
+    }
+    shipping_cost += part.amount;
+    shippingParts.push(`${sRule.title}: ${fmt(part.amount)}`);
+    if (!shipping_rule_used) shipping_rule_used = { id: sRule.id, title: sRule.title };
+  }
+  if (applied.length > 1 && shipping_rule_used) {
+    shipping_rule_used = {
+      id: shipping_rule_used.id,
+      title: applied.map((s) => s.title).join(" + "),
+    };
   }
 
   // 6) سود
@@ -277,10 +291,8 @@ export async function calculateSalePrice(
     purchase.currency === "toman"
       ? `ارز پایه تومان است؛ نرخ ارز ۱`
       : `نرخ ارز: ${fmt(currency_rate)} → قیمت خرید تومانی: ${fmt(purchase_price_toman)} تومان`,
-    sRule
-      ? sRule.cost_type === "currency"
-        ? `هزینه حمل (${sRule.title}) — ${fmt(Number(sRule.cost_value))} ${sRule.cost_currency} × نرخ ${fmt(shipping_currency_rate ?? 0)} = ${fmt(shipping_cost)} تومان`
-        : `هزینه حمل (${sRule.title}): ${fmt(shipping_cost)} تومان`
+    applied.length > 0
+      ? `هزینه حمل (${shippingParts.join(" + ")}): ${fmt(shipping_cost)} تومان`
       : "هزینه حمل: ۰ (قانون منطبق پیدا نشد)",
     m.margin_type === "fixed"
       ? `سود (مبلغ ثابت): ${fmt(margin_amount)} تومان`

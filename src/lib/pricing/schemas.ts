@@ -71,12 +71,13 @@ export type SalePriceTypeFormValues = z.infer<typeof salePriceTypeSchema>;
 export const shippingRuleSchema = z
   .object({
     title: z.string().trim().max(160).optional().or(z.literal("")),
-    scope_mode: z.enum(["product", "price_range", "category"]).default("product"),
+    scope_mode: z.enum(["product", "price_range", "category", "brand"]).default("product"),
     cost_type: z.enum(["fixed", "percent", "currency"]),
     cost_value: z.coerce.number().nonnegative("مقدار نمی‌تواند منفی باشد"),
     cost_currency: z.string().trim().min(2).max(20).nullable().optional(),
     product_type: z.enum(["iranian", "foreign"]).nullable().optional(),
     product_id: z.string().uuid().nullable().optional(),
+    product_ids: z.array(z.string().uuid()).optional().default([]),
     brand_id: z.string().uuid().nullable().optional(),
     category_id: z.string().uuid().nullable().optional(),
     min_purchase_price: z.coerce.number().nonnegative().nullable().optional(),
@@ -99,6 +100,14 @@ export const shippingRuleSchema = z
   .refine((v) => v.scope_mode !== "category" || Boolean(v.category_id), {
     message: "انتخاب دسته الزامی است",
     path: ["category_id"],
+  })
+  .refine((v) => v.scope_mode !== "brand" || Boolean(v.brand_id), {
+    message: "انتخاب برند الزامی است",
+    path: ["brand_id"],
+  })
+  .refine((v) => v.scope_mode !== "brand" || (v.product_ids?.length ?? 0) > 0, {
+    message: "حداقل یک محصول از این برند را انتخاب کنید",
+    path: ["product_ids"],
   })
   .refine(
     (v) =>

@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Loader2,
+  Download,
   RefreshCw,
   Trash2,
   Undo2,
@@ -33,7 +34,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import { ASAN_PERSON_HEADERS, parseAsanPersons, type ParseResult } from "@/lib/asan/parse-persons";
+import {
+  ASAN_SAMPLE_HEADERS,
+  ASAN_SAMPLE_REQUIRED_HEADERS,
+  downloadAsanSampleWorkbook,
+} from "@/lib/asan/sample-workbook";
 import { AsanProductImport } from "@/components/asan/AsanProductImport";
+import { ImportPathButtons } from "@/components/import/ImportPathButtons";
 
 /**
  * ASAN M3.3 — the staged Asan person import workbench.
@@ -71,7 +78,7 @@ import { AsanProductImport } from "@/components/asan/AsanProductImport";
 const PAGE_SIZE = 50;
 const CHUNK = 200;
 
-type Classification = "new" | "update" | "conflict" | "unchanged";
+type Classification = "new" | "update" | "conflict" | "unchanged" | "attach_code";
 type Decision = "pending" | "accept" | "skip";
 
 type Batch = {
@@ -94,6 +101,8 @@ type StagedRow = {
   landline_raw: string | null;
   national_id_raw: string | null;
   address: string | null;
+  city: string | null;
+  province: string | null;
   classification: Classification;
   matched_person_id: string | null;
   match_reason: string | null;
@@ -111,6 +120,7 @@ const CLASS_LABEL: Record<Classification, string> = {
   update: "به‌روزرسانی",
   conflict: "تعارض",
   unchanged: "بدون تغییر",
+  attach_code: "اتصال کد اسان به پروندهٔ موجود",
 };
 
 const CLASS_HINT: Record<Classification, string> = {
@@ -118,6 +128,7 @@ const CLASS_HINT: Record<Classification, string> = {
   update: "شخص موجود پیدا شد؛ فقط فیلدهای خالی افراکالا پر می‌شوند.",
   conflict: "نیاز به داوری انسان دارد و قابل تأیید نیست.",
   unchanged: "چیزی برای تغییر ندارد.",
+  attach_code: "همین شخص است؛ فقط کد اسان به پروندهٔ موجود وصل می‌شود.",
 };
 
 const MATCH_REASON_LABEL: Record<string, string> = {
@@ -130,6 +141,7 @@ const FILTERS: { key: Classification | "all"; label: string }[] = [
   { key: "all", label: "همه" },
   { key: "new", label: CLASS_LABEL.new },
   { key: "update", label: CLASS_LABEL.update },
+  { key: "attach_code", label: CLASS_LABEL.attach_code },
   { key: "conflict", label: CLASS_LABEL.conflict },
   { key: "unchanged", label: CLASS_LABEL.unchanged },
 ];
@@ -159,6 +171,8 @@ function AsanImportPage() {
         title="ورود اطلاعات از آسان"
         description="فایل آسان را بخوانید، پیش‌نمایش بگیرید و فقط پس از تأیید صریح ثبت کنید"
       />
+
+      <ImportPathButtons current="asan" />
 
       <Tabs defaultValue="persons">
         <TabsList>
@@ -218,7 +232,7 @@ function AsanPersonImportPanel() {
     let q = supabase
       .from("asan_import_person_rows")
       .select(
-        "id, row_number, asan_code, display_name, mobile_raw, landline_raw, national_id_raw, address, classification, matched_person_id, match_reason, conflict_reason, decision, applied_at, apply_note",
+        "id, row_number, asan_code, display_name, mobile_raw, landline_raw, national_id_raw, address, city, province, classification, matched_person_id, match_reason, conflict_reason, decision, applied_at, apply_note",
         { count: "exact" },
       )
       .eq("batch_id", batch.id);
@@ -376,7 +390,7 @@ function AsanPersonImportPanel() {
   }
 
   /** Bulk decision, scoped to one classification. `conflict` is never offered. */
-  async function setDecisionForClass(cls: "new" | "update", decision: Decision) {
+  async function setDecisionForClass(cls: "new" | "update" | "attach_code", decision: Decision) {
     if (!batch) return;
     const { error } = await supabase
       .from("asan_import_person_rows")
@@ -498,11 +512,15 @@ function AsanPersonImportPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border bg-muted/30 p-3 text-sm">
-        هیچ چیزی تا لحظهٔ «ثبت نهایی» در افراکالا نوشته نمی‌شود. ردیف‌های دارای تعارض قابل تأیید
-        نیستند و در به‌روزرسانی، مقدار پرشدهٔ افراکالا هرگز با مقدار آسان بازنویسی نمی‌شود؛ فقط
-        فیلدهای خالی پر می‌شوند. هر شخص باید هم «کد حساب آسان» داشته باشد و هم «موبایل»؛ ردیفی که
-        یکی از این دو را ندارد وارد نمی‌شود و دلیلش همین‌جا نوشته می‌شود.
+      <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
+        <p>این صفحه فقط خروجی «اشخاص» آسان است.</p>
+        <p>هر ردیف باید هم «کد حساب» داشته باشد هم شماره «موبایل».</p>
+        <p>ستون‌ها با همین نام هدر خوانده می‌شوند، نه با شمارهٔ ستون. ستون اضافه اشکال ندارد.</p>
+        <p>
+          ستون‌های «شهر» و «استان» اختیاری‌اند. اگر در فایل باشند، فقط وقتی فیلد مشتری در دستیار
+          خالی است پر می‌شوند و مقدار قبلی بازنویسی نمی‌شود.
+        </p>
+        <p>کسی که در آسان نیست و فقط در دیدار است را از اینجا وارد نکنید؛ از صفحهٔ دیدار استفاده کنید.</p>
       </div>
 
       {/* ---------------------------------------------------------- step 1 --- */}
@@ -512,6 +530,40 @@ function AsanPersonImportPanel() {
             <div className="flex items-center gap-2 font-medium">
               <FileSpreadsheet className="h-5 w-5 text-primary" />
               مرحله ۱: انتخاب فایل اشخاص آسان
+            </div>
+            <div className="space-y-2 rounded-md border border-dashed p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium">فایل نمونهٔ استاندارد</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void downloadAsanSampleWorkbook().catch((err: unknown) => {
+                      toast.error(err instanceof Error ? err.message : "دانلود نمونه ناموفق بود");
+                    });
+                  }}
+                >
+                  <Download className="ml-2 h-4 w-4" />
+                  دانلود اکسل نمونه
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                ستون‌ها با همین نام هدر خوانده می‌شوند، نه با شمارهٔ ستون. ستون اضافه اشکال ندارد.
+                ستون‌های اجباری «کد حساب» و «موبایل» هستند. «شهر» و «استان» اختیاری‌اند.
+              </p>
+              <ol className="grid list-decimal gap-1 pr-5 text-xs sm:grid-cols-2">
+                {ASAN_SAMPLE_HEADERS.map((h) => (
+                  <li key={h}>
+                    {h}
+                    {(ASAN_SAMPLE_REQUIRED_HEADERS as readonly string[]).includes(h)
+                      ? " — اجباری"
+                      : h === ASAN_PERSON_HEADERS.city || h === ASAN_PERSON_HEADERS.province
+                        ? " — اختیاری"
+                        : ""}
+                  </li>
+                ))}
+              </ol>
             </div>
             <div className="space-y-1">
               <Label htmlFor="asan-persons-file" className="text-xs">
@@ -675,7 +727,7 @@ function AsanPersonImportPanel() {
 
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">مجموع: {toFaDigits(batch.row_count)}</Badge>
-              {(["new", "update", "conflict", "unchanged"] as Classification[]).map((c) =>
+              {(["new", "update", "attach_code", "conflict", "unchanged"] as Classification[]).map((c) =>
                 statNum(c) ? (
                   <Badge key={c} variant={c === "conflict" ? "destructive" : "secondary"}>
                     {CLASS_LABEL[c]}: {toFaDigits(statNum(c))}
@@ -729,6 +781,13 @@ function AsanPersonImportPanel() {
                   onClick={() => setDecisionForClass("update", "accept")}
                 >
                   تأیید همهٔ «به‌روزرسانی»
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDecisionForClass("attach_code", "accept")}
+                >
+                  تأیید همهٔ «اتصال کد اسان به پروندهٔ موجود»
                 </Button>
                 <Button
                   size="sm"
