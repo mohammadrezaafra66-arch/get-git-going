@@ -91,7 +91,7 @@ export function SupplierForm({ supplierId, personId, defaultValues, hideStatus }
   // one afterwards. Mirroring that in the UI keeps the guard honest instead of
   // letting the save fail with a raw RLS error. Widening the UPDATE policy would
   // be an RBAC decision, not a form change.
-  const canChangeExistingAsanCode = hasAnyRole(roles, ["admin", "manager"]);
+  const canChangeExistingAsanCode = hasAnyRole(roles, ["admin", "accountant"]);
   const asanCodeDisabled = Boolean(supplierId) && !canChangeExistingAsanCode;
 
   const form = useForm<SupplierFormValues>({
@@ -275,7 +275,7 @@ export function SupplierForm({ supplierId, personId, defaultValues, hideStatus }
           </p>
           {asanCodeDisabled && (
             <p className="text-xs text-muted-foreground leading-5">
-              تغییر کد آسانِ ثبت‌شده فقط از عهدهٔ مدیر سامانه برمی‌آید.
+              تغییر کد آسانِ ثبت‌شده فقط از عهدهٔ مدیر سیستم یا حسابدار برمی‌آید.
             </p>
           )}
         </div>

@@ -91,6 +91,7 @@ export type ModuleKey =
   | "persons"
   | "warehouse"
   | "asan-import"
+  | "didar-import"
   | "asan-export"
   | "product-videos"
   | "platform-releases"

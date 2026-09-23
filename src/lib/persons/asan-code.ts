@@ -13,10 +13,18 @@ import { supabase } from "@/integrations/supabase/client";
  *
  * Moved here verbatim from `SupplierForm.tsx` (migration 437's UI half) so the
  * customer form can call the same code instead of growing a second copy.
- * Writing it requires admin or manager: `person_identifiers_update_admin_manager`
- * gates UPDATE, while INSERT also allows sales and accountant
- * (`person_identifiers_insert_identity_authors`, migration 226).
+ * Changing or revoking a registered code is admin/accountant only (migration 581).
+ * Sales may still INSERT a first code while creating a brand-new person (D4b).
  */
+export async function assignFirstAsanCode(personId: string, code: string) {
+  const { data, error } = await supabase.rpc("person_assign_asan_code" as never, {
+    p_person_id: personId,
+    p_code: code,
+  } as never);
+  if (error) throw error;
+  return data;
+}
+
 export async function upsertAsanCode(personId: string, code: string | null) {
   const { data: existing, error: readError } = await supabase
     .from("person_identifiers")

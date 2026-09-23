@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, Loader2, Merge, Pencil } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/components/common/PageHeader";
@@ -30,6 +32,8 @@ import { hasAnyRole, hasPermissionEx } from "@/lib/rbac/roles";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 import type { PersonKind, PersonVisibilityScope } from "@/lib/persons/schemas";
+import { Input } from "@/components/ui/input";
+import { assignFirstAsanCode } from "@/lib/persons/asan-code";
 
 /**
  * Phase 5 — person identity dossier (read-only profile expansion).
@@ -95,6 +99,7 @@ function TimestampWithTooltip({ iso, label }: { iso: string; label: string }) {
 function PersonProfilePage() {
   const { personId } = Route.useParams();
   const { roles } = useAuth();
+  const queryClient = useQueryClient();
   const canUpdate = hasPermissionEx(roles, "persons", "update");
   const canMerge = hasAnyRole(roles, ["admin", "manager"]);
   const canSeeCollisions = hasAnyRole(roles, ["admin", "manager", "accountant"]);
@@ -102,6 +107,8 @@ function PersonProfilePage() {
   const canOpenAccounting = hasAnyRole(roles, ["admin", "manager", "accountant"]);
   const canViewAudit = hasPermissionEx(roles, "audit-logs", "view");
   const isViewerOnly = hasAnyRole(roles, ["viewer"]) && !canUpdate;
+  const canAssignAsan = hasAnyRole(roles, ["admin", "accountant"]);
+  const [asanDraft, setAsanDraft] = useState("");
 
   const getFn = useServerFn(getPerson);
 
@@ -110,6 +117,19 @@ function PersonProfilePage() {
     queryFn: async () => {
       const headers = await authHeaders();
       return toError(getFn({ headers, data: { id: personId } }));
+    },
+  });
+
+  const originQuery = useQuery({
+    queryKey: ["person", personId, "origin"],
+    queryFn: async (): Promise<string | null> => {
+      const { data, error } = await supabase
+        .from("persons")
+        .select("origin" as never)
+        .eq("id", personId)
+        .maybeSingle();
+      if (error) throw error;
+      return ((data as { origin?: string | null } | null)?.origin ?? null);
     },
   });
 
@@ -135,6 +155,23 @@ function PersonProfilePage() {
       const id = personQuery.data!.created_by!;
       const { data } = await supabase.from("profiles").select("full_name").eq("id", id).maybeSingle();
       return data?.full_name?.trim() || null;
+    },
+  });
+
+  const assignAsan = useMutation({
+    mutationFn: async () => {
+      const code = asanDraft.trim();
+      if (!code) throw new Error("کد آسان را وارد کنید");
+      await assignFirstAsanCode(personId, code);
+    },
+    onSuccess: () => {
+      toast.success("کد آسان روی همین پرونده ثبت شد");
+      setAsanDraft("");
+      queryClient.invalidateQueries({ queryKey: ["person", personId, "identifiers"] });
+    },
+    onError: (err: unknown) => {
+      const raw = err instanceof Error ? err.message : "";
+      toast.error(raw || "ثبت کد آسان ناموفق بود");
     },
   });
 
@@ -194,6 +231,9 @@ function PersonProfilePage() {
   const identifiers = identifiersQuery.data ?? [];
   const identifiersHiddenForViewer =
     isViewerOnly && !identifiersQuery.isLoading && !identifiersQuery.error && identifiers.length === 0;
+  const hasAsanCode = identifiers.some(
+    (i) => i.kind === "asan_person_code" && i.status !== "revoked",
+  );
 
   return (
     <TooltipProvider>
@@ -243,7 +283,14 @@ function PersonProfilePage() {
             <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <dt className="text-xs text-muted-foreground">نام نمایشی</dt>
-                <dd className="break-words font-medium">{person.display_name}</dd>
+                <dd className="break-words font-medium">
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    {person.display_name}
+                    {originQuery.data === "didar_import" ? (
+                      <Badge variant="secondary">دیدار</Badge>
+                    ) : null}
+                  </span>
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">نام حقوقی</dt>
@@ -323,11 +370,42 @@ function PersonProfilePage() {
                 اطلاعات شناسه برای این نقش قابل نمایش نیست
               </p>
             ) : (
-              <PersonIdentifiersForm
-                personId={personId}
-                identifiers={identifiers}
-                canManage={false}
-              />
+              <div className="space-y-4">
+                <PersonIdentifiersForm
+                  personId={personId}
+                  identifiers={identifiers}
+                  canManage={false}
+                />
+                {canAssignAsan && !hasAsanCode ? (
+                  <div className="flex flex-wrap items-end gap-2 rounded-md border p-3">
+                    <div className="min-w-[12rem] flex-1 space-y-1">
+                      <label className="text-xs text-muted-foreground" htmlFor="assign-asan">
+                        کد آسان
+                      </label>
+                      <Input
+                        id="assign-asan"
+                        dir="ltr"
+                        inputMode="numeric"
+                        maxLength={30}
+                        value={asanDraft}
+                        onChange={(e) => setAsanDraft(e.target.value)}
+                        placeholder="مثلاً 114067"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={assignAsan.isPending || !asanDraft.trim()}
+                      onClick={() => assignAsan.mutate()}
+                    >
+                      {assignAsan.isPending ? (
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      افزودن کد آسان
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
             )}
           </CardContent>
         </Card>
