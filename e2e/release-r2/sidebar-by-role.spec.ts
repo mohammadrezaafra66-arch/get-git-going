@@ -88,20 +88,21 @@ async function collectVisibleSidebar(page: Page): Promise<{ label: string; href:
 
   merge(await harvest());
 
-  const rail = page.locator(
-    "aside:visible button[aria-label]:not([disabled]), [data-sidebar=\"sidebar\"]:visible button[aria-label]:not([disabled])",
-  );
-  const railLabels = await rail.evaluateAll((nodes) =>
-    nodes
-      .map((n) => (n.getAttribute("aria-label") || "").trim())
-      .filter((l) => l && l !== "خروج"),
-  );
+  // Cycle only primary-module toggles (href-less rail buttons from the first harvest).
+  // Clicking every visible sidebar button navigates into pages and exceeds the timeout.
+  const railLabels = [
+    ...new Set(
+      [...byKey.values()]
+        .filter((i) => i.href === null && i.label && i.label !== "خروج")
+        .map((i) => i.label as string),
+    ),
+  ];
   for (const label of railLabels) {
     await page
       .locator("aside:visible, [data-sidebar=\"sidebar\"]:visible")
       .getByRole("button", { name: label, exact: true })
       .first()
-      .click({ force: true })
+      .click({ force: true, timeout: 5_000 })
       .catch(() => undefined);
     await page.waitForTimeout(300);
     merge(await harvest());
@@ -113,7 +114,7 @@ async function collectVisibleSidebar(page: Page): Promise<{ label: string; href:
 }
 
 test.describe.configure({ mode: "serial" });
-test.setTimeout(120_000);
+test.setTimeout(180_000);
 
 test.beforeAll(() => {
   expect(EVIDENCE_DIR, "R2_EVIDENCE_DIR must be set (outside the worktree)").toBeTruthy();
