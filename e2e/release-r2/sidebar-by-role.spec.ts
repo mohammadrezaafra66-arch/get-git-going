@@ -37,8 +37,11 @@ function appGitSha(): string {
 async function collectVisibleSidebar(page: Page): Promise<{ label: string; href: string | null }[]> {
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await expect(page).not.toHaveURL(/\/login/);
-  // Do not wait for a role-specific rail label (e.g. «داشبورد» is not universal).
-  await page.locator("aside").first().waitFor({ state: "visible", timeout: 60_000 });
+  // R2 desktop rail is [data-sidebar=sidebar]; a hidden mobile <aside> can be first.
+  await page
+    .locator("aside:visible, [data-sidebar=\"sidebar\"]:visible")
+    .first()
+    .waitFor({ state: "visible", timeout: 60_000 });
   await page.waitForTimeout(1500);
 
   const harvest = () =>
@@ -85,7 +88,9 @@ async function collectVisibleSidebar(page: Page): Promise<{ label: string; href:
 
   merge(await harvest());
 
-  const rail = page.locator("aside button[aria-label]:not([disabled])");
+  const rail = page.locator(
+    "aside:visible button[aria-label]:not([disabled]), [data-sidebar=\"sidebar\"]:visible button[aria-label]:not([disabled])",
+  );
   const railCount = await rail.count();
   for (let i = 0; i < railCount; i++) {
     const btn = rail.nth(i);
