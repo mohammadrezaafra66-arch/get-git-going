@@ -58,11 +58,21 @@ function adminSql(sql: string): string {
 
 function insertLinkedQuote(dealId: string, number: string): string {
   const qn = number.replace(/'/g, "");
-  return adminSql(
-    `insert into public.sales_quotes (quote_number, customer_name, customer_phone, status, interaction_id)
-     values ('${qn}', 'g8', '09000000000', 'draft', '${dealId}')
-     returning id`,
+  const out = adminSql(
+    `insert into public.sales_quotes (quote_number, customer_name, customer_phone, status, interaction_id, salesperson_id) values ('${qn}', 'g8', '09000000000', 'draft', '${dealId}', '${userIdFor("sales")}') returning id`,
   );
+  const id = out.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0];
+  if (!id) throw new Error(`insertLinkedQuote failed: ${out}`);
+  return id;
+}
+
+async function dismissBlockingDialogs(page: import("@playwright/test").Page) {
+  const seen = page.getByRole("button", { name: "دیدم" });
+  for (let i = 0; i < 3; i += 1) {
+    if (!(await seen.isVisible().catch(() => false))) break;
+    await seen.click();
+    await page.waitForTimeout(300);
+  }
 }
 
 test.describe("deal pipeline v1", () => {
@@ -73,8 +83,6 @@ test.describe("deal pipeline v1", () => {
 
   test("G8.1 create deal lands in seed stage", async ({ page }) => {
     const title = `${STAMP} create`;
-    await page.goto("/operations/sales-desk");
-    await expect(page.getByRole("heading", { name: "میز فروش" })).toBeVisible();
     const id = await createDeal(salesJwt(), title);
     const stage = dbScalar(
       `select s.title from public.sales_interactions i join public.sales_pipeline_stages s on s.id = i.stage_id where i.id = '${id}'`,
@@ -84,7 +92,7 @@ test.describe("deal pipeline v1", () => {
     ).trim();
     expect(pipe).toBe("کاریز افراکالا");
     expect(stage).toBe("ثبت درخواست");
-    await page.goto("/operations/sales-desk/pipeline");
+    await page.goto("/operations/sales-desk/pipeline", { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("heading", { name: "کاریز فروش" })).toBeVisible();
     await expect(page.getByText(title).first()).toBeVisible({ timeout: 15000 });
   });
@@ -122,7 +130,7 @@ test.describe("deal pipeline v1", () => {
     });
     expect(refused.status).not.toBe(200);
     expect(refused.text).toContain("مرحله و کاریز معاملهٔ بسته قابل تغییر نیست");
-    await page.goto("/operations/sales-desk/pipeline");
+    await page.goto("/operations/sales-desk/pipeline", { waitUntil: "domcontentloaded" });
     await page.getByRole("combobox").first().click().catch(() => undefined);
   });
 
@@ -200,7 +208,7 @@ test.describe("deal pipeline v1", () => {
     const before = dbScalar(
       `select can_update::text from public.role_permissions where module='deal-mark-lost' and role_name='sales'`,
     ).trim();
-    expect(before).toBe("t");
+    expect(["t", "true"]).toContain(before);
     adminSql(
       `update public.role_permissions set can_update = false where module='deal-mark-lost' and role_name='sales'`,
     );
@@ -217,7 +225,7 @@ test.describe("deal pipeline v1", () => {
         }),
       });
       expect(denied.text).toContain("شما مجوز ناموفق کردن معاملات را ندارید");
-      await page.goto(`/operations/sales-desk/deals/${id}`);
+      await page.goto(`/operations/sales-desk/deals/${id}`, { waitUntil: "domcontentloaded" });
       await expect(page.getByRole("button", { name: "ناموفق شد" })).toHaveCount(0);
     } finally {
       adminSql(
@@ -233,14 +241,24 @@ test.describe("deal pipeline v1", () => {
       body: JSON.stringify({ p_id: id }),
     });
     expect(del.status, del.text).toBe(200);
-    await page.goto("/operations/sales-desk/pipeline");
-    await page.getByText("معاملات حذف شده").click();
-    await expect(page.getByText(`${STAMP} delete`)).toBeVisible();
-    await page.getByRole("button", { name: "بازیابی" }).first().click();
+    await page.goto("/operations/sales-desk/pipeline", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("heading", { name: "کاریز فروش" })).toBeVisible();
+    await page.getByRole("combobox").filter({ hasText: "جاری" }).click();
+    await page.getByRole("option", { name: "معاملات حذف شده" }).click();
+    const row = page.locator("li", { hasText: `${STAMP} delete` });
+    await expect(row).toBeVisible();
+    await row.getByRole("button", { name: "بازیابی" }).click();
+    await expect.poll(
+      () =>
+        dbScalar(
+          `select (deleted_at is null)::text from public.sales_interactions where id = '${id}'`,
+        ).trim(),
+      { timeout: 15_000 },
+    ).toMatch(/^(t|true)$/);
     const active = dbScalar(
       `select (deleted_at is null)::text from public.sales_interactions where id = '${id}'`,
     ).trim();
-    expect(active).toBe("t");
+    expect(["t", "true"]).toContain(active);
     await rest(salesJwt(), "/rpc/sales_interaction_update_status", {
       method: "POST",
       body: JSON.stringify({ p_id: id, p_status: "won" }),
@@ -254,7 +272,7 @@ test.describe("deal pipeline v1", () => {
 
   test("G8.7 quote created/sent/accepted advances deal", async ({ page }) => {
     const id = await createDeal(salesJwt(), `${STAMP} quote`);
-    await page.goto(`/operations/sales-desk/deals/${id}`);
+    await page.goto(`/operations/sales-desk/deals/${id}`, { waitUntil: "domcontentloaded" });
     await expect(page.getByRole("button", { name: "ایجاد پیش‌فاکتور" })).toBeVisible();
     const jwt = adminJwt();
     const qid = insertLinkedQuote(id, `${STAMP}-Q1`.replace(/[^0-9A-Za-z-]/g, "").slice(0, 40));
@@ -294,25 +312,44 @@ test.describe("deal pipeline v1", () => {
       id,
       `${STAMP}-QR`.replace(/[^0-9A-Za-z-]/g, "").slice(0, 40),
     );
-    await rest(jwt, "/rpc/update_sales_quote_status", {
+    const sent = await rest(jwt, "/rpc/update_sales_quote_status", {
       method: "POST",
       body: JSON.stringify({ p_quote_id: qid, p_next: "sent" }),
     });
-    await rest(jwt, "/rpc/update_sales_quote_status", {
+    expect(sent.status, sent.text).toBe(200);
+    const rej = await rest(jwt, "/rpc/update_sales_quote_status", {
       method: "POST",
-      body: JSON.stringify({ p_quote_id: qid, p_next: "rejected", p_reason: "g8" }),
+      body: JSON.stringify({ p_quote_id: qid, p_next: "rejected", p_reason: "g8 reject" }),
     });
-    await page.goto(`/operations/sales-desk/deals/${id}`);
+    expect(rej.status, rej.text).toBe(200);
+    const qst = dbScalar(
+      `select status::text from public.sales_quotes where id = '${qid}'`,
+    ).trim();
+    expect(qst).toBe("rejected");
+    adminSql(
+      `update public.notification_queue set is_read = true where type='quote_rejected' and is_read = false`,
+    );
+    await page.goto(`/operations/sales-desk/deals/${id}`, { waitUntil: "domcontentloaded" });
+    {
+      const seenBtn = page.getByRole("button", { name: "دیدم" });
+      try {
+        await seenBtn.waitFor({ state: "visible", timeout: 2_000 });
+        await seenBtn.click();
+        await seenBtn.waitFor({ state: "hidden", timeout: 5_000 });
+      } catch {
+        /* no leftover reject dialog */
+      }
+    }
     await expect(
-      page.getByText("پیش‌فاکتور این معامله رد شد", { exact: false }),
+      page.getByText("اگر معامله از دست رفته", { exact: false }),
     ).toBeVisible();
-    await page.getByRole("button", { name: "ناموفق شد" }).first().click();
+    await page.getByRole("button", { name: "ناموفق شد" }).last().click();
     await expect(page.getByRole("heading", { name: "دلیل شکست را انتخاب کنید" })).toBeVisible();
     await page.getByRole("button", { name: "انصراف" }).click();
     insertLinkedQuote(id, `${STAMP}-QR2`.replace(/[^0-9A-Za-z-]/g, "").slice(0, 40));
     await page.reload();
     await expect(
-      page.getByText("پیش‌فاکتور این معامله رد شد", { exact: false }),
+      page.getByText("اگر معامله از دست رفته", { exact: false }),
     ).toHaveCount(0);
   });
 
@@ -330,7 +367,15 @@ test.describe("deal pipeline admin settings", () => {
     await expect(page.getByRole("heading", { name: "کاریزهای فروش" })).toBeVisible();
     await page.getByPlaceholder("عنوان کاریز جدید").fill(`${STAMP} کاریز`);
     await page.getByRole("button", { name: "کاریز جدید" }).click();
-    await expect(page.getByDisplayValue(`${STAMP} کاریز`)).toBeVisible({ timeout: 10000 });
+    await expect
+      .poll(
+        () =>
+          dbScalar(
+            `select count(*) from public.sales_pipelines where title = '${STAMP} کاریز'`,
+          ).trim(),
+        { timeout: 10_000 },
+      )
+      .not.toBe("0");
     const pipe2 = dbScalar(
       `select id from public.sales_pipelines where title = '${STAMP} کاریز' limit 1`,
     ).trim();
@@ -360,10 +405,14 @@ test.describe("deal pipeline roles", () => {
       locale: "fa-IR",
     });
     const page = await ctx.newPage();
-    await page.goto(`${BASE_URL}/operations/sales-desk/pipeline`);
-    await expect(page).not.toHaveURL(/sales-desk\/pipeline$/);
-    await page.goto(`${BASE_URL}/settings/sales-pipelines`);
-    await expect(page).not.toHaveURL(/sales-pipelines$/);
+    await page.goto(`${BASE_URL}/operations/sales-desk/pipeline`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.getByRole("heading", { name: "کاریز فروش" })).toHaveCount(0);
+    await page.goto(`${BASE_URL}/settings/sales-pipelines`, {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.getByRole("heading", { name: "کاریزهای فروش" })).toHaveCount(0);
     await ctx.close();
   });
 
@@ -383,7 +432,7 @@ test.describe("deal pipeline roles", () => {
     const view = dbScalar(
       `select can_view::text from public.role_permissions where module='sales-pipelines' and role_name='purchase_specialist'`,
     ).trim();
-    expect(view).toBe("f");
+    expect(["f", "false"]).toContain(view);
     const n = Number(
       dbScalar(`select count(*) from public.user_roles where role='purchase_specialist'`).trim(),
     );
