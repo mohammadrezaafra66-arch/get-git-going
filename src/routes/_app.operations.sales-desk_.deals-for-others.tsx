@@ -45,6 +45,8 @@ type Row = {
   status: string;
   created_at: string;
   person_id: string;
+  stage_id?: string | null;
+  stage_title?: string | null;
 };
 
 type Group = {
@@ -67,9 +69,10 @@ function DealsForOthersReportPage() {
       let query = supabase
         .from("sales_interactions" as never)
         .select(
-          "id, author_id, salesperson_id, title, body, status, created_at, person_id" as never,
+          "id, author_id, salesperson_id, title, body, status, created_at, person_id, stage_id" as never,
         )
         .eq("kind" as never, "request" as never)
+        .is("deleted_at" as never, null as never)
         .not("salesperson_id" as never, "is" as never, null as never)
         .order("created_at" as never, { ascending: false } as never)
         .limit(500);
@@ -84,6 +87,17 @@ function DealsForOthersReportPage() {
       const rows = ((data ?? []) as unknown as Row[]).filter(
         (r) => r.salesperson_id && r.author_id !== r.salesperson_id,
       );
+      const stageIds = [...new Set(rows.map((r) => r.stage_id).filter(Boolean) as string[])];
+      if (stageIds.length) {
+        const { data: stages } = await supabase
+          .from("sales_pipeline_stages" as never)
+          .select("id, title" as never)
+          .in("id" as never, stageIds as never);
+        const sm = new Map(
+          ((stages ?? []) as { id: string; title: string }[]).map((s) => [s.id, s.title]),
+        );
+        for (const r of rows) r.stage_title = r.stage_id ? sm.get(r.stage_id) ?? null : null;
+      }
 
       const authorIds = [...new Set(rows.map((r) => r.author_id))];
       const { data: profiles } = await supabase
@@ -212,6 +226,7 @@ function DealsForOthersReportPage() {
                       </Link>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {formatDateTimeFa(r.created_at)} · {r.status}
+                        {r.stage_title ? ` · ${r.stage_title}` : ""}
                       </p>
                     </li>
                   ))}

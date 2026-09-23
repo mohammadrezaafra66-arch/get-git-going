@@ -103,7 +103,15 @@ export type ModuleKey =
   /** Wave 3 salesdesk — گزارش دلایل شکست */
   | "deal-lost-report"
   /** Wave 4 salesdesk — صفحه فعالیت‌ها */
-  | "sales-activities";
+  | "sales-activities"
+  /** Deal pipeline v1 — موفق کردن معاملات */
+  | "deal-mark-won"
+  /** Deal pipeline v1 — ناموفق کردن معاملات */
+  | "deal-mark-lost"
+  /** Deal pipeline v1 — حذف و بازیابی معاملات */
+  | "deal-delete"
+  /** Deal pipeline v1 — مدیریت کاریزهای فروش */
+  | "sales-pipelines";
 
 export type Action = "view" | "create" | "update" | "delete";
 export type ExtendedAction = Action | "approve" | "export" | "view_sensitive";

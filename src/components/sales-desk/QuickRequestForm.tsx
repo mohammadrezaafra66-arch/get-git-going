@@ -25,6 +25,10 @@ import {
   parseCreateDealInteraction,
   createDealInteractionSchema,
 } from "@/lib/sales-desk";
+import {
+  listSalesPipelines,
+  listSalesPipelineStages,
+} from "@/lib/sales-desk/pipelines";
 import { supabase } from "@/integrations/supabase/client";
 import {
   PersianFollowUpFields,
@@ -75,6 +79,8 @@ export function QuickRequestForm({
   const [followUpDate, setFollowUpDate] = useState<string | null>(null);
   const [followUpTime, setFollowUpTime] = useState("09:00");
   const [productLines, setProductLines] = useState<RequestedProductLine[]>([]);
+  const [pipelineId, setPipelineId] = useState("");
+  const [stageId, setStageId] = useState("");
 
   const resultsQ = useQuery({
     queryKey: ["sales-desk", "person-picker", debounced],
@@ -98,6 +104,20 @@ export function QuickRequestForm({
     staleTime: 5 * 60_000,
   });
 
+  const pipesQ = useQuery({
+    queryKey: ["sales-desk", "pipelines-active"],
+    queryFn: () => listSalesPipelines({ activeOnly: true }),
+    staleTime: 60_000,
+  });
+  const defaultPipe = pipelineId || pipesQ.data?.[0]?.id || "";
+  const stagesQ = useQuery({
+    queryKey: ["sales-desk", "stages-active", defaultPipe],
+    enabled: !!defaultPipe,
+    queryFn: () => listSalesPipelineStages({ pipelineId: defaultPipe, activeOnly: true }),
+    staleTime: 60_000,
+  });
+  const defaultStage = stageId || stagesQ.data?.[0]?.id || "";
+
   const mutation = useMutation({
     mutationFn: async () => {
       if (!personId) throw new Error("ابتدا شخص را انتخاب کنید");
@@ -117,6 +137,8 @@ export function QuickRequestForm({
           nextFollowUpAt,
           source: callLogId ? "caller_popup" : "sales_desk",
           status: "open" as const,
+          pipelineId: defaultPipe || null,
+          stageId: defaultStage || null,
           items: productLines.map((l) => ({
             productId: l.productId,
             quantity: l.quantity,
@@ -288,6 +310,42 @@ export function QuickRequestForm({
         <div className="space-y-1.5">
           <Label>ایجاد کننده معامله</Label>
           <Input value={authorDisplay} readOnly disabled className="bg-muted/40" />
+        </div>
+        <div className="space-y-1.5">
+          <Label>کاریز</Label>
+          <Select
+            value={defaultPipe || undefined}
+            onValueChange={(v) => {
+              setPipelineId(v);
+              setStageId("");
+            }}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="کاریز" />
+            </SelectTrigger>
+            <SelectContent>
+              {(pipesQ.data ?? []).map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>مرحله</Label>
+          <Select value={defaultStage || undefined} onValueChange={setStageId}>
+            <SelectTrigger>
+              <SelectValue placeholder="مرحله" />
+            </SelectTrigger>
+            <SelectContent>
+              {(stagesQ.data ?? []).map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

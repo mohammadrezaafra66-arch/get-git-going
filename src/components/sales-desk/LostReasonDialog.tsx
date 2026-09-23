@@ -39,6 +39,7 @@ type Props = {
   onOpenChange: (open: boolean) => void;
   onConfirm: (payload: LostReasonSubmit) => void;
   pending?: boolean;
+  openActivityCount?: number;
 };
 
 export function LostReasonDialog({
@@ -46,6 +47,7 @@ export function LostReasonDialog({
   onOpenChange,
   onConfirm,
   pending,
+  openActivityCount = 0,
 }: Props) {
   const [reasonId, setReasonId] = useState("");
   const [note, setNote] = useState("");
@@ -139,6 +141,12 @@ export function LostReasonDialog({
                 placeholder="توضیح الزامی برای «سایر»"
               />
             </div>
+          ) : null}
+
+          {openActivityCount > 0 ? (
+            <p className="text-sm text-amber-800">
+              این معامله {openActivityCount} فعالیت باز دارد.
+            </p>
           ) : null}
 
           {localError ? (
