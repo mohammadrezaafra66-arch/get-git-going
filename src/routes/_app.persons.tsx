@@ -87,6 +87,8 @@ type PersonsSearch = {
   fieldValue?: string;
   /** 1-based page */
   page?: number;
+  /** «منبع: دیدار» — persons.origin = didar_import */
+  origin?: "didar";
 };
 
 function parseCsvEnum<T extends string>(raw: unknown, allowed: readonly T[]): T[] {
@@ -153,6 +155,7 @@ export const Route = createFileRoute("/_app/persons")({
       fieldValue:
         typeof s.fieldValue === "string" && s.fieldValue.length <= 80 ? s.fieldValue : undefined,
       page,
+      origin: s.origin === "didar" ? "didar" : undefined,
     };
   },
   beforeLoad: async () => {
@@ -170,6 +173,7 @@ interface PersonRow {
   visibility_scope: PersonVisibilityScope;
   is_active: boolean;
   created_at: string;
+  origin?: string | null;
   total_count?: number | string;
 }
 
@@ -197,6 +201,7 @@ function PersonsListPage() {
   const missing = viewerOnly ? [] : parseCsvEnum(searchParams.missing, MISSING_VALUES);
   const fieldId = searchParams.fieldId ?? "";
   const fieldValue = searchParams.fieldValue ?? "";
+  const origin = searchParams.origin;
   const page = Math.max(0, (searchParams.page ?? 1) - 1);
 
   const debouncedRaw = useDebounce(search, 350);
@@ -217,6 +222,7 @@ function PersonsListPage() {
           delete next.fieldValue;
         }
         if (!next.fieldValue) delete next.fieldValue;
+        if (!next.origin) delete next.origin;
         if (!next.page || next.page <= 1) delete next.page;
         return next;
       },
@@ -236,24 +242,49 @@ function PersonsListPage() {
   // set by the person's `visibility_scope`, and `persons` has its own RLS on top, so both ends
   // are enforced by the database exactly as the RPC path is.
   const { data, isLoading, error } = useQuery({
-    queryKey: ["persons", { q: term, kind, contexts, active, missing, fieldId, fieldValue, page }],
+    queryKey: ["persons", { q: term, kind, contexts, active, missing, fieldId, fieldValue, origin, page }],
     queryFn: async () => {
-      if (fieldId) {
-        const ids = await findPersonIdsByFieldValue(fieldId, fieldValue);
-        if (ids.length === 0) return { rows: [] as PersonRow[], count: 0 };
+      if (origin === "didar" || fieldId) {
+        let ids: string[] | null = fieldId ? await findPersonIdsByFieldValue(fieldId, fieldValue) : null;
+        if (fieldId && ids && ids.length === 0) return { rows: [] as PersonRow[], count: 0 };
+
+        if (origin === "didar" && missing.includes("asan_person_code")) {
+          const { data: coded, error: codedErr } = await supabase
+            .from("person_identifiers")
+            .select("person_id")
+            .eq("kind", "asan_person_code")
+            .neq("status", "revoked");
+          if (codedErr) throw codedErr;
+          const codedIds = new Set(
+            ((coded ?? []) as unknown as { person_id: string }[]).map((r) => r.person_id),
+          );
+          if (ids) ids = ids.filter((id) => !codedIds.has(id));
+        }
 
         let q = supabase
           .from("persons")
-          .select("id, kind, display_name, legal_name, visibility_scope, is_active, created_at", {
-            count: "exact",
-          })
-          .in("id", ids)
+          .select(
+            "id, kind, display_name, legal_name, visibility_scope, is_active, created_at, origin" as never,
+            { count: "exact" },
+          )
           .order("display_name", { ascending: true })
           .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
 
+        if (ids) q = q.in("id", ids);
+        if (origin === "didar") q = q.eq("origin" as never, "didar_import");
         if (kind !== "all") q = q.eq("kind", kind);
         if (active !== "all") q = q.eq("is_active", active === "active");
         if (term) q = q.ilike("display_name", `%${term}%`);
+        if (origin === "didar" && missing.includes("asan_person_code") && !ids) {
+          const { data: coded, error: codedErr } = await supabase
+            .from("person_identifiers")
+            .select("person_id")
+            .eq("kind", "asan_person_code")
+            .neq("status", "revoked");
+          if (codedErr) throw codedErr;
+          const codedIds = ((coded ?? []) as unknown as { person_id: string }[]).map((r) => r.person_id);
+          if (codedIds.length > 0) q = q.not("id", "in", `(${codedIds.join(",")})`);
+        }
 
         const { data, error, count } = await q;
         if (error) throw error;
@@ -272,6 +303,22 @@ function PersonsListPage() {
       if (error) throw error;
       const rows = (data ?? []) as PersonRow[];
       const count = rows.length > 0 ? Number(rows[0].total_count ?? rows.length) : 0;
+      if (rows.length > 0) {
+        const { data: origins } = await supabase
+          .from("persons")
+          .select("id, origin" as never)
+          .in(
+            "id",
+            rows.map((r) => r.id),
+          );
+        const map = new Map(
+          ((origins ?? []) as unknown as { id: string; origin: string | null }[]).map((o) => [
+            o.id,
+            o.origin,
+          ]),
+        );
+        for (const r of rows) r.origin = map.get(r.id) ?? null;
+      }
       return { rows, count };
     },
   });
@@ -293,7 +340,8 @@ function PersonsListPage() {
     contexts.length +
     (active !== "all" ? 1 : 0) +
     missing.length +
-    (fieldId ? 1 : 0);
+    (fieldId ? 1 : 0) +
+    (origin === "didar" ? 1 : 0);
 
   const toggleContext = (value: ContextFilter) => {
     const next = contexts.includes(value)
@@ -434,6 +482,14 @@ function PersonsListPage() {
               </SelectContent>
             </Select>
 
+            <Button
+              variant={origin === "didar" ? "default" : "outline"}
+              size="sm"
+              onClick={() => patchSearch({ origin: origin === "didar" ? undefined : "didar" })}
+            >
+              منبع: دیدار
+            </Button>
+
             {!viewerOnly ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -534,7 +590,14 @@ function PersonsListPage() {
                 <TableBody>
                   {rows.map((r) => (
                     <TableRow key={r.id}>
-                      <TableCell className="font-medium">{r.display_name}</TableCell>
+                      <TableCell className="font-medium">
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          {r.display_name}
+                          {r.origin === "didar_import" ? (
+                            <Badge variant="secondary">دیدار</Badge>
+                          ) : null}
+                        </span>
+                      </TableCell>
                       <TableCell className="text-muted-foreground">{r.legal_name ?? "—"}</TableCell>
                       <TableCell>{KIND_LABEL[r.kind]}</TableCell>
                       <TableCell className="text-muted-foreground">

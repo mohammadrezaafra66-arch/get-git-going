@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -319,6 +319,16 @@ function OperationsDidarPage() {
   return (
     <div className="space-y-6 p-4 md:p-6" dir="rtl">
       <PageHeader title="یکپارچه‌سازی دیدار CRM" description="تنظیمات اتصال و import مخاطبین" />
+
+      <Alert>
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          ساخت شخص از اکسل دیدار در صفحهٔ «ورود اشخاص از دیدار» انجام می‌شود، نه از API.{" "}
+          <Link to="/admin/didar-import" className="underline underline-offset-2">
+            ورود اشخاص از دیدار
+          </Link>
+        </AlertDescription>
+      </Alert>
 
       <Alert>
         <Info className="h-4 w-4" />

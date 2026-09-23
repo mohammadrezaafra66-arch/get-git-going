@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -498,11 +498,17 @@ function AsanPersonImportPanel() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border bg-muted/30 p-3 text-sm">
-        هیچ چیزی تا لحظهٔ «ثبت نهایی» در افراکالا نوشته نمی‌شود. ردیف‌های دارای تعارض قابل تأیید
-        نیستند و در به‌روزرسانی، مقدار پرشدهٔ افراکالا هرگز با مقدار آسان بازنویسی نمی‌شود؛ فقط
-        فیلدهای خالی پر می‌شوند. هر شخص باید هم «کد حساب آسان» داشته باشد و هم «موبایل»؛ ردیفی که
-        یکی از این دو را ندارد وارد نمی‌شود و دلیلش همین‌جا نوشته می‌شود.
+      <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
+        <p>این صفحه فقط خروجی «اشخاص» آسان است.</p>
+        <p>هر ردیف باید هم کد حساب آسان داشته باشد هم شماره موبایل.</p>
+        <p>کسی که در آسان نیست و فقط در دیدار است را از اینجا وارد نکنید.</p>
+        <p>
+          مسیر افراد بدون کد اسان:{" "}
+          <Link to="/admin/didar-import" className="underline underline-offset-2">
+            ورود اشخاص از دیدار
+          </Link>
+          .
+        </p>
       </div>
 
       {/* ---------------------------------------------------------- step 1 --- */}

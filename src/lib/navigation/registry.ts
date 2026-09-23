@@ -957,6 +957,14 @@ const NAVIGATION_SEEDS = [
     subgroup: "adm-tools",
   },
   {
+    to: "/admin/didar-import",
+    label: "ورود اشخاص از دیدار",
+    icon: Upload,
+    module: "didar-import",
+    group: "admin",
+    subgroup: "adm-tools",
+  },
+  {
     // ASAN M4.2 — the export side of the same bridge. Same access set as the import
     // workbench (admin + accountant) and the same reason for NOT using `adminOnly`:
     // that flag means "admin or manager", which is the wrong set here.
@@ -1438,6 +1446,7 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/warehouses/transfers": ["admin", "manager"],
   "/admin/asan-export": ["admin", "accountant"],
   "/admin/asan-import": ["admin", "accountant"],
+  "/admin/didar-import": ["admin", "accountant"],
   "/admin/audit": ["admin", "manager"],
   "/admin/automation": ["admin", "manager"],
   "/admin/torob-ops-access": ["admin"],

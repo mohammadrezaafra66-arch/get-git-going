@@ -113,6 +113,19 @@ function PersonProfilePage() {
     },
   });
 
+  const originQuery = useQuery({
+    queryKey: ["person", personId, "origin"],
+    queryFn: async (): Promise<string | null> => {
+      const { data, error } = await supabase
+        .from("persons")
+        .select("origin" as never)
+        .eq("id", personId)
+        .maybeSingle();
+      if (error) throw error;
+      return ((data as { origin?: string | null } | null)?.origin ?? null);
+    },
+  });
+
   const identifiersQuery = useQuery({
     queryKey: ["person", personId, "identifiers"],
     queryFn: async (): Promise<PersonIdentifierDTO[]> => {
@@ -243,7 +256,14 @@ function PersonProfilePage() {
             <dl className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               <div>
                 <dt className="text-xs text-muted-foreground">نام نمایشی</dt>
-                <dd className="break-words font-medium">{person.display_name}</dd>
+                <dd className="break-words font-medium">
+                  <span className="inline-flex flex-wrap items-center gap-2">
+                    {person.display_name}
+                    {originQuery.data === "didar_import" ? (
+                      <Badge variant="secondary">دیدار</Badge>
+                    ) : null}
+                  </span>
+                </dd>
               </div>
               <div>
                 <dt className="text-xs text-muted-foreground">نام حقوقی</dt>
