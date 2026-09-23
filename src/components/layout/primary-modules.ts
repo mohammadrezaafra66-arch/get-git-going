@@ -205,6 +205,7 @@ export const PRIMARY_MODULES: PrimaryModule[] = [
       "/admin/audit",
       "/admin/ai-providers",
       "/admin/asan-import",
+      "/admin/didar-import",
       "/admin/asan-export",
       "/admin/purchase",
       "/admin/documents",

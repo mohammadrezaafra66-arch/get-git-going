@@ -132,7 +132,7 @@ async function fetchLatestTorobJob(): Promise<TorobResultView | null> {
     return null;
   }
 
-  const row = (data?.[0] ?? null) as TorobTableRow | null;
+  const row = (data?.[0] ?? null) as unknown as TorobTableRow | null;
 
   return row ? normalizeTorobTableRow(row) : null;
 }

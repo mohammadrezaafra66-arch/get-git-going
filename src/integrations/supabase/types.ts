@@ -574,6 +574,7 @@ export type Database = {
           applied_at: string | null
           asan_code: string | null
           batch_id: string
+          city: string | null
           classification: string
           conflict_reason: string | null
           decision: string
@@ -584,6 +585,7 @@ export type Database = {
           matched_person_id: string | null
           mobile_raw: string | null
           national_id_raw: string | null
+          province: string | null
           row_number: number
         }
         Insert: {
@@ -593,6 +595,7 @@ export type Database = {
           applied_at?: string | null
           asan_code?: string | null
           batch_id: string
+          city?: string | null
           classification?: string
           conflict_reason?: string | null
           decision?: string
@@ -603,6 +606,7 @@ export type Database = {
           matched_person_id?: string | null
           mobile_raw?: string | null
           national_id_raw?: string | null
+          province?: string | null
           row_number: number
         }
         Update: {
@@ -612,6 +616,7 @@ export type Database = {
           applied_at?: string | null
           asan_code?: string | null
           batch_id?: string
+          city?: string | null
           classification?: string
           conflict_reason?: string | null
           decision?: string
@@ -622,6 +627,7 @@ export type Database = {
           matched_person_id?: string | null
           mobile_raw?: string | null
           national_id_raw?: string | null
+          province?: string | null
           row_number?: number
         }
         Relationships: [
@@ -1897,6 +1903,7 @@ export type Database = {
           notes: string | null
           person_id: string | null
           phone: string | null
+          province: string | null
           responsible_id: string | null
           tax_id: string | null
           updated_at: string
@@ -1916,6 +1923,7 @@ export type Database = {
           notes?: string | null
           person_id?: string | null
           phone?: string | null
+          province?: string | null
           responsible_id?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -1935,6 +1943,7 @@ export type Database = {
           notes?: string | null
           person_id?: string | null
           phone?: string | null
+          province?: string | null
           responsible_id?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -8993,6 +9002,46 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_promotion_suggestions"
             referencedColumns: ["product_id"]
+          },
+          {
+            foreignKeyName: "shipping_cost_rule_products_rule_id_fkey"
+            columns: ["id"]
+            isOneToOne: false
+            referencedRelation: "shipping_cost_rule_products"
+            referencedColumns: ["rule_id"]
+          },
+        ]
+      }
+      shipping_cost_rule_products: {
+        Row: {
+          created_at: string
+          product_id: string
+          rule_id: string
+        }
+        Insert: {
+          created_at?: string
+          product_id: string
+          rule_id: string
+        }
+        Update: {
+          created_at?: string
+          product_id?: string
+          rule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_cost_rule_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_cost_rule_products_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_cost_rules"
+            referencedColumns: ["id"]
           },
         ]
       }

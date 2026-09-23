@@ -30,7 +30,7 @@ function EditCustomerPage() {
       const { data, error } = await supabase
         .from("customers")
         .select(
-          "id, name, phone, city, notes, accounting_code, link_group, birth_date, person_id, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)",
+          "id, name, phone, city, province, notes, accounting_code, link_group, birth_date, person_id, responsible_id, responsible:profiles!customers_responsible_id_fkey(id, full_name)",
         )
         .eq("id", customerId)
         .maybeSingle();
@@ -71,6 +71,7 @@ function EditCustomerPage() {
             name: data.name ?? "",
             phone: data.phone ?? "",
             city: (data as { city?: string | null }).city ?? "",
+            province: (data as { province?: string | null }).province ?? "",
             notes: (data as { notes?: string | null }).notes ?? "",
             accounting_code: (data as { accounting_code?: string | null }).accounting_code ?? "",
             link_group: (data as { link_group?: string | null }).link_group ?? "",

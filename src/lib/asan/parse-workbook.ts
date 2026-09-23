@@ -54,8 +54,10 @@ export type HeaderMap<F extends string> = {
 export function buildHeaderIndex<F extends string>(
   header: unknown[],
   headers: Record<F, string>,
+  options?: { optional?: readonly F[] },
 ): HeaderMap<F> {
   const warnings: string[] = [];
+  const optional = new Set(options?.optional ?? []);
   const byNormalized = new Map<string, number>();
   header.forEach((h, i) => {
     const key = normalizeHeader(h);
@@ -70,7 +72,9 @@ export function buildHeaderIndex<F extends string>(
     const i = byNormalized.get(normalizeHeader(headerText));
     index[field] = i ?? null;
     mapping[field] = i === undefined ? null : String(header[i] ?? headerText);
-    if (i === undefined) warnings.push(`ستون «${headerText}» در فایل پیدا نشد`);
+    if (i === undefined && !optional.has(field)) {
+      warnings.push(`ستون «${headerText}» در فایل پیدا نشد`);
+    }
   }
 
   const used = new Set(Object.values(index).filter((i): i is number => i !== null));

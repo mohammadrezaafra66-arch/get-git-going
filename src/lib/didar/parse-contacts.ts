@@ -19,6 +19,10 @@ export const DIDAR_CONTACT_HEADERS = {
   national_id: "کد ملی مشتری",
   address: "آدرس",
   address_alt: "ادرس",
+  city: "شهر",
+  city_alt: "شهر مشتری",
+  province: "استان",
+  province_alt: "استان مشتری",
 } as const;
 
 export type DidarContactField = keyof typeof DIDAR_CONTACT_HEADERS;
@@ -33,6 +37,8 @@ export type ParsedDidarContactRow = {
   national_id_raw: string | null;
   address: string | null;
   company_name: string | null;
+  city: string | null;
+  province: string | null;
 };
 
 export type DidarParseResult = {
@@ -74,6 +80,10 @@ export function parseDidarContacts(matrix: unknown[][]): DidarParseResult {
         national_id: null,
         address: null,
         address_alt: null,
+        city: null,
+        city_alt: null,
+        province: null,
+        province_alt: null,
       },
       ignoredHeaders: [],
       warnings: ["فایل خالی است"],
@@ -81,9 +91,10 @@ export function parseDidarContacts(matrix: unknown[][]): DidarParseResult {
   }
 
   const header = matrix[0] ?? [];
-  const { mapping, index, ignoredHeaders, warnings } = buildHeaderIndex(
+  const { mapping, index, ignoredHeaders, warnings } = buildHeaderIndex<DidarContactField>(
     header,
     DIDAR_CONTACT_HEADERS,
+    { optional: ["address_alt", "city", "city_alt", "province", "province_alt"] },
   );
 
   if (index.mobile === null) {
@@ -112,6 +123,8 @@ export function parseDidarContacts(matrix: unknown[][]): DidarParseResult {
       national_id_raw: at(row, "national_id"),
       address: at(row, "address") ?? at(row, "address_alt"),
       company_name: company,
+      city: at(row, "city") ?? at(row, "city_alt"),
+      province: at(row, "province") ?? at(row, "province_alt"),
     });
   }
 

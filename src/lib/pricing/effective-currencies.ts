@@ -1,5 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { roundSalePrice, type CurrencyCode } from "./constants";
+import {
+  pickShippingRulesToApply,
+  shippingRuleAmountToman,
+  shippingRuleMatches,
+  type ShippingRuleRow,
+} from "./shipping-match";
 
 export interface EffectiveCurrency {
   code: string;
@@ -183,7 +189,7 @@ export async function saveCurrencyRateAndRecompute(opts: {
     supabase
       .from("shipping_cost_rules")
       .select(
-        "id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, sort_order, priority",
+        "id, title, cost_type, cost_value, cost_currency, product_type, product_id, brand_id, category_id, min_purchase_price, max_purchase_price, sort_order, priority, shipping_cost_rule_products(product_id)",
       )
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
@@ -205,7 +211,14 @@ export async function saveCurrencyRateAndRecompute(opts: {
   const products = productsRes.data ?? [];
   const spts = sptsRes.data ?? [];
   const rules = rulesRes.data ?? [];
-  const shippingRules = shippingRes.data ?? [];
+  const shippingRules = (shippingRes.data ?? []).map((row) => {
+    const picks = (row as unknown as { shipping_cost_rule_products?: { product_id: string }[] })
+      .shipping_cost_rule_products;
+    return {
+      ...(row as ShippingRuleRow),
+      selected_product_ids: (picks ?? []).map((p) => p.product_id),
+    };
+  });
   const ratesAll = ratesRes.data ?? [];
 
   // نقشه آخرین نرخ فعال هر ارز (برای ارز پایه و ارز هزینه حمل)
@@ -298,36 +311,19 @@ export async function saveCurrencyRateAndRecompute(opts: {
         });
         if (!matched) throw new Error("قانون قیمت‌گذاری مناسب پیدا نشد.");
 
-        // قانون حمل
-        const candidates = shippingRules.filter((s: any) => {
-          if (s.product_id && s.product_id !== p.id) return false;
-          if (s.category_id && s.category_id !== p.category_id) return false;
-          if (s.brand_id && s.brand_id !== p.brand_id) return false;
-          if (s.product_type && s.product_type !== p.product_type) return false;
-          if (s.min_purchase_price != null && purchase_price_toman < Number(s.min_purchase_price))
-            return false;
-          if (s.max_purchase_price != null && purchase_price_toman > Number(s.max_purchase_price))
-            return false;
-          return true;
-        });
-        const specificity = (s: any) =>
-          (s.product_id ? 1000 : 0) +
-          (s.category_id ? 100 : 0) +
-          (s.brand_id ? 10 : 0) +
-          (s.product_type ? 1 : 0);
-        candidates.sort((a: any, b: any) => specificity(b) - specificity(a));
-        const sRule = candidates[0];
+        const candidates = shippingRules.filter((s) =>
+          shippingRuleMatches(s, p, purchase_price_toman),
+        );
+        const applied = pickShippingRulesToApply(candidates);
         let shipping_cost = 0;
-        if (sRule) {
-          if (sRule.cost_type === "percent") {
-            shipping_cost = Math.round((purchase_price_toman * Number(sRule.cost_value)) / 100);
-          } else if (sRule.cost_type === "currency") {
-            const code = String(sRule.cost_currency ?? "").toLowerCase();
-            const rate = rateMap.get(code) ?? 0;
-            if (!rate || rate <= 0) throw new Error(`نرخ ارز ${code} برای حمل پیدا نشد.`);
-            shipping_cost = Math.round(Number(sRule.cost_value) * rate);
-          } else {
-            shipping_cost = Math.round(Number(sRule.cost_value));
+        for (const sRule of applied) {
+          try {
+            shipping_cost += shippingRuleAmountToman(sRule, purchase_price_toman, (code) => {
+              const rate = rateMap.get(code) ?? 0;
+              return rate > 0 ? rate : null;
+            }).amount;
+          } catch {
+            throw new Error(`نرخ ارز ${sRule.cost_currency ?? ""} برای حمل پیدا نشد.`);
           }
         }
 
