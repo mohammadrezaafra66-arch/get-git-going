@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Loader2,
+  Download,
   RefreshCw,
   Trash2,
   Upload,
@@ -31,6 +32,11 @@ import {
 } from "@/components/ui/table";
 import { toFaDigits } from "@/lib/i18n/formatters";
 import { parseDidarContacts, type DidarParseResult } from "@/lib/didar/parse-contacts";
+import {
+  DIDAR_SAMPLE_HEADERS,
+  DIDAR_SAMPLE_REQUIRED_HEADER,
+  downloadDidarSampleWorkbook,
+} from "@/lib/didar/sample-workbook";
 
 const PAGE_SIZE = 50;
 const STAGE_CHUNK = 200;
@@ -383,6 +389,36 @@ function DidarPersonImportPanel() {
             <div className="flex items-center gap-2 font-medium">
               <FileSpreadsheet className="h-5 w-5 text-primary" />
               مرحله ۱: انتخاب فایل مخاطبان دیدار
+            </div>
+            <div className="space-y-2 rounded-md border border-dashed p-3 text-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-medium">فایل نمونهٔ استاندارد</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    void downloadDidarSampleWorkbook().catch((err: unknown) => {
+                      toast.error(err instanceof Error ? err.message : "دانلود نمونه ناموفق بود");
+                    });
+                  }}
+                >
+                  <Download className="ml-2 h-4 w-4" />
+                  دانلود اکسل نمونه
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                ستون‌ها با همین نام هدر خوانده می‌شوند، نه با شمارهٔ ستون. ستون اضافه اشکال ندارد.
+                تنها ستون اجباری «{DIDAR_SAMPLE_REQUIRED_HEADER}» است.
+              </p>
+              <ol className="grid list-decimal gap-1 pr-5 text-xs sm:grid-cols-2">
+                {DIDAR_SAMPLE_HEADERS.map((h) => (
+                  <li key={h}>
+                    {h}
+                    {h === DIDAR_SAMPLE_REQUIRED_HEADER ? " — اجباری" : ""}
+                  </li>
+                ))}
+              </ol>
             </div>
             <div className="space-y-1">
               <Label htmlFor="didar-contacts-file" className="text-xs">

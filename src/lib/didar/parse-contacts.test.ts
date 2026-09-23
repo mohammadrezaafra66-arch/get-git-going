@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { parseDidarContacts } from "./parse-contacts.ts";
+import { DIDAR_SAMPLE_HEADERS, DIDAR_SAMPLE_REQUIRED_HEADER, didarSampleMatrix } from "./sample-workbook.ts";
 
 const H = {
   didar: "کد دیدار مشتری",
@@ -144,5 +145,25 @@ describe("parseDidarContacts", () => {
     );
     assert.equal(withBlank.rows.length, 1);
     assert.equal(withBlank.rows[0].display_name, "تنها");
+  });
+
+  it("sample workbook headers match the parser and parse without a missing-column warning", () => {
+    assert.equal(DIDAR_SAMPLE_REQUIRED_HEADER, "تلفن همراه مشتری");
+    assert.deepEqual([...DIDAR_SAMPLE_HEADERS], [
+      "کد دیدار مشتری",
+      "تلفن همراه مشتری",
+      "نام خانوادگی مشتری",
+      "عنوان مشتری",
+      "نام مشتری",
+      "نام شرکت",
+      "تلفن ثابت مشتری",
+      "کد ملی مشتری",
+      "آدرس",
+    ]);
+    const result = parseDidarContacts(didarSampleMatrix());
+    assert.equal(result.rows.length, 2);
+    assert.equal(result.rows[0].mobile_raw, "09121234567");
+    assert.equal(result.rows[1].display_name, "شرکت نمونه");
+    assert.ok(!result.warnings.some((w) => w.includes("بدون ستون")));
   });
 });
