@@ -97,3 +97,12 @@ export {
   type FollowUpTrafficLight,
   type CreateSalesActivityInput,
 } from "./activities";
+
+export {
+  listSalesPipelines,
+  listSalesPipelineStages,
+  moveSalesDeal,
+  deleteSalesDeal,
+  restoreSalesDeal,
+} from "./pipelines";
+export { loadDealCapabilities, type DealCapabilities } from "./capabilities";

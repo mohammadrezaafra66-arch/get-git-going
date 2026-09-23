@@ -45,6 +45,8 @@ type DealRow = {
   created_at: string;
   won_at: string | null;
   lost_at: string | null;
+  stage_id?: string | null;
+  stage_title?: string | null;
   person?: { display_name: string } | null;
   author?: { full_name: string | null } | null;
   salesperson?: { full_name: string | null } | null;
@@ -62,9 +64,10 @@ async function fetchDeals(opts: {
   let q = supabase
     .from("sales_interactions" as never)
     .select(
-      "id, person_id, customer_id, title, body, status, salesperson_id, author_id, created_at, won_at, lost_at" as never,
+      "id, person_id, customer_id, title, body, status, salesperson_id, author_id, created_at, won_at, lost_at, stage_id" as never,
     )
     .eq("kind" as never, "request" as never)
+    .is("deleted_at" as never, null as never)
     .order("created_at" as never, { ascending: false } as never)
     .limit(50);
 
@@ -95,14 +98,24 @@ async function enrich(rows: DealRow[]): Promise<DealRow[]> {
       rows.flatMap((r) => [r.author_id, r.salesperson_id].filter(Boolean) as string[]),
     ),
   ];
-  const [{ data: persons }, { data: profiles }, { data: customers }] =
+  const stageIds = [...new Set(rows.map((r) => r.stage_id).filter(Boolean) as string[])];
+  const [{ data: persons }, { data: profiles }, { data: customers }, { data: stages }] =
     await Promise.all([
       supabase.from("persons").select("id, display_name").in("id", personIds),
       supabase.from("profiles").select("id, full_name").in("id", profileIds),
       supabase.from("customers").select("id, person_id").in("person_id", personIds).limit(100),
+      stageIds.length
+        ? supabase
+            .from("sales_pipeline_stages" as never)
+            .select("id, title" as never)
+            .in("id" as never, stageIds as never)
+        : Promise.resolve({ data: [] }),
     ]);
   const personMap = new Map((persons ?? []).map((p) => [p.id, p]));
   const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+  const stageMap = new Map(
+    ((stages ?? []) as { id: string; title: string }[]).map((s) => [s.id, s.title]),
+  );
   const customerByPerson = new Map<string, string>();
   for (const c of customers ?? []) {
     if (c.person_id && !customerByPerson.has(c.person_id)) {
@@ -115,6 +128,7 @@ async function enrich(rows: DealRow[]): Promise<DealRow[]> {
     author: profileMap.get(r.author_id) ?? null,
     salesperson: r.salesperson_id ? profileMap.get(r.salesperson_id) ?? null : null,
     dossierCustomerId: r.customer_id ?? customerByPerson.get(r.person_id) ?? null,
+    stage_title: r.stage_id ? stageMap.get(r.stage_id) ?? null : null,
   }));
 }
 
@@ -366,6 +380,11 @@ export function MyWorkDeals({
                       <Badge variant="outline" className="text-[10px]">
                         {salesInteractionStatusLabel(r.status)}
                       </Badge>
+                      {r.stage_title ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          {r.stage_title}
+                        </Badge>
+                      ) : null}
                       <span className="font-medium">
                         {r.person?.display_name ?? "شخص"}
                       </span>
@@ -411,6 +430,7 @@ export function MyWorkDeals({
                         <OutcomeButtons
                           interactionId={r.id}
                           currentStatus={r.status}
+                          kind="request"
                           onUpdated={() =>
                             qc.invalidateQueries({ queryKey: ["sales-desk"] })
                           }

@@ -33,6 +33,11 @@ function SalesDeskPage() {
       actions={
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm">
+            <Link to="/operations/sales-desk/pipeline">
+              کاریز فروش
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm">
             <Link to="/operations/call-activity">
               <Activity className="ml-1.5 h-4 w-4" />
               فعالیت تلفنی

@@ -2,6 +2,7 @@
  * Deal detail — ایجاد کننده / مسئول / محصولات / پیش‌فاکتورها / ایجاد پیش‌فاکتور.
  */
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, FilePlus2 } from "lucide-react";
 
@@ -22,8 +23,10 @@ import {
   listSalesInteractionItems,
   listActivitiesForDeal,
 } from "@/lib/sales-desk";
-import { formatDateTimeFa } from "@/lib/i18n/formatters";
+import { loadDealCapabilities } from "@/lib/sales-desk/capabilities";
+import { listSalesPipelineStages } from "@/lib/sales-desk/pipelines";
 import { supabase } from "@/integrations/supabase/client";
+import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
 export const Route = createFileRoute("/_app/operations/sales-desk_/deals/$dealId")({
   staticData: {
@@ -39,6 +42,7 @@ function DealDetailPage() {
   const { dealId } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [lostOpenSignal, setLostOpenSignal] = useState(0);
 
   const dealQ = useQuery({
     queryKey: ["sales-desk", "deal", dealId],
@@ -79,6 +83,52 @@ function DealDetailPage() {
     queryKey: ["sales-desk", "deal-activities", dealId],
     queryFn: () => listActivitiesForDeal(dealId),
     staleTime: 15_000,
+  });
+
+  const capsQ = useQuery({
+    queryKey: ["sales-desk", "deal-caps", dealId],
+    queryFn: async () => (await loadDealCapabilities([dealId])).get(dealId) ?? null,
+    staleTime: 10_000,
+  });
+
+  const stagesQ = useQuery({
+    queryKey: ["sales-desk", "deal-stages", dealQ.data?.pipeline_id],
+    enabled: !!dealQ.data?.pipeline_id,
+    queryFn: () => listSalesPipelineStages({ pipelineId: dealQ.data!.pipeline_id! }),
+    staleTime: 30_000,
+  });
+
+  const historyQ = useQuery({
+    queryKey: ["sales-desk", "deal-history", dealId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales_interaction_history" as never)
+        .select("id, event, from_value, to_value, actor_id, source, created_at" as never)
+        .eq("interaction_id" as never, dealId as never)
+        .order("created_at" as never, { ascending: false } as never);
+      if (error) throw new Error(error.message);
+      const rows = (data ?? []) as Array<{
+        id: string;
+        event: string;
+        from_value: string | null;
+        to_value: string | null;
+        actor_id: string | null;
+        source: string;
+        created_at: string;
+      }>;
+      const actorIds = [...new Set(rows.map((r) => r.actor_id).filter(Boolean) as string[])];
+      const { data: profiles } = actorIds.length
+        ? await supabase.from("profiles").select("id, full_name").in("id", actorIds)
+        : { data: [] };
+      const names = new Map(
+        ((profiles ?? []) as { id: string; full_name: string | null }[]).map((p) => [
+          p.id,
+          p.full_name,
+        ]),
+      );
+      return rows.map((r) => ({ ...r, actor_name: r.actor_id ? names.get(r.actor_id) : null }));
+    },
+    staleTime: 10_000,
   });
 
   const deal = dealQ.data;
@@ -137,6 +187,35 @@ function DealDetailPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
+              {stagesQ.data && deal.stage_id ? (
+                <ol className="flex flex-wrap gap-1.5">
+                  {stagesQ.data.map((s) => (
+                    <li key={s.id}>
+                      <Badge variant={s.id === deal.stage_id ? "default" : "outline"}>
+                        {s.title}
+                      </Badge>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
+              {capsQ.data?.show_rejected_quote_notice ? (
+                <div className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-950">
+                  <p>
+                    پیش‌فاکتور این معامله رد شد. اگر معامله از دست رفته، آن را ناموفق کنید و
+                    دلیل شکست را انتخاب کنید.
+                  </p>
+                  {capsQ.data.can_set_lost ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setLostOpenSignal((n) => n + 1)}
+                    >
+                      ناموفق شد
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
               <p className="whitespace-pre-wrap text-foreground/90">{deal.body}</p>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
@@ -167,6 +246,9 @@ function DealDetailPage() {
               <OutcomeButtons
                 interactionId={deal.id}
                 currentStatus={deal.status}
+                kind="request"
+                capabilities={capsQ.data}
+                lostOpenSignal={lostOpenSignal}
                 onUpdated={() => {
                   qc.invalidateQueries({ queryKey: ["sales-desk", "deal", dealId] });
                   qc.invalidateQueries({ queryKey: ["sales-desk"] });
@@ -180,6 +262,7 @@ function DealDetailPage() {
               <TabsTrigger value="items">محصولات درخواستی</TabsTrigger>
               <TabsTrigger value="quotes">پیش‌فاکتورها</TabsTrigger>
               <TabsTrigger value="activities">فعالیت‌ها</TabsTrigger>
+              <TabsTrigger value="history">سابقه</TabsTrigger>
             </TabsList>
             <TabsContent value="items" className="mt-3">
               <Card>
@@ -292,9 +375,69 @@ function DealDetailPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+            <TabsContent value="history" className="mt-3">
+              <Card>
+                <CardContent className="p-3">
+                  {historyQ.isLoading ? (
+                    <p className="text-sm text-muted-foreground">…</p>
+                  ) : (historyQ.data ?? []).length === 0 ? (
+                    <p className="text-sm text-muted-foreground">سابقه‌ای نیست.</p>
+                  ) : (
+                    <ul className="space-y-2 text-sm">
+                      {(historyQ.data ?? []).map((h) => (
+                        <li key={h.id} className="rounded-md border p-2">
+                          <div className="flex flex-wrap gap-2">
+                            <Badge variant="outline">{historyEventFa(h.event)}</Badge>
+                            <span>
+                              {h.from_value ?? "—"} → {h.to_value ?? "—"}
+                            </span>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {h.actor_name ?? "سامانه"} · {historySourceFa(h.source)} ·{" "}
+                            {formatDateTimeFa(h.created_at)}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         </div>
       )}
     </SalesDeskShell>
   );
+}
+
+function historyEventFa(event: string): string {
+  switch (event) {
+    case "status":
+      return "وضعیت";
+    case "stage":
+      return "مرحله";
+    case "pipeline":
+      return "کاریز";
+    case "delete":
+      return "حذف";
+    case "restore":
+      return "بازیابی";
+    default:
+      return event;
+  }
+}
+
+function historySourceFa(source: string): string {
+  switch (source) {
+    case "user":
+      return "کاربر";
+    case "auto_quote_created":
+      return "ساخت پیش‌فاکتور";
+    case "auto_quote_sent":
+      return "ارسال پیش‌فاکتور";
+    case "auto_quote_accepted":
+      return "پذیرش پیش‌فاکتور";
+    default:
+      return source;
+  }
 }

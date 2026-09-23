@@ -33,6 +33,8 @@ type CreateSalesInteractionBase = {
   dealId?: string | null;
   /** C6 — persist to sales_interaction_items after create. */
   items?: SalesInteractionItemInput[];
+  pipelineId?: string | null;
+  stageId?: string | null;
 };
 
 /** kind=request requires non-empty salespersonId (zod + trigger RESPONSIBLE_REQUIRED). */
@@ -68,6 +70,8 @@ export async function createSalesInteraction(
       salespersonId: input.salespersonId,
     });
     salespersonId = parsed.salespersonId;
+    if (!input.pipelineId && parsed.pipelineId) input.pipelineId = parsed.pipelineId;
+    if (!input.stageId && parsed.stageId) input.stageId = parsed.stageId;
   }
 
   const { data, error } = await rpc()("sales_interaction_create", {
@@ -93,6 +97,15 @@ export async function createSalesInteraction(
 
   if (input.items && input.items.length > 0) {
     await insertSalesInteractionItems(data, input.items);
+  }
+
+  if (input.kind === "request" && input.pipelineId && input.stageId) {
+    const { error: moveErr } = await rpc()("sales_deal_move", {
+      p_id: data,
+      p_pipeline_id: input.pipelineId,
+      p_stage_id: input.stageId,
+    });
+    if (moveErr) throw new Error(salesDeskErrorMessage(moveErr.message));
   }
 
   return data;
@@ -144,30 +157,17 @@ export async function updateSalesInteractionStatus(input: {
   lostReasonNote?: string | null;
   lostReasonOther?: string | null;
 }): Promise<string> {
-  // Lost requires lost_reason_* in the same UPDATE as status (trigger 567).
-  // RPC 546 only sets status+outcome_note — use direct UPDATE for lost.
-  if (input.status === "lost") {
-    if (!input.lostReasonId) {
-      throw new Error("دلیل شکست را انتخاب کنید");
-    }
-    const { error } = await supabase
-      .from("sales_interactions" as never)
-      .update({
-        status: "lost",
-        outcome_note: input.outcomeNote ?? null,
-        lost_reason_id: input.lostReasonId,
-        lost_reason_note: input.lostReasonNote ?? null,
-        lost_reason_other: input.lostReasonOther ?? null,
-      } as never)
-      .eq("id" as never, input.id as never);
-    if (error) throw new Error(salesDeskErrorMessage(error.message));
-    return input.id;
+  if (input.status === "lost" && !input.lostReasonId) {
+    throw new Error("دلیل شکست را انتخاب کنید");
   }
 
   const { data, error } = await rpc()("sales_interaction_update_status", {
     p_id: input.id,
     p_status: input.status,
     p_outcome_note: input.outcomeNote ?? null,
+    p_lost_reason_id: input.lostReasonId ?? null,
+    p_lost_reason_note: input.lostReasonNote ?? null,
+    p_lost_reason_other: input.lostReasonOther ?? null,
   });
   if (error) throw new Error(salesDeskErrorMessage(error.message));
   if (typeof data !== "string" || !data) {
@@ -211,13 +211,16 @@ export async function loadDealById(id: string): Promise<{
   lost_reason_other: string | null;
   next_follow_up_at: string | null;
   created_at: string;
+  pipeline_id: string | null;
+  stage_id: string | null;
+  deleted_at: string | null;
   author?: { id: string; full_name: string | null } | null;
   salesperson?: { id: string; full_name: string | null } | null;
 } | null> {
   const { data, error } = await supabase
     .from("sales_interactions" as never)
     .select(
-      "id, person_id, customer_id, kind, title, body, status, salesperson_id, author_id, won_at, lost_at, lost_reason_id, lost_reason_note, lost_reason_other, next_follow_up_at, created_at" as never,
+      "id, person_id, customer_id, kind, title, body, status, salesperson_id, author_id, won_at, lost_at, lost_reason_id, lost_reason_note, lost_reason_other, next_follow_up_at, created_at, pipeline_id, stage_id, deleted_at" as never,
     )
     .eq("id" as never, id as never)
     .maybeSingle();
@@ -240,6 +243,9 @@ export async function loadDealById(id: string): Promise<{
     lost_reason_other: string | null;
     next_follow_up_at: string | null;
     created_at: string;
+    pipeline_id: string | null;
+    stage_id: string | null;
+    deleted_at: string | null;
   };
   const profileIds = [row.author_id, row.salesperson_id].filter(Boolean) as string[];
   let author: { id: string; full_name: string | null } | null = null;

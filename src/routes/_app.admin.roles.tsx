@@ -73,6 +73,10 @@ const MODULES = [
   "bot-api-keys",
   "suppliers",
   "academy",
+  "deal-mark-won",
+  "deal-mark-lost",
+  "deal-delete",
+  "sales-pipelines",
 ] as const;
 
 const MODULE_LABELS: Record<string, string> = {
@@ -94,6 +98,10 @@ const MODULE_LABELS: Record<string, string> = {
   "bot-api-keys": "کلیدهای ربات",
   suppliers: "تأمین‌کنندگان",
   academy: "آکادمی",
+  "deal-mark-won": "موفق کردن معاملات",
+  "deal-mark-lost": "ناموفق کردن معاملات",
+  "deal-delete": "حذف و بازیابی معاملات",
+  "sales-pipelines": "مدیریت کاریزهای فروش",
 };
 
 const ACTIONS = [
