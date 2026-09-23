@@ -39,6 +39,7 @@ const schema = z.object({
     .optional()
     .refine((v) => !v || phoneRegex.test(v), "شماره موبایل نامعتبر است (۰۹xxxxxxxxx)"),
   city: z.string().trim().max(80).optional(),
+  province: z.string().trim().max(80).optional(),
   notes: z.string().trim().max(500, "حداکثر ۵۰۰ کاراکتر").optional(),
   responsible_id: z.string().uuid().nullable().optional(),
   accounting_code: z
@@ -110,6 +111,7 @@ export function CustomerForm({ customerId, personId, defaultValues }: Props) {
       name: defaultValues?.name ?? "",
       phone: defaultValues?.phone ?? "",
       city: defaultValues?.city ?? "",
+      province: defaultValues?.province ?? "",
       notes: defaultValues?.notes ?? "",
       responsible_id: defaultValues?.responsible_id ?? null,
       accounting_code: defaultValues?.accounting_code ?? "",
@@ -132,6 +134,7 @@ export function CustomerForm({ customerId, personId, defaultValues }: Props) {
         name: values.name.trim(),
         phone: values.phone?.trim() || null,
         city: values.city?.trim() || null,
+        province: values.province?.trim() || null,
         notes: values.notes?.trim() || null,
         responsible_id: values.responsible_id ?? null,
         accounting_code: values.accounting_code?.trim() || null,
@@ -251,6 +254,13 @@ export function CustomerForm({ customerId, personId, defaultValues }: Props) {
       if (!created?.legacy_id) {
         throw new Error("ایجاد مشتری ناموفق بود — رکوردی بازگردانده نشد");
       }
+      if (payload.province) {
+        const { error: provinceError } = await supabase
+          .from("customers")
+          .update({ province: payload.province } as never)
+          .eq("id", created.legacy_id);
+        if (provinceError) throw new Error(provinceError.message);
+      }
       return created.legacy_id;
     },
     onSuccess: () => {
@@ -341,9 +351,15 @@ export function CustomerForm({ customerId, personId, defaultValues }: Props) {
         />
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="city">شهر</Label>
-        <Input id="city" {...form.register("city")} placeholder="مثلاً تهران" />
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="city">شهر</Label>
+          <Input id="city" {...form.register("city")} placeholder="مثلاً تهران" />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="province">استان</Label>
+          <Input id="province" {...form.register("province")} placeholder="مثلاً تهران" />
+        </div>
       </div>
 
       <div className="space-y-2">

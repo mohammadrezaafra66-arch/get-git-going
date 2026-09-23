@@ -15,6 +15,8 @@ export const DIDAR_SAMPLE_HEADERS = [
   DIDAR_CONTACT_HEADERS.landline,
   DIDAR_CONTACT_HEADERS.national_id,
   DIDAR_CONTACT_HEADERS.address,
+  DIDAR_CONTACT_HEADERS.city,
+  DIDAR_CONTACT_HEADERS.province,
 ] as const;
 
 export const DIDAR_SAMPLE_REQUIRED_HEADER = DIDAR_CONTACT_HEADERS.mobile;
@@ -31,9 +33,11 @@ export function didarSampleMatrix(): unknown[][] {
       "",
       "02112345678",
       "",
+      "خیابان نمونه",
+      "تهران",
       "تهران",
     ],
-    ["D-SAMPLE-2", "09129876543", "", "", "", "شرکت نمونه", "", "", ""],
+    ["D-SAMPLE-2", "09129876543", "", "", "", "شرکت نمونه", "", "", "", "", ""],
   ];
 }
 

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -37,6 +37,7 @@ import {
   DIDAR_SAMPLE_REQUIRED_HEADER,
   downloadDidarSampleWorkbook,
 } from "@/lib/didar/sample-workbook";
+import { ImportPathButtons } from "@/components/import/ImportPathButtons";
 
 const PAGE_SIZE = 50;
 const STAGE_CHUNK = 200;
@@ -64,6 +65,8 @@ type StagedRow = {
   landline_raw: string | null;
   national_id_raw: string | null;
   address: string | null;
+  city: string | null;
+  province: string | null;
   classification: Classification;
   matched_person_id: string | null;
   match_reason: string | null;
@@ -109,6 +112,8 @@ function DidarImportPage() {
         description="مخاطبان دیدار بدون کد اسان را با شماره موبایل معتبر وارد کنید"
       />
 
+      <ImportPathButtons current="didar" />
+
       <div className="space-y-2 rounded-md border bg-muted/30 p-3 text-sm">
         <p>این صفحه برای مخاطبان دیدار است که هنوز خرید نکرده‌اند و کد اسان ندارند.</p>
         <p>شرط ورود فقط شماره موبایل معتبر ایران است.</p>
@@ -117,11 +122,11 @@ function DidarImportPage() {
           شخص تکراری ساخته نمی‌شود.
         </p>
         <p>
-          افراد دارای کد اسان را از{" "}
-          <Link to="/admin/asan-import" className="underline underline-offset-2">
-            ورود اطلاعات از آسان
-          </Link>{" "}
-          وارد کنید، نه از اینجا.
+          ستون‌های «شهر» و «استان» اختیاری‌اند. اگر در فایل باشند، روی پروندهٔ مشتری در دستیار پر
+          می‌شوند؛ خالی بودن آن‌ها ورود را متوقف نمی‌کند و مقدار پرشدهٔ قبلی بازنویسی نمی‌شود.
+        </p>
+        <p>
+          افراد دارای کد اسان را از صفحهٔ «ورود اطلاعات از آسان» وارد کنید، نه از اینجا.
         </p>
       </div>
 
@@ -164,7 +169,7 @@ function DidarPersonImportPanel() {
     let q = supabase
       .from("didar_import_person_rows" as never)
       .select(
-        "id, row_number, didar_id, display_name, mobile_raw, landline_raw, national_id_raw, address, classification, matched_person_id, match_reason, conflict_reason, decision, applied_at, apply_note",
+        "id, row_number, didar_id, display_name, mobile_raw, landline_raw, national_id_raw, address, city, province, classification, matched_person_id, match_reason, conflict_reason, decision, applied_at, apply_note",
         { count: "exact" },
       )
       .eq("batch_id", batch.id)
@@ -256,6 +261,8 @@ function DidarPersonImportPanel() {
           landline_raw: r.landline_raw,
           national_id_raw: r.national_id_raw,
           address: r.address,
+          city: r.city,
+          province: r.province,
         }));
         const res = await supabase.from("didar_import_person_rows" as never).insert(chunk as never);
         if (res.error) throw new Error(res.error.message);
@@ -409,13 +416,18 @@ function DidarPersonImportPanel() {
               </div>
               <p className="text-xs text-muted-foreground">
                 ستون‌ها با همین نام هدر خوانده می‌شوند، نه با شمارهٔ ستون. ستون اضافه اشکال ندارد.
-                تنها ستون اجباری «{DIDAR_SAMPLE_REQUIRED_HEADER}» است.
+                تنها ستون اجباری «{DIDAR_SAMPLE_REQUIRED_HEADER}» است. «شهر» و «استان»
+                اختیاری‌اند.
               </p>
               <ol className="grid list-decimal gap-1 pr-5 text-xs sm:grid-cols-2">
                 {DIDAR_SAMPLE_HEADERS.map((h) => (
                   <li key={h}>
                     {h}
-                    {h === DIDAR_SAMPLE_REQUIRED_HEADER ? " — اجباری" : ""}
+                    {h === DIDAR_SAMPLE_REQUIRED_HEADER
+                      ? " — اجباری"
+                      : h === "شهر" || h === "استان"
+                        ? " — اختیاری"
+                        : ""}
                   </li>
                 ))}
               </ol>

@@ -25,6 +25,8 @@ export const ASAN_PERSON_HEADERS = {
   landline: "تلفن",
   national_id: "کد ملی",
   address: "آدرس",
+  city: "شهر",
+  province: "استان",
 } as const;
 
 export type AsanPersonField = keyof typeof ASAN_PERSON_HEADERS;
@@ -38,6 +40,8 @@ export type ParsedPersonRow = {
   landline_raw: string | null;
   national_id_raw: string | null;
   address: string | null;
+  city: string | null;
+  province: string | null;
 };
 
 export type ParseResult = {
@@ -64,6 +68,8 @@ export function parseAsanPersons(matrix: unknown[][]): ParseResult {
         landline: null,
         national_id: null,
         address: null,
+        city: null,
+        province: null,
       },
       ignoredHeaders: [],
       warnings: ["فایل خالی است"],
@@ -74,6 +80,7 @@ export function parseAsanPersons(matrix: unknown[][]): ParseResult {
   const { mapping, index, ignoredHeaders, warnings } = buildHeaderIndex(
     header,
     ASAN_PERSON_HEADERS,
+    { optional: ["city", "province"] },
   );
 
   if (index.asan_code === null) {
@@ -98,6 +105,8 @@ export function parseAsanPersons(matrix: unknown[][]): ParseResult {
       national_id_raw: at(row, "national_id"),
       // Scrambled text is preserved verbatim, per the brief — a human corrects it later.
       address: at(row, "address"),
+      city: at(row, "city"),
+      province: at(row, "province"),
     });
   }
 

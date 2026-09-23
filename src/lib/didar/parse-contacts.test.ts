@@ -19,6 +19,10 @@ const H = {
   nid: "کد ملی مشتری",
   address: "آدرس",
   addressAlt: "ادرس",
+  city: "شهر",
+  cityAlt: "شهر مشتری",
+  province: "استان",
+  provinceAlt: "استان مشتری",
   owner: "مسئول مشتری",
   view: "مجوز مشاهده مشتری",
 };
@@ -134,6 +138,36 @@ describe("parseDidarContacts", () => {
     assert.equal(both.rows[0].address, "اولویت آدرس");
   });
 
+  it("reads optional شهر/استان and their Didar aliases without requiring them", () => {
+    const withCanonical = parseDidarContacts(
+      matrixFrom([H.mobile, H.last, H.city, H.province], [
+        { [H.mobile]: "09120000009", [H.last]: "شهری", [H.city]: "اصفهان", [H.province]: "اصفهان" },
+      ]),
+    );
+    assert.equal(withCanonical.rows[0].city, "اصفهان");
+    assert.equal(withCanonical.rows[0].province, "اصفهان");
+
+    const withAlt = parseDidarContacts(
+      matrixFrom([H.mobile, H.last, H.cityAlt, H.provinceAlt], [
+        {
+          [H.mobile]: "09120000010",
+          [H.last]: "علت",
+          [H.cityAlt]: "شیراز",
+          [H.provinceAlt]: "فارس",
+        },
+      ]),
+    );
+    assert.equal(withAlt.rows[0].city, "شیراز");
+    assert.equal(withAlt.rows[0].province, "فارس");
+
+    const missing = parseDidarContacts(
+      matrixFrom([H.mobile, H.last], [{ [H.mobile]: "09120000011", [H.last]: "بدون شهر" }]),
+    );
+    assert.equal(missing.rows[0].city, null);
+    assert.equal(missing.rows[0].province, null);
+    assert.ok(!missing.warnings.some((w) => w.includes("شهر") || w.includes("استان")));
+  });
+
   it("skips blank rows and records a missing-mobile warning only when the column is absent", () => {
     const missingCol = parseDidarContacts([[H.last], ["نامی"]]);
     assert.ok(missingCol.warnings.some((w) => w.includes("تلفن همراه مشتری")));
@@ -159,11 +193,17 @@ describe("parseDidarContacts", () => {
       "تلفن ثابت مشتری",
       "کد ملی مشتری",
       "آدرس",
+      "شهر",
+      "استان",
     ]);
     const result = parseDidarContacts(didarSampleMatrix());
     assert.equal(result.rows.length, 2);
     assert.equal(result.rows[0].mobile_raw, "09121234567");
+    assert.equal(result.rows[0].city, "تهران");
+    assert.equal(result.rows[0].province, "تهران");
     assert.equal(result.rows[1].display_name, "شرکت نمونه");
+    assert.equal(result.rows[1].city, null);
+    assert.equal(result.rows[1].province, null);
     assert.ok(!result.warnings.some((w) => w.includes("بدون ستون")));
   });
 });
