@@ -37,7 +37,6 @@ const SHORTCUTS_BY_ROLE: Partial<Record<AppRole, ShortcutItem[]>> = {
   viewer: [
     { to: "/dashboard", label: "خانه" },
     { to: "/notifications", label: "اعلان‌ها" },
-    { to: "/messages", label: "پیام‌ها" },
   ],
   // P0/5 — the owner's primary mobile role. NOT /purchases/create: purchases.create
   // is admin/manager only, so that shortcut would land the user on a page the route

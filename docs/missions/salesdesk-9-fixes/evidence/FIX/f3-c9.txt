@@ -1,0 +1,34 @@
+KPI_SCORE_BEFORE
+{
+  "tag": "before",
+  "employee_id": "ea9b35dd-fd57-4905-9355-50ca8646d4d1",
+  "kpi_today_sum_count": "0|0",
+  "score_accepted_sum_count": "1779400000|9",
+  "score_total_sales_value": "0.0",
+  "score_fn_total_or_normalized": "null",
+  "tehran_today": "2026-09-22"
+}
+
+KPI_SCORE_AFTER
+{
+  "tag": "after",
+  "employee_id": "ea9b35dd-fd57-4905-9355-50ca8646d4d1",
+  "kpi_today_sum_count": "0|0",
+  "score_accepted_sum_count": "1779400000|9",
+  "score_total_sales_value": "0.0",
+  "score_fn_total_or_normalized": "null",
+  "tehran_today": "2026-09-22"
+}
+
+QUOTE_ROW
+{
+  "quote_id": "5e97b9af-ac5b-47c0-bbbc-b68fcd566272",
+  "status": "draft",
+  "salesperson_id": "ea9b35dd-fd57-4905-9355-50ca8646d4d1",
+  "interaction_id": "45e53c14-504f-4aab-a9a6-9304b834065e",
+  "quote_number": "SQ-2026-000262"
+}
+
+DEAL_ID=45e53c14-504f-4aab-a9a6-9304b834065e
+QUOTE_ID=5e97b9af-ac5b-47c0-bbbc-b68fcd566272
+SHOWS_DEAL_UI=false

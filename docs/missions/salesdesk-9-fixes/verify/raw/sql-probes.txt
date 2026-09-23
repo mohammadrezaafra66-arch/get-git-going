@@ -1,0 +1,309 @@
+﻿
+===== A2 schema closed_at / completed_at =====
+ column_name  |        data_type         
+--------------+--------------------------
+ assignee_id  | uuid
+ completed_at | timestamp with time zone
+ created_at   | timestamp with time zone
+ creator_id   | uuid
+(4 rows)
+
+
+
+===== A2 trigger closed_at maintenance (rollback) =====
+BEGIN
+ERROR:  column "closed_at" does not exist
+LINE 1: SELECT id, closed_at, status::text                          ...
+                   ^
+QUERY:  SELECT id, closed_at, status::text                                    FROM work_items WHERE status::text NOT IN ('done','cancelled','closed')
+       LIMIT 1
+CONTEXT:  PL/pgSQL function inline_code_block line 9 at SQL statement
+Command failed: docker exec -e PGPASSWORD=*** afrakala-lan-db psql -U supabase_admin -d afrakala -v ON_ERROR_STOP=0 -P pager=off -c BEGIN;
+   DO $$
+   DECLARE
+     wid uuid;
+     before_closed timestamptz;
+     after_close timestamptz;
+     after_reopen timestamptz;
+     st text;
+   BEGIN
+     SELECT id, closed_at, status::text INTO wid, before_closed, st
+       FROM work_items WHERE status::text NOT IN ('done','cancelled','closed')
+       LIMIT 1;
+     IF wid IS NULL THEN
+       RAISE NOTICE 'NO_OPEN_TICKET';
+       RETURN;
+     END IF;
+     UPDATE work_items SET status = 'done' WHERE id = wid;
+     SELECT closed_at INTO after_close FROM work_items WHERE id = wid;
+     UPDATE work_items SET status = 'open' WHERE id = wid;
+     SELECT closed_at INTO after_reopen FROM work_items WHERE id = wid;
+     RAISE NOTICE 'wid=% before=% after_close=% after_reopen=%', wid, before_closed, after_close, after_reopen;
+   END $$;
+   ROLLBACK;
+ERROR:  column "closed_at" does not exist
+LINE 1: SELECT id, closed_at, status::text                          ...
+                   ^
+QUERY:  SELECT id, closed_at, status::text                                    FROM work_items WHERE status::text NOT IN ('done','cancelled','closed')
+       LIMIT 1
+CONTEXT:  PL/pgSQL function inline_code_block line 9 at SQL statement
+
+
+===== A3 work_item_events exists + trigger fires (rollback) =====
+BEGIN
+   events_table   
+------------------
+ work_item_events
+(1 row)
+
+DO
+ROLLBACK
+
+
+===== A4 SUPPLIER_REQUIRED insert null (rollback) =====
+BEGIN
+DO
+ROLLBACK
+
+
+===== A4 UPDATE non-null to null (rollback) =====
+BEGIN
+DO
+ROLLBACK
+
+
+===== A4 legacy NULL row other-field update (rollback) =====
+BEGIN
+DO
+ROLLBACK
+
+
+===== A6 SQL counts without supplier =====
+ purchases_null_supplier | purchases_total 
+-------------------------+-----------------
+                     301 |             317
+(1 row)
+
+
+
+===== B3 caller_id settings columns + check =====
+     column_name      | column_default | data_type 
+----------------------+----------------+-----------
+ display_seconds      | 15             | integer
+ enabled              | true           | boolean
+ only_my_customers    | false          | boolean
+ only_my_extension    | false          | boolean
+ show_inbound         | true           | boolean
+ show_others_outbound | false          | boolean
+ show_outbound        | true           | boolean
+(7 rows)
+
+                    conname                    |                     pg_get_constraintdef                      
+-----------------------------------------------+---------------------------------------------------------------
+ user_caller_id_settings_display_seconds_check | CHECK (((display_seconds >= 5) AND (display_seconds <= 120)))
+(1 row)
+
+
+
+===== B3 display_seconds bounds (rollback) =====
+BEGIN
+DO
+ROLLBACK
+
+
+===== B1 ring storage uniqueness still per extension =====
+               indexname                |                                                                                           indexdef                                                                                            
+----------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ call_ring_events_pkey                  | CREATE UNIQUE INDEX call_ring_events_pkey ON public.call_ring_events USING btree (id)
+ idx_call_ring_events_created_at_desc   | CREATE INDEX idx_call_ring_events_created_at_desc ON public.call_ring_events USING btree (created_at DESC)
+ idx_call_ring_events_employee_created  | CREATE INDEX idx_call_ring_events_employee_created ON public.call_ring_events USING btree (employee_id, created_at DESC)
+ call_ring_events_linkedid_ext_dir_uidx | CREATE UNIQUE INDEX call_ring_events_linkedid_ext_dir_uidx ON public.call_ring_events USING btree (linkedid, extension, direction) WHERE ((linkedid IS NOT NULL) AND (extension IS NOT NULL))
+(4 rows)
+
+
+
+===== B5 deal_id column =====
+ column_name | data_type 
+-------------+-----------
+ deal_id     | uuid
+(1 row)
+
+
+
+===== C2 RESPONSIBLE_REQUIRED insert (rollback) =====
+BEGIN
+DO
+ROLLBACK
+
+
+===== C2 UPDATE responsible to null (rollback) =====
+BEGIN
+DO
+ROLLBACK
+
+
+===== C2 backfill leftover nulls =====
+ null_salesperson_requests 
+---------------------------
+                         0
+(1 row)
+
+
+
+===== C7 won_at lost_at columns + status check =====
+    column_name    
+-------------------
+ lost_at
+ lost_reason_id
+ lost_reason_note
+ lost_reason_other
+ won_at
+(5 rows)
+
+                                           pg_get_constraintdef                                           
+----------------------------------------------------------------------------------------------------------
+ CHECK ((status = ANY (ARRAY['open'::text, 'won'::text, 'lost'::text, 'cancelled'::text, 'done'::text])))
+(1 row)
+
+
+
+===== C7 won_at set on won (rollback) =====
+BEGIN
+DO
+ROLLBACK
+
+
+===== C8 lost without reason (rollback) =====
+BEGIN
+DO
+ROLLBACK
+
+
+===== C8 seed ساير hex =====
+ title | sort_order | is_active |    title_hex     
+-------+------------+-----------+------------------
+ سایر  |          0 | t         | d8b3d8a7db8cd8b1
+(1 row)
+
+
+
+===== C6 sales_interaction_items =====
+          items          
+-------------------------
+ sales_interaction_items
+(1 row)
+
+  column_name   
+----------------
+ id
+ interaction_id
+ product_id
+ quantity
+ note
+ created_at
+(6 rows)
+
+
+
+===== C9 sales_quotes.interaction_id =====
+  column_name   
+----------------
+ interaction_id
+(1 row)
+
+
+
+===== C5 role_permissions deals-for-others / lost / activities =====
+ERROR:  column "module_key" does not exist
+LINE 1: SELECT module_key, role
+               ^
+Command failed: docker exec -e PGPASSWORD=*** afrakala-lan-db psql -U supabase_admin -d afrakala -v ON_ERROR_STOP=0 -P pager=off -c SELECT module_key, role
+   FROM role_permissions
+   WHERE module_key ILIKE '%deal%' OR module_key ILIKE '%sales%' OR module_key ILIKE '%activit%'
+   ORDER BY 1,2;
+ERROR:  column "module_key" does not exist
+LINE 1: SELECT module_key, role
+               ^
+
+
+===== D2 activity types order+hex =====
+ sort_order |                     title                      |                                                                                   hex                                                                                    
+------------+------------------------------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+          0 | یادداشت ساده                                   | db8cd8a7d8afd8afd8a7d8b4d8aa20d8b3d8a7d8afd987
+          1 | تماس ورودی                                     | d8aad985d8a7d8b320d988d8b1d988d8afdb8c
+          2 | تماس خروجی                                     | d8aad985d8a7d8b320d8aed8b1d988d8acdb8c
+          3 | اعلام قیمت                                     | d8a7d8b9d984d8a7d98520d982db8cd985d8aa
+          4 | پیگیری و فعالیت یا حساب رسانی                  | d9bedb8cdaafdb8cd8b1db8c20d98820d981d8b9d8a7d984db8cd8aa20db8cd8a720d8add8b3d8a7d8a820d8b1d8b3d8a7d986db8c
+          5 | ویدئو چک                                       | d988db8cd8afd8a6d98820da86daa9
+          6 | تماس خروجی نا موفق                             | d8aad985d8a7d8b320d8aed8b1d988d8acdb8c20d986d8a720d985d988d981d982
+          7 | وظیفه                                          | d988d8b8db8cd981d987
+          8 | فیش چک                                         | d981db8cd8b420da86daa9
+          9 | پیام واتس اپ یا sms                            | d9bedb8cd8a7d98520d988d8a7d8aad8b320d8a7d9be20db8cd8a720736d73
+         10 | برسی اعتبار و مانده معوق مشتری برای اعلام قیمت | d8a8d8b1d8b3db8c20d8a7d8b9d8aad8a8d8a7d8b120d98820d985d8a7d986d8afd98720d985d8b9d988d98220d985d8b4d8aad8b1db8c20d8a8d8b1d8a7db8c20d8a7d8b9d984d8a7d98520d982db8cd985d8aa
+         11 | خرید و چک کالا                                 | d8aed8b1db8cd8af20d98820da86daa920daa9d8a7d984d8a7
+         12 | ارسال فاکتور در گروه مشتری و فاکتور دستی       | d8a7d8b1d8b3d8a7d98420d981d8a7daa9d8aad988d8b120d8afd8b120daafd8b1d988d98720d985d8b4d8aad8b1db8c20d98820d981d8a7daa9d8aad988d8b120d8afd8b3d8aadb8c
+         13 | اکسل اجناس ارسال نشده                          | d8a7daa9d8b3d98420d8a7d8acd986d8a7d8b320d8a7d8b1d8b3d8a7d98420d986d8b4d8afd987
+         14 | ارسال نهایی                                    | d8a7d8b1d8b3d8a7d98420d986d987d8a7db8cdb8c
+         15 | ارسال بیجک یا رسید در گروه مشتری               | d8a7d8b1d8b3d8a7d98420d8a8db8cd8acdaa920db8cd8a720d8b1d8b3db8cd8af20d8afd8b120daafd8b1d988d98720d985d8b4d8aad8b1db8c
+         16 | ثبت حسابداری                                   | d8abd8a8d8aa20d8add8b3d8a7d8a8d8afd8a7d8b1db8c
+         17 | فاکتورلاین                                     | d981d8a7daa9d8aad988d8b1d984d8a7db8cd986
+(18 rows)
+
+
+
+===== D1 activity columns =====
+   column_name    
+------------------
+ activity_type_id
+ deal_id
+ done_at
+ due_at
+ due_has_time
+ original_due_at
+ result_note
+(7 rows)
+
+
+
+===== D1 legacy kinds unchanged sample =====
+  kind   | count 
+---------+-------
+ note    |     2
+ request |     4
+(2 rows)
+
+
+
+===== D4 open overdue/today count via tehran_today =====
+ tehran_today 
+--------------
+ 2026-09-22
+(1 row)
+
+ open_due_today_or_overdue 
+---------------------------
+                         0
+(1 row)
+
+
+
+===== D6 no new pg_cron in afrakala (list jobs in postgres db note) =====
+ skip_cron_here 
+----------------
+              1
+(1 row)
+
+
+
+===== Scope: tasks table still exists; score fn fingerprint =====
+ tasks 
+-------
+ tasks
+(1 row)
+
+        proname         | src_len 
+------------------------+---------
+ compute_employee_score |   13435
+(1 row)
+
+

@@ -67,10 +67,13 @@ test("the merge page reviews a pending pair and merges it", async ({ page }) => 
   await expect(page).not.toHaveURL(/\/login/);
   await expect(page.getByText("بررسی اشخاص تکراری").first()).toBeVisible();
 
-  // Both sides are shown side by side, with the evidence a reviewer needs.
+  // Collapsed queue row shows both names; open details for radios / merge.
   await expect(page.getByText(WINNER).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(LOSER).first()).toBeVisible();
+
+  await page.getByRole("button", { name: "باز کردن جزئیات" }).first().click();
   await expect(page.getByText(`loser.${E2E_PREFIX}@afrakala.local`).first()).toBeVisible();
+  await expect(page.getByText("پیشنهاد سیستم").first()).toBeVisible();
 
   // Choose the winner explicitly rather than trusting the default.
   await page.getByRole("radio").first().check();

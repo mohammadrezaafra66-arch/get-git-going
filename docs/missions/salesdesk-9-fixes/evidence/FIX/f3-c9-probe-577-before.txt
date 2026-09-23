@@ -1,0 +1,10 @@
+                                                                                                                                                                                                                                                      args                                                                                                                                                                                                                                                       
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ p_customer_name text, p_customer_phone text, p_customer_note text, p_expires_at timestamp with time zone, p_subtotal_amount numeric, p_discount_amount numeric, p_final_amount numeric, p_items jsonb, p_settlement_type_id uuid, p_customer_id uuid, p_below_list_ack boolean, p_deposit_amount numeric, p_commitment_confirmed boolean, p_visitor_id uuid, p_warehouse_id uuid, p_quote_exception_type text, p_quote_exception_minutes integer, p_quote_exception_amount numeric, p_quote_exception_text text
+(1 row)
+
+        sig_check         
+--------------------------
+ MISSING_P_INTERACTION_ID
+(1 row)
+

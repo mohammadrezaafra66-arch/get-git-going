@@ -51,6 +51,8 @@ type RingRow = {
   person_id: string | null;
   source: string | null;
   direction: string | null;
+  linkedid: string | null;
+  uniqueid: string | null;
   metadata: Record<string, unknown> | null;
 };
 
@@ -68,7 +70,7 @@ export async function fetchRecentRingEventsForPopup(options?: {
   const { data, error } = await supabase
     .from("call_ring_events" as never)
     .select(
-      "id, event_at, created_at, extension, caller_number, employee_id, person_id, source, direction, metadata",
+      "id, event_at, created_at, extension, caller_number, employee_id, person_id, source, direction, linkedid, uniqueid, metadata",
     )
     .gte("created_at" as never, sinceIso as never)
     .order("created_at" as never, { ascending: false } as never)
@@ -81,6 +83,9 @@ export async function fetchRecentRingEventsForPopup(options?: {
     const meta = { ...(r.metadata ?? {}) };
     if (r.caller_number && meta.raw_number == null) meta.raw_number = r.caller_number;
     if (r.direction) meta.direction = r.direction;
+    // Expose AMI ids for B1 grouping (storage still one-row-per-extension)
+    if (r.linkedid && meta.linkedid == null) meta.linkedid = r.linkedid;
+    if (r.uniqueid && meta.uniqueid == null) meta.uniqueid = r.uniqueid;
     return {
       id: `ring:${r.id}`,
       started_at: r.event_at,
@@ -113,16 +118,16 @@ export async function fetchRecentInboundForPopup(options?: {
     options?.userId != null && options.userId !== "" ? options.userId : null;
   const extensions = userId ? await listExtensionsForUser(userId) : [];
 
-  const orParts: string[] = [];
+  // Inbound for everyone who enabled it (RLS may still limit non-admin on call_logs;
+  // live path is call_ring_events which is readable by all authenticated).
+  // Own extension / employee covers outbound "mine"; client filter applies prefs.
+  const orParts: string[] = [`direction.eq.inbound`];
   if (extensions.length > 0) {
     const list = extensions.map((e) => `"${e.replace(/"/g, "")}"`).join(",");
     orParts.push(`extension.in.(${list})`);
   }
   if (userId) {
     orParts.push(`employee_id.eq.${userId}`);
-  }
-  if (orParts.length === 0) {
-    orParts.push("customer_id.is.null");
   }
 
   const { data, error } = await supabase

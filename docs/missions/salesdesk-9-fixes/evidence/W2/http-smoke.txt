@@ -1,0 +1,6 @@
+=== W2-OPS HTTP smoke ===
+timestamp: 2026-09-22T00:46:26
+url: http://192.168.170.8:3100/
+status: 200
+content_length: 6891
+ok: True

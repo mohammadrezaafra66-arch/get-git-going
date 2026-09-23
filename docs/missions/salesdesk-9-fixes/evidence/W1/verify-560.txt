@@ -1,0 +1,17 @@
+id|uuid|NO|gen_random_uuid()
+work_item_id|uuid|NO|
+actor_id|uuid|YES|
+event_at|timestamp with time zone|NO|now()
+field|text|NO|
+old_value|text|YES|
+new_value|text|YES|
+trig=trg_work_item_events_from_update
+trig=trg_work_items_before_write
+trig=trg_work_items_log_events
+trig=trg_work_items_updated_at
+pol=work_item_events_select
+ledger=1
+idx=idx_work_item_events_event_at
+idx=idx_work_item_events_item_at
+idx=work_item_events_item_at_idx
+idx=work_item_events_pkey

@@ -1,0 +1,14 @@
+﻿
+Running 1 test using 1 worker
+
+cmd : (node:41268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-1c2cd874-165e-449b-81d4-d91604c17bd8.ps1:150 char:1
++ cmd /c "`"$pw`" test --config=docs/missions/salesdesk-9-fixes/evidenc ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:41268) Wa... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 e2e\missions\salesdesk-9-fixes-w1-smoke.spec.ts:6:1 › smoke sales desk + work board (3.8s)
+
+  1 passed (4.9s)

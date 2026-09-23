@@ -31,6 +31,8 @@ import type { InquiryStatus } from "@/hooks/messenger/useInquiries";
 import { updateInquiryStatus } from "@/lib/messenger/inquiry-status";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 export const Route = createFileRoute("/_app/messages/inquiries")({
   beforeLoad: async () => {
@@ -95,16 +97,23 @@ function InquiriesPage() {
         title="استعلام‌های قیمت"
         description="فهرست استعلام‌های گروه‌های پیام‌رسان. تایمر SLA از بک‌اند (`tick_inquiries`) جلو می‌رود."
         actions={
-          <Button asChild variant="outline" size="sm">
-            <Link to="/messages">
-              <MessageSquare className="ms-1 h-4 w-4" />
-              باز کردن پیام‌رسان
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <HelpHint text={COLLAB_HELP.inquiriesPage} ariaLabel="راهنمای صفحه استعلام‌ها" />
+            <Button asChild variant="outline" size="sm">
+              <Link to="/messages">
+                <MessageSquare className="ms-1 h-4 w-4" />
+                باز کردن پیام‌رسان
+              </Link>
+            </Button>
+          </div>
         }
       />
 
       <div className="flex flex-wrap items-center gap-3">
+        <HelpHint
+          text={"فیلتر فهرست:\n«باز» فقط استعلام‌های ناتمام\n«مربوط به من» درخواست‌ها یا تخصیص‌های شما\n«همه» کل استعلام‌های گروه‌های عضو"}
+          ariaLabel="راهنمای فیلتر استعلام"
+        />
         <Select value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
           <SelectTrigger className="w-48">
             <SelectValue />

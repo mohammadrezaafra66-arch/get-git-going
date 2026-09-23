@@ -1,0 +1,73 @@
+===== test users =====
+email|id|roles
+test.accountant@afrakala.local|90c0479f-410d-4fff-9e00-34bbba1cce2b|accountant
+test.admin@afrakala.local|05098088-2849-43f4-8eb5-7c473c3832ec|admin
+test.manager@afrakala.local|a0a4afe5-c6a1-4ed5-a1e6-a41cc45a046b|manager
+test.sales2@afrakala.local|00ebe9d3-b467-453c-89d6-08bab46335c2|sales
+test.sales@afrakala.local|ea9b35dd-fd57-4905-9355-50ca8646d4d1|sales
+test.viewer@afrakala.local|20303d30-ab9d-4fc6-be96-ec5db1dcb647|viewer
+(6 rows)
+===== products sample =====
+id|coalesce|left
+106ccd90-91e1-474f-a99b-96488f07a3f6|AFK-2026-00548|مدلگخیتگحتست
+2b1b6385-d3b9-4c46-ad54-c6be5d560058|AFK-2026-00422|ماشين لباسشويى بوش مدل
+10ff5d8b-bbc4-4470-89d0-3ed7820f4b3e|AFK-2026-00359|چایسازجنرال برلین مدل 1275
+470645cb-e190-4e8d-9f33-d47e92502b80|AFK-2026-00358|کولر جنرال مکس 24000
+295ffe5e-760c-4785-8d08-72c9bf925bc2|AFK-2026-00357|لباسشویی الجی v5سیلور
+44e7d088-c921-4d83-a8d5-9402fccb327d|AFK-2026-00356|ساید الجی مدل x39چین مشکی
+8a4af290-3ac9-4e20-aee7-c67ff56c7baf|AFK-2026-00355|ساید الجی مدل x39کره مشکی
+c86704ce-a374-490a-8bd6-e45e8ef6d153|AFK-2026-00354|سرخ کن ویامی رنگ مشکی
+(8 rows)
+===== sale_price_types =====
+id|code|title
+c70761f0-fcdc-4a7f-82a9-8c8cad00453d|cash_price|نقدی
+b95049df-3448-41c0-b89e-e03227926cf8|cheque_price|چکی
+9ac7ab96-334e-41aa-90e9-90fa01843885|SPT-001|اجناس تهیه ای
+7e4f56cf-8058-4d09-8528-38e5c557b7e7|SPT-002|خارج لیست
+15d4333c-2a4b-431a-acf0-862bb0164ee2|SPT-004|همکارررر
+(5 rows)
+===== settlement_types =====
+id|code|title
+1e809ca6-3b5c-4061-b939-bc8a99747e31|cash|پیش واریز(نقدی)
+1c703904-5a08-4488-a4e6-6e057f73b933|st_bn5tou|تسویه5 روزه 
+3b4e0c19-5ae3-41f2-9504-c6a80fd21826|st_27a2f6|نقدی تسویه 1 روزه 
+(3 rows)
+===== warehouses =====
+id|name
+c6a0984c-08be-4330-872f-5a0903f48fa3|انبارتست2
+33f95160-8746-4f5f-afb3-b8e64f187c87|انبار تست
+4232e663-0dca-45f3-89f7-5e7580951086|ایران ری
+(3 rows)
+===== sales_quotes cols (interaction) =====
+column_name|data_type
+customer_id|uuid
+interaction_id|uuid
+salesperson_id|uuid
+status|USER-DEFINED
+(4 rows)
+===== tehran_today =====
+2026-09-22
+===== C5 aggregate today (all authors) =====
+author_id|count
+(0 rows)
+===== KPI today (accepted quotes by accepted_at) =====
+0|0
+===== score fingerprint (salesperson accepted draft-safe) =====
+1779400000|9
+===== compute_employee_score exists =====
+compute_employee_score|13435
+===== sales_interactions required cols =====
+column_name|is_nullable
+author_id|NO
+body|NO
+customer_id|YES
+kind|NO
+person_id|NO
+salesperson_id|YES
+status|NO
+title|YES
+(8 rows)
+===== persons/customers sample cols =====
+column_name
+id
+(1 row)

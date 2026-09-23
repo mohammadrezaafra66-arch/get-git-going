@@ -1,0 +1,158 @@
+
+Running 2 tests using 1 worker
+
+(node:38124) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36040) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40260) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:38340) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:21296) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37428) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24784) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22476) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:117:3 › F5 — A2/A5 [TEST-9FIX] › A2 — close then reopen marked ticket (sections + تاریخ بسته شدن) (3.5s)
+(node:22964) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36572) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32612) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:34228) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F5_MARKER_COUNTS {"work_items":0,"suppliers":0,"purchases":0,"persons":0,"customers":0}
+  x  2 e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:252:3 › F5 — A2/A5 [TEST-9FIX] › A5 — quick-create supplier and save marked purchase (4.6s)
+
+
+  1) e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:252:3 › F5 — A2/A5 [TEST-9FIX] › A5 — quick-create supplier and save marked purchase 
+
+    Error: expect(received).not.toMatch(expected)
+
+    Expected pattern: not /SUPPLIER_REQUIRED|تأمین‌کننده الزامی است/
+    Received string:      "«محیط تست myafrakala.ir — اطلاعات این بخش واقعی نیست»
+    myafrakala.ir
+    سامانه یکپارچه مدیریت سازمانی
+    جستجوی سریع فروش
+    میز فروش
+    تیکت
+    همکاری
+    Ctrl K
+    نیازمند اقدام
+    صف انتشار قیمت
+    نیازمند بررسی خطا
+    188
+    کاربران در انتظار تأیید
+    4
+    کالا
+    اطلاعات کالا
+    6
+    قیمت‌گذاری
+    7
+    انتشار و لیست‌ها
+    4
+    خرید و تأمین‌کنندگان
+    تأمین‌کنندگان
+    فضای خرید
+    پنل خرید
+    دستیار هوشمند خرید
+    انبارها
+    انتقال بین‌انباری
+    گزارش کاردکس
+    اعلان‌ها
+    Caller ID
+    راهنما
+    TE
+    test.admin@afrakala.local
+    مدیر کل
+    Toggle Sidebar
+    9+
+    TE
+    test.admin@afrakala.local
+    مدیر کل
+    پنل خرید
+    جزئیات
+    ثبت خرید جدید
+    
+    ثبت سریع خرید تک‌محصولی با تأمین‌کننده، قیمت، ارز، تعداد و تاریخ
+    
+    بازگشت
+    محصول *جستجو و انتخاب محصول...
+    تأمین‌کننده *
+    + تأمین‌کنندهٔ جدید
+    انتخاب تأمین‌کننده
+    تأمین‌کنندهٔ آزمایشی 1
+    تأمین‌کنندهٔ آزمایشی 10
+    تأمین‌کنندهٔ آزمایشی 11
+    تأمین‌کنندهٔ آزمایشی 12
+    تأمین‌کنندهٔ آزمایشی 13
+    تأمین‌کنندهٔ آزمایشی 14
+    تأمین‌کنندهٔ آزمایشی 15
+    تأمین‌کنندهٔ آزمایشی 2
+    تأمین‌کنندهٔ آزمایشی 3
+    تأمین‌کنندهٔ آزمایشی 4
+    تأمین‌کنندهٔ آزمایشی 5
+    تأمین‌کنندهٔ آزمایشی 6
+    تأمین‌کنندهٔ آزمایشی 7
+    تأمین‌کنندهٔ آزمایشی 8
+    تأمین‌کنندهٔ آزمایشی 9
+    [TEST-9FIX] F5 supplier f571827150
+    
+    تأمین‌کننده الزامی است
+    
+    زمان تسویه *
+    نقدی (۰ روز)
+    نقدی (۰ روز)
+    تسویه ۳۰ روزه (۳۰ روز)
+    تسویه ۶۰ روزه (۶۰ روز)
+    تسویه ۹۰ روزه (۹۰ روز)
+    چک ۴۵ روزه (۴۵ روز)
+    قیمت خرید *
+    قیمت نقدی همین تأمین‌کننده در همین لحظه
+    امتیازآور
+    
+    هرچه قیمت با مهلت به قیمت نقدی نزدیک‌تر باشد و مهلت تسویه طولانی‌تر، امتیاز شما در گیمیفیکیشن «طلای زمان» بیشتر می‌شود.
+    
+    ارز *
+    تومان
+    تومان
+    دلار سلیمانیه
+    درهم امارات
+    دلار تهران
+    تعداد *
+    تاریخ خرید *
+    انبار مقصد
+    انبار پیش‌فرض (ایران ری)
+    انبار پیش‌فرض (ایران ری)
+    ایران ری
+    انبار تست
+    انبارتست2
+    
+    کالای این خرید به همین انبار اضافه می‌شود و یک ردیف کاردکس «ورود» ثبت می‌گردد.
+    
+    توضیحات
+    ثبت خرید
+    خرید با موفقیت ثبت شد
+    «[TEST-9FIX] F5 supplier f571827150» ثبت شد"
+
+      351 |     // No SUPPLIER_REQUIRED surfaced to the user
+      352 |     const bodyAfter = await page.locator("body").innerText();
+    > 353 |     expect(bodyAfter).not.toMatch(/SUPPLIER_REQUIRED|تأمین‌کننده الزامی است/);
+          |                           ^
+      354 |
+      355 |     writeUtf8(
+      356 |       "f5-a5.txt",
+        at D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:353:27
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f5-F-2ab4b-er-and-save-marked-purchase\error-context.md
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f5-F-2ab4b-er-and-save-marked-purchase\error-context.md
+
+  1 failed
+    e2e\missions\salesdesk-9-fixes-fix-f5.spec.ts:252:3 › F5 — A2/A5 [TEST-9FIX] › A5 — quick-create supplier and save marked purchase 
+  1 passed (12.8s)

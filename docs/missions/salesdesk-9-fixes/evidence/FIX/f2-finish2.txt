@@ -1,0 +1,25 @@
+
+Running 3 tests using 1 worker
+
+(node:7616) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4148) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:277:3 › F2 — caller popup B2/B4/B5 › B2 — cross-tab dismiss sync + single primary claim (14.2s)
+(node:27812) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:41208) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 2 e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:358:3 › F2 — caller popup B2/B4/B5 › B4 — draft survives switch; cleared on save (8.7s)
+(node:14676) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:24792) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39956) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:40612) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F2_MARKER_COUNTS {"call_ring_events":0,"sales_interactions":0,"persons":0,"customers":0}
+  ok 3 e2e\missions\salesdesk-9-fixes-fix-f2.spec.ts:423:3 › F2 — caller popup B2/B4/B5 › B5 — افزودن معامله from call note sets deal_id (7.2s)
+
+  3 passed (35.5s)

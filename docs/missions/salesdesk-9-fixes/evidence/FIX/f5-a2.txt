@@ -1,0 +1,17 @@
+{
+  "closed": {
+    "id": "a0162828-d8a5-49c4-928d-7f0de882d21e",
+    "status": "done",
+    "completed_at": "2026-09-22T10:14:32.50117+00:00",
+    "title": "[TEST-9FIX] F5 ticket f572067907",
+    "event_count": 1
+  },
+  "reopened": {
+    "id": "a0162828-d8a5-49c4-928d-7f0de882d21e",
+    "status": "pending",
+    "completed_at": null,
+    "title": "[TEST-9FIX] F5 ticket f572067907",
+    "event_count": 2
+  },
+  "pass": true
+}

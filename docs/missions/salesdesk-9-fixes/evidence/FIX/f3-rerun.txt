@@ -1,0 +1,66 @@
+PLAYWRIGHT_RESOLVED=D:\AfraKalaTest\wt-salesdesk-9-fixes\node_modules\.bin\playwright.cmd
+AFRAKALA_LAN_ENV=D:\AfraKalaTest\app\deploy\lan\.env.lan
+
+Running 2 tests using 1 worker
+
+(node:39036) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:37688) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31944) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19248) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27836) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35468) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F3_C9_MARKER_COUNTS {"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}
+  x  1 e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:256:3 › F3 — C9 [TEST-9FIX] quote-from-deal › C9 — create draft quote from deal; KPI/score unchanged (6.1s)
+(node:23868) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4796) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36132) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:16920) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35188) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6356) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F3_C5_MARKER_COUNTS {"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}
+  ok 2 e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:439:3 › F3 — C5 [TEST-9FIX] deals-for-others › C5 — deals-for-others count +1 equals SQL (7.6s)
+
+
+  1) e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:256:3 › F3 — C9 [TEST-9FIX] quote-from-deal › C9 — create draft quote from deal; KPI/score unchanged 
+
+    Error: C9 quote save rejected by product: ثبت پیش‌فاکتور انجام نشد
+
+    دلیل رد شدن در زیر آمده است. می‌توانید یک توضیح یک‌خطی اضافه کنید تا در «درخواست‌های رد شدهٔ من» ثبت شود و بعداً قابل پیگیری باشد.
+
+    permission denied for table sales_quotes
+    توضیح شما (اختیاری)
+    بستن بدون ثبت
+    ثبت دلیل
+    Close
+
+      207 |     await expect(rejected).toBeVisible({ timeout: 5_000 });
+      208 |     const reason = await rejected.innerText();
+    > 209 |     throw new Error(`C9 quote save rejected by product: ${reason.slice(0, 500)}`);
+          |           ^
+      210 |   } catch (e) {
+      211 |     if (e instanceof Error && e.message.startsWith("C9 quote save rejected")) throw e;
+      212 |     // no rejection dialog — fall through to URL assert
+        at saveDraftQuoteFromDealPrefill (D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:209:11)
+        at D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:300:7
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f3-F-7190a-om-deal-KPI-score-unchanged\error-context.md
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f3-F-7190a-om-deal-KPI-score-unchanged\error-context.md
+
+  1 failed
+    e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:256:3 › F3 — C9 [TEST-9FIX] quote-from-deal › C9 — create draft quote from deal; KPI/score unchanged 
+  1 passed (30.4s)
+
+EXIT_CODE=1

@@ -1,0 +1,15 @@
+﻿# W4-DE-D2 checkpoint
+- started: 2026-09-22T04:39:58+05:00
+- updated: 2026-09-22T04:46:30+05:00
+- state: done
+- HEAD: a0b4fd2b2b2677a7bfdd75299a704772601c83bf
+- migration_commit: 355c93ec6e0b25de352ac4111944319b6e6b7b62
+- branch: feature/salesdesk-9-fixes
+- push: 355c93ec..a0b4fd2b origin/feature/salesdesk-9-fixes EXIT=0
+- migration: supabase/migrations/20260922050000_572_sales_activity_types.sql
+- version: 20260922050000
+- seeded_rows: 18
+- hex_verify: PASS all_ok=true
+- sample_0_hex: db8cd8a7d8afd8afd8a7d8b4d8aa20d8b3d8a7d8afd987
+- sample_17_hex: d981d8a7daa9d8aad988d8b1d984d8a7db8cd986
+- did_not: D1+

@@ -1,0 +1,29 @@
+{
+  "columns": [
+    "acceptance_criteria",
+    "assignee_id",
+    "body",
+    "claimed_due_at",
+    "completed_at",
+    "created_at",
+    "creator_id",
+    "decision_bucket",
+    "decision_bucket_date",
+    "group_name",
+    "id",
+    "impact_if_missed",
+    "impact_level",
+    "intake_summary",
+    "intake_transcript",
+    "kind",
+    "priority",
+    "section",
+    "status",
+    "title",
+    "topic_id",
+    "updated_at",
+    "work_mode"
+  ],
+  "closed_at_equivalent": "completed_at",
+  "need_closed_at_column": false
+}

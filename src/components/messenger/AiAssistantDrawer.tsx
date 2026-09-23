@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { BRANDING } from "@/config/branding";
 import { CreateWorkFromMessageButton } from "@/components/work/CreateWorkFromMessageButton";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 export function AiAssistantDrawer({
   open,
@@ -168,6 +170,7 @@ export function AiAssistantDrawer({
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             دستیار هوشمند {BRANDING.displayNameFa}
+            <HelpHint text={COLLAB_HELP.aiAssistant} ariaLabel="راهنمای دستیار هوشمند" />
           </SheetTitle>
           <SheetDescription className="text-xs">
             گفتگو با ارائه‌دهنده هوش مصنوعی تنظیم‌شده در پنل مدیریت.

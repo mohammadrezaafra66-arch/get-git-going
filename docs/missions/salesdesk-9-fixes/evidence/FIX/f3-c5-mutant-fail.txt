@@ -1,0 +1,43 @@
+
+Running 1 test using 1 worker
+
+(node:33948) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39984) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27876) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:33508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:11388) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31900) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F3_C5_MARKER_COUNTS {"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}
+  x  1 e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:417:3 › F3 — C5 [TEST-9FIX] deals-for-others › C5 — deals-for-others count +1 equals SQL (6.7s)
+
+
+  1) e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:417:3 › F3 — C5 [TEST-9FIX] deals-for-others › C5 — deals-for-others count +1 equals SQL 
+
+    Error: UI count must rise by exactly +1
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 1
+
+      478 |       ].join("\n") + "\n",
+      479 |     );
+    > 480 |     expect(uiAfter, "UI count must rise by exactly +1").toBe(uiBefore + 2);
+          |                                                         ^
+      481 |     expect(uiAfter, "UI count must equal SQL aggregate").toBe(sqlAfter);
+      482 |
+      483 |     // Also accept Persian digit rendering of the same count
+        at D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:480:57
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f3-F-7e085-r-others-count-1-equals-SQL\error-context.md
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f3-F-7e085-r-others-count-1-equals-SQL\error-context.md
+
+  1 failed
+    e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:417:3 › F3 — C5 [TEST-9FIX] deals-for-others › C5 — deals-for-others count +1 equals SQL 

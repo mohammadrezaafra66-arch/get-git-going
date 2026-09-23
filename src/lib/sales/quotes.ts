@@ -162,3 +162,74 @@ export function validateQuote(
 
   return errs;
 }
+
+/** One entry from `get_sales_search_products`.prices — same shape ProductTab uses. */
+export type SettlementPriceEntry = {
+  sale_price_type_id: string | null;
+  settlement_type_id: string | null;
+  current_price: number | string | null;
+};
+
+export type SettlementPriceLookup =
+  | { status: "match"; price: number }
+  | { status: "baseline_fallback"; price: number }
+  | { status: "no_price" };
+
+/**
+ * Pick unit price for (sale price type × settlement) from RPC price entries.
+ * Mirrors ProductTab on `/sales/quotes/new` — exact match, else baseline when a
+ * settlement term was requested, else no_price.
+ */
+export function resolveSettlementPriceFromEntries(
+  entries: SettlementPriceEntry[],
+  salePriceTypeId: string,
+  settlementTypeId: string | null,
+): SettlementPriceLookup {
+  const priceOf = (settlementId: string | null): number | null => {
+    const hit = entries.find(
+      (e) =>
+        e.sale_price_type_id === salePriceTypeId &&
+        e.settlement_type_id === settlementId &&
+        e.current_price != null,
+    );
+    const value = Number(hit?.current_price ?? 0);
+    return value > 0 ? value : null;
+  };
+
+  const exact = priceOf(settlementTypeId);
+  if (exact != null) return { status: "match", price: exact };
+  if (settlementTypeId != null) {
+    const baseline = priceOf(null);
+    if (baseline != null) return { status: "baseline_fallback", price: baseline };
+  }
+  return { status: "no_price" };
+}
+
+/**
+ * C9 deal→quote: build a catalog DraftQuoteItem the same way ProductTab confirm does.
+ * Callers must already have a sellable unit_price and active sale_price_type_id.
+ */
+export function draftCatalogQuoteItem(args: {
+  key: string;
+  productId: string;
+  sku: string | null;
+  title: string;
+  quantity: number;
+  salePriceTypeId: string;
+  unitPrice: number;
+  warehouseId?: string | null;
+}): DraftQuoteItem {
+  return {
+    key: args.key,
+    source: "product_price",
+    product_id: args.productId,
+    free_item_name: null,
+    sku_snapshot: args.sku,
+    title_snapshot: args.title,
+    sale_price_type_id: args.salePriceTypeId,
+    quantity: args.quantity,
+    unit_price: args.unitPrice,
+    discount_amount: 0,
+    warehouse_id: args.warehouseId ?? null,
+  };
+}

@@ -1,0 +1,9 @@
+BEGIN
+DO
+ROLLBACK
+ column_name |        data_type         
+-------------+--------------------------
+ lost_at     | timestamp with time zone
+ won_at      | timestamp with time zone
+(2 rows)
+

@@ -38,7 +38,16 @@ import { formatNumber } from "@/lib/i18n/formatters";
 import { QuickAddCustomerDialog } from "@/shared/components/QuickAddCustomerDialog";
 import { Badge } from "@/components/ui/badge";
 import { STOCK_STATUS_LABELS, STOCK_STATUS_VARIANTS } from "@/lib/products/constants";
-import { computeTotals, lineTotal, validateQuote, type DraftQuoteItem } from "@/lib/sales/quotes";
+import {
+  computeTotals,
+  draftCatalogQuoteItem,
+  lineTotal,
+  resolveSettlementPriceFromEntries,
+  validateQuote,
+  type DraftQuoteItem,
+  type SettlementPriceEntry,
+  type SettlementPriceLookup,
+} from "@/lib/sales/quotes";
 import { useProductThumbnails } from "@/hooks/products/useProductThumbnails";
 import { WarehouseSelect } from "@/components/warehouses/WarehouseSelect";
 import { usePredictedLineServices } from "@/lib/sales/line-services";
@@ -66,6 +75,12 @@ export const Route = createFileRoute("/_app/sales/quotes/new")({
   // Reads the same ALLOWED_ROLES constant the requireAnyRole call below uses, so the client
   // gate and the server guard cannot drift apart.
   staticData: { gate: { kind: "anyRole", allowed: ALLOWED_ROLES } },
+  validateSearch: (search: Record<string, unknown>): { interactionId?: string } => ({
+    interactionId:
+      typeof search.interactionId === "string" && search.interactionId.length > 0
+        ? search.interactionId
+        : undefined,
+  }),
   beforeLoad: async () => {
     // Phase 6.7 — was a hand-rolled ensureAuthReady() guard, which redirected
     // authenticated users to /login on any server-rendered navigation.
@@ -78,6 +93,13 @@ function NewQuotePage() {
   const navigate = useNavigate();
   const { user, roles } = useAuth();
   const canEditPriceFreely = roles.includes("admin") || roles.includes("manager");
+  const { interactionId: dealInteractionId } = Route.useSearch();
+  /** C9 — deal responsible + interaction link applied after create. */
+  const [dealPrefill, setDealPrefill] = useState<{
+    interactionId: string;
+    salespersonId: string | null;
+  } | null>(null);
+  const [dealPrefillDone, setDealPrefillDone] = useState(false);
 
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -281,8 +303,9 @@ function NewQuotePage() {
     setCustomerSearch("");
   };
 
-  // sale price types (cached)
-  const { data: priceTypes = [] } = useQuery({
+  // sale price types (cached) — loaded before C9 deal prefill so catalog lines
+  // can resolve sale_price_type_id + unit_price the same way ProductTab does.
+  const { data: priceTypes = [], isFetched: priceTypesFetched } = useQuery({
     queryKey: ["sale-price-types-active"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -296,6 +319,154 @@ function NewQuotePage() {
     },
     staleTime: 10 * 60_000,
   });
+
+  // C9 — prefill from deal (interactionId search param)
+  useEffect(() => {
+    if (!dealInteractionId || dealPrefillDone) return;
+    // Wait for active price types; empty after fetch → graceful toast below.
+    if (!priceTypesFetched) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: deal, error } = await supabase
+          .from("sales_interactions" as never)
+          .select(
+            "id, customer_id, salesperson_id, person_id" as never,
+          )
+          .eq("id" as never, dealInteractionId as never)
+          .maybeSingle();
+        if (error) throw new Error(error.message);
+        if (!deal || cancelled) return;
+        const d = deal as unknown as {
+          id: string;
+          customer_id: string | null;
+          salesperson_id: string | null;
+          person_id: string;
+        };
+        setDealPrefill({
+          interactionId: d.id,
+          salespersonId: d.salesperson_id,
+        });
+
+        if (d.customer_id) {
+          const { data: cust } = await supabase
+            .from("customers")
+            .select("id, name, phone")
+            .eq("id", d.customer_id)
+            .maybeSingle();
+          if (cust && !cancelled) {
+            selectCustomer({
+              id: cust.id,
+              name: cust.name,
+              phone: cust.phone,
+            });
+          }
+        }
+
+        const { data: itemRows } = await supabase
+          .from("sales_interaction_items" as never)
+          .select(
+            "product_id, quantity, note, product:products(id, name, sku)" as never,
+          )
+          .eq("interaction_id" as never, d.id as never);
+        const rows = (itemRows ?? []) as unknown as Array<{
+          product_id: string;
+          quantity: number;
+          note: string | null;
+          product: { id: string; name: string; sku: string | null } | null;
+        }>;
+        if (rows.length === 0 || cancelled) return;
+
+        if (priceTypes.length === 0) {
+          toast.error(
+            "هیچ نوع قیمت فروش فعالی برای پیش‌پر کردن آیتم‌های معامله یافت نشد.",
+          );
+          return;
+        }
+
+        const draftItems: DraftQuoteItem[] = [];
+        const noPriceTitles: string[] = [];
+
+        for (const r of rows) {
+          const title = r.product?.name ?? "محصول";
+          if (!r.product_id) {
+            noPriceTitles.push(title);
+            continue;
+          }
+          const searchTerm = (r.product?.sku ?? r.product?.name ?? "").trim();
+          if (!searchTerm) {
+            noPriceTitles.push(title);
+            continue;
+          }
+
+          // Same RPC + entry pick as ProductTab — do not invent a parallel path.
+          const { data: searchRows, error: priceErr } = await supabase.rpc(
+            "get_sales_search_products",
+            { p_search: searchTerm, p_limit: 50 },
+          );
+          if (priceErr) throw new Error(priceErr.message);
+          const row = (
+            (searchRows ?? []) as Array<{ id: string; prices: unknown }>
+          ).find((x) => x.id === r.product_id);
+          if (!row) {
+            noPriceTitles.push(title);
+            continue;
+          }
+          const entries = (
+            Array.isArray(row.prices) ? row.prices : []
+          ) as SettlementPriceEntry[];
+
+          // Prefer first active price type (same list as the form); fall through
+          // to later types if that one has no sellable price.
+          let picked: { salePriceTypeId: string; unitPrice: number } | null = null;
+          for (const pt of priceTypes) {
+            // Prefill uses baseline settlement (form settlement not chosen yet).
+            const lookup = resolveSettlementPriceFromEntries(entries, pt.id, null);
+            if (lookup.status === "match" || lookup.status === "baseline_fallback") {
+              picked = { salePriceTypeId: pt.id, unitPrice: lookup.price };
+              break;
+            }
+          }
+          if (!picked) {
+            noPriceTitles.push(title);
+            continue;
+          }
+
+          draftItems.push(
+            draftCatalogQuoteItem({
+              key: safeRandomUUID(),
+              productId: r.product_id,
+              sku: r.product?.sku ?? null,
+              title,
+              quantity: Number(r.quantity) || 1,
+              salePriceTypeId: picked.salePriceTypeId,
+              unitPrice: picked.unitPrice,
+            }),
+          );
+        }
+
+        if (cancelled) return;
+        if (noPriceTitles.length > 0) {
+          toast.error(
+            `برای این محصولات قیمت فروش قابل فروش یافت نشد: ${noPriceTitles.join("، ")}. آیتم‌ها به پیش‌فاکتور اضافه نشدند.`,
+          );
+        }
+        if (draftItems.length > 0) {
+          setItems(draftItems);
+        } else if (rows.length > 0 && noPriceTitles.length === rows.length) {
+          // All lines failed — already toasted above; leave items empty.
+        }
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : "پیش‌پر کردن از معامله ناموفق بود");
+      } finally {
+        if (!cancelled) setDealPrefillDone(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealInteractionId, dealPrefillDone, priceTypesFetched, priceTypes]);
 
   // ----- product picker -----
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -375,6 +546,9 @@ function NewQuotePage() {
         p_quote_exception_minutes: activeException?.minutes ?? null,
         p_quote_exception_amount: activeException?.amount ?? null,
         p_quote_exception_text: activeException?.text ?? null,
+        // C9 / mig 577 — link + salesperson_id from deal inside SECURITY DEFINER
+        // (authenticated has no UPDATE on sales_quotes).
+        p_interaction_id: dealPrefill?.interactionId ?? null,
       });
       if (error) throw new Error(error.message);
       const result = data as { id: string; quote_number: string } | null;
@@ -1038,10 +1212,8 @@ function AddItemPanel(props: {
 
 // Why a lookup product was not priced decides what the user is told, so the
 // outcomes stay distinct instead of collapsing into one "no price" message.
-type SettlementPriceLookup =
-  | { status: "match"; price: number }
-  | { status: "baseline_fallback"; price: number }
-  | { status: "no_price" }
+type ProductTabSettlementLookup =
+  | SettlementPriceLookup
   | { status: "product_not_found" };
 
 function ProductTab(props: {
@@ -1106,7 +1278,7 @@ function ProductTab(props: {
       props.settlementTypeId,
     ],
     staleTime: 30_000,
-    queryFn: async (): Promise<SettlementPriceLookup> => {
+    queryFn: async (): Promise<ProductTabSettlementLookup> => {
       if (!selected) return { status: "product_not_found" };
       // The RPC matches on name/SKU/model/brand/… and caps p_limit at 50, so it
       // can legitimately fail to return a product the id-based search found.
@@ -1122,35 +1294,11 @@ function ProductTab(props: {
       );
       if (!row) return { status: "product_not_found" };
 
-      const entries = (Array.isArray(row.prices) ? row.prices : []) as Array<{
-        sale_price_type_id: string | null;
-        settlement_type_id: string | null;
-        current_price: number | string | null;
-      }>;
+      const entries = (Array.isArray(row.prices) ? row.prices : []) as SettlementPriceEntry[];
       // "" on the main form means no settlement term, which the server treats as
       // the base term (settlement_type_id IS NOT DISTINCT FROM NULL).
       const wanted = props.settlementTypeId || null;
-      const priceOf = (settlementId: string | null) => {
-        const hit = entries.find(
-          (e) =>
-            e.sale_price_type_id === salePriceTypeId &&
-            e.settlement_type_id === settlementId &&
-            e.current_price != null,
-        );
-        const value = Number(hit?.current_price ?? 0);
-        return value > 0 ? value : null;
-      };
-
-      const exact = priceOf(wanted);
-      if (exact != null) return { status: "match", price: exact };
-      if (wanted != null) {
-        // No settlement-specific price exists. The server's floor lookup finds
-        // nothing either, so it applies no floor here; falling back to the base
-        // price neither weakens nor invents a limit, but the user is told.
-        const baseline = priceOf(null);
-        if (baseline != null) return { status: "baseline_fallback", price: baseline };
-      }
-      return { status: "no_price" };
+      return resolveSettlementPriceFromEntries(entries, salePriceTypeId, wanted);
     },
   });
 
@@ -1468,15 +1616,15 @@ function ProductTab(props: {
               onClick={() => {
                 if (!selected || !salePriceTypeId) return;
                 props.onAdd({
-                  key: safeRandomUUID(),
-                  source: "product_price",
-                  product_id: selected.id,
-                  free_item_name: null,
-                  sku_snapshot: selected.sku,
-                  title_snapshot: selected.name,
-                  sale_price_type_id: salePriceTypeId,
-                  quantity,
-                  unit_price: unitPrice,
+                  ...draftCatalogQuoteItem({
+                    key: safeRandomUUID(),
+                    productId: selected.id,
+                    sku: selected.sku,
+                    title: selected.name,
+                    quantity,
+                    salePriceTypeId,
+                    unitPrice,
+                  }),
                   discount_amount: discount,
                 });
               }}

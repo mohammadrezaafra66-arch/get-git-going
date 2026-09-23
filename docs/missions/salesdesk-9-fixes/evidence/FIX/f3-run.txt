@@ -1,0 +1,62 @@
+
+Running 2 tests using 1 worker
+
+(node:36220) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36240) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35668) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:19728) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:28872) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27276) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F3_C9_MARKER_COUNTS {"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}
+  x  1 e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:233:3 › F3 — C9 [TEST-9FIX] quote-from-deal › C9 — create draft quote from deal; KPI/score unchanged (3.9s)
+(node:17028) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29476) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31468) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:20416) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35408) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+F3_C5_MARKER_COUNTS {"sales_quotes":0,"sales_interaction_items":0,"sales_interactions":0,"persons":0,"customers":0}
+  ok 2 e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:417:3 › F3 — C5 [TEST-9FIX] deals-for-others › C5 — deals-for-others count +1 equals SQL (6.6s)
+
+
+  1) e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:233:3 › F3 — C9 [TEST-9FIX] quote-from-deal › C9 — create draft quote from deal; KPI/score unchanged 
+
+    Error: C9 quote save rejected by product: ثبت پیش‌فاکتور انجام نشد
+
+    دلیل رد شدن در زیر آمده است. می‌توانید یک توضیح یک‌خطی اضافه کنید تا در «درخواست‌های رد شدهٔ من» ثبت شود و بعداً قابل پیگیری باشد.
+
+    آیتم 1: این کالا در سیستم تعریف نشده است. برای ثبت پیش‌فاکتور، ابتدا محصول باید توسط حسابداری ساخته شود.
+    توضیح شما (اختیاری)
+    بستن بدون ثبت
+    ثبت دلیل
+    Close
+
+      187 |   if (await rejected.isVisible().catch(() => false)) {
+      188 |     const reason = await rejected.innerText();
+    > 189 |     throw new Error(`C9 quote save rejected by product: ${reason.slice(0, 400)}`);
+          |           ^
+      190 |   }
+      191 |
+      192 |   await expect(page).toHaveURL(/\/sales\/quotes\/?$/, { timeout: 30_000 });
+        at saveDraftQuoteFromDealPrefill (D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:189:11)
+        at D:\AfraKalaTest\wt-salesdesk-9-fixes\e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:277:7
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f3-F-7190a-om-deal-KPI-score-unchanged\error-context.md
+
+    Error Context: test-results\salesdesk-9-fixes-fix-f3-F-7190a-om-deal-KPI-score-unchanged\error-context.md
+
+  1 failed
+    e2e\missions\salesdesk-9-fixes-fix-f3.spec.ts:233:3 › F3 — C9 [TEST-9FIX] quote-from-deal › C9 — create draft quote from deal; KPI/score unchanged 
+  1 passed (26.1s)

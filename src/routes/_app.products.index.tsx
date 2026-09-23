@@ -57,6 +57,11 @@ import { RecentPurchaseBadge } from "@/components/products/RecentPurchaseBadge";
 import { RecentPurchaseGroup } from "@/components/products/RecentPurchaseGroup";
 import { exportProductCatalogToExcel } from "@/lib/export/product-catalog-excel";
 import { BRANDING, getPageTitle } from "@/config/branding";
+import {
+  productIdsHavingAllLabels,
+  restrictProductIds,
+  type LabelLink,
+} from "@/lib/products/label-list-filter";
 
 const EXPORT_ROW_CAP = 5000;
 
@@ -88,6 +93,27 @@ interface ProductRow {
 const PRODUCT_SELECT = `id, name, sku, product_type, base_currency, stock_status, status, updated_at, color, capacity, model,
    brand:brands(id,name), category:categories(id,name),
    product_label_links(label:product_labels(id,title,color))`;
+
+/** All product ids that have every selected label. Null when no label filter. */
+async function fetchIdsForLabels(labelIds: string[]): Promise<string[] | null> {
+  if (labelIds.length === 0) return null;
+  const links: LabelLink[] = [];
+  const batch = 1000;
+  for (let from = 0; ; from += batch) {
+    const { data, error } = await supabase
+      .from("product_label_links")
+      .select("product_id, label_id")
+      .in("label_id", labelIds)
+      .order("product_id", { ascending: true })
+      .order("label_id", { ascending: true })
+      .range(from, from + batch - 1);
+    if (error) throw error;
+    const rows = (data ?? []) as LabelLink[];
+    links.push(...rows);
+    if (rows.length < batch) break;
+  }
+  return productIdsHavingAllLabels(links, labelIds);
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeProduct(r: any): ProductRow {
@@ -182,10 +208,17 @@ function ProductsPage() {
         }
       }
 
+      // Label membership is resolved before pagination so the page and the
+      // total both describe the tagged set, not one unfiltered page.
+      const labelMatchIds = await fetchIdsForLabels(stableFilters.label_ids);
+      const idPlan = restrictProductIds(textIds, labelMatchIds);
+      if (idPlan.empty) return { rows: [] as ProductRow[], total: 0 };
+      const restrictedIds = idPlan.ids;
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const applyFilters = (qb: any) => {
-        if (textIds) qb = qb.in("id", textIds);
-        else if (textFallback && stableFilters.q.trim()) {
+        if (restrictedIds) qb = qb.in("id", restrictedIds);
+        if (textFallback && stableFilters.q.trim()) {
           const term = stableFilters.q.trim().replace(/[%_]/g, "");
           qb = qb.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
         }
@@ -214,38 +247,17 @@ function ProductsPage() {
           .range(from, to);
         const { data: rows, error, count } = await query;
         if (error) throw error;
-        let normalized = (rows ?? []).map(normalizeProduct);
-        if (stableFilters.label_ids.length > 0) {
-          normalized = normalized.filter((p) =>
-            stableFilters.label_ids.every((id) => p.labels.some((l) => l.id === id)),
-          );
-        }
-        return { rows: normalized, total: count ?? 0 };
+        return { rows: (rows ?? []).map(normalizeProduct), total: count ?? 0 };
       }
 
       // Cheapest / expensive / most-viewed: rank across ALL filtered ids, then
       // paginate the sorted list (so pagination is correct, not per-page).
       const { data: idRows, error: idErr } = await applyFilters(
-        supabase
-          .from("products")
-          .select("id, product_label_links(label:product_labels(id))")
-          .limit(5000),
+        supabase.from("products").select("id").limit(5000),
       );
       if (idErr) throw idErr;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let allIds = (idRows ?? []).map((r: any) => r.id as string);
-      if (stableFilters.label_ids.length > 0) {
-        allIds = (idRows ?? [])
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .filter((r: any) =>
-            stableFilters.label_ids.every((id) =>
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (r.product_label_links ?? []).some((x: any) => x.label?.id === id),
-            ),
-          )
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          .map((r: any) => r.id as string);
-      }
+      const allIds = (idRows ?? []).map((r: any) => r.id as string);
 
       const rankMap = new Map<string, number>();
       if (sortMode === "most_viewed") {
@@ -407,20 +419,26 @@ function ProductsPage() {
         }
       }
 
+      const labelMatchIds = await fetchIdsForLabels(stableFilters.label_ids);
+      const idPlan = restrictProductIds(textIds, labelMatchIds);
+      if (idPlan.empty) {
+        toast.error("محصولی برای خروجی گرفتن وجود ندارد.");
+        return;
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let qb: any = supabase
         .from("products")
         .select(
           `sku, name, barcode, accounting_code, torob_url, color, capacity, model, unit,
            product_type, stock_status, status,
-           brand:brands(name), category:categories(name),
-           product_label_links(label_id)`,
+           brand:brands(name), category:categories(name)`,
         )
         .order("updated_at", { ascending: false })
         .limit(EXPORT_ROW_CAP);
 
-      if (textIds) qb = qb.in("id", textIds);
-      else if (textFallback && stableFilters.q.trim()) {
+      if (idPlan.ids) qb = qb.in("id", idPlan.ids);
+      if (textFallback && stableFilters.q.trim()) {
         const term = stableFilters.q.trim().replace(/[%_]/g, "");
         qb = qb.or(`name.ilike.%${term}%,sku.ilike.%${term}%`);
       }
@@ -438,15 +456,7 @@ function ProductsPage() {
       if (error) throw error;
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let list = (rows ?? []) as any[];
-      if (stableFilters.label_ids.length > 0) {
-        list = list.filter((r) => {
-          const ids = new Set(
-            (r.product_label_links ?? []).map((x: { label_id: string }) => x.label_id),
-          );
-          return stableFilters.label_ids.every((id) => ids.has(id));
-        });
-      }
+      const list = (rows ?? []) as any[];
 
       if (list.length === 0) {
         toast.error("محصولی برای خروجی گرفتن وجود ندارد.");

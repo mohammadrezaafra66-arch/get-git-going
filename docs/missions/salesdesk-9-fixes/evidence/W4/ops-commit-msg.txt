@@ -1,0 +1,6 @@
+﻿docs(missions): شواهد deploy موج۴ W4-OPS روی 3100
+
+چه چیزی تغییر کرد: evidence/W4 برای compose safety، up --build web، verify SHA/health/HTTP، playwright smoke
+چرا: gate deploy موج ۴ طبق EXECUTION-PROMPT §8.8
+شواهد: E3 — APP_GIT_SHA=0c6eeb08 health=healthy HTTP=200 compose_safety=PASS playwright_exit=0
+تأییدنشده: acceptance کامل موج۴ خارج از smoke W1

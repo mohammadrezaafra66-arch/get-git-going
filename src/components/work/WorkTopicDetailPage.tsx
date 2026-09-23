@@ -19,6 +19,8 @@ import {
   getWorkTopic,
   linkItemToTopic,
   listWorkItems,
+  profileDisplayName,
+  resolveProfileNames,
   suggestTopicTitle,
   unlinkItemFromTopic,
   updateWorkTopic,
@@ -26,6 +28,7 @@ import {
   type WorkTopic,
   type WorkTopicStatus,
 } from "@/lib/work";
+import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { KIND_LABELS, STATUS_LABELS, TOPIC_STATUS_LABELS } from "./labels";
 
 export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
@@ -39,6 +42,9 @@ export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
   const [suggesting, setSuggesting] = useState(false);
   const [selectedForSuggest, setSelectedForSuggest] = useState<Set<string>>(
     new Set(),
+  );
+  const [profileNames, setProfileNames] = useState<Map<string, string>>(
+    () => new Map(),
   );
 
   const [title, setTitle] = useState("");
@@ -68,6 +74,17 @@ export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
       setLinked(linkedRows);
       setUnlinked(openRows);
       setSelectedForSuggest(new Set());
+      try {
+        const names = await resolveProfileNames(
+          [...linkedRows, ...openRows].flatMap((r) => [
+            r.creator_id,
+            r.assignee_id,
+          ]),
+        );
+        setProfileNames(names);
+      } catch {
+        setProfileNames(new Map());
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "خطای ناشناخته");
     } finally {
@@ -282,21 +299,36 @@ export function WorkTopicDetailPage({ topicId }: { topicId: string }) {
                 key={item.id}
                 className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
               >
-                <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={selectedForSuggest.has(item.id)}
-                    onChange={() => toggleSuggest(item.id)}
-                  />
-                  <Link
-                    to="/operations/work/$itemId"
-                    params={{ itemId: item.id }}
-                    className="truncate hover:text-teal-800"
-                  >
-                    {item.title}
-                  </Link>
-                  <Badge variant="outline">{STATUS_LABELS[item.status]}</Badge>
-                  <Badge variant="outline">{KIND_LABELS[item.kind]}</Badge>
+                <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm sm:flex-row sm:items-center sm:gap-2">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedForSuggest.has(item.id)}
+                      onChange={() => toggleSuggest(item.id)}
+                    />
+                    <Link
+                      to="/operations/work/$itemId"
+                      params={{ itemId: item.id }}
+                      className="truncate hover:text-teal-800"
+                    >
+                      {item.title}
+                    </Link>
+                    <Badge variant="outline">{STATUS_LABELS[item.status]}</Badge>
+                    <Badge variant="outline">{KIND_LABELS[item.kind]}</Badge>
+                  </span>
+                  <span className="flex flex-wrap gap-x-3 text-xs text-slate-500">
+                    <span>
+                      ایجاد کننده:{" "}
+                      {profileDisplayName(profileNames, item.creator_id)}
+                    </span>
+                    <span>
+                      مسئول:{" "}
+                      {profileDisplayName(profileNames, item.assignee_id)}
+                    </span>
+                    <span>
+                      تاریخ ثبت: {formatJalaliDateTime(item.created_at)}
+                    </span>
+                  </span>
                 </label>
                 <Button
                   size="sm"

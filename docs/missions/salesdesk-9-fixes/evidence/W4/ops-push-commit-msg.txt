@@ -1,0 +1,6 @@
+docs(missions): ثبت push شواهد W4-OPS
+
+چه چیزی تغییر کرد: w4-ops-push.txt + deploy-summary با SHA شواهد
+چرا: تکمیل gate evidence پس از push موفق
+شواهد: E3 — push_exit=0 0c6eeb08..425962fc
+تأییدنشده: —

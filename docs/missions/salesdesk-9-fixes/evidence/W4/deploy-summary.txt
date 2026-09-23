@@ -1,0 +1,33 @@
+W4-OPS gate deploy to 3100
+UTC: 2026-09-22T00:25Z (approx)
+worktree: D:\AfraKalaTest\wt-salesdesk-9-fixes
+branch: feature/salesdesk-9-fixes
+
+HEAD_full: 0c6eeb086893973783ead3116b4bb039198ce7bf
+HEAD_short: 0c6eeb08
+APP_GIT_SHA: 0c6eeb08
+health: healthy
+HTTP: 200 BYTES=6891 (http://127.0.0.1:3100/)
+compose_safety: PASS
+playwright: PASS (salesdesk-9-fixes-w1-smoke)
+PLAYWRIGHT_RESOLVED: D:\AfraKalaTest\wt-salesdesk-9-fixes\node_modules\.bin\playwright.cmd
+migrations_572_575: PRESENT (20260922050000..20260922050300) — not re-applied
+rest_restart: afrakala-lan-rest exit=0
+
+override: docs/missions/salesdesk-9-fixes/compose.worktree.override.yml
+compose_cmd: docker compose --env-file .env.lan -f docker-compose.yml -f $o up -d --build --no-deps web
+up_exit: 0
+
+evidence:
+- evidence/W4/compose-base.yml
+- evidence/W4/compose-resolved.yml
+- evidence/W4/compose-safety.txt
+- evidence/W4/migration-verify-w4.txt
+- evidence/W4/docker-up-web.txt
+- evidence/W4/post-deploy-verify.txt
+- evidence/W4/playwright-install.txt
+- evidence/W4/playwright-smoke.txt
+- evidence/W4/deploy-summary.txt
+
+evidence_commit: 425962fc94e9114dc477c75c7904ea457a93b447
+push: 0c6eeb08..425962fc origin/feature/salesdesk-9-fixes (exit=0)

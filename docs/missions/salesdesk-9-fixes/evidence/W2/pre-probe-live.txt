@@ -1,0 +1,23 @@
+           tbl           |     column_name      |        data_type         | is_nullable | column_default 
+-------------------------+----------------------+--------------------------+-------------+----------------
+ user_caller_id_settings | user_id              | uuid                     | NO          | 
+ user_caller_id_settings | enabled              | boolean                  | NO          | true
+ user_caller_id_settings | show_inbound         | boolean                  | NO          | true
+ user_caller_id_settings | show_outbound        | boolean                  | NO          | true
+ user_caller_id_settings | show_others_outbound | boolean                  | NO          | false
+ user_caller_id_settings | updated_at           | timestamp with time zone | NO          | now()
+(6 rows)
+
+ column_name 
+-------------
+(0 rows)
+
+    version     
+----------------
+ 20260430105647
+ 20260430185634
+ 20260921220000
+ 20260921220100
+ 20260921220200
+(5 rows)
+

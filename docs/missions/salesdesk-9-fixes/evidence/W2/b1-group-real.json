@@ -1,0 +1,30 @@
+{
+  "module": "src/lib/calls/call-card-key.ts",
+  "shaped_count": 2,
+  "old_card_key_count": 2,
+  "new_card_key_count": 1,
+  "old_keys": [
+    "ring:ba72fe9f-c100-4d18-bef9-4f4d18d63d42",
+    "ring:2b61c599-1cbe-448d-8716-cfae809336e6"
+  ],
+  "new_keys": [
+    "lid:TEST-9FIX-B1-1790027512033",
+    "lid:TEST-9FIX-B1-1790027512033"
+  ],
+  "group_count": 1,
+  "groups": [
+    {
+      "key": "lid:TEST-9FIX-B1-1790027512033",
+      "extensions": [
+        "403",
+        "412"
+      ],
+      "member_count": 2,
+      "member_ids": [
+        "ring:2b61c599-1cbe-448d-8716-cfae809336e6",
+        "ring:ba72fe9f-c100-4d18-bef9-4f4d18d63d42"
+      ]
+    }
+  ],
+  "pass": true
+}
