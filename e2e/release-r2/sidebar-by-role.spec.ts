@@ -37,11 +37,21 @@ function appGitSha(): string {
 async function collectVisibleSidebar(page: Page): Promise<{ label: string; href: string | null }[]> {
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await expect(page).not.toHaveURL(/\/login/);
-  // R2 desktop rail is [data-sidebar=sidebar]; a hidden mobile <aside> can be first.
-  await page
-    .locator("aside:visible, [data-sidebar=\"sidebar\"]:visible")
-    .first()
-    .waitFor({ state: "visible", timeout: 60_000 });
+  // Viewer can land on /unauthorized when /dashboard requires dashboard.view.
+  // Recover via an allowed before-set route so the rail can still be harvested.
+  const denied = page.getByText("دسترسی غیرمجاز");
+  const sidebar = page.locator("aside:visible, [data-sidebar=\"sidebar\"]:visible").first();
+  await Promise.race([
+    sidebar.waitFor({ state: "visible", timeout: 20_000 }).catch(() => undefined),
+    denied.waitFor({ state: "visible", timeout: 20_000 }).catch(() => undefined),
+  ]);
+  if ((await denied.count()) > 0 && (await sidebar.count()) === 0) {
+    for (const fallback of ["/knowledge", "/notifications", "/settings/caller-id"]) {
+      await page.goto(fallback, { waitUntil: "domcontentloaded" });
+      if ((await sidebar.count()) > 0) break;
+    }
+  }
+  await sidebar.waitFor({ state: "visible", timeout: 60_000 });
   await page.waitForTimeout(1500);
 
   const harvest = () =>
