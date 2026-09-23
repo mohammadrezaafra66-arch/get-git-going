@@ -1,0 +1,6 @@
+﻿feat(sales-desk): جریان انجام فعالیت و نتیجه (موج ۴ D3)
+
+چه چیزی تغییر کرد: ActivityForm/DoneControls + lib activities با mark/revert و فقط owner
+چرا: N17 — «این فعالیت انجام شد» / نتیجه / ایجاد فعالیت دیگر
+شواهد: E4 — d3-before-fail.txt (۰) → d3-d7-grep-after.txt؛ tsc پایه ۷۴
+تأییدنشده: E2E مرورگر روی LAN ۳۱۰۰ (OPS بعداً)

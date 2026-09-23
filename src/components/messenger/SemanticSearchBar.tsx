@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { useSemanticSearch } from "@/hooks/messenger/useSemanticSearch";
 import { formatJalaliDateTime } from "@/lib/messenger/format";
 import { cn } from "@/lib/utils";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 export function SemanticSearchBar({ groupId }: { groupId: string | null }) {
   const [q, setQ] = useState("");
@@ -58,6 +60,7 @@ export function SemanticSearchBar({ groupId }: { groupId: string | null }) {
     <div className="relative border-b bg-card/60 px-3 py-2">
       <div className="flex items-center gap-2">
         <Search className="h-4 w-4 text-muted-foreground" />
+        <HelpHint text={COLLAB_HELP.semanticSearch} ariaLabel="راهنمای جستجوی معنایی" size={13} />
         <Input
           value={q}
           onChange={(e) => setQ(e.target.value)}

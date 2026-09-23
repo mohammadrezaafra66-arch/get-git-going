@@ -10921,6 +10921,7 @@ export type Database = {
           p_discount_amount: number
           p_expires_at: string
           p_final_amount: number
+          p_interaction_id?: string
           p_items: Json
           p_quote_exception_amount?: number
           p_quote_exception_minutes?: number
@@ -12160,6 +12161,10 @@ export type Database = {
         Args: { p_loser_id: string; p_reason?: string | null; p_winner_id: string }
         Returns: Json
       }
+      person_detect_merge_candidates: {
+        Args: { p_person_id?: string | null }
+        Returns: Json
+      }
       /**
        * Migration 239b (Phase 8.1). Read-only evidence feed for the duplicate
        * review page: both sides of every pending candidate pair, with
@@ -12167,8 +12172,12 @@ export type Database = {
        * blocked_reason when person_merge's cardinality guard would refuse.
        */
       person_merge_candidates_overview: {
-        Args: Record<PropertyKey, never>
+        Args: { p_limit?: number; p_offset?: number }
         Returns: Json
+      }
+      person_merge_candidates_pending_count: {
+        Args: Record<PropertyKey, never>
+        Returns: number
       }
       /**
        * Migration 239 (Phase 8.1). Marks a candidate pair as dismissed - a

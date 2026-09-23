@@ -1,0 +1,25 @@
+﻿W4-OPS compose safety check
+timestamp: 2026-09-22T05:21:42+05:00
+worktree_HEAD_full: 0c6eeb086893973783ead3116b4bb039198ce7bf
+worktree_HEAD_short: 0c6eeb08
+GIT_SHA env: 0c6eeb08
+base: evidence/W4/compose-base.yml
+resolved: evidence/W4/compose-resolved.yml
+override: docs/missions/salesdesk-9-fixes/compose.worktree.override.yml
+
+base_services (9): auth, caddy, db, db-role-fix, kong, meta, rest, storage, web
+resolved_services (9): auth, caddy, db, db-role-fix, kong, meta, rest, storage, web
+
+IDENTICAL: auth
+IDENTICAL: caddy
+IDENTICAL: db
+IDENTICAL: db-role-fix
+IDENTICAL: kong
+IDENTICAL: meta
+IDENTICAL: rest
+IDENTICAL: storage
+DIFFERS: web (context: app -> wt-salesdesk-9-fixes)
+
+web_differs=True
+non_web_differs=
+COMPOSE_SAFETY=PASS

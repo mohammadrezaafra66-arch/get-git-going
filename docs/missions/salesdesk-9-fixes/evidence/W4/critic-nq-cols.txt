@@ -1,0 +1,7 @@
+﻿ column_name  | data_type 
+--------------+-----------
+ user_id      | uuid
+ reference_id | uuid
+ type         | text
+(3 rows)
+

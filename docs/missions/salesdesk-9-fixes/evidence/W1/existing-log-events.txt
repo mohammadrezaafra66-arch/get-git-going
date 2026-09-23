@@ -1,0 +1,77 @@
+trg_work_item_events_from_update|CREATE TRIGGER trg_work_item_events_from_update AFTER UPDATE ON work_items FOR EACH ROW EXECUTE FUNCTION tg_work_item_events_from_update()
+trg_work_items_before_write|CREATE TRIGGER trg_work_items_before_write BEFORE INSERT OR UPDATE ON work_items FOR EACH ROW EXECUTE FUNCTION work_items_before_write()
+trg_work_items_log_events|CREATE TRIGGER trg_work_items_log_events AFTER UPDATE ON work_items FOR EACH ROW EXECUTE FUNCTION work_items_log_events()
+trg_work_items_updated_at|CREATE TRIGGER trg_work_items_updated_at BEFORE UPDATE ON work_items FOR EACH ROW EXECUTE FUNCTION set_updated_at()
+tg_work_item_events_from_update|CREATE OR REPLACE FUNCTION public.tg_work_item_events_from_update()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _actor uuid := auth.uid();
+BEGIN
+  IF OLD.status IS DISTINCT FROM NEW.status THEN
+    INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+    VALUES (NEW.id, _actor, 'status', OLD.status::text, NEW.status::text);
+  END IF;
+
+  IF OLD.assignee_id IS DISTINCT FROM NEW.assignee_id THEN
+    INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+    VALUES (NEW.id, _actor, 'assignee_id', OLD.assignee_id::text, NEW.assignee_id::text);
+  END IF;
+
+  IF OLD.priority IS DISTINCT FROM NEW.priority THEN
+    INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+    VALUES (NEW.id, _actor, 'priority', OLD.priority::text, NEW.priority::text);
+  END IF;
+
+  IF OLD.title IS DISTINCT FROM NEW.title THEN
+    INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+    VALUES (NEW.id, _actor, 'title', OLD.title::text, NEW.title::text);
+  END IF;
+
+  IF OLD.body IS DISTINCT FROM NEW.body THEN
+    INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+    VALUES (NEW.id, _actor, 'body', OLD.body::text, NEW.body::text);
+  END IF;
+
+  RETURN NULL;
+END;
+$function$
+
+work_items_log_events|CREATE OR REPLACE FUNCTION public.work_items_log_events()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_actor uuid := auth.uid();
+BEGIN
+  IF TG_OP = 'UPDATE' THEN
+    IF OLD.status IS DISTINCT FROM NEW.status THEN
+      INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+      VALUES (NEW.id, v_actor, 'status', OLD.status::text, NEW.status::text);
+    END IF;
+    IF OLD.assignee_id IS DISTINCT FROM NEW.assignee_id THEN
+      INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+      VALUES (NEW.id, v_actor, 'assignee', OLD.assignee_id::text, NEW.assignee_id::text);
+    END IF;
+    IF OLD.priority IS DISTINCT FROM NEW.priority THEN
+      INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+      VALUES (NEW.id, v_actor, 'priority', OLD.priority::text, NEW.priority::text);
+    END IF;
+    IF OLD.title IS DISTINCT FROM NEW.title THEN
+      INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+      VALUES (NEW.id, v_actor, 'title', OLD.title, NEW.title);
+    END IF;
+    IF OLD.body IS DISTINCT FROM NEW.body THEN
+      INSERT INTO public.work_item_events (work_item_id, actor_id, field, old_value, new_value)
+      VALUES (NEW.id, v_actor, 'body', OLD.body, NEW.body);
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$
+

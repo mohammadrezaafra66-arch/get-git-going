@@ -1,0 +1,61 @@
+                             pg_get_functiondef                             
+----------------------------------------------------------------------------
+ CREATE OR REPLACE FUNCTION public.notify_sales_interaction_assigned()     +
+  RETURNS trigger                                                          +
+  LANGUAGE plpgsql                                                         +
+  SECURITY DEFINER                                                         +
+  SET search_path TO 'public'                                              +
+ AS $function$                                                             +
+ DECLARE                                                                   +
+   v_title text;                                                           +
+   v_body  text;                                                           +
+   v_person text;                                                          +
+ BEGIN                                                                     +
+   -- Fire when salesperson_id is non-null on INSERT, or changes on UPDATE.+
+   IF NEW.salesperson_id IS NULL THEN                                      +
+     RETURN NEW;                                                           +
+   END IF;                                                                 +
+                                                                           +
+   IF TG_OP = 'UPDATE'                                                     +
+      AND NEW.salesperson_id IS NOT DISTINCT FROM OLD.salesperson_id THEN  +
+     RETURN NEW;                                                           +
+   END IF;                                                                 +
+                                                                           +
+   -- Do not notify the actor about assigning themself.                    +
+   IF NEW.salesperson_id IS NOT DISTINCT FROM auth.uid() THEN              +
+     RETURN NEW;                                                           +
+   END IF;                                                                 +
+                                                                           +
+   SELECT COALESCE(NULLIF(btrim(p.display_name), ''), p.id::text)          +
+     INTO v_person                                                         +
+     FROM public.persons p                                                 +
+    WHERE p.id = NEW.person_id;                                            +
+                                                                           +
+   v_title := 'تعامل فروش به شما ارجاع شد';                                +
+   v_body := concat_ws(E'\n',                                              +
+     'یک تعامل فروش (' || COALESCE(NEW.kind, '—') || ') به شما ارجاع شد.', +
+     'شخص: ' || COALESCE(v_person, '—'),                                   +
+     CASE WHEN NEW.title IS NOT NULL AND btrim(NEW.title) <> ''            +
+          THEN 'عنوان: ' || NEW.title ELSE NULL END,                       +
+     'شناسه: ' || NEW.id::text                                             +
+   );                                                                      +
+                                                                           +
+   -- Live catalog: notification_queue.reference_id is uuid (not text).    +
+   INSERT INTO public.notification_queue (                                 +
+     user_id, title, body, type, reference_type, reference_id              +
+   )                                                                       +
+   VALUES (                                                                +
+     NEW.salesperson_id,                                                   +
+     v_title,                                                              +
+     v_body,                                                               +
+     'sales_interaction_assigned',                                         +
+     'sales_interaction',                                                  +
+     NEW.id                                                                +
+   );                                                                      +
+                                                                           +
+   RETURN NEW;                                                             +
+ END                                                                       +
+ $function$                                                                +
+ 
+(1 row)
+

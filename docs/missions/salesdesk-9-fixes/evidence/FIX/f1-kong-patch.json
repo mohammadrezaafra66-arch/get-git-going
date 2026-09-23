@@ -1,0 +1,12 @@
+{
+  "oid": "77f2c93c-1468-46f4-b847-858da5c6f777",
+  "status": 400,
+  "body_snippet": "{\"code\":\"P0001\",\"details\":null,\"hint\":null,\"message\":\"ACTIVITY_OWNER_ONLY\"}",
+  "rejected": true,
+  "before_done_null_count": "1",
+  "after_done_null_count": "1",
+  "after_result_note": "(null)",
+  "unchanged": true,
+  "leftover_marker_rows": "0",
+  "pass": true
+}

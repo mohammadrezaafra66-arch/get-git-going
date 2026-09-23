@@ -13,6 +13,8 @@ import { InquiryBoard, URGENT_STATUSES, inquiryBoardToPersianDigits } from "./In
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Loader2, MessageSquare, ShoppingCart, Sparkles, Users } from "lucide-react";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 export function ChatWindow({
   groupId,
@@ -54,25 +56,31 @@ export function ChatWindow({
           <span className="font-semibold">{group.name}</span>
           <span className="text-xs text-muted-foreground">{group.type}</span>
         </div>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={() => setAiOpen(true)}
-          aria-label="دستیار هوشمند"
-          title="دستیار هوشمند"
-        >
-          <Sparkles className="h-4 w-4 text-primary" />
-        </Button>
-        {isAdmin && (
+        <div className="flex items-center gap-0.5">
+          <HelpHint text={COLLAB_HELP.aiAssistant} ariaLabel="راهنمای دستیار هوشمند" size={13} />
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => setMembersOpen(true)}
-            aria-label="مدیریت اعضا"
-            title="مدیریت اعضا"
+            onClick={() => setAiOpen(true)}
+            aria-label="دستیار هوشمند"
+            title="دستیار هوشمند"
           >
-            <Users className="h-4 w-4" />
+            <Sparkles className="h-4 w-4 text-primary" />
           </Button>
+        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-0.5">
+            <HelpHint text={COLLAB_HELP.groupMembers} ariaLabel="راهنمای مدیریت اعضا" size={13} />
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => setMembersOpen(true)}
+              aria-label="مدیریت اعضا"
+              title="مدیریت اعضا"
+            >
+              <Users className="h-4 w-4" />
+            </Button>
+          </div>
         )}
       </header>
       <Tabs
@@ -85,6 +93,13 @@ export function ChatWindow({
           <TabsTrigger value="chat" className="gap-2">
             <MessageSquare className="h-4 w-4" />
             گفتگو
+            <span
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              role="presentation"
+            >
+              <HelpHint text={COLLAB_HELP.chatTab} ariaLabel="راهنمای تب گفتگو" size={12} />
+            </span>
           </TabsTrigger>
           <TabsTrigger value="inquiries" className="gap-2">
             <ShoppingCart className="h-4 w-4" />
@@ -94,6 +109,13 @@ export function ChatWindow({
                 {inquiryBoardToPersianDigits(urgentCount)}
               </span>
             )}
+            <span
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+              role="presentation"
+            >
+              <HelpHint text={COLLAB_HELP.inquiriesTab} ariaLabel="راهنمای تب استعلام" size={12} />
+            </span>
           </TabsTrigger>
         </TabsList>
         <TabsContent
@@ -116,6 +138,10 @@ export function ChatWindow({
           className="mt-0 flex-1 overflow-y-auto data-[state=inactive]:hidden"
           forceMount
         >
+          <div className="flex items-center gap-1.5 border-b px-3 py-2">
+            <span className="text-sm font-medium">بورد استعلام قیمت</span>
+            <HelpHint text={COLLAB_HELP.inquiryBoard} ariaLabel="راهنمای بورد استعلام" />
+          </div>
           <InquiryBoard
             groupId={groupId}
             currentUserId={user?.id ?? null}

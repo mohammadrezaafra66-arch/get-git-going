@@ -23,7 +23,12 @@ export type {
   UpdateWorkTopicPatch,
 } from "./types";
 
-export { WORK_MERGE_SIMILARITY_THRESHOLD } from "./types";
+export {
+  WORK_MERGE_SIMILARITY_THRESHOLD,
+  WORK_OPEN_STATUSES,
+  WORK_CLOSED_STATUSES,
+  isWorkItemClosed,
+} from "./types";
 
 export {
   listWorkItems,
@@ -31,6 +36,17 @@ export {
   createWorkItem,
   updateWorkItem,
 } from "./items";
+
+export {
+  listWorkItemEvents,
+  EVENT_FIELD_LABELS,
+  type WorkItemEvent,
+} from "./history";
+
+export {
+  resolveProfileNames,
+  profileDisplayName,
+} from "./profiles";
 
 export {
   submitTestReport,

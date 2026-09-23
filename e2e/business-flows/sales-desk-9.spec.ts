@@ -237,10 +237,10 @@ test.describe("sales-desk-9 business flow", () => {
     await enterApp(page);
     await page.goto(`${BASE_URL}/operations/sales-desk`, { waitUntil: "domcontentloaded" });
     await expect(page.getByText("میز فروش").first()).toBeVisible({ timeout: 60_000 });
-    await expect(page.getByText("ثبت سریع درخواست").first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("افزودن معامله").first()).toBeVisible({ timeout: 30_000 });
     await expect(page.locator("#sd-person-q")).toBeVisible();
     await expect(page.locator("#sd-req-body")).toBeVisible();
-    await expect(page.getByRole("button", { name: "ثبت درخواست", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "افزودن معامله", exact: true })).toBeVisible();
 
     // Person picker uses searchPersons serverFn; on Vite-dev it often returns [] even when
     // search_visible_persons works via PostgREST (measured). Mission allows RPC-through-page.

@@ -1,0 +1,35 @@
+20260921120000
+20260921220000
+20260921220100
+20260921220200
+trig=trg_work_item_events_from_update
+trig=trg_work_items_before_write
+trig=trg_work_items_updated_at
+fn=purchases_require_supplier
+fn=tg_work_item_events_from_update
+purch_trig=trg_purchases_require_supplier
+CREATE OR REPLACE FUNCTION public.work_items_before_write()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    IF auth.uid() IS NOT NULL THEN
+      NEW.creator_id := auth.uid();
+    END IF;
+    IF NEW.creator_id IS NULL THEN
+      RAISE EXCEPTION 'work_items: creator_id required'
+        USING ERRCODE = 'not_null_violation';
+    END IF;
+  END IF;
+
+  IF NEW.status = 'in_progress' AND NEW.claimed_due_at IS NULL THEN
+    RAISE EXCEPTION 'work_items: claimed_due_at required when status=in_progress'
+      USING ERRCODE = 'check_violation';
+  END IF;
+
+  IF NEW.decision_bucket IS NULL THEN
+    NEW.decision_bucket_date := NULL;
+  ELSIF NEW.decision_bucket_date IS NULL THEN
+    NEW.decision_bucket_date := (now() AT TIME ZONE 'Asia/Tehr

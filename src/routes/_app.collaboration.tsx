@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import type { SyntheticEvent } from "react";
 import { MessageSquare, ShoppingCart, ShieldAlert, FileCheck, FileText, Trophy, type LucideIcon } from "lucide-react";
 import { requirePermission } from "@/lib/rbac/route-guards";
 import type { AppRole } from "@/lib/rbac/roles";
@@ -12,6 +13,8 @@ import {
   usePendingDocCount,
   useGamificationBadgeCount,
 } from "@/hooks/collaboration/useHubCounts";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 function toPersianDigits(n: number): string {
   const map = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
@@ -26,6 +29,12 @@ interface HubItem {
   gradient: string;
   badge: number;
   allowedRoles: AppRole[];
+  help: string;
+}
+
+function stopLinkNav(e: SyntheticEvent) {
+  e.preventDefault();
+  e.stopPropagation();
 }
 
 function CollaborationPage() {
@@ -52,7 +61,8 @@ function CollaborationPage() {
       icon: MessageSquare,
       gradient: "from-blue-500 to-blue-600",
       badge: unread,
-      allowedRoles: ["admin", "manager", "sales", "accountant", "viewer"],
+      allowedRoles: ["admin", "manager", "sales", "accountant", "purchase_specialist"],
+      help: COLLAB_HELP.hubMessages,
     },
     {
       to: "/purchase",
@@ -61,7 +71,8 @@ function CollaborationPage() {
       icon: ShoppingCart,
       gradient: "from-emerald-500 to-emerald-600",
       badge: purchase,
-      allowedRoles: ["admin", "manager", "sales"],
+      allowedRoles: ["admin", "manager", "sales", "purchase_specialist"],
+      help: COLLAB_HELP.hubPurchase,
     },
     {
       to: "/my-penalties",
@@ -71,6 +82,7 @@ function CollaborationPage() {
       gradient: "from-red-500 to-red-600",
       badge: penalty,
       allowedRoles: ["admin", "manager", "sales", "accountant"],
+      help: COLLAB_HELP.hubPenalties,
     },
     {
       to: "/delivery-receipts",
@@ -80,6 +92,7 @@ function CollaborationPage() {
       gradient: "from-violet-500 to-violet-600",
       badge: receipts,
       allowedRoles: ["admin", "manager", "sales"],
+      help: COLLAB_HELP.hubReceipts,
     },
     {
       to: "/documents",
@@ -89,6 +102,7 @@ function CollaborationPage() {
       gradient: "from-amber-500 to-amber-600",
       badge: docs,
       allowedRoles: ["admin", "manager", "accountant"],
+      help: COLLAB_HELP.hubDocuments,
     },
     {
       to: "/gamification",
@@ -98,6 +112,7 @@ function CollaborationPage() {
       gradient: "from-yellow-500 to-amber-600",
       badge: gamification,
       allowedRoles: ["admin", "manager", "sales", "accountant", "viewer"],
+      help: COLLAB_HELP.hubGamification,
     },
   ];
 
@@ -115,9 +130,12 @@ function CollaborationPage() {
       }}
     >
       <header className="mb-8">
-        <h1 className="text-2xl md:text-3xl font-bold text-foreground">
-          سلام، {displayName} 👋
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-foreground">
+            سلام، {displayName} 👋
+          </h1>
+          <HelpHint text={COLLAB_HELP.hubPage} ariaLabel="راهنمای مرکز همکاری" />
+        </div>
         <p className="mt-1 text-sm text-muted-foreground">امروز: {today}</p>
       </header>
 
@@ -143,9 +161,19 @@ function CollaborationPage() {
                   <Icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-base md:text-lg font-bold text-foreground">
-                    {item.label}
-                  </h2>
+                  <div className="flex items-center gap-1.5">
+                    <h2 className="text-base md:text-lg font-bold text-foreground">
+                      {item.label}
+                    </h2>
+                    <span
+                      className="relative z-10"
+                      onClick={stopLinkNav}
+                      onKeyDown={stopLinkNav}
+                      role="presentation"
+                    >
+                      <HelpHint text={item.help} ariaLabel={`راهنمای ${item.label}`} size={13} />
+                    </span>
+                  </div>
                   <p className="text-xs md:text-sm text-muted-foreground mt-1">
                     {item.description}
                   </p>

@@ -598,6 +598,34 @@ const NAVIGATION_SEEDS = [
     group: "operations",
   },
   {
+    to: "/operations/sales-desk/deals-for-others",
+    label: "معاملات ثبت‌شده برای دیگران",
+    icon: BarChart3,
+    module: "sales-deals-for-others",
+    group: "operations",
+  },
+  {
+    to: "/operations/sales-desk/activities",
+    label: "فعالیت‌ها",
+    icon: CalendarClock,
+    module: "sales-activities",
+    group: "operations",
+  },
+  {
+    to: "/settings/deal-lost-reasons",
+    label: "دلایل شکست معامله",
+    icon: ScrollText,
+    module: "deal-lost-reasons",
+    group: "operations",
+  },
+  {
+    to: "/sales/reports/deal-lost",
+    label: "دلایل شکست",
+    icon: BarChart3,
+    module: "deal-lost-report",
+    group: "reports",
+  },
+  {
     // Wave 6 call-activity existed as route but was missing from nav (orphan caution).
     to: "/operations/call-activity",
     label: "فعالیت تلفنی",
@@ -1468,6 +1496,10 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/operations/purchase-advisor": ["admin", "manager"],
   // _app.operations.sales-desk.tsx / call-activity — requireAnyRole(admin,manager,sales)
   "/operations/sales-desk": ["admin", "manager", "sales"],
+  "/operations/sales-desk/deals-for-others": ["admin", "manager", "sales"],
+  "/operations/sales-desk/activities": ["admin", "manager", "sales"],
+  "/settings/deal-lost-reasons": ["admin", "manager", "sales"],
+  "/sales/reports/deal-lost": ["admin", "manager", "sales"],
   "/operations/call-activity": ["admin", "manager", "sales"],
   // Calm Mind work board — mirrors route requireAnyRole(admin|manager|sales|accountant)
   "/operations/work": ["admin", "manager", "sales", "accountant"],

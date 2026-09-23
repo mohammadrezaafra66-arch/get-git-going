@@ -16,6 +16,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 export function NewGroupDialog({ onCreated }: { onCreated?: (groupId: string) => void }) {
   const qc = useQueryClient();
@@ -56,7 +58,10 @@ export function NewGroupDialog({ onCreated }: { onCreated?: (groupId: string) =>
       </DialogTrigger>
       <DialogContent dir="rtl">
         <DialogHeader>
-          <DialogTitle>ایجاد گروه جدید</DialogTitle>
+          <DialogTitle className="flex items-center gap-1.5">
+            ایجاد گروه جدید
+            <HelpHint text={COLLAB_HELP.newGroup} ariaLabel="راهنمای ایجاد گروه" />
+          </DialogTitle>
           <DialogDescription>یک گروه گفت‌وگو بسازید و سپس اعضا را اضافه کنید.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">

@@ -1,0 +1,17 @@
+﻿{
+  "job_id": "W4-OPS",
+  "state": "done",
+  "attempt": 1,
+  "deadline_at": "2026-09-22T10:30:00Z",
+  "budget": { "minutes": 50 },
+  "checkpoint_path": "docs/missions/salesdesk-9-fixes/evidence/W4/registry/W4-OPS/checkpoint.md",
+  "heartbeat_every": 60,
+  "killable": false,
+  "result": {
+    "APP_GIT_SHA": "0c6eeb08",
+    "health": "healthy",
+    "HTTP": 200,
+    "compose_safety": "PASS",
+    "playwright": "PASS"
+  }
+}

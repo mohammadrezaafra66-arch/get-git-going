@@ -1,0 +1,38 @@
+﻿ M docs/missions/salesdesk-9-fixes/HANDOFF.md
+A  docs/missions/salesdesk-9-fixes/evidence/W1/a4-probe-after.txt
+A  docs/missions/salesdesk-9-fixes/evidence/W1/applied-20260921220000_560_work_item_events.sql.txt
+A  docs/missions/salesdesk-9-fixes/evidence/W1/applied-20260921220100_561_purchases_require_supplier.sql.txt
+A  docs/missions/salesdesk-9-fixes/evidence/W1/applied-20260921220200_562_work_items_completed_at_closed.sql.txt
+A  docs/missions/salesdesk-9-fixes/evidence/W1/apply-migration.mjs
+A  docs/missions/salesdesk-9-fixes/evidence/W1/before-work_items_before_write.sql
+A  docs/missions/salesdesk-9-fixes/evidence/W1/probe-a4.mjs
+A  docs/missions/salesdesk-9-fixes/revert/560_work_item_events.sql
+A  docs/missions/salesdesk-9-fixes/revert/561_purchases_require_supplier.sql
+A  docs/missions/salesdesk-9-fixes/revert/562_work_items_completed_at_closed.sql
+ M src/components/work/WorkItemDetailPage.tsx
+ M src/hooks/purchase/useCreatePurchase.ts
+ M src/lib/work/index.ts
+ M src/lib/work/items.ts
+ M src/lib/work/types.ts
+ M src/routes/_app.accounting.purchase-payments.tsx
+ M src/routes/_app.purchases.tsx
+ M src/shared/components/PurchaseForm.tsx
+A  supabase/migrations/20260921220000_560_work_item_events.sql
+A  supabase/migrations/20260921220100_561_purchases_require_supplier.sql
+A  supabase/migrations/20260921220200_562_work_items_completed_at_closed.sql
+?? docs/missions/salesdesk-9-fixes/compose.worktree.override.yml
+?? docs/missions/salesdesk-9-fixes/evidence/W1/drop-dup-logger.mjs
+?? docs/missions/salesdesk-9-fixes/evidence/W1/existing-log-events.txt
+?? docs/missions/salesdesk-9-fixes/evidence/W1/playwright.w1.config.ts
+?? docs/missions/salesdesk-9-fixes/evidence/W1/probe-existing-triggers.mjs
+?? docs/missions/salesdesk-9-fixes/evidence/W1/purchaseErrorMessage-test.txt
+?? docs/missions/salesdesk-9-fixes/evidence/W1/status-now.txt
+?? docs/missions/salesdesk-9-fixes/evidence/W1/tsc-baseline.txt
+?? docs/missions/salesdesk-9-fixes/evidence/W1/typecheck-a6-baseline.txt
+?? docs/missions/salesdesk-9-fixes/evidence/W1/typecheck-baseline.txt
+?? docs/missions/salesdesk-9-fixes/evidence/W1/verify-560.mjs
+?? docs/missions/salesdesk-9-fixes/evidence/W1/verify-560.txt
+?? e2e/missions/salesdesk-9-fixes-w1-a3-history.spec.ts
+?? src/hooks/purchase/useCreatePurchase.supplier-required.test.ts
+?? src/lib/work/history.ts
+?? src/lib/work/profiles.ts

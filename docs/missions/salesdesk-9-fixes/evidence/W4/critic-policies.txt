@@ -1,0 +1,23 @@
+﻿           policyname            |  cmd   
+---------------------------------+--------
+ sales_interactions_insert_staff | INSERT
+ sales_interactions_select_staff | SELECT
+ sales_interactions_update_staff | UPDATE
+(3 rows)
+
+           policyname            |  cmd   | has_qual | has_wc 
+---------------------------------+--------+----------+--------
+ sales_interactions_update_staff | UPDATE | t        | t
+(1 row)
+
+  kind   | count 
+---------+-------
+ note    |     2
+ request |     4
+(2 rows)
+
+           policyname            |                                                      qual                                                       
+---------------------------------+-----------------------------------------------------------------------------------------------------------------
+ sales_interactions_update_staff | (has_any_role(uid(), ARRAY['admin'::text, 'manager'::text]) OR (author_id = uid()) OR (salesperson_id = uid()))
+(1 row)
+

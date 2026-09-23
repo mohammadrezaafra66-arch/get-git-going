@@ -80,7 +80,7 @@ const TARGETS = [
   "create_document(p_type text, p_storage_path text, p_file_name text, p_file_size bigint, p_mime_type text, p_reference_id uuid, p_reference_type text, p_notes text)",
   "create_dynamic_table_row(p_table_id uuid, p_values jsonb)",
   "create_manual_penalty(p_user_id uuid, p_type text, p_severity text, p_description text)",
-  "create_sales_quote_with_items(p_customer_name text, p_customer_phone text, p_customer_note text, p_expires_at timestamp with time zone, p_subtotal_amount numeric, p_discount_amount numeric, p_final_amount numeric, p_items jsonb, p_settlement_type_id uuid, p_customer_id uuid, p_below_list_ack boolean, p_deposit_amount numeric, p_commitment_confirmed boolean, p_visitor_id uuid, p_warehouse_id uuid, p_quote_exception_type text, p_quote_exception_minutes integer, p_quote_exception_amount numeric, p_quote_exception_text text)",
+  "create_sales_quote_with_items(p_customer_name text, p_customer_phone text, p_customer_note text, p_expires_at timestamp with time zone, p_subtotal_amount numeric, p_discount_amount numeric, p_final_amount numeric, p_items jsonb, p_settlement_type_id uuid, p_customer_id uuid, p_below_list_ack boolean, p_deposit_amount numeric, p_commitment_confirmed boolean, p_visitor_id uuid, p_warehouse_id uuid, p_quote_exception_type text, p_quote_exception_minutes integer, p_quote_exception_amount numeric, p_quote_exception_text text, p_interaction_id uuid)",
   "customer_set_person(p_customer_id uuid, p_person_id uuid, p_note text)",
   "deactivate_user(_user_id uuid)",
   "default_warehouse_id()",

@@ -83,6 +83,7 @@ const HINT_MESSAGES: Record<string, string> = {
   PURCHASE_PAYMENT_TERM_INACTIVE: "زمان تسویه انتخاب‌شده فعال نیست.",
   PURCHASE_SUPPLIER_INVALID: "تأمین‌کنندهٔ انتخاب‌شده معتبر نیست.",
   PURCHASE_SUPPLIER_INACTIVE: "تأمین‌کنندهٔ انتخاب‌شده فعال نیست.",
+  SUPPLIER_REQUIRED: "تأمین‌کننده الزامی است",
   PURCHASE_WAREHOUSE_INVALID: "انبار انتخاب‌شده معتبر نیست.",
   PURCHASE_WAREHOUSE_INACTIVE: "انبار انتخاب‌شده فعال نیست.",
   PURCHASE_CURRENCY_INVALID: "ارز انتخاب‌شده برای سند خرید پشتیبانی نمی‌شود.",
@@ -110,9 +111,18 @@ const HINT_MESSAGES: Record<string, string> = {
 };
 
 export function purchaseErrorMessage(err: unknown): string {
-  const e = err as { hint?: string; message?: string; code?: string } | null;
+  const e = err as {
+    hint?: string;
+    message?: string;
+    code?: string;
+    details?: string;
+  } | null;
 
   if (e?.hint && HINT_MESSAGES[e.hint]) return HINT_MESSAGES[e.hint];
+
+  // Trigger may put the ASCII code in message/details rather than HINT.
+  const raw = [e?.hint, e?.message, e?.details].filter(Boolean).join(" ");
+  if (/\bSUPPLIER_REQUIRED\b/.test(raw)) return HINT_MESSAGES.SUPPLIER_REQUIRED;
 
   // Persian text raised by a database trigger (for example the inventory
   // trigger) is already operator-readable — pass it through.

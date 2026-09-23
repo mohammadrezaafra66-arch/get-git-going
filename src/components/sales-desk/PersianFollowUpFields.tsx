@@ -9,6 +9,9 @@ type Props = {
   onTimeChange: (hm: string) => void;
   idPrefix?: string;
   label?: string;
+  timeLabel?: string;
+  /** When true, time input is disabled (e.g. «ساعت مشخص نیست»). */
+  timeDisabled?: boolean;
 };
 
 /**
@@ -22,6 +25,8 @@ export function PersianFollowUpFields({
   onTimeChange,
   idPrefix = "sd-fu",
   label = "پیگیری (اختیاری)",
+  timeLabel = "ساعت",
+  timeDisabled = false,
 }: Props) {
   return (
     <div className="space-y-1.5" dir="rtl">
@@ -32,17 +37,28 @@ export function PersianFollowUpFields({
           onChange={onDateChange}
           placeholder="تاریخ شمسی"
         />
-        <Input
-          id={`${idPrefix}-time`}
-          type="time"
-          dir="ltr"
-          className="w-full text-left sm:w-[8.5rem]"
-          value={timeHm}
-          onChange={(e) => onTimeChange(e.target.value)}
-          disabled={!dateIso}
-          aria-label="ساعت پیگیری"
-          title={!dateIso ? "ابتدا تاریخ را انتخاب کنید" : undefined}
-        />
+        <div className="space-y-1">
+          <Label htmlFor={`${idPrefix}-time`} className="text-xs text-muted-foreground">
+            {timeLabel}
+          </Label>
+          <Input
+            id={`${idPrefix}-time`}
+            type="time"
+            dir="ltr"
+            className="w-full text-left sm:w-[8.5rem]"
+            value={timeHm}
+            onChange={(e) => onTimeChange(e.target.value)}
+            disabled={!dateIso || timeDisabled}
+            aria-label={timeLabel}
+            title={
+              !dateIso
+                ? "ابتدا تاریخ را انتخاب کنید"
+                : timeDisabled
+                  ? "ساعت مشخص نیست"
+                  : undefined
+            }
+          />
+        </div>
       </div>
       <p className="text-xs text-muted-foreground">
         تاریخ شمسی است؛ ساعت اختیاری است (پیش‌فرض ۰۹:۰۰ تهران).

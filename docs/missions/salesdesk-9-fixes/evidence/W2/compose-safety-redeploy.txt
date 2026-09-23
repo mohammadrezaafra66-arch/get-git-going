@@ -1,0 +1,27 @@
+﻿W2-OPS-REDEPLOY compose safety check
+timestamp: 2026-09-22T03:30:54
+worktree_HEAD_full: e7446bb2e8f94664c6210e94e132e1f31f1b1fad
+worktree_HEAD_short: e7446bb2
+GIT_SHA env expected: e7446bb2
+base: evidence/W2/compose-base-redeploy.yml
+resolved: evidence/W2/compose-resolved-redeploy.yml
+override: docs/missions/salesdesk-9-fixes/compose.worktree.override.yml
+
+base_services (9): auth, caddy, db, db-role-fix, kong, meta, rest, storage, web
+resolved_services (9): auth, caddy, db, db-role-fix, kong, meta, rest, storage, web
+
+IDENTICAL: auth
+IDENTICAL: caddy
+IDENTICAL: db
+IDENTICAL: db-role-fix
+IDENTICAL: kong
+IDENTICAL: meta
+IDENTICAL: rest
+IDENTICAL: storage
+DIFF: service 'web' content differs
+  line~2 BASE:       context: D:\AfraKalaTest\app
+  line~2 RES:        context: D:\AfraKalaTest\wt-salesdesk-9-fixes
+
+web_differs: True (expected true — context only)
+other_service_diffs_count: 0
+VERDICT: SAFE — only web may differ; all other services identical

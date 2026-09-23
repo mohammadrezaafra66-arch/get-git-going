@@ -1,0 +1,15 @@
+W4-FE D3 · N17 · before-fail
+timestamp: 2026-09-22T04:55:00+05:00
+HEAD: 3a2baa305f85786abdf7e57083d1d0fabb1ace06
+
+Probe: Select-String -Path src -Pattern 'این فعالیت انجام شد|نتیجه‌ی فعالیت خود را یادداشت کنید|ذخیره و ایجاد فعالیت دیگر' -Recurse
+Result: 0 matches in src (FINDINGS N17 ABSENT confirmed)
+
+Schema live (d3-schema-probe.txt):
+- activity_type_id, due_at, due_has_time, original_due_at, done_at, result_note present
+- sales_activity_types count=18
+- tehran_today()=2026-09-22
+
+tsc baseline: 74 error TS (tsc-baseline-w4-fe.txt)
+
+Expected after: Persian strings present; mark-done / revert / create-another paths in interactions.ts + ActivityForm + timeline/deal wiring.

@@ -111,7 +111,16 @@ async function settleRoles(auth: AuthSnapshot): Promise<AuthSnapshot> {
 /** بررسی دسترسی کاربر به یک ماژول؛ در صورت نبود دسترسی به /unauthorized یا /login هدایت می‌کند. */
 export async function requirePermission(module: ModuleKey, action: ExtendedAction = "view") {
   const resolved = await resolveAuthWithRetry();
-  if (!resolved) return { user: null, roles: [] as AppRole[] };
+  // SSR / no window: defer — never treat as authorized. Client _app layout
+  // enforces /login after auth is ready (see AppLayoutContent).
+  if (!resolved) {
+    logAuthDiagnostic(
+      "guard.ssr.defer",
+      `requirePermission(${module},${action}): no window — defer to client`,
+      {},
+    );
+    return { user: null, roles: [] as AppRole[], deferred: true as const };
+  }
 
   const user = resolved.user;
   if (!user) {
@@ -119,7 +128,7 @@ export async function requirePermission(module: ModuleKey, action: ExtendedActio
       loading: resolved.loading,
       initialized: resolved.initialized,
     });
-    throw redirect({ to: "/login" });
+    throw redirect({ to: "/login", search: { redirect: typeof window !== "undefined" ? window.location.pathname : undefined } });
   }
   // Wait for roles instead of returning success while they load. See settleRoles().
   const auth = await settleRoles(resolved);

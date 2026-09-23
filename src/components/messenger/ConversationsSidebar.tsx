@@ -11,6 +11,8 @@ import { formatJalaliRelative } from "@/lib/messenger/format";
 import { MessageSquare, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { toast } from "sonner";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 const typeLabel: Record<string, string> = {
   private: "خصوصی",
@@ -42,8 +44,14 @@ export function ConversationsSidebar({
   return (
     <aside className="flex h-full w-full flex-col border-l bg-card md:max-w-sm">
       <header className="flex items-center justify-between border-b p-3">
-        <h2 className="text-base font-semibold">گفت‌وگوها</h2>
-        <NewGroupDialog onCreated={(id) => onSelect(id)} />
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-base font-semibold">گفت‌وگوها</h2>
+          <HelpHint text={COLLAB_HELP.conversationsList} ariaLabel="راهنمای فهرست گفتگوها" />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <HelpHint text={COLLAB_HELP.newGroup} ariaLabel="راهنمای گروه جدید" />
+          <NewGroupDialog onCreated={(id) => onSelect(id)} />
+        </div>
       </header>
       <ScrollArea className="flex-1">
         {isLoading ? (
@@ -73,37 +81,46 @@ export function ConversationsSidebar({
                       onClick={() => onSelect(g.id)}
                       className="flex flex-1 flex-col gap-1 p-3 text-right"
                     >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-medium">{g.name}</span>
-                      <div className="flex items-center gap-1">
-                        {g.unread_count > 0 && (
-                          <Badge variant="default" className="h-5 min-w-5 px-1.5 text-xs">
-                            {g.unread_count}
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate font-medium">{g.name}</span>
+                        <div className="flex items-center gap-1">
+                          {g.unread_count > 0 && (
+                            <Badge variant="default" className="h-5 min-w-5 px-1.5 text-xs">
+                              {g.unread_count}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-[10px]">
+                            {typeLabel[g.type] ?? g.type}
                           </Badge>
-                        )}
-                        <Badge variant="outline" className="text-[10px]">
-                          {typeLabel[g.type] ?? g.type}
-                        </Badge>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                      <span className="truncate">{g.last_message?.content ?? "بدون پیام"}</span>
-                      <span className="shrink-0" dir="ltr">
-                        {g.last_message?.created_at ? formatJalaliRelative(g.last_message.created_at) : ""}
-                      </span>
-                    </div>
+                      <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                        <span className="truncate">{g.last_message?.content ?? "بدون پیام"}</span>
+                        <span className="shrink-0" dir="ltr">
+                          {g.last_message?.created_at
+                            ? formatJalaliRelative(g.last_message.created_at)
+                            : ""}
+                        </span>
+                      </div>
                     </button>
                     {isAdmin && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleDeactivate(e, g.id)}
-                        disabled={deactivate.isPending}
-                        title="غیرفعال‌سازی گروه"
-                        aria-label="غیرفعال‌سازی گروه"
-                        className="flex items-center justify-center px-3 text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      <div className="flex items-center gap-0.5 px-1">
+                        <HelpHint
+                          text={COLLAB_HELP.deactivateGroup}
+                          ariaLabel="راهنمای غیرفعال‌سازی"
+                          size={12}
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeactivate(e, g.id)}
+                          disabled={deactivate.isPending}
+                          className="flex items-center px-2 text-muted-foreground hover:text-destructive"
+                          aria-label="غیرفعال‌سازی گروه"
+                          title="غیرفعال‌سازی گروه"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
                   </div>
                 </li>

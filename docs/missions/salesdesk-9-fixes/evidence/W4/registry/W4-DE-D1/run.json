@@ -1,0 +1,1 @@
+﻿{"job_id":"W4-DE-D1","state":"running","attempt":1,"deadline_at":"2026-09-22T07:00:00Z","budget":{"minutes":50},"checkpoint_path":"docs/missions/salesdesk-9-fixes/evidence/W4/registry/W4-DE-D1/checkpoint.md","heartbeat_every":60,"killable":false,"row":"D1","migration":"573"}

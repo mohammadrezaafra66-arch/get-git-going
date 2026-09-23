@@ -1,0 +1,30 @@
+W1 / A4 — BEFORE / AFTER probe (rolled-back NULL supplier INSERT)
+Database: afrakala @ afrakala-lan-db
+
+=== BEFORE (migration 561 / trg_purchases_require_supplier not yet live) ===
+Captured earlier the same day, before the specialist applied the trigger.
+
+SQL (BEGIN … ROLLBACK, exception trapped):
+  INSERT INTO public.purchases (
+    supplier_id, payment_term_id, total_amount, quantity, purchase_date, status, notes
+  ) VALUES (
+    NULL,
+    (SELECT id FROM public.payment_terms WHERE is_active LIMIT 1),
+    0, 1, CURRENT_DATE, 'draft',
+    '[TEST-9FIX] supplier-null probe'
+  );
+
+Result:
+  null_insert=ACCEPTED
+
+=== AFTER (trigger trg_purchases_require_supplier live) ===
+Same statement shape:
+
+Result:
+  null_insert=REFUSED P0001 msg=SUPPLIER_REQUIRED
+  clear_supplier=REFUSED P0001 msg=SUPPLIER_REQUIRED
+  legacy_null_edit=ACCEPTED
+
+Spec under test:
+  e2e/missions/salesdesk-9-fixes-w1-a4-supplier-required.spec.ts
+  asserts the AFTER behaviour (REFUSED + SUPPLIER_REQUIRED).

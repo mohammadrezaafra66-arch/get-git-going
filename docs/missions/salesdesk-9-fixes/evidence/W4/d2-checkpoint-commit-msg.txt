@@ -1,0 +1,6 @@
+docs(missions): checkpoint نهایی W4-DE-D2 پس از push
+
+چه چیزی تغییر کرد: checkpoint=done با HEAD و نتیجه push.
+چرا: ثبت وضعیت نهایی ردیف D2 برای ارکستراتور.
+شواهد: E3 — d2-push.txt fbb19478..355c93ec EXIT=0.
+تأییدنشده: —

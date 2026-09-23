@@ -1,0 +1,6 @@
+feat(salesdesk): جدول sales_activity_types با ۱۸ نوع Didar (موج ۴ D2)
+
+چه چیزی تغییر کرد: migration 572 ساخت جدول + seed ۱۸ عنوان + RLS؛ revert؛ شواهد hex؛ CONTRACTS next=573 و placeholder ماژول sales-activities.
+چرا: N21 — کاتالوگ نوع فعالیت برای صفحه فعالیت‌ها (D4).
+شواهد: E3/E4 — d2-apply.txt INSERT 0 18؛ d2-hex-verify.txt all_ok=true برای ۱۸ ردیف.
+تأییدنشده: RLS نقش sales در runtime UI؛ D1 ستون‌های activity روی sales_interactions.

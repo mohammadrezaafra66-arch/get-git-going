@@ -1,0 +1,24 @@
+# W3-DOC checkpoint
+
+- agent: dev-docs-writer (W3-DOC)
+- time_utc: 2026-09-22T06:40:00Z (approx; deadline 2026-09-22T06:45:00Z)
+- deadline_utc: 2026-09-22T06:45:00Z
+- worktree: D:\AfraKalaTest\wt-salesdesk-9-fixes
+- branch: feature/salesdesk-9-fixes
+- HEAD_before_docs_commit: 35fbea5c14ff90935d196d980eecc125472897fe
+- product_commits: bc10ec3f (FE C1–C9); c4bcafe9 (C2 zod)
+- live_APP_GIT_SHA: 42392d3f (`docker exec afrakala-lan-web printenv APP_GIT_SHA` exit 0)
+- health: healthy (`docker inspect` Health.Status)
+- tsc: ≤74 — `evidence/W3/tsc-ops.txt` and `critic-tsc.txt` each 74× `error TS` (DOC count)
+- critic: C1,C3–C9 CONFIRM; C2 REJECT then re-review CONFIRM — `evidence/W3/critic.md` + `critic-c2-rereview.md`
+- backfill: YES — `evidence/W0/backfill-condition-0.6.md`; ids — `evidence/W3/c2-backfill-ids.txt`
+- migrations: 565–571 on disk + live (`critic-db-probe.txt`); reverts under `docs/missions/salesdesk-9-fixes/revert/`
+- CONTRACTS module keys: already present (`sales-deals-for-others`, `deal-lost-reasons`, `deal-lost-report`) — no edit
+- product_code_modified: no
+- files_written:
+  - docs/missions/salesdesk-9-fixes/HANDOFF.md
+  - docs/missions/salesdesk-9-fixes/evidence/W3/ACCEPTANCE.md
+  - docs/missions/salesdesk-9-fixes/verify/W3-selfcheck.md
+  - docs/missions/salesdesk-9-fixes/evidence/W3/registry/W3-DOC/checkpoint.md
+- next: Wave 4 D2
+- note_D1: other agents’ untracked W3 critic/probe files and W2-M checkpoint.md were not staged by W3-DOC

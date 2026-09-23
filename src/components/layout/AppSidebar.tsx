@@ -29,6 +29,8 @@ import {
   ScanSearch,
   ClipboardList,
   PhoneCall,
+  Phone,
+  MessageSquare,
   ChevronDown,
   ChevronLeft,
   type LucideIcon,
@@ -75,7 +77,7 @@ const QUICK_ACCESS_BY_ROLE: Partial<Record<AppRole, string[]>> = {
 };
 const QUICK_ACCESS_LIMIT = 6;
 
-/** Fixed 3D pins under quick-sales search (ticket + sales desk). */
+/** Fixed 3D pins under quick-sales search (ticket + sales desk + collaboration). */
 function SidebarNavPin3d({
   to,
   label,
@@ -83,7 +85,7 @@ function SidebarNavPin3d({
   compact = false,
   active,
 }: {
-  to: "/operations/work" | "/operations/sales-desk";
+  to: "/operations/work" | "/operations/sales-desk" | "/collaboration";
   label: string;
   icon: LucideIcon;
   compact?: boolean;
@@ -147,7 +149,7 @@ function SidebarNavPin3d({
 }
 
 export function AppSidebar() {
-  const { roles, user, signOut } = useAuth();
+  const { roles, user, signOut, permissionsLoading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -169,7 +171,12 @@ export function AppSidebar() {
   const canSeeAdminOnly = isAdmin || isManager;
   const canSeePricingQueue = isAdmin || isManager || isAccountant;
   const canQuickSalesSearch = hasPermissionEx(roles, "sales", "view");
-  const visible = useMemo(() => getVisibleNavigationEntries(roles), [roles]);
+  // Recompute when role_permissions finish loading — hasPermissionEx is false until then,
+  // so a [roles]-only memo leaves every module permanently empty/disabled for non-admins.
+  const visible = useMemo(
+    () => getVisibleNavigationEntries(roles),
+    [roles, permissionsLoading],
+  );
   const canSeeTickets = useMemo(
     () => visible.some((entry) => entry.route === "/operations/work"),
     [visible],
@@ -178,9 +185,17 @@ export function AppSidebar() {
     () => visible.some((entry) => entry.route === "/operations/sales-desk"),
     [visible],
   );
+  const canSeeCollaboration = useMemo(
+    () => visible.some((entry) => entry.route === "/collaboration"),
+    [visible],
+  );
   const ticketActive = location.pathname.startsWith("/operations/work");
   const salesDeskActive = location.pathname.startsWith("/operations/sales-desk");
-  const showSidebarPins = canSeeTickets || canSeeSalesDesk;
+  const collaborationActive =
+    location.pathname === "/collaboration" ||
+    location.pathname.startsWith("/collaboration/") ||
+    location.pathname.startsWith("/messages");
+  const showSidebarPins = canSeeTickets || canSeeSalesDesk || canSeeCollaboration;
   const primaryAction = useMemo(() => getPrimaryActionEntry(roles), [roles]);
   const { favorites, favoriteIdSet, toggleFavorite, maxFavorites } =
     useNavigationFavorites(visible);
@@ -284,6 +299,27 @@ export function AppSidebar() {
     },
   });
 
+  // Wave 4 D4 — red badge: open activities due today/overdue via tehran_today RPC
+  const canSeeActivitiesBadge = hasPermissionEx(
+    roles,
+    "sales-activities",
+    "view",
+  );
+  const { data: activitiesDueCount } = useQuery({
+    queryKey: ["sidebar-activities-due-count", user?.id],
+    enabled: !!user?.id && canSeeActivitiesBadge,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc(
+        "count_open_activities_due_today_or_overdue" as never,
+        { p_salesperson_id: user!.id } as never,
+      );
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
+
   // PRICE-RT.4 — small queue alert badge (admin/manager/accountant only).
   const {
     data: pricingQueueHealth,
@@ -354,6 +390,9 @@ export function AppSidebar() {
     const showBadge = item.route === "/users" && isAdmin && (pendingCount ?? 0) > 0;
     const showPricingBadge =
       item.route === "/pricing/recompute-prices" && pricingAlertVariant !== null;
+    const showActivitiesBadge =
+      item.route === "/operations/sales-desk/activities" &&
+      (activitiesDueCount ?? 0) > 0;
     const isFavorite = favoriteIdSet.has(item.id);
     return (
       <div
@@ -397,6 +436,14 @@ export function AppSidebar() {
               }
             >
               {pricingAlertVariant === "alert" ? failedCount : pendingPricing}
+            </span>
+          )}
+          {showActivitiesBadge && (
+            <span
+              className="mr-auto rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white"
+              title="فعالیت‌های امروز و عقب‌افتاده"
+            >
+              {toFaDigits(activitiesDueCount ?? 0)}
             </span>
           )}
         </Link>
@@ -519,6 +566,24 @@ export function AppSidebar() {
                 </TooltipContent>
               </Tooltip>
             )}
+            {canSeeCollaboration && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="hidden group-data-[collapsible=icon]:block">
+                    <SidebarNavPin3d
+                      compact
+                      to="/collaboration"
+                      label="همکاری"
+                      icon={MessageSquare}
+                      active={collaborationActive}
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="left" sideOffset={6} className="text-xs">
+                  ارتباطات همکاری
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </SidebarHeader>
 
@@ -599,6 +664,14 @@ export function AppSidebar() {
                       label="تیکت"
                       icon={ClipboardList}
                       active={ticketActive}
+                    />
+                  )}
+                  {canSeeCollaboration && (
+                    <SidebarNavPin3d
+                      to="/collaboration"
+                      label="همکاری"
+                      icon={MessageSquare}
+                      active={collaborationActive}
                     />
                   )}
                 </div>
@@ -853,6 +926,13 @@ export function AppSidebar() {
               >
                 <Bell className="h-3.5 w-3.5" />
                 <span>اعلان‌ها</span>
+              </Link>
+              <Link
+                to="/settings/caller-id"
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-xs text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent/40 hover:text-sidebar-foreground"
+              >
+                <Phone className="h-3.5 w-3.5" />
+                <span>Caller ID</span>
               </Link>
               <Link
                 to="/knowledge"

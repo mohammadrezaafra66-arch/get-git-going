@@ -1,0 +1,6 @@
+psql:/tmp/probe-check-probe.sql:23: NOTICE:  CHECK_OK rejected display_seconds=4
+psql:/tmp/probe-check-probe.sql:23: NOTICE:  CHECK_OK rejected display_seconds=121
+BEGIN
+DO
+ROLLBACK
+EXIT=0

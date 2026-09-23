@@ -1,0 +1,6 @@
+docs(missions): checkpoint نهایی W4-FE پس از push
+
+چه چیزی تغییر کرد: HEAD و SHAهای D3–D7 در checkpoint
+چرا: ثبت وضعیت موج ۴ FE
+شواهد: E3 — w4-fe-push.txt 3a2baa30..5cda486e
+تأییدنشده: —

@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { replyInquiry } from "@/lib/messenger/inquiries.functions";
+import { HelpHint } from "@/components/common/HelpHint";
+import { COLLAB_HELP } from "@/lib/messenger/collaboration-help";
 
 export function InquiryReplyDialog({
   open,
@@ -49,7 +51,10 @@ export function InquiryReplyDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-md">
         <DialogHeader>
-          <DialogTitle>ثبت قیمت استعلام</DialogTitle>
+          <DialogTitle className="flex items-center gap-1.5">
+            ثبت قیمت استعلام
+            <HelpHint text={COLLAB_HELP.inquiryReply} ariaLabel="راهنمای ثبت قیمت" />
+          </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1">

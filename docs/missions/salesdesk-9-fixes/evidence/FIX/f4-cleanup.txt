@@ -1,0 +1,6 @@
+CLEANUP_OUT
+{"cleaned":true,"scope":"[TEST-9FIX]"}
+
+MARKER_COUNTS
+{"sales_interactions":0,"persons":0,"customers":0,"notification_queue":0}
+
