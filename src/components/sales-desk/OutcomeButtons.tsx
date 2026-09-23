@@ -5,6 +5,16 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   updateSalesInteractionStatus,
   salesDeskErrorMessage,
   type SalesInteractionStatus,
@@ -40,6 +50,8 @@ export function OutcomeButtons({
   lostOpenSignal,
 }: Props) {
   const [lostOpen, setLostOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
 
   useEffect(() => {
     if (lostOpenSignal && lostOpenSignal > 0) setLostOpen(true);
@@ -157,19 +169,46 @@ export function OutcomeButtons({
             type="button"
             size="sm"
             variant="ghost"
-            disabled={disabled}
-            onClick={() =>
-              deleteSalesDeal(interactionId)
-                .then(() => onUpdated?.("open"))
-                .catch((e: Error) =>
-                  toast.error(salesDeskErrorMessage(e.message) || "حذف ناموفق بود"),
-                )
-            }
+            disabled={disabled || deletePending}
+            onClick={() => setDeleteOpen(true)}
           >
+            {deletePending ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : null}
             حذف
           </Button>
         ) : null}
       </div>
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>آیا از حذف این معامله مطمئن هستید؟</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
+              آیا از حذف این معامله مطمئن هستید؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletePending}
+              onClick={(e) => {
+                e.preventDefault();
+                setDeletePending(true);
+                deleteSalesDeal(interactionId)
+                  .then(() => {
+                    setDeleteOpen(false);
+                    onUpdated?.("open");
+                  })
+                  .catch((err: Error) =>
+                    toast.error(salesDeskErrorMessage(err.message) || "حذف ناموفق بود"),
+                  )
+                  .finally(() => setDeletePending(false));
+              }}
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <LostReasonDialog
         open={lostOpen}

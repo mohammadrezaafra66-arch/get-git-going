@@ -591,17 +591,17 @@ const NAVIGATION_SEEDS = [
 
   // ۶) عملیات داخلی
   {
-    // F1 sales-desk — میز تماس فروش (AC5/AC8)
-    to: "/operations/sales-desk",
-    label: "میز فروش",
-    icon: PhoneCall,
+    to: "/operations/sales-desk/pipeline",
+    label: "کاریز فروش",
+    icon: FolderKanban,
     module: "sales",
     group: "operations",
   },
   {
-    to: "/operations/sales-desk/pipeline",
-    label: "کاریز فروش",
-    icon: FolderKanban,
+    // F1 sales-desk — میز تماس فروش (AC5/AC8)
+    to: "/operations/sales-desk",
+    label: "میز فروش",
+    icon: PhoneCall,
     module: "sales",
     group: "operations",
   },

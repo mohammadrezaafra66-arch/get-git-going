@@ -24,7 +24,7 @@ import {
   listActivitiesForDeal,
 } from "@/lib/sales-desk";
 import { loadDealCapabilities } from "@/lib/sales-desk/capabilities";
-import { listSalesPipelineStages } from "@/lib/sales-desk/pipelines";
+import { listSalesPipelineStages, listSalesPipelines } from "@/lib/sales-desk/pipelines";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDateTimeFa } from "@/lib/i18n/formatters";
 
@@ -117,16 +117,28 @@ function DealDetailPage() {
         created_at: string;
       }>;
       const actorIds = [...new Set(rows.map((r) => r.actor_id).filter(Boolean) as string[])];
-      const { data: profiles } = actorIds.length
-        ? await supabase.from("profiles").select("id, full_name").in("id", actorIds)
-        : { data: [] };
+      const [profilesRes, pipes, stages] = await Promise.all([
+        actorIds.length
+          ? supabase.from("profiles").select("id, full_name").in("id", actorIds)
+          : Promise.resolve({ data: [] as { id: string; full_name: string | null }[] }),
+        listSalesPipelines(),
+        listSalesPipelineStages(),
+      ]);
       const names = new Map(
-        ((profiles ?? []) as { id: string; full_name: string | null }[]).map((p) => [
+        ((profilesRes.data ?? []) as { id: string; full_name: string | null }[]).map((p) => [
           p.id,
           p.full_name,
         ]),
       );
-      return rows.map((r) => ({ ...r, actor_name: r.actor_id ? names.get(r.actor_id) : null }));
+      const titles = new Map<string, string>();
+      for (const p of pipes) titles.set(p.id, p.title);
+      for (const s of stages) titles.set(s.id, s.title);
+      return rows.map((r) => ({
+        ...r,
+        actor_name: r.actor_id ? names.get(r.actor_id) ?? null : null,
+        from_label: historyValueFa(r.event, r.from_value, titles),
+        to_label: historyValueFa(r.event, r.to_value, titles),
+      }));
     },
     staleTime: 10_000,
   });
@@ -389,7 +401,7 @@ function DealDetailPage() {
                           <div className="flex flex-wrap gap-2">
                             <Badge variant="outline">{historyEventFa(h.event)}</Badge>
                             <span>
-                              {h.from_value ?? "—"} → {h.to_value ?? "—"}
+                              {h.from_label} → {h.to_label}
                             </span>
                           </div>
                           <p className="mt-1 text-xs text-muted-foreground">
@@ -408,6 +420,17 @@ function DealDetailPage() {
       )}
     </SalesDeskShell>
   );
+}
+
+function historyValueFa(
+  event: string,
+  value: string | null,
+  titles: Map<string, string>,
+): string {
+  if (value == null || value === "") return "—";
+  if (event === "status") return salesInteractionStatusLabel(value);
+  if (event === "stage" || event === "pipeline") return titles.get(value) ?? value;
+  return value;
 }
 
 function historyEventFa(event: string): string {

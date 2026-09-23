@@ -7,6 +7,16 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -76,6 +86,8 @@ export function DealPipelineBoard() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [lostFor, setLostFor] = useState<DealCard | null>(null);
   const [moveFor, setMoveFor] = useState<DealCard | null>(null);
+  const [deleteFor, setDeleteFor] = useState<DealCard | null>(null);
+  const [deletePending, setDeletePending] = useState(false);
 
   const pipesQ = useQuery({
     queryKey: ["sales-desk", "pipelines"],
@@ -289,14 +301,7 @@ export function DealPipelineBoard() {
           <DropAction
             enabled={!!dragging.caps?.can_delete}
             label="حذف فرصت"
-            onDrop={() =>
-              deleteSalesDeal(dragging.id)
-                .then(() => {
-                  toast.success("حذف شد");
-                  invalidate();
-                })
-                .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)))
-            }
+            onDrop={() => setDeleteFor(dragging)}
           />
           <DropAction
             enabled={!!dragging.caps?.can_move}
@@ -306,6 +311,42 @@ export function DealPipelineBoard() {
         </div>
       ) : null}
 
+      <AlertDialog
+        open={!!deleteFor}
+        onOpenChange={(o) => {
+          if (!o && !deletePending) setDeleteFor(null);
+        }}
+      >
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>آیا از حذف این معامله مطمئن هستید؟</AlertDialogTitle>
+            <AlertDialogDescription className="sr-only">
+              آیا از حذف این معامله مطمئن هستید؟
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePending}>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deletePending || !deleteFor}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!deleteFor) return;
+                setDeletePending(true);
+                deleteSalesDeal(deleteFor.id)
+                  .then(() => {
+                    toast.success("حذف شد");
+                    setDeleteFor(null);
+                    invalidate();
+                  })
+                  .catch((err: Error) => toast.error(salesDeskErrorMessage(err.message)))
+                  .finally(() => setDeletePending(false));
+              }}
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <LostReasonDialog
         open={!!lostFor}
         onOpenChange={(o) => {
