@@ -91,12 +91,18 @@ async function collectVisibleSidebar(page: Page): Promise<{ label: string; href:
   const rail = page.locator(
     "aside:visible button[aria-label]:not([disabled]), [data-sidebar=\"sidebar\"]:visible button[aria-label]:not([disabled])",
   );
-  const railCount = await rail.count();
-  for (let i = 0; i < railCount; i++) {
-    const btn = rail.nth(i);
-    const label = await btn.getAttribute("aria-label");
-    if (!label || label === "خروج") continue;
-    await btn.click({ force: true }).catch(() => undefined);
+  const railLabels = await rail.evaluateAll((nodes) =>
+    nodes
+      .map((n) => (n.getAttribute("aria-label") || "").trim())
+      .filter((l) => l && l !== "خروج"),
+  );
+  for (const label of railLabels) {
+    await page
+      .locator("aside:visible, [data-sidebar=\"sidebar\"]:visible")
+      .getByRole("button", { name: label, exact: true })
+      .first()
+      .click({ force: true })
+      .catch(() => undefined);
     await page.waitForTimeout(300);
     merge(await harvest());
   }
