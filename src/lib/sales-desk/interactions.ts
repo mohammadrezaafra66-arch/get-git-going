@@ -144,30 +144,17 @@ export async function updateSalesInteractionStatus(input: {
   lostReasonNote?: string | null;
   lostReasonOther?: string | null;
 }): Promise<string> {
-  // Lost requires lost_reason_* in the same UPDATE as status (trigger 567).
-  // RPC 546 only sets status+outcome_note — use direct UPDATE for lost.
-  if (input.status === "lost") {
-    if (!input.lostReasonId) {
-      throw new Error("دلیل شکست را انتخاب کنید");
-    }
-    const { error } = await supabase
-      .from("sales_interactions" as never)
-      .update({
-        status: "lost",
-        outcome_note: input.outcomeNote ?? null,
-        lost_reason_id: input.lostReasonId,
-        lost_reason_note: input.lostReasonNote ?? null,
-        lost_reason_other: input.lostReasonOther ?? null,
-      } as never)
-      .eq("id" as never, input.id as never);
-    if (error) throw new Error(salesDeskErrorMessage(error.message));
-    return input.id;
+  if (input.status === "lost" && !input.lostReasonId) {
+    throw new Error("دلیل شکست را انتخاب کنید");
   }
 
   const { data, error } = await rpc()("sales_interaction_update_status", {
     p_id: input.id,
     p_status: input.status,
     p_outcome_note: input.outcomeNote ?? null,
+    p_lost_reason_id: input.lostReasonId ?? null,
+    p_lost_reason_note: input.lostReasonNote ?? null,
+    p_lost_reason_other: input.lostReasonOther ?? null,
   });
   if (error) throw new Error(salesDeskErrorMessage(error.message));
   if (typeof data !== "string" || !data) {
