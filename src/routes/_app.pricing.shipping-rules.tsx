@@ -49,8 +49,10 @@ interface SRule {
   brand_id: string | null;
   category_id: string | null;
   product_name?: string | null;
+  product_names?: string[];
   brand_name?: string | null;
   category_name?: string | null;
+  product_ids?: string[];
   min_purchase_price: number | null;
   max_purchase_price: number | null;
   is_active: boolean;
@@ -81,15 +83,26 @@ function ShippingRulesPage() {
           id, title, cost_type, cost_value, cost_currency, product_type,
           product_id, brand_id, category_id,
           min_purchase_price, max_purchase_price,
-          is_active, priority, sort_order
+          is_active, priority, sort_order,
+          shipping_cost_rule_products ( product_id )
         `,
         )
         .order("sort_order", { ascending: true })
         .order("priority", { ascending: true })
         .range(from, to);
       if (error) throw error;
-      const rows = (data ?? []) as SRule[];
-      const productIds = [...new Set(rows.map((r) => r.product_id).filter(Boolean))] as string[];
+      const rawRows = (data ?? []) as (SRule & {
+        shipping_cost_rule_products?: { product_id: string }[];
+      })[];
+      const rows: SRule[] = rawRows.map((r) => ({
+        ...r,
+        product_ids: (r.shipping_cost_rule_products ?? []).map((p) => p.product_id),
+      }));
+      const productIds = [
+        ...new Set(
+          rows.flatMap((r) => [r.product_id, ...(r.product_ids ?? [])].filter(Boolean) as string[]),
+        ),
+      ];
       const brandIds = [...new Set(rows.map((r) => r.brand_id).filter(Boolean))] as string[];
       const categoryIds = [...new Set(rows.map((r) => r.category_id).filter(Boolean))] as string[];
       const emptyNameRows = Promise.resolve({ data: [] as NameRow[], error: null });
@@ -113,6 +126,9 @@ function ShippingRulesPage() {
       return rows.map((r) => ({
         ...r,
         product_name: r.product_id ? (productNames.get(r.product_id) ?? null) : null,
+        product_names: (r.product_ids ?? [])
+          .map((id) => productNames.get(id))
+          .filter((n): n is string => !!n),
         brand_name: r.brand_id ? (brandNames.get(r.brand_id) ?? null) : null,
         category_name: r.category_id ? (categoryNames.get(r.category_id) ?? null) : null,
       }));
@@ -150,6 +166,11 @@ function ShippingRulesPage() {
     if (r.category_name) parts.push(`دسته: ${r.category_name}`);
     if (r.brand_name) parts.push(`برند: ${r.brand_name}`);
     if (r.product_name) parts.push(r.product_name);
+    if (!r.product_name && r.product_names && r.product_names.length > 0) {
+      const shown = r.product_names.slice(0, 3).join("، ");
+      const extra = r.product_names.length > 3 ? ` و ${r.product_names.length - 3} کالای دیگر` : "";
+      parts.push(shown + extra);
+    }
     if (parts.length > 0) return parts.join(" · ");
     if (r.min_purchase_price != null || r.max_purchase_price != null) return "بازه قیمت خرید";
     return "—";
@@ -170,7 +191,7 @@ function ShippingRulesPage() {
     <div className="space-y-5">
       <PageHeader
         title="قوانین هزینه حمل"
-        description="تعریف هزینه حمل بر اساس محصول، دسته‌بندی، برند یا نوع کالا"
+        description="تعریف هزینه حمل بر اساس محصول، برند و چند کالا، دسته‌بندی یا بازه قیمت. هر قانون منطبق جمع می‌شود."
         actions={
           <>
             <Button asChild variant="outline" size="sm">
@@ -322,13 +343,15 @@ function SRuleDialog({
         // Category-scoped rules (incl. the دسته → برند → محصول chain) open in
         // "category" so the brand/product narrowing is editable; a rule bound
         // only to a product (no category) opens in "product".
-        const scope_mode: "product" | "category" | "price_range" = editing.category_id
+        const scope_mode: "product" | "category" | "price_range" | "brand" = editing.category_id
           ? "category"
           : editing.product_id
             ? "product"
-            : editing.min_purchase_price != null || editing.max_purchase_price != null
-              ? "price_range"
-              : "product";
+            : editing.brand_id
+              ? "brand"
+              : editing.min_purchase_price != null || editing.max_purchase_price != null
+                ? "price_range"
+                : "product";
         setValues({
           title: editing.title ?? "",
           scope_mode,
@@ -337,6 +360,7 @@ function SRuleDialog({
           cost_currency: editing.cost_currency ?? null,
           product_type: editing.product_type,
           product_id: editing.product_id,
+          product_ids: editing.product_ids ?? [],
           brand_id: editing.brand_id,
           category_id: editing.category_id,
           min_purchase_price: editing.min_purchase_price,
@@ -384,6 +408,14 @@ function SRuleDialog({
             .eq("id", data.category_id)
             .maybeSingle();
           title = c?.name ? `دسته: ${c.name}` : "قانون حمل دسته";
+        } else if (data.scope_mode === "brand" && data.brand_id) {
+          const { data: b } = await supabase
+            .from("brands")
+            .select("name")
+            .eq("id", data.brand_id)
+            .maybeSingle();
+          const count = data.product_ids?.length ?? 0;
+          title = b?.name ? `برند: ${b.name} · ${count} کالا` : "قانون حمل برند";
         } else if (data.scope_mode === "price_range") {
           const lo =
             data.min_purchase_price != null
@@ -397,25 +429,45 @@ function SRuleDialog({
         }
       }
       // scope_mode فقط برای UI است؛ به DB ارسال نمی‌شود
-      const { scope_mode, ...rest } = data;
-      void scope_mode;
+      const { scope_mode, product_ids, ...rest } = data;
+      const pickIds = scope_mode === "brand" ? (product_ids ?? []) : [];
       const payload = {
         ...rest,
+        product_id: scope_mode === "brand" ? null : rest.product_id,
+        category_id: scope_mode === "brand" ? null : rest.category_id,
         title: title || "قانون حمل",
         cost_currency: data.cost_type === "currency" ? (data.cost_currency ?? null) : null,
       };
+      let ruleId = editing?.id ?? null;
       if (editing) {
         const { error } = await supabase
           .from("shipping_cost_rules")
           .update(payload)
           .eq("id", editing.id);
         if (error) throw error;
-        toast.success("به‌روزرسانی شد");
       } else {
-        const { error } = await supabase.from("shipping_cost_rules").insert([payload]);
+        const { data: created, error } = await supabase
+          .from("shipping_cost_rules")
+          .insert([payload])
+          .select("id")
+          .single();
         if (error) throw error;
-        toast.success("ثبت شد");
+        ruleId = (created as { id: string }).id;
       }
+      if (ruleId) {
+        const { error: delErr } = await supabase
+          .from("shipping_cost_rule_products" as never)
+          .delete()
+          .eq("rule_id", ruleId);
+        if (delErr) throw delErr;
+        if (pickIds.length > 0) {
+          const { error: insErr } = await supabase
+            .from("shipping_cost_rule_products" as never)
+            .insert(pickIds.map((product_id) => ({ rule_id: ruleId, product_id })) as never);
+          if (insErr) throw insErr;
+        }
+      }
+      toast.success(editing ? "به‌روزرسانی شد" : "ثبت شد");
       onSaved();
       onOpenChange(false);
     } catch (e) {
@@ -440,6 +492,10 @@ function SRuleDialog({
           onCancel={() => onOpenChange(false)}
           isEditing={!!editing}
           initialProductLabel={initialProductLabel}
+          initialProductLabels={(editing?.product_ids ?? []).map((id, i) => ({
+            id,
+            name: editing?.product_names?.[i] ?? id,
+          }))}
         />
         <DialogFooter className="hidden" />
       </DialogContent>

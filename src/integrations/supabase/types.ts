@@ -9003,6 +9003,46 @@ export type Database = {
             referencedRelation: "v_promotion_suggestions"
             referencedColumns: ["product_id"]
           },
+          {
+            foreignKeyName: "shipping_cost_rule_products_rule_id_fkey"
+            columns: ["id"]
+            isOneToOne: false
+            referencedRelation: "shipping_cost_rule_products"
+            referencedColumns: ["rule_id"]
+          },
+        ]
+      }
+      shipping_cost_rule_products: {
+        Row: {
+          created_at: string
+          product_id: string
+          rule_id: string
+        }
+        Insert: {
+          created_at?: string
+          product_id: string
+          rule_id: string
+        }
+        Update: {
+          created_at?: string
+          product_id?: string
+          rule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shipping_cost_rule_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shipping_cost_rule_products_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "shipping_cost_rules"
+            referencedColumns: ["id"]
+          },
         ]
       }
       shop_settings: {

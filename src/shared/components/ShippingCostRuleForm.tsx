@@ -25,6 +25,7 @@ export const emptyShippingRule: ShippingRuleFormValues = {
   cost_currency: null,
   product_type: null,
   product_id: null,
+  product_ids: [],
   brand_id: null,
   category_id: null,
   min_purchase_price: null,
@@ -37,22 +38,21 @@ export const emptyShippingRule: ShippingRuleFormValues = {
 /**
  * Debounced product search (350ms) — used for the optional product binding.
  */
-function useProductSearch(term: string) {
+function useProductSearch(term: string, brandId?: string | null, categoryId?: string | null) {
   const [debounced, setDebounced] = useState(term);
   useEffect(() => {
     const t = setTimeout(() => setDebounced(term.trim()), 350);
     return () => clearTimeout(t);
   }, [term]);
   return useQuery({
-    queryKey: ["shipping-rule-product-search", debounced],
-    enabled: debounced.length >= 2,
+    queryKey: ["shipping-rule-product-search", debounced, brandId ?? "", categoryId ?? ""],
+    enabled: brandId ? true : debounced.length >= 2,
     queryFn: async (): Promise<ProductLite[]> => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("id, name")
-        .ilike("name", `%${debounced}%`)
-        .order("name", { ascending: true })
-        .limit(20);
+      let q = supabase.from("products").select("id, name").order("name", { ascending: true }).limit(40);
+      if (debounced.length >= 2) q = q.ilike("name", `%${debounced}%`);
+      if (brandId) q = q.eq("brand_id", brandId);
+      if (categoryId) q = q.eq("category_id", categoryId);
+      const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as ProductLite[];
     },
@@ -68,6 +68,7 @@ interface Props {
   onCancel: () => void;
   isEditing: boolean;
   initialProductLabel?: string | null;
+  initialProductLabels?: { id: string; name: string }[];
 }
 
 export function ShippingCostRuleForm({
@@ -79,6 +80,7 @@ export function ShippingCostRuleForm({
   onCancel,
   isEditing,
   initialProductLabel,
+  initialProductLabels = [],
 }: Props) {
   const { data: currencies } = useQuery({
     queryKey: ["currencies-active-lite"],
@@ -95,7 +97,17 @@ export function ShippingCostRuleForm({
   });
 
   const [productTerm, setProductTerm] = useState(initialProductLabel ?? "");
-  const productSearch = useProductSearch(productTerm);
+  const [brandFilterCategory, setBrandFilterCategory] = useState<string | null>(null);
+  const [pickedLabels, setPickedLabels] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
+    for (const p of initialProductLabels) m[p.id] = p.name;
+    return m;
+  });
+  const productSearch = useProductSearch(
+    productTerm,
+    values.scope_mode === "brand" ? values.brand_id : null,
+    values.scope_mode === "brand" ? brandFilterCategory : null,
+  );
 
   const { data: categories } = useQuery({
     queryKey: ["categories-lite-shipping"],
@@ -194,20 +206,22 @@ export function ShippingCostRuleForm({
         <Select
           value={values.scope_mode}
           onValueChange={(v) => {
-            const next = v as "product" | "price_range" | "category";
+            const next = v as "product" | "price_range" | "category" | "brand";
             // In "category" scope the rule may be narrowed دسته → برند → محصول,
             // so brand_id/product_id are preserved there; "product" keeps only
-            // product_id; "price_range" clears all scope bindings.
+            // product_id; "brand" keeps brand + pick-list; "price_range" clears bindings.
             onChange({
               ...values,
               scope_mode: next,
               product_id: next === "product" || next === "category" ? values.product_id : null,
-              brand_id: next === "category" ? values.brand_id : null,
+              product_ids: next === "brand" ? values.product_ids : [],
+              brand_id: next === "category" || next === "brand" ? values.brand_id : null,
               category_id: next === "category" ? values.category_id : null,
               min_purchase_price: next === "price_range" ? values.min_purchase_price : null,
               max_purchase_price: next === "price_range" ? values.max_purchase_price : null,
             });
-            if (next === "price_range") setProductTerm("");
+            if (next === "price_range" || next === "brand") setProductTerm("");
+            if (next !== "brand") setBrandFilterCategory(null);
           }}
         >
           <SelectTrigger>
@@ -215,6 +229,7 @@ export function ShippingCostRuleForm({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="product">بر اساس محصول</SelectItem>
+            <SelectItem value="brand">بر اساس برند و چند محصول</SelectItem>
             <SelectItem value="price_range">بر اساس بازه قیمتی</SelectItem>
             <SelectItem value="category">بر اساس دسته</SelectItem>
           </SelectContent>
@@ -222,6 +237,134 @@ export function ShippingCostRuleForm({
       </div>
 
       {values.scope_mode === "product" && productPickerBlock("محصول *")}
+
+      {values.scope_mode === "brand" && (
+        <>
+          <div className="sm:col-span-2">
+            <Label>برند *</Label>
+            <Select
+              value={values.brand_id ?? ""}
+              onValueChange={(v) => {
+                onChange({ ...values, brand_id: v, product_ids: [] });
+                setPickedLabels({});
+                setProductTerm("");
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="انتخاب برند" />
+              </SelectTrigger>
+              <SelectContent>
+                {(brands ?? []).map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.brand_id && <p className="mt-1 text-xs text-destructive">{errors.brand_id}</p>}
+          </div>
+
+          <div className="sm:col-span-2">
+            <Label>فیلتر دسته (فقط برای پیدا کردن کالا)</Label>
+            <Select
+              value={brandFilterCategory ?? "__all"}
+              onValueChange={(v) => setBrandFilterCategory(v === "__all" ? null : v)}
+              disabled={!values.brand_id}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="همه دسته‌های این برند" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all">همه دسته‌ها</SelectItem>
+                {(categories ?? []).map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              دسته روی خود قانون ذخیره نمی‌شود. مبلغ واحد فقط به کالاهای انتخاب‌شده اعمال می‌شود.
+            </p>
+          </div>
+
+          <div className="sm:col-span-2">
+            <Label>محصول‌های این برند *</Label>
+            <Input
+              dir="rtl"
+              placeholder={values.brand_id ? "جستجوی نام محصول…" : "اول برند را انتخاب کنید"}
+              value={productTerm}
+              onChange={(e) => setProductTerm(e.target.value)}
+              disabled={!values.brand_id}
+            />
+            {productSearch.data && productSearch.data.length > 0 && (
+              <ul className="mt-1 max-h-40 overflow-y-auto rounded-md border bg-popover text-sm">
+                {productSearch.data.map((p) => {
+                  const selected = (values.product_ids ?? []).includes(p.id);
+                  return (
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        className={`w-full px-3 py-1.5 text-right hover:bg-muted ${
+                          selected ? "bg-muted font-semibold" : ""
+                        }`}
+                        onClick={() => {
+                          const current = values.product_ids ?? [];
+                          const next = selected
+                            ? current.filter((id) => id !== p.id)
+                            : [...current, p.id];
+                          set("product_ids", next);
+                          setPickedLabels((prev) => {
+                            const copy = { ...prev };
+                            if (selected) delete copy[p.id];
+                            else copy[p.id] = p.name;
+                            return copy;
+                          });
+                        }}
+                      >
+                        {selected ? "✓ " : ""}
+                        {p.name}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            {(values.product_ids ?? []).length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-1">
+                {(values.product_ids ?? []).map((id) => (
+                  <span
+                    key={id}
+                    className="inline-flex items-center gap-1 rounded-md border bg-muted/40 px-2 py-0.5 text-[11px]"
+                  >
+                    {pickedLabels[id] ?? id}
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => {
+                        set(
+                          "product_ids",
+                          (values.product_ids ?? []).filter((x) => x !== id),
+                        );
+                        setPickedLabels((prev) => {
+                          const copy = { ...prev };
+                          delete copy[id];
+                          return copy;
+                        });
+                      }}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {errors.product_ids && (
+              <p className="mt-1 text-xs text-destructive">{errors.product_ids}</p>
+            )}
+          </div>
+        </>
+      )}
 
       {values.scope_mode === "category" && (
         <>
