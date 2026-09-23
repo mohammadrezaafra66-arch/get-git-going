@@ -212,7 +212,7 @@ export async function saveCurrencyRateAndRecompute(opts: {
   const spts = sptsRes.data ?? [];
   const rules = rulesRes.data ?? [];
   const shippingRules = (shippingRes.data ?? []).map((row) => {
-    const picks = (row as { shipping_cost_rule_products?: { product_id: string }[] })
+    const picks = (row as unknown as { shipping_cost_rule_products?: { product_id: string }[] })
       .shipping_cost_rule_products;
     return {
       ...(row as ShippingRuleRow),

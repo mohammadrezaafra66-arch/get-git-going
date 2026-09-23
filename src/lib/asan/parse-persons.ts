@@ -77,7 +77,7 @@ export function parseAsanPersons(matrix: unknown[][]): ParseResult {
   }
 
   const header = matrix[0] ?? [];
-  const { mapping, index, ignoredHeaders, warnings } = buildHeaderIndex(
+  const { mapping, index, ignoredHeaders, warnings } = buildHeaderIndex<AsanPersonField>(
     header,
     ASAN_PERSON_HEADERS,
     { optional: ["city", "province"] },

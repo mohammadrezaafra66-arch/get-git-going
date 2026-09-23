@@ -91,7 +91,7 @@ export function parseDidarContacts(matrix: unknown[][]): DidarParseResult {
   }
 
   const header = matrix[0] ?? [];
-  const { mapping, index, ignoredHeaders, warnings } = buildHeaderIndex(
+  const { mapping, index, ignoredHeaders, warnings } = buildHeaderIndex<DidarContactField>(
     header,
     DIDAR_CONTACT_HEADERS,
     { optional: ["address_alt", "city", "city_alt", "province", "province_alt"] },

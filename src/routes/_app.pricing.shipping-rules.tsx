@@ -91,7 +91,7 @@ function ShippingRulesPage() {
         .order("priority", { ascending: true })
         .range(from, to);
       if (error) throw error;
-      const rawRows = (data ?? []) as (SRule & {
+      const rawRows = (data ?? []) as unknown as (SRule & {
         shipping_cost_rule_products?: { product_id: string }[];
       })[];
       const rows: SRule[] = rawRows.map((r) => ({
