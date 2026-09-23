@@ -67,6 +67,10 @@ export interface ExistingPersonMatch {
   /** Mirror rows behind this person, when this user may read them. */
   supplier_id: string | null;
   customer_id: string | null;
+  /** Non-revoked asan_person_code identifier on this person. */
+  has_asan_code: boolean;
+  /** persons.origin — manual | asan_import | didar_import. */
+  origin: string | null;
 }
 
 interface FindByIdentifiersResult {
@@ -94,7 +98,7 @@ export async function findPersonByPhone(phone: string): Promise<ExistingPersonMa
 
   const { data: personRow, error: personError } = await supabase
     .from("persons")
-    .select("id, display_name, kind, is_active, updated_at")
+    .select("id, display_name, kind, is_active, updated_at, origin" as never)
     .eq("id", personId)
     .maybeSingle();
   if (personError) throw personError;
@@ -106,7 +110,18 @@ export async function findPersonByPhone(phone: string): Promise<ExistingPersonMa
     kind: string;
     is_active: boolean;
     updated_at: string | null;
+    origin?: string | null;
   };
+
+  const { data: asanRow, error: asanError } = await supabase
+    .from("person_identifiers")
+    .select("id")
+    .eq("person_id", personId)
+    .eq("kind", "asan_person_code")
+    .neq("status", "revoked")
+    .limit(1)
+    .maybeSingle();
+  if (asanError) throw asanError;
 
   const { data: linkRows } = await supabase
     .from("person_context_links")
@@ -134,6 +149,8 @@ export async function findPersonByPhone(phone: string): Promise<ExistingPersonMa
     city: mirrors.city,
     supplier_id: mirrors.supplier_id,
     customer_id: mirrors.customer_id,
+    has_asan_code: Boolean(asanRow),
+    origin: person.origin ?? null,
   };
 }
 

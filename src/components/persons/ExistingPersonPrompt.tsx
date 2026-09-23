@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft, Loader2, UserCheck } from "lucide-react";
@@ -6,6 +7,10 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasAnyRole } from "@/lib/rbac/roles";
+import { assignFirstAsanCode } from "@/lib/persons/asan-code";
 import {
   addRoleToPerson,
   CONTEXT_KIND_LABELS,
@@ -55,11 +60,15 @@ interface Props {
  */
 export function ExistingPersonPrompt({ phone, targetRole, enabled = true, onUseExisting }: Props) {
   const queryClient = useQueryClient();
+  const { roles } = useAuth();
+  const canAssignAsan = hasAnyRole(roles, ["admin", "accountant"]);
+  const [asanDraft, setAsanDraft] = useState("");
   const { data: match, isLoading } = usePersonByPhone(phone, enabled);
 
   const roleLabel = CONTEXT_KIND_LABELS[targetRole] ?? targetRole;
   const alreadyHasRole = Boolean(match?.roles.includes(targetRole));
   const existingMirrorId = targetRole === "supplier" ? match?.supplier_id : match?.customer_id;
+  const showAssignAsan = Boolean(match && match.has_asan_code === false && canAssignAsan);
 
   const addRole = useMutation({
     mutationFn: async () => {
@@ -97,6 +106,34 @@ export function ExistingPersonPrompt({ phone, targetRole, enabled = true, onUseE
     },
   });
 
+  const assignAsan = useMutation({
+    mutationFn: async () => {
+      if (!match) throw new Error("شخصی برای ثبت کد انتخاب نشده است");
+      const code = asanDraft.trim();
+      if (!code) throw new Error("کد آسان را وارد کنید");
+      await assignFirstAsanCode(match.person_id, code);
+    },
+    onSuccess: async () => {
+      toast.success("کد آسان روی همین پرونده ثبت شد");
+      queryClient.invalidateQueries({ queryKey: ["persons"] });
+      queryClient.invalidateQueries({ queryKey: ["suppliers"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      const refreshed = await queryClient.fetchQuery({
+        queryKey: ["person-by-phone", (phone ?? "").trim()],
+        queryFn: () => findPersonByPhone((phone ?? "").trim()),
+        staleTime: 0,
+      });
+      const mirrorId = targetRole === "supplier" ? refreshed?.supplier_id : refreshed?.customer_id;
+      if (mirrorId && refreshed) {
+        onUseExisting(mirrorId, refreshed);
+      }
+    },
+    onError: (err: unknown) => {
+      const raw = err instanceof Error ? err.message : "";
+      toast.error(raw || "ثبت کد آسان ناموفق بود");
+    },
+  });
+
   if (!enabled) return null;
 
   if (isLoading) {
@@ -113,7 +150,13 @@ export function ExistingPersonPrompt({ phone, targetRole, enabled = true, onUseE
   return (
     <Alert dir="rtl" className="border-amber-500/40 bg-amber-50/60 dark:bg-amber-950/20">
       <AlertCircle className="h-4 w-4 text-amber-600" />
-      <AlertTitle className="text-sm">این شماره از قبل ثبت شده است</AlertTitle>
+      <AlertTitle className="text-sm">
+        {showAssignAsan
+          ? `این شماره متعلق به «${match.display_name}» است که کد آسان ندارد. فقط کد آسان را وارد کنید.`
+          : !match.has_asan_code && !canAssignAsan
+            ? "این شماره ثبت است؛ از همین پرونده استفاده کنید"
+            : "این شماره از قبل ثبت شده است"}
+      </AlertTitle>
       <AlertDescription className="space-y-3">
         <div className="space-y-1.5 text-sm">
           <div className="flex flex-wrap items-center gap-2">
@@ -149,7 +192,29 @@ export function ExistingPersonPrompt({ phone, targetRole, enabled = true, onUseE
           )}
         </div>
 
-        {alreadyHasRole ? (
+        {showAssignAsan ? (
+          <div className="space-y-2">
+            <Input
+              dir="ltr"
+              inputMode="numeric"
+              maxLength={30}
+              placeholder="کد آسان"
+              value={asanDraft}
+              onChange={(e) => setAsanDraft(e.target.value)}
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={assignAsan.isPending || !asanDraft.trim()}
+              onClick={() => assignAsan.mutate()}
+            >
+              {assignAsan.isPending ? (
+                <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              ) : null}
+              ثبت کد آسان روی همین پرونده
+            </Button>
+          </div>
+        ) : alreadyHasRole ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm">
               این شخص از قبل «{roleLabel}» است. رکورد تازه‌ای لازم نیست.

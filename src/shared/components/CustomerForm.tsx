@@ -98,10 +98,8 @@ export function CustomerForm({ customerId, personId, defaultValues }: Props) {
   const isAdminOrManager = roles.includes("admin") || roles.includes("manager");
   const isSales = roles.includes("sales");
   const canSetResponsible = isAdminOrManager || isSales;
-  // 437 — mirrors SupplierForm. `person_identifiers_update_admin_manager` gates
-  // UPDATE on the identifier to admin/manager, so anyone else editing the code
-  // would only ever move the mirror out of step with it.
-  const canChangeExistingAsanCode = isAdminOrManager;
+  // 581 — changing a registered Asan code is admin/accountant only (D4).
+  const canChangeExistingAsanCode = roles.includes("admin") || roles.includes("accountant");
   const asanCodeDisabled = Boolean(customerId) && !canChangeExistingAsanCode;
 
   const [respLabel, setRespLabel] = useState<string>(defaultValues?.responsible?.full_name ?? "");
@@ -382,7 +380,7 @@ export function CustomerForm({ customerId, personId, defaultValues }: Props) {
         </p>
         {asanCodeDisabled && (
           <p className="text-[11px] text-muted-foreground leading-5">
-            تغییر کد ثبت‌شده فقط از عهدهٔ مدیر کل یا مدیر برمی‌آید.
+            تغییر کد ثبت‌شده فقط از عهدهٔ مدیر سیستم یا حسابدار برمی‌آید.
           </p>
         )}
       </div>

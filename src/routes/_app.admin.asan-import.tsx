@@ -71,7 +71,7 @@ import { AsanProductImport } from "@/components/asan/AsanProductImport";
 const PAGE_SIZE = 50;
 const CHUNK = 200;
 
-type Classification = "new" | "update" | "conflict" | "unchanged";
+type Classification = "new" | "update" | "conflict" | "unchanged" | "attach_code";
 type Decision = "pending" | "accept" | "skip";
 
 type Batch = {
@@ -111,6 +111,7 @@ const CLASS_LABEL: Record<Classification, string> = {
   update: "به‌روزرسانی",
   conflict: "تعارض",
   unchanged: "بدون تغییر",
+  attach_code: "اتصال کد اسان به پروندهٔ موجود",
 };
 
 const CLASS_HINT: Record<Classification, string> = {
@@ -118,6 +119,7 @@ const CLASS_HINT: Record<Classification, string> = {
   update: "شخص موجود پیدا شد؛ فقط فیلدهای خالی افراکالا پر می‌شوند.",
   conflict: "نیاز به داوری انسان دارد و قابل تأیید نیست.",
   unchanged: "چیزی برای تغییر ندارد.",
+  attach_code: "همین شخص است؛ فقط کد اسان به پروندهٔ موجود وصل می‌شود.",
 };
 
 const MATCH_REASON_LABEL: Record<string, string> = {
@@ -130,6 +132,7 @@ const FILTERS: { key: Classification | "all"; label: string }[] = [
   { key: "all", label: "همه" },
   { key: "new", label: CLASS_LABEL.new },
   { key: "update", label: CLASS_LABEL.update },
+  { key: "attach_code", label: CLASS_LABEL.attach_code },
   { key: "conflict", label: CLASS_LABEL.conflict },
   { key: "unchanged", label: CLASS_LABEL.unchanged },
 ];
@@ -376,7 +379,7 @@ function AsanPersonImportPanel() {
   }
 
   /** Bulk decision, scoped to one classification. `conflict` is never offered. */
-  async function setDecisionForClass(cls: "new" | "update", decision: Decision) {
+  async function setDecisionForClass(cls: "new" | "update" | "attach_code", decision: Decision) {
     if (!batch) return;
     const { error } = await supabase
       .from("asan_import_person_rows")
@@ -681,7 +684,7 @@ function AsanPersonImportPanel() {
 
             <div className="flex flex-wrap gap-2">
               <Badge variant="outline">مجموع: {toFaDigits(batch.row_count)}</Badge>
-              {(["new", "update", "conflict", "unchanged"] as Classification[]).map((c) =>
+              {(["new", "update", "attach_code", "conflict", "unchanged"] as Classification[]).map((c) =>
                 statNum(c) ? (
                   <Badge key={c} variant={c === "conflict" ? "destructive" : "secondary"}>
                     {CLASS_LABEL[c]}: {toFaDigits(statNum(c))}
@@ -735,6 +738,13 @@ function AsanPersonImportPanel() {
                   onClick={() => setDecisionForClass("update", "accept")}
                 >
                   تأیید همهٔ «به‌روزرسانی»
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setDecisionForClass("attach_code", "accept")}
+                >
+                  تأیید همهٔ «اتصال کد اسان به پروندهٔ موجود»
                 </Button>
                 <Button
                   size="sm"
