@@ -1,0 +1,6 @@
+---
+description: Pointer to incident-backed rules in AGENTS.md.
+alwaysApply: true
+---
+
+Read the section *Non-negotiable rules* in `AGENTS.md` before acting; those rules override anything else in this folder; M1, M5, M13 and M14 apply to every command.
