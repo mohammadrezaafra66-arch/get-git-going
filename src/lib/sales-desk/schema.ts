@@ -26,6 +26,8 @@ export const createDealInteractionSchema = z.object({
   source: z.string().optional(),
   status: z.enum(["open", "won", "lost", "cancelled", "done"]).optional(),
   dealId: z.string().uuid().nullable().optional(),
+  pipelineId: z.string().uuid().nullable().optional(),
+  stageId: z.string().uuid().nullable().optional(),
   items: z
     .array(
       z.object({

@@ -72,6 +72,7 @@ import { Route as AppTorobOpsRunsRouteImport } from './routes/_app.torob-ops_.ru
 import { Route as AppTorobOpsFindingsRouteImport } from './routes/_app.torob-ops_.findings'
 import { Route as AppTorobOpsAccountsRouteImport } from './routes/_app.torob-ops_.accounts'
 import { Route as AppSuppliersSupplierIdRouteImport } from './routes/_app.suppliers_.$supplierId'
+import { Route as AppSettingsSalesPipelinesRouteImport } from './routes/_app.settings.sales-pipelines'
 import { Route as AppSettingsDealLostReasonsRouteImport } from './routes/_app.settings.deal-lost-reasons'
 import { Route as AppSettingsCallerIdRouteImport } from './routes/_app.settings.caller-id'
 import { Route as AppSalesCustomersRouteImport } from './routes/_app.sales_.customers'
@@ -216,6 +217,7 @@ import { Route as AppPersonsPersonIdEditRouteImport } from './routes/_app.person
 import { Route as AppOperationsWorkTopicsRouteImport } from './routes/_app.operations.work_.topics'
 import { Route as AppOperationsWorkSettingsRouteImport } from './routes/_app.operations.work_.settings'
 import { Route as AppOperationsWorkItemIdRouteImport } from './routes/_app.operations.work_.$itemId'
+import { Route as AppOperationsSalesDeskPipelineRouteImport } from './routes/_app.operations.sales-desk_.pipeline'
 import { Route as AppOperationsSalesDeskDealsForOthersRouteImport } from './routes/_app.operations.sales-desk_.deals-for-others'
 import { Route as AppOperationsSalesDeskActivitiesRouteImport } from './routes/_app.operations.sales-desk_.activities'
 import { Route as AppOperationsDailyMoodAdminRouteImport } from './routes/_app.operations.daily-mood.admin'
@@ -565,6 +567,12 @@ const AppSuppliersSupplierIdRoute = AppSuppliersSupplierIdRouteImport.update({
   path: '/suppliers/$supplierId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsSalesPipelinesRoute =
+  AppSettingsSalesPipelinesRouteImport.update({
+    id: '/settings/sales-pipelines',
+    path: '/settings/sales-pipelines',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppSettingsDealLostReasonsRoute =
   AppSettingsDealLostReasonsRouteImport.update({
     id: '/settings/deal-lost-reasons',
@@ -1334,6 +1342,12 @@ const AppOperationsWorkItemIdRoute = AppOperationsWorkItemIdRouteImport.update({
   path: '/operations/work/$itemId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOperationsSalesDeskPipelineRoute =
+  AppOperationsSalesDeskPipelineRouteImport.update({
+    id: '/operations/sales-desk_/pipeline',
+    path: '/operations/sales-desk/pipeline',
+    getParentRoute: () => AppRoute,
+  } as any)
 const AppOperationsSalesDeskDealsForOthersRoute =
   AppOperationsSalesDeskDealsForOthersRouteImport.update({
     id: '/operations/sales-desk_/deals-for-others',
@@ -1691,6 +1705,7 @@ export interface FileRoutesByFullPath {
   '/sales/customers': typeof AppSalesCustomersRoute
   '/settings/caller-id': typeof AppSettingsCallerIdRoute
   '/settings/deal-lost-reasons': typeof AppSettingsDealLostReasonsRoute
+  '/settings/sales-pipelines': typeof AppSettingsSalesPipelinesRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/torob-ops/accounts': typeof AppTorobOpsAccountsRoute
   '/torob-ops/findings': typeof AppTorobOpsFindingsRoute
@@ -1728,6 +1743,7 @@ export interface FileRoutesByFullPath {
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/operations/sales-desk/activities': typeof AppOperationsSalesDeskActivitiesRoute
   '/operations/sales-desk/deals-for-others': typeof AppOperationsSalesDeskDealsForOthersRoute
+  '/operations/sales-desk/pipeline': typeof AppOperationsSalesDeskPipelineRoute
   '/operations/work/$itemId': typeof AppOperationsWorkItemIdRoute
   '/operations/work/settings': typeof AppOperationsWorkSettingsRoute
   '/operations/work/topics': typeof AppOperationsWorkTopicsRoute
@@ -1928,6 +1944,7 @@ export interface FileRoutesByTo {
   '/sales/customers': typeof AppSalesCustomersRoute
   '/settings/caller-id': typeof AppSettingsCallerIdRoute
   '/settings/deal-lost-reasons': typeof AppSettingsDealLostReasonsRoute
+  '/settings/sales-pipelines': typeof AppSettingsSalesPipelinesRoute
   '/suppliers/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/torob-ops/accounts': typeof AppTorobOpsAccountsRoute
   '/torob-ops/findings': typeof AppTorobOpsFindingsRoute
@@ -1965,6 +1982,7 @@ export interface FileRoutesByTo {
   '/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/operations/sales-desk/activities': typeof AppOperationsSalesDeskActivitiesRoute
   '/operations/sales-desk/deals-for-others': typeof AppOperationsSalesDeskDealsForOthersRoute
+  '/operations/sales-desk/pipeline': typeof AppOperationsSalesDeskPipelineRoute
   '/operations/work/$itemId': typeof AppOperationsWorkItemIdRoute
   '/operations/work/settings': typeof AppOperationsWorkSettingsRoute
   '/operations/work/topics': typeof AppOperationsWorkTopicsRoute
@@ -2170,6 +2188,7 @@ export interface FileRoutesById {
   '/_app/sales_/customers': typeof AppSalesCustomersRoute
   '/_app/settings/caller-id': typeof AppSettingsCallerIdRoute
   '/_app/settings/deal-lost-reasons': typeof AppSettingsDealLostReasonsRoute
+  '/_app/settings/sales-pipelines': typeof AppSettingsSalesPipelinesRoute
   '/_app/suppliers_/$supplierId': typeof AppSuppliersSupplierIdRoute
   '/_app/torob-ops_/accounts': typeof AppTorobOpsAccountsRoute
   '/_app/torob-ops_/findings': typeof AppTorobOpsFindingsRoute
@@ -2207,6 +2226,7 @@ export interface FileRoutesById {
   '/_app/operations/daily-mood/admin': typeof AppOperationsDailyMoodAdminRoute
   '/_app/operations/sales-desk_/activities': typeof AppOperationsSalesDeskActivitiesRoute
   '/_app/operations/sales-desk_/deals-for-others': typeof AppOperationsSalesDeskDealsForOthersRoute
+  '/_app/operations/sales-desk_/pipeline': typeof AppOperationsSalesDeskPipelineRoute
   '/_app/operations/work_/$itemId': typeof AppOperationsWorkItemIdRoute
   '/_app/operations/work_/settings': typeof AppOperationsWorkSettingsRoute
   '/_app/operations/work_/topics': typeof AppOperationsWorkTopicsRoute
@@ -2412,6 +2432,7 @@ export interface FileRouteTypes {
     | '/sales/customers'
     | '/settings/caller-id'
     | '/settings/deal-lost-reasons'
+    | '/settings/sales-pipelines'
     | '/suppliers/$supplierId'
     | '/torob-ops/accounts'
     | '/torob-ops/findings'
@@ -2449,6 +2470,7 @@ export interface FileRouteTypes {
     | '/operations/daily-mood/admin'
     | '/operations/sales-desk/activities'
     | '/operations/sales-desk/deals-for-others'
+    | '/operations/sales-desk/pipeline'
     | '/operations/work/$itemId'
     | '/operations/work/settings'
     | '/operations/work/topics'
@@ -2649,6 +2671,7 @@ export interface FileRouteTypes {
     | '/sales/customers'
     | '/settings/caller-id'
     | '/settings/deal-lost-reasons'
+    | '/settings/sales-pipelines'
     | '/suppliers/$supplierId'
     | '/torob-ops/accounts'
     | '/torob-ops/findings'
@@ -2686,6 +2709,7 @@ export interface FileRouteTypes {
     | '/operations/daily-mood/admin'
     | '/operations/sales-desk/activities'
     | '/operations/sales-desk/deals-for-others'
+    | '/operations/sales-desk/pipeline'
     | '/operations/work/$itemId'
     | '/operations/work/settings'
     | '/operations/work/topics'
@@ -2890,6 +2914,7 @@ export interface FileRouteTypes {
     | '/_app/sales_/customers'
     | '/_app/settings/caller-id'
     | '/_app/settings/deal-lost-reasons'
+    | '/_app/settings/sales-pipelines'
     | '/_app/suppliers_/$supplierId'
     | '/_app/torob-ops_/accounts'
     | '/_app/torob-ops_/findings'
@@ -2927,6 +2952,7 @@ export interface FileRouteTypes {
     | '/_app/operations/daily-mood/admin'
     | '/_app/operations/sales-desk_/activities'
     | '/_app/operations/sales-desk_/deals-for-others'
+    | '/_app/operations/sales-desk_/pipeline'
     | '/_app/operations/work_/$itemId'
     | '/_app/operations/work_/settings'
     | '/_app/operations/work_/topics'
@@ -3445,6 +3471,13 @@ declare module '@tanstack/react-router' {
       path: '/suppliers/$supplierId'
       fullPath: '/suppliers/$supplierId'
       preLoaderRoute: typeof AppSuppliersSupplierIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/sales-pipelines': {
+      id: '/_app/settings/sales-pipelines'
+      path: '/settings/sales-pipelines'
+      fullPath: '/settings/sales-pipelines'
+      preLoaderRoute: typeof AppSettingsSalesPipelinesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/deal-lost-reasons': {
@@ -4455,6 +4488,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOperationsWorkItemIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/operations/sales-desk_/pipeline': {
+      id: '/_app/operations/sales-desk_/pipeline'
+      path: '/operations/sales-desk/pipeline'
+      fullPath: '/operations/sales-desk/pipeline'
+      preLoaderRoute: typeof AppOperationsSalesDeskPipelineRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/operations/sales-desk_/deals-for-others': {
       id: '/_app/operations/sales-desk_/deals-for-others'
       path: '/operations/sales-desk/deals-for-others'
@@ -5001,6 +5041,7 @@ interface AppRouteChildren {
   AppSalesCustomersRoute: typeof AppSalesCustomersRoute
   AppSettingsCallerIdRoute: typeof AppSettingsCallerIdRoute
   AppSettingsDealLostReasonsRoute: typeof AppSettingsDealLostReasonsRoute
+  AppSettingsSalesPipelinesRoute: typeof AppSettingsSalesPipelinesRoute
   AppSuppliersSupplierIdRoute: typeof AppSuppliersSupplierIdRoute
   AppTorobOpsAccountsRoute: typeof AppTorobOpsAccountsRoute
   AppTorobOpsFindingsRoute: typeof AppTorobOpsFindingsRoute
@@ -5016,6 +5057,7 @@ interface AppRouteChildren {
   AppAccountingReceiptsTrainingRoute: typeof AppAccountingReceiptsTrainingRoute
   AppOperationsSalesDeskActivitiesRoute: typeof AppOperationsSalesDeskActivitiesRoute
   AppOperationsSalesDeskDealsForOthersRoute: typeof AppOperationsSalesDeskDealsForOthersRoute
+  AppOperationsSalesDeskPipelineRoute: typeof AppOperationsSalesDeskPipelineRoute
   AppOperationsWorkItemIdRoute: typeof AppOperationsWorkItemIdRoute
   AppOperationsWorkSettingsRoute: typeof AppOperationsWorkSettingsRoute
   AppOperationsWorkTopicsRoute: typeof AppOperationsWorkTopicsRoute
@@ -5168,6 +5210,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSalesCustomersRoute: AppSalesCustomersRoute,
   AppSettingsCallerIdRoute: AppSettingsCallerIdRoute,
   AppSettingsDealLostReasonsRoute: AppSettingsDealLostReasonsRoute,
+  AppSettingsSalesPipelinesRoute: AppSettingsSalesPipelinesRoute,
   AppSuppliersSupplierIdRoute: AppSuppliersSupplierIdRoute,
   AppTorobOpsAccountsRoute: AppTorobOpsAccountsRoute,
   AppTorobOpsFindingsRoute: AppTorobOpsFindingsRoute,
@@ -5184,6 +5227,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOperationsSalesDeskActivitiesRoute: AppOperationsSalesDeskActivitiesRoute,
   AppOperationsSalesDeskDealsForOthersRoute:
     AppOperationsSalesDeskDealsForOthersRoute,
+  AppOperationsSalesDeskPipelineRoute: AppOperationsSalesDeskPipelineRoute,
   AppOperationsWorkItemIdRoute: AppOperationsWorkItemIdRoute,
   AppOperationsWorkSettingsRoute: AppOperationsWorkSettingsRoute,
   AppOperationsWorkTopicsRoute: AppOperationsWorkTopicsRoute,

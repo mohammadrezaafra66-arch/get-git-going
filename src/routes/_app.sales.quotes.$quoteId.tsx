@@ -94,6 +94,8 @@ interface QuoteDetail {
   deposit_amount: number | null;
   commitment_confirmed: boolean | null;
   created_at: string;
+  interaction_id?: string | null;
+  deal_title?: string | null;
 }
 
 interface QuoteItem {
@@ -125,26 +127,27 @@ function QuoteDetailPage() {
     staleTime: 30_000,
     queryFn: async (): Promise<QuoteDetail | null> => {
       const { data, error } = await supabase
-        .from("sales_quotes")
+        .from("sales_quotes" as never)
         .select(
-          "id, quote_number, customer_name, customer_phone, customer_note, customer_person_id, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, visitor_id, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at",
+          "id, quote_number, customer_name, customer_phone, customer_note, customer_person_id, salesperson_id, status, subtotal_amount, discount_amount, final_amount, expires_at, cancel_reason, reject_reason, visitor_id, below_list_price_ack, list_price_snapshot, deposit_amount, commitment_confirmed, created_at, interaction_id" as never,
         )
-        .eq("id", quoteId)
+        .eq("id" as never, quoteId as never)
         .maybeSingle();
       if (error) throw error;
       if (!data) return null;
+      const row = data as QuoteDetail & { visitor_id?: string | null; interaction_id?: string | null };
       let salesperson_name: string | null = null;
-      if (data.salesperson_id) {
+      if (row.salesperson_id) {
         const sr = await supabase
           .from("profiles")
           .select("full_name")
-          .eq("id", data.salesperson_id)
+          .eq("id", row.salesperson_id)
           .maybeSingle();
         salesperson_name = (sr.data?.full_name as string | null) ?? null;
       }
       // Item 203 — resolve the visitor's name for display and the PDF.
       let visitor_name: string | null = null;
-      const visitorId = (data as { visitor_id?: string | null }).visitor_id ?? null;
+      const visitorId = row.visitor_id ?? null;
       if (visitorId) {
         const vr = await supabase
           .from("visitors")
@@ -153,10 +156,22 @@ function QuoteDetailPage() {
           .maybeSingle();
         visitor_name = ((vr.data as { full_name?: string } | null)?.full_name as string) ?? null;
       }
+      const interactionId = row.interaction_id ?? null;
+      let deal_title: string | null = null;
+      if (interactionId) {
+        const dr = await supabase
+          .from("sales_interactions" as never)
+          .select("title" as never)
+          .eq("id" as never, interactionId as never)
+          .maybeSingle();
+        deal_title = ((dr.data as { title?: string | null } | null)?.title as string) ?? "معامله";
+      }
       return {
-        ...(data as Omit<QuoteDetail, "salesperson_name" | "visitor_name">),
+        ...(row as Omit<QuoteDetail, "salesperson_name" | "visitor_name" | "deal_title">),
         salesperson_name,
         visitor_name,
+        interaction_id: interactionId,
+        deal_title,
       };
     },
   });
@@ -274,6 +289,20 @@ function QuoteDetailPage() {
                 }
               />
               <Field label="شماره تماس" value={<span dir="ltr">{quote.customer_phone}</span>} />
+              {quote.interaction_id ? (
+                <Field
+                  label="معامله"
+                  value={
+                    <Link
+                      to="/operations/sales-desk/deals/$dealId"
+                      params={{ dealId: quote.interaction_id }}
+                      className="text-primary underline-offset-2 hover:underline"
+                    >
+                      معامله: {quote.deal_title || "معامله"}
+                    </Link>
+                  }
+                />
+              ) : null}
               <Field label="فروشنده" value={quote.salesperson_name ?? "—"} />
               {quote.visitor_name && <Field label="ویزیتور" value={quote.visitor_name} />}
               <Field label="تاریخ ایجاد" value={formatDateTimeFa(quote.created_at)} />

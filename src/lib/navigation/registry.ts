@@ -61,6 +61,7 @@ import {
   PhoneCall,
   UserRoundCog,
   Activity,
+  FolderKanban,
 } from "lucide-react";
 import type { ModuleKey } from "@/lib/rbac/roles";
 import type { AppRole } from "@/lib/rbac/roles";
@@ -598,6 +599,13 @@ const NAVIGATION_SEEDS = [
     group: "operations",
   },
   {
+    to: "/operations/sales-desk/pipeline",
+    label: "کاریز فروش",
+    icon: FolderKanban,
+    module: "sales",
+    group: "operations",
+  },
+  {
     to: "/operations/sales-desk/deals-for-others",
     label: "معاملات ثبت‌شده برای دیگران",
     icon: BarChart3,
@@ -616,6 +624,13 @@ const NAVIGATION_SEEDS = [
     label: "دلایل شکست معامله",
     icon: ScrollText,
     module: "deal-lost-reasons",
+    group: "operations",
+  },
+  {
+    to: "/settings/sales-pipelines",
+    label: "کاریزهای فروش",
+    icon: FolderKanban,
+    module: "sales-pipelines",
     group: "operations",
   },
   {
@@ -1505,9 +1520,11 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/operations/purchase-advisor": ["admin", "manager"],
   // _app.operations.sales-desk.tsx / call-activity — requireAnyRole(admin,manager,sales)
   "/operations/sales-desk": ["admin", "manager", "sales"],
+  "/operations/sales-desk/pipeline": ["admin", "manager", "sales"],
   "/operations/sales-desk/deals-for-others": ["admin", "manager", "sales"],
   "/operations/sales-desk/activities": ["admin", "manager", "sales"],
   "/settings/deal-lost-reasons": ["admin", "manager", "sales"],
+  "/settings/sales-pipelines": ["admin", "manager", "sales"],
   "/sales/reports/deal-lost": ["admin", "manager", "sales"],
   "/operations/call-activity": ["admin", "manager", "sales"],
   // Calm Mind work board — mirrors route requireAnyRole(admin|manager|sales|accountant)
