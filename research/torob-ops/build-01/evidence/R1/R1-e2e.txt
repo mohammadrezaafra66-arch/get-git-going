@@ -1,0 +1,30 @@
+﻿
+Running 14 tests using 1 worker
+
+node.exe : (node:7640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+At C:\nvm4w\nodejs\npx.ps1:29 char:3
++   & $NODE_EXE $NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:7640) War... env being set.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1/14] [chromium-admin] › e2e\torob-ops\torob-ops-admin-access.spec.ts:43:3 › Torob Ops admin access › /admin/torob-ops-access shows title and create form
+[2/14] [chromium-admin] › e2e\torob-ops\torob-ops-admin-access.spec.ts:59:3 › Torob Ops admin access › save enables only after user + long-enough password
+[3/14] [chromium-admin] › e2e\torob-ops\torob-ops-admin-access.spec.ts:87:3 › Torob Ops unlock smoke (optional) › after unlock, /torob-ops/runs and /findings show page titles
+[4/14] [chromium-admin] › e2e\torob-ops\torob-ops-gate.spec.ts:44:3 › Torob Ops gate — no module session › admin without module session sees unlock form on /torob-ops
+[5/14] [chromium-admin] › e2e\torob-ops\torob-ops-gate.spec.ts:55:3 › Torob Ops gate — no module session › admin without module session still sees gate on /torob-ops/runs and /findings
+[6/14] [chromium-admin] › e2e\torob-ops\torob-ops-gate.spec.ts:68:3 › Torob Ops gate — no module session › wrong module password keeps gate visible (no dashboard)
+[7/14] [chromium-admin] › e2e\torob-ops\torob-ops-gate.spec.ts:90:3 › Torob Ops gate — cold / unauthenticated › unauthenticated visit does not expose unlocked dashboard
+[8/14] [chromium-admin] › e2e\torob-ops\torob-ops-path-a-preview.spec.ts:107:3 › Torob Ops Path A — dry-run preview after unlock › unlock then preview blocks manual_review and allows confirmed_bait
+[9/14] [chromium-admin] › e2e\torob-ops\torob-ops-path-a.spec.ts:30:3 › Torob Ops Path A — gated surfaces › shops / settings / accounts show module gate without ops session
+[10/14] [chromium-admin] › e2e\torob-ops\torob-ops-path-a.spec.ts:43:3 › Torob Ops Path A — gated surfaces › findings page gate still present (preview requires unlock)
+[11/14] [chromium-admin] › e2e\torob-ops\torob-ops-smoke.spec.ts:25:1 › admin /admin/torob-ops-access loads credential management
+[12/14] [chromium-admin] › e2e\torob-ops\torob-ops-smoke.spec.ts:35:1 › /torob-ops shows module password gate
+[13/14] [chromium-admin] › e2e\torob-ops\torob-ops-smoke.spec.ts:45:1 › /torob-ops/runs and /findings are not 404 (gate or content)
+[14/14] [chromium-admin] › e2e\torob-ops\torob-ops-smoke.spec.ts:56:1 › nav includes عملیات ترب for admin
+  2 skipped
+  12 passed (2.9m)
+exit=0

@@ -1,0 +1,66 @@
+﻿SET
+ tehran_today 
+--------------
+ 2026-09-26
+(1 row)
+
+ active_products | active_with_torob_url | active_with_computed_base 
+-----------------+-----------------------+---------------------------
+             356 |                     1 |                         0
+(1 row)
+
+ own_shops 
+-----------
+         1
+(1 row)
+
+ accounts 
+----------
+        2
+(1 row)
+
+ credentials 
+-------------
+           4
+(1 row)
+
+ auto_report_enabled | kill_switch 
+---------------------+-------------
+ f                   | f
+(1 row)
+
+ nq_total |        nq_max_created         | nq_read | nq_unread 
+----------+-------------------------------+---------+-----------
+     6426 | 2026-09-26 15:26:11.691887+00 |      11 |      6415
+(1 row)
+
+            type            |  n   |          max_created          
+----------------------------+------+-------------------------------
+ sales_interaction_assigned |   33 | 2026-09-26 15:26:11.691887+00
+ quote_rejected             |   11 | 2026-09-26 14:58:29.912277+00
+ daily_accrual_summary      |   54 | 2026-09-23 20:00:00.01065+00
+ sales_activity_reminder    |    1 | 2026-09-22 12:55:03.366835+00
+ sale_price_change          | 6327 | 2026-09-16 14:22:55.150621+00
+(5 rows)
+
+                  id                  |            type            | is_read |          created_at           | read_at 
+--------------------------------------+----------------------------+---------+-------------------------------+---------
+ 215de9d4-75a3-4f20-91c6-fc8ee87a2d09 | sales_interaction_assigned | f       | 2026-09-26 15:26:11.691887+00 | 
+ c25767e7-6c9f-42d2-837c-ddd536f5c3f8 | sales_interaction_assigned | f       | 2026-09-26 15:19:01.013815+00 | 
+ b9773d20-2d18-44f5-aa8d-42ee7c9ca89d | sales_interaction_assigned | f       | 2026-09-26 15:00:28.237808+00 | 
+ 851c7f25-b0d9-40f6-b97a-d9ea3e38dbea | sales_interaction_assigned | f       | 2026-09-26 14:58:33.831091+00 | 
+ 2a49562d-8bb8-4d36-b540-639e9e757b0c | quote_rejected             | t       | 2026-09-26 14:58:29.912277+00 | 
+(5 rows)
+
+        table_name         
+---------------------------
+ notification_events
+ notification_queue
+ price_alert_notifications
+(3 rows)
+
+            conname            |                                                                                                                                    def                                                                                                                                    
+-------------------------------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ notification_queue_type_check | CHECK ((type = ANY (ARRAY['stock_alert'::text, 'system'::text, 'task'::text, 'payment'::text, 'sale_price_change'::text, 'birthday'::text, 'quote_rejected'::text, 'daily_accrual_summary'::text, 'sales_interaction_assigned'::text, 'sales_activity_reminder'::text])))
+(1 row)
+

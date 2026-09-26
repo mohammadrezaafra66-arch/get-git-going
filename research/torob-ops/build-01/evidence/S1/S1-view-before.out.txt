@@ -1,0 +1,135 @@
+﻿SET
+                                 viewdef                                 
+-------------------------------------------------------------------------
+  SELECT src.id,                                                        +
+     src.product_id,                                                    +
+     src.sale_price_type_id,                                            +
+     src.pricing_rule_id,                                               +
+     src.final_sale_price,                                              +
+     src.rounded_sale_price,                                            +
+     src.computed_at,                                                   +
+     src.source                                                         +
+    FROM ( SELECT product_computed_prices.id,                           +
+             product_computed_prices.product_id,                        +
+             product_computed_prices.sale_price_type_id,                +
+             product_computed_prices.pricing_rule_id,                   +
+             product_computed_prices.final_sale_price,                  +
+             product_computed_prices.rounded_sale_price,                +
+             product_computed_prices.computed_at,                       +
+             product_computed_prices.source                             +
+            FROM product_computed_prices                                +
+           WHERE product_computed_prices.settlement_type_id IS NULL) src+
+   WHERE uid() IS NOT NULL AND NOT is_viewer_only(uid());
+(1 row)
+
+            relname             | relkind | relrowsecurity | relforcerowsecurity 
+--------------------------------+---------+----------------+---------------------
+ product_computed_prices        | r       | t              | f
+ product_computed_prices_public | v       | f              | f
+ sale_price_types               | r       | t              | f
+(3 rows)
+
+ nspname |    proname     |     args      
+---------+----------------+---------------
+ public  | is_viewer_only | _user_id uuid
+(1 row)
+
+    proname     |                                              def                                              
+----------------+-----------------------------------------------------------------------------------------------
+ is_viewer_only | CREATE OR REPLACE FUNCTION public.is_viewer_only(_user_id uuid)                              +
+                |  RETURNS boolean                                                                             +
+                |  LANGUAGE sql                                                                                +
+                |  STABLE SECURITY DEFINER                                                                     +
+                |  SET search_path TO 'public'                                                                 +
+                | AS $function$                                                                                +
+                |   -- True only when `viewer` is the user's *sole* role. Roles are additive everywhere else in+
+                |   -- this system (has_any_role grants if any role qualifies); restricting on "holds viewer"  +
+                |   -- would be the one place where gaining a role removes access, and it would blind the      +
+                |   -- owner's own account, which holds viewer alongside admin/manager/sales/accountant.       +
+                |   SELECT EXISTS (SELECT 1 FROM public.user_roles ur                                          +
+                |                   WHERE ur.user_id = _user_id AND ur.role = 'viewer')                        +
+                |      AND NOT EXISTS (SELECT 1 FROM public.user_roles ur                                      +
+                |                       WHERE ur.user_id = _user_id AND ur.role <> 'viewer');                  +
+                | $function$                                                                                   +
+                | 
+(1 row)
+
+ schemaname |        tablename        |                    policyname                    | permissive  |      roles      |  cmd   |                                                                                                                     qual                                                                                                                      |                                                                                                                                                   with_check                                                                                                                                                    
+------------+-------------------------+--------------------------------------------------+-------------+-----------------+--------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ public     | product_computed_prices | pcp_read_privileged                              | PERMISSIVE  | {public}        | SELECT | (has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text]) OR has_dynamic_permission(uid(), 'pricing'::text, 'view'::text))                                                                                              | 
+ public     | product_computed_prices | pcp_write_privileged                             | PERMISSIVE  | {authenticated} | ALL    | has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])                                                                                                                                                                | has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])
+ public     | product_computed_prices | pricing_users_can_insert_product_computed_prices | PERMISSIVE  | {authenticated} | INSERT |                                                                                                                                                                                                                                               | (has_role(uid(), 'admin'::text) OR has_role(uid(), 'manager'::text) OR has_role(uid(), 'accountant'::text) OR has_dynamic_permission(uid(), 'pricing'::text, 'create'::text) OR has_dynamic_permission(uid(), 'pricing'::text, 'update'::text) OR has_dynamic_permission(uid(), 'pricing'::text, 'edit'::text))
+ public     | product_computed_prices | pricing_users_can_update_product_computed_prices | PERMISSIVE  | {authenticated} | UPDATE | (has_role(uid(), 'admin'::text) OR has_role(uid(), 'manager'::text) OR has_role(uid(), 'accountant'::text) OR has_dynamic_permission(uid(), 'pricing'::text, 'update'::text) OR has_dynamic_permission(uid(), 'pricing'::text, 'edit'::text)) | (has_role(uid(), 'admin'::text) OR has_role(uid(), 'manager'::text) OR has_role(uid(), 'accountant'::text) OR has_dynamic_permission(uid(), 'pricing'::text, 'update'::text) OR has_dynamic_permission(uid(), 'pricing'::text, 'edit'::text))
+ public     | product_computed_prices | viewer_restricted                                | RESTRICTIVE | {authenticated} | ALL    | (NOT is_viewer_only(uid()))                                                                                                                                                                                                                   | (NOT is_viewer_only(uid()))
+ public     | sale_price_types        | sale_price_types_auth_read                       | PERMISSIVE  | {authenticated} | SELECT | true                                                                                                                                                                                                                                          | 
+ public     | sale_price_types        | sale_price_types_read                            | PERMISSIVE  | {public}        | SELECT | has_any_role(uid(), ARRAY['admin'::text, 'manager'::text, 'accountant'::text])                                                                                                                                                                | 
+ public     | sale_price_types        | sale_price_types_write                           | PERMISSIVE  | {public}        | ALL    | has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])                                                                                                                                                                                    | has_any_role(uid(), ARRAY['admin'::text, 'manager'::text])
+(8 rows)
+
+    grantee     |           table_name           | privilege_type 
+----------------+--------------------------------+----------------
+ authenticated  | product_computed_prices        | DELETE
+ authenticated  | product_computed_prices        | INSERT
+ authenticated  | product_computed_prices        | REFERENCES
+ authenticated  | product_computed_prices        | SELECT
+ authenticated  | product_computed_prices        | TRIGGER
+ authenticated  | product_computed_prices        | UPDATE
+ service_role   | product_computed_prices        | DELETE
+ service_role   | product_computed_prices        | INSERT
+ service_role   | product_computed_prices        | REFERENCES
+ service_role   | product_computed_prices        | SELECT
+ service_role   | product_computed_prices        | TRIGGER
+ service_role   | product_computed_prices        | TRUNCATE
+ service_role   | product_computed_prices        | UPDATE
+ authenticated  | product_computed_prices_public | DELETE
+ authenticated  | product_computed_prices_public | INSERT
+ authenticated  | product_computed_prices_public | REFERENCES
+ authenticated  | product_computed_prices_public | SELECT
+ authenticated  | product_computed_prices_public | TRIGGER
+ authenticated  | product_computed_prices_public | TRUNCATE
+ authenticated  | product_computed_prices_public | UPDATE
+ service_role   | product_computed_prices_public | DELETE
+ service_role   | product_computed_prices_public | INSERT
+ service_role   | product_computed_prices_public | REFERENCES
+ service_role   | product_computed_prices_public | SELECT
+ service_role   | product_computed_prices_public | TRIGGER
+ service_role   | product_computed_prices_public | TRUNCATE
+ service_role   | product_computed_prices_public | UPDATE
+ supabase_admin | product_computed_prices_public | DELETE
+ supabase_admin | product_computed_prices_public | INSERT
+ supabase_admin | product_computed_prices_public | REFERENCES
+ supabase_admin | product_computed_prices_public | SELECT
+ supabase_admin | product_computed_prices_public | TRIGGER
+ supabase_admin | product_computed_prices_public | TRUNCATE
+ supabase_admin | product_computed_prices_public | UPDATE
+ anon           | sale_price_types               | SELECT
+ authenticated  | sale_price_types               | DELETE
+ authenticated  | sale_price_types               | INSERT
+ authenticated  | sale_price_types               | REFERENCES
+ authenticated  | sale_price_types               | SELECT
+ authenticated  | sale_price_types               | TRIGGER
+ authenticated  | sale_price_types               | UPDATE
+ service_role   | sale_price_types               | DELETE
+ service_role   | sale_price_types               | INSERT
+ service_role   | sale_price_types               | REFERENCES
+ service_role   | sale_price_types               | SELECT
+ service_role   | sale_price_types               | TRIGGER
+ service_role   | sale_price_types               | TRUNCATE
+ service_role   | sale_price_types               | UPDATE
+(48 rows)
+
+  current_user  |  session_user  
+----------------+----------------
+ supabase_admin | supabase_admin
+(1 row)
+
+ public_view_n 
+---------------
+             0
+(1 row)
+
+ table_n 
+---------
+    9682
+(1 row)
+

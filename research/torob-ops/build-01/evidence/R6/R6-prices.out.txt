@@ -1,0 +1,43 @@
+﻿SET
+    column_name     |        data_type         
+--------------------+--------------------------
+ id                 | uuid
+ product_id         | uuid
+ sale_price_type_id | uuid
+ pricing_rule_id    | uuid
+ final_sale_price   | numeric
+ rounded_sale_price | numeric
+ computed_at        | timestamp with time zone
+ source             | text
+(8 rows)
+
+ pcp_public_n 
+--------------
+            0
+(1 row)
+
+ code | n 
+------+---
+(0 rows)
+
+ any_positive_price_products 
+-----------------------------
+                           0
+(1 row)
+
+     code      | is_active 
+---------------+-----------
+ cash_price    | t
+ cheque_price  | t
+ partner_price | f
+ SPT-001       | t
+ SPT-002       | t
+ SPT-003       | t
+ SPT-004       | t
+(7 rows)
+
+ active_with_cash_price 
+------------------------
+                      0
+(1 row)
+

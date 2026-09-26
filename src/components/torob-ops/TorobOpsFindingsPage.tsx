@@ -43,6 +43,7 @@ const PAGE_SIZE = 25;
 
 type FindingRow = {
   id: string;
+  product_id: string | null;
   product_name_snapshot: string | null;
   torob_url: string | null;
   seller_name: string | null;
@@ -212,6 +213,7 @@ function FindingsInner() {
                     <div className="sm:col-span-2">تلفن: {phones.join(" · ")}</div>
                   ) : null}
                 </div>
+                <div className="flex flex-wrap gap-3">
                 {row.torob_url ? (
                   <a
                     href={row.torob_url}
@@ -223,6 +225,15 @@ function FindingsInner() {
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 ) : null}
+                {row.product_id ? (
+                  <a
+                    href={`/torob-ops/history?product=${row.product_id}`}
+                    className="text-primary underline"
+                  >
+                    تاریخچه قیمت
+                  </a>
+                ) : null}
+                </div>
 
                 <div className="flex flex-wrap gap-2">
                   <Button

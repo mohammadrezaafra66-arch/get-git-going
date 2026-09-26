@@ -1,0 +1,45 @@
+﻿SET
+ pcp_n 
+-------
+  9682
+(1 row)
+
+     code      |  n   
+---------------+------
+ cash_price    | 2266
+ cheque_price  | 1680
+ SPT-002       | 1280
+ SPT-004       | 1280
+ SPT-003       | 1280
+ SPT-001       | 1280
+ partner_price |  616
+(7 rows)
+
+ active_with_pcp_cash 
+----------------------
+                  321
+(1 row)
+
+                                 viewdef                                 
+-------------------------------------------------------------------------
+  SELECT src.id,                                                        +
+     src.product_id,                                                    +
+     src.sale_price_type_id,                                            +
+     src.pricing_rule_id,                                               +
+     src.final_sale_price,                                              +
+     src.rounded_sale_price,                                            +
+     src.computed_at,                                                   +
+     src.source                                                         +
+    FROM ( SELECT product_computed_prices.id,                           +
+             product_computed_prices.product_id,                        +
+             product_computed_prices.sale_price_type_id,                +
+             product_computed_prices.pricing_rule_id,                   +
+             product_computed_prices.final_sale_price,                  +
+             product_computed_prices.rounded_sale_price,                +
+             product_computed_prices.computed_at,                       +
+             product_computed_prices.source                             +
+            FROM product_computed_prices                                +
+           WHERE product_computed_prices.settlement_type_id IS NULL) src+
+   WHERE uid() IS NOT NULL AND NOT is_viewer_only(uid());
+(1 row)
+

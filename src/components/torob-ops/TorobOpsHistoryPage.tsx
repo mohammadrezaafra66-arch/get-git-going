@@ -14,7 +14,11 @@ type Snap = {
 };
 
 function HistoryInner() {
-  const [productId, setProductId] = useState("");
+  const initial =
+    typeof window !== "undefined"
+      ? new URLSearchParams(window.location.search).get("product") ?? ""
+      : "";
+  const [productId, setProductId] = useState(initial);
   const q = useQuery({
     queryKey: ["torob-offer-snapshots", productId],
     enabled: productId.length === 36,

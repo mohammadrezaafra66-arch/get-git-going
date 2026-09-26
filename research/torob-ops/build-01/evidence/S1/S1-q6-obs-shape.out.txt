@@ -1,0 +1,30 @@
+﻿SET
+  column_name   
+----------------
+ id
+ table_id
+ row_id
+ column_id
+ value_text
+ value_number
+ value_boolean
+ value_date
+ value_datetime
+ updated_at
+(10 rows)
+
+     column_key      |  n  | n_text | n_bool 
+---------------------+-----+--------+--------
+ afrakala_product_id | 341 |    341 |      0
+ is_watch_active     |   0 |      0 |      0
+(2 rows)
+
+                sample                
+--------------------------------------
+ 0032aefe-31ff-4f77-bbaf-9913ffe85c8c
+ 00f41ff5-cd98-491c-9f04-c72156597ede
+ 01c50e6b-7810-42ad-8e38-11927469676c
+ 01fa4fc8-2b6f-4205-aca4-ee92bc11c74b
+ 02b2e6b5-121b-462a-b482-2386bd762d57
+(5 rows)
+

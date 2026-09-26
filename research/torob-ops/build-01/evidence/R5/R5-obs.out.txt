@@ -1,0 +1,56 @@
+﻿SET
+                  id                  |                slug                | is_active 
+--------------------------------------+------------------------------------+-----------
+ da8639ad-d5d3-4166-94df-cdad9dc21d5f | afrakala-product-price-observatory | t
+(1 row)
+
+      column_key       |        label         | data_type | is_editable_by_bot | sort_order 
+-----------------------+----------------------+-----------+--------------------+------------
+ afrakala_product_id   | شناسه محصول افراکالا | text      | f                  |          1
+ torob_avg_price_toman | میانگین قیمت ترب     | number    | t                  |         12
+ torob_min_price_toman | کمترین قیمت ترب      | number    | t                  |         13
+ torob_max_price_toman | بیشترین قیمت ترب     | number    | t                  |         14
+ torob_seller_count    | تعداد فروشنده ترب    | number    | t                  |         15
+ torob_last_seen_at    | آخرین رصد ترب        | datetime  | t                  |         16
+ is_watch_active       | پایش فعال            | boolean   | f                  |         35
+(7 rows)
+
+ watch_true | watch_false | watch_null_cell | watch_cells 
+------------+-------------+-----------------+-------------
+          0 |           0 |               0 |           0
+(1 row)
+
+               name               | is_active |          created_at           |         last_used_at          | allowed_table_n | managed_by_role 
+----------------------------------+-----------+-------------------------------+-------------------------------+-----------------+-----------------
+ Ali-talebizadeh-apikey           | t         | 2026-06-13 08:55:26.681788+00 | 2026-07-12 09:30:14.753458+00 |               0 | admin
+ apposite                         | t         | 2026-06-06 09:57:37.349676+00 | 2026-06-13 08:30:04.157441+00 |               0 | admin
+ cursor-ads-readonly              | t         | 2026-09-16 13:53:16.719679+00 | 2026-09-16 13:53:55.063784+00 |               0 | admin
+ google-maps-extracted-businesses | t         | 2026-05-19 08:27:43.606065+00 | 2026-05-23 06:32:17.083153+00 |               1 | admin
+ Mehdi-Feshki-apikey              | t         | 2026-06-13 08:55:00.119003+00 | 2026-07-12 10:09:41.47074+00  |               0 | admin
+ Mehdi-heidari-apikey             | t         | 2026-06-13 08:54:23.213739+00 | 2026-07-12 10:19:09.260566+00 |               0 | admin
+ site connect                     | t         | 2026-05-19 12:54:32.982197+00 |                               |               0 | admin
+ Site test                        | t         | 2026-05-19 13:51:25.196269+00 |                               |               0 | admin
+ test                             | t         | 2026-05-20 12:31:50.21353+00  |                               |               0 | admin
+ test 1                           | t         | 2026-07-14 13:52:07.46539+00  |                               |               0 | admin
+ test2                            | t         | 2026-05-24 13:14:20.210021+00 | 2026-05-24 13:15:12.157344+00 |               0 | admin
+ test3                            | t         | 2026-05-25 07:51:08.713007+00 | 2026-06-20 05:44:07.805295+00 |               0 | admin
+ wooapiconnect                    | t         | 2026-05-25 14:18:11.545525+00 | 2026-05-25 14:32:51.799898+00 |               0 | admin
+(13 rows)
+
+               name               |               slug               
+----------------------------------+----------------------------------
+ Ali-talebizadeh-apikey           | 
+ apposite                         | 
+ cursor-ads-readonly              | 
+ google-maps-extracted-businesses | google-maps-extracted-businesses
+ Mehdi-Feshki-apikey              | 
+ Mehdi-heidari-apikey             | 
+ site connect                     | 
+ Site test                        | 
+ test                             | 
+ test 1                           | 
+ test2                            | 
+ test3                            | 
+ wooapiconnect                    | 
+(13 rows)
+

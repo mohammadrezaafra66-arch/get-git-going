@@ -1,0 +1,85 @@
+﻿SET
+SET
+CREATE VIEW
+COMMENT
+GRANT
+GRANT
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+ALTER TABLE
+ALTER TABLE
+ALTER TABLE
+docker : psql:/tmp/596.sql:129: NOTICE:  policy "torob_eye_runs_select" for relation "public.torob_eye_runs" does not 
+exist, skipping
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-5398a3c7-bbc0-47a0-a4d2-81cc15b923db.ps1:118 char:1
++ docker exec -e "PGPASSWORD=$pw" afrakala-lan-db psql -U supabase_admi ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql:/tmp/596.s...exist, skipping:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+DROP POLICY
+psql:/tmp/596.sql:139: NOTICE:  policy "torob_offer_snapshots_select" for relation "public.torob_offer_snapshots" does 
+not exist, skipping
+CREATE POLICY
+DROP POLICY
+CREATE POLICY
+REVOKE
+REVOKE
+REVOKE
+REVOKE
+GRANT
+GRANT
+GRANT
+GRANT
+CREATE TABLE
+ALTER TABLE
+psql:/tmp/596.sql:173: NOTICE:  policy "torob_link_assignments_select" for relation "public.torob_link_assignments" 
+does not exist, skipping
+DROP POLICY
+CREATE POLICY
+REVOKE
+REVOKE
+GRANT
+GRANT
+CREATE FUNCTION
+REVOKE
+REVOKE
+GRANT
+CREATE FUNCTION
+DROP TRIGGER
+psql:/tmp/596.sql:257: NOTICE:  trigger "trg_torob_ops_guard_auto_report" for relation "public.torob_ops_settings" 
+does not exist, skipping
+CREATE TRIGGER
+DROP POLICY
+REVOKE
+GRANT
+CREATE FUNCTION
+psql:/tmp/596.sql:310: NOTICE:  trigger "trg_torob_ops_findings_status_guard" for relation "public.torob_ops_findings" 
+does not exist, skipping
+DROP TRIGGER
+CREATE TRIGGER
+REVOKE
+REVOKE
+psql:/tmp/596.sql:322: NOTICE:  policy "torob_ops_sessions_delete" for relation "public.torob_ops_sessions" does not 
+exist, skipping
+DROP POLICY
+CREATE POLICY
+psql:/tmp/596.sql:327: NOTICE:  policy "torob_ops_report_logs_delete" for relation "public.torob_ops_report_logs" does 
+not exist, skipping
+DROP POLICY
+CREATE POLICY
