@@ -495,6 +495,15 @@ export const torobOpsUpdateSettings = createServerFn({ method: "POST" })
       require_human_confirm_first_n: z.number().int().min(0).max(100).optional(),
       max_reports_per_hour: z.number().int().min(1).max(200).optional(),
       dedupe_window_hours: z.number().int().min(1).max(720).optional(),
+      eye_enabled: z.boolean().optional(),
+      eye_delay_min_seconds: z.number().int().min(5).max(600).optional(),
+      eye_delay_max_seconds: z.number().int().min(5).max(600).optional(),
+      eye_cycle_hours: z.number().int().min(1).max(24).optional(),
+      eye_window_start_hour: z.number().int().min(0).max(23).optional(),
+      eye_window_end_hour: z.number().int().min(1).max(24).optional(),
+      eye_block_alert_hours: z.number().min(0.1).max(24).optional(),
+      eye_link_discovery_enabled: z.boolean().optional(),
+      eye_bait_page_cap: z.number().int().min(0).max(50).optional(),
     }),
   )
   .handler(async ({ data, context }) => {

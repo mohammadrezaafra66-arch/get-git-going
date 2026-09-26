@@ -369,7 +369,30 @@ services:
 
 
 
-# -------------------------------------------------------------
+  torob-eye:
+    build:
+      context: ../../workers/torob-eye
+      dockerfile: Dockerfile
+    image: afrakala-torob-eye:lan
+    container_name: afrakala-lan-torob-eye
+    restart: unless-stopped
+    environment:
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      TOROB_EYE_BOT_KEY: ${TOROB_EYE_BOT_KEY:-}
+      TOROB_OPS_SIMULATE_SUBMIT: ${TOROB_OPS_SIMULATE_SUBMIT:-}
+      TOROB_OPS_ACCOUNT_SECRET: ${TOROB_OPS_ACCOUNT_SECRET:-}
+      APP_INTERNAL_URL: http://web:3000
+      TOROB_EYE_STUB_BLOCK: ${TOROB_EYE_STUB_BLOCK:-0}
+    networks:
+      - afrakala-lan-net
+    depends_on:
+      rest:
+        condition: service_started
+      web:
+        condition: service_started
+
+  # -------------------------------------------------------------
   # Caddy — HTTPS reverse proxy (LAN-only, mkcert certificate)
   # -------------------------------------------------------------
   caddy:
