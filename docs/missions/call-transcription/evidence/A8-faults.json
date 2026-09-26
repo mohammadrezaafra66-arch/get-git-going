@@ -1,0 +1,25 @@
+{
+  "kill_stt_mid_call": {
+    "agent_stayed_up": true,
+    "offset_persisted": true,
+    "stt_ready_after_start": true,
+    "observed": "agent kept running and persisted offsets while STT was down; delivered after docker start"
+  },
+  "kill_capture_mid_call": {
+    "offset_before_restart": 28844,
+    "offset_after_restart": 28844,
+    "resumed": true,
+    "observed": "restarted agent resumed from persisted offset and advanced it"
+  },
+  "duplicate_chunk": {
+    "http_first": 200,
+    "http_second": 200,
+    "observed": "second identical PCM ingest accepted (session append); hook idempotency is A7 on (filename,seq,kind)"
+  },
+  "truncated_final_file": {
+    "agent_alive": true,
+    "offset": 8044,
+    "closed": true,
+    "observed": "agent did not crash; read from offset 44; inactivity closed the truncated file"
+  }
+}

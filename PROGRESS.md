@@ -121,6 +121,10 @@
 
 | تاریخ | ابزار | کار | commit |
 |---|---|---|---|
+| 2026-09-26 | Cursor | **مأموریت رونویسی تماس فاز A — G2.** مهاجرت 592/593 روی `afrakala`؛ hook `call-transcript`؛ RLS Kong با شمارش نقش‌ها؛ typecheck بدون خطای تازه. | (این commit) |
+| 2026-09-26 | Cursor | **مأموریت رونویسی تماس فاز A — G1 اعمال شد.** Q2–Q4=a؛ Q1 پیش‌فرض 3.6 (خروجی PBX نچسبید). C1–C6 در DESIGN.md. | (این commit) |
+| 2026-09-26 | Cursor | **مأموریت رونویسی تماس فاز A — G1 READY.** طراحی در `docs/missions/call-transcription/DESIGN.md`؛ تنها توقف برای پاسخ مالک. | (این commit) |
+| 2026-09-26 | Cursor | **مأموریت رونویسی تماس فاز A — G0.** worktree `D:\AfraKalaTest\wt-call-transcription` روی `feature/call-transcription` از `origin/staging` @ `e0374408`. SHA وب 3100 پیش از deploy همین است. واقعیت‌های تماس روی staging بازبینی شد؛ `salesdesk-9-fixes` جد staging است. گزارش: `docs/missions/call-transcription/STATE.md`. | (این commit) |
 | 2026-09-26 | Cursor | **هات‌فیکس تاریخچه معامله (۵۹۱).** تریگر 590 روی `sales_interaction_history` بدون DEFINER بود؛ INSERT معامله موفق و PATCH مبلغ 403 می‌داد. توابع نویسنده‌ی تاریخچه DEFINER + `search_path=public,pg_temp`؛ مبلغ/معرف داخل همان RPC ساخت؛ دکمه ذخیره هنگام ارسال قفل و معامله دوم ساخته نمی‌شود. | (این commit) |
 | 2026-09-16 | Cursor | **ماژول عملیات ترب مسیر ب.** migration 555 + قفل رمز per-user + اسکن از رصدخانه + صف بررسی طعمه + ثبت گزارش دستی. مسیرها: `/torob-ops*` و `/admin/torob-ops-access`. قرارداد: `docs/torob-ops/PATH_B_CONTRACT.md`. | (pending) |
 | 2026-09-16 | Cursor | **merge staging→sales-desk برای دائمی کردن دستیار کار روی LAN :3100.** مسیرهای `/operations/work*` + ناوبری «دستیار کار» داخل `feature/sales-desk` تا deployهای میز فروش دیگر منو را پاک نکنند. | (این commit) |

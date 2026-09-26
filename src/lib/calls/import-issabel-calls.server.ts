@@ -382,6 +382,8 @@ export async function importIssabelCalls(
             ? "dial_prefix_stripped"
             : "raw"
           : null,
+        recording_files: call.recordingFiles,
+        leg_uniqueids: call.legUniqueids,
       },
     };
   });
@@ -401,6 +403,15 @@ export async function importIssabelCalls(
       };
     }
     inserted += count ?? chunk.length;
+  }
+
+  try {
+    await untypedDb.rpc("link_pending_transcript_sessions", {});
+  } catch (err) {
+    console.error(
+      "[import-issabel] link_pending_transcript_sessions failed:",
+      err instanceof Error ? err.message : err,
+    );
   }
 
   // ── بازمحاسبه: دقیقاً یک بار، در پایان. نه داخل حلقهٔ بالا. ──────────────

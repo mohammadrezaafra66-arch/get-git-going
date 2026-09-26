@@ -239,6 +239,7 @@ import { Route as ApiPublicHooksGenerateMarketingTasksRouteImport } from './rout
 import { Route as ApiPublicHooksImportIssabelCallsRouteImport } from './routes/api/public/hooks/import-issabel-calls'
 import { Route as ApiPublicHooksIngestMarketRatesRouteImport } from './routes/api/public/hooks/ingest-market-rates'
 import { Route as ApiPublicHooksIssabelAmiRingRouteImport } from './routes/api/public/hooks/issabel-ami-ring'
+import { Route as ApiPublicHooksCallTranscriptRouteImport } from './routes/api/public/hooks/call-transcript'
 import { Route as ApiPublicHooksProcessPricingQueueRouteImport } from './routes/api/public/hooks/process-pricing-queue'
 import { Route as ApiPublicHooksProcessTorobOpsReportQueueRouteImport } from './routes/api/public/hooks/process-torob-ops-report-queue'
 import { Route as AppAcademyCourseIdLessonIdQuizRouteImport } from './routes/_app.academy_.$courseId_.$lessonId_.quiz'
@@ -1474,6 +1475,12 @@ const ApiPublicHooksIssabelAmiRingRoute =
     path: '/api/public/hooks/issabel-ami-ring',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksCallTranscriptRoute =
+  ApiPublicHooksCallTranscriptRouteImport.update({
+    id: '/api/public/hooks/call-transcript',
+    path: '/api/public/hooks/call-transcript',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksProcessPricingQueueRoute =
   ApiPublicHooksProcessPricingQueueRouteImport.update({
     id: '/api/public/hooks/process-pricing-queue',
@@ -1811,6 +1818,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
+  '/api/public/hooks/call-transcript': typeof ApiPublicHooksCallTranscriptRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/api/public/hooks/process-torob-ops-report-queue': typeof ApiPublicHooksProcessTorobOpsReportQueueRoute
   '/gamification/admin/': typeof AppGamificationAdminIndexRoute
@@ -2056,6 +2064,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
+  '/api/public/hooks/call-transcript': typeof ApiPublicHooksCallTranscriptRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/api/public/hooks/process-torob-ops-report-queue': typeof ApiPublicHooksProcessTorobOpsReportQueueRoute
   '/gamification/admin': typeof AppGamificationAdminIndexRoute
@@ -2307,6 +2316,7 @@ export interface FileRoutesById {
   '/api/public/hooks/import-issabel-calls': typeof ApiPublicHooksImportIssabelCallsRoute
   '/api/public/hooks/ingest-market-rates': typeof ApiPublicHooksIngestMarketRatesRoute
   '/api/public/hooks/issabel-ami-ring': typeof ApiPublicHooksIssabelAmiRingRoute
+  '/api/public/hooks/call-transcript': typeof ApiPublicHooksCallTranscriptRoute
   '/api/public/hooks/process-pricing-queue': typeof ApiPublicHooksProcessPricingQueueRoute
   '/api/public/hooks/process-torob-ops-report-queue': typeof ApiPublicHooksProcessTorobOpsReportQueueRoute
   '/_app/gamification/admin/': typeof AppGamificationAdminIndexRoute
@@ -2558,6 +2568,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/issabel-ami-ring'
+    | '/api/public/hooks/call-transcript'
     | '/api/public/hooks/process-pricing-queue'
     | '/api/public/hooks/process-torob-ops-report-queue'
     | '/gamification/admin/'
@@ -2803,6 +2814,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/issabel-ami-ring'
+    | '/api/public/hooks/call-transcript'
     | '/api/public/hooks/process-pricing-queue'
     | '/api/public/hooks/process-torob-ops-report-queue'
     | '/gamification/admin'
@@ -3053,6 +3065,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/import-issabel-calls'
     | '/api/public/hooks/ingest-market-rates'
     | '/api/public/hooks/issabel-ami-ring'
+    | '/api/public/hooks/call-transcript'
     | '/api/public/hooks/process-pricing-queue'
     | '/api/public/hooks/process-torob-ops-report-queue'
     | '/_app/gamification/admin/'
@@ -3103,6 +3116,7 @@ export interface RootRouteChildren {
   ApiPublicHooksImportIssabelCallsRoute: typeof ApiPublicHooksImportIssabelCallsRoute
   ApiPublicHooksIngestMarketRatesRoute: typeof ApiPublicHooksIngestMarketRatesRoute
   ApiPublicHooksIssabelAmiRingRoute: typeof ApiPublicHooksIssabelAmiRingRoute
+  ApiPublicHooksCallTranscriptRoute: typeof ApiPublicHooksCallTranscriptRoute
   ApiPublicHooksProcessPricingQueueRoute: typeof ApiPublicHooksProcessPricingQueueRoute
   ApiPublicHooksProcessTorobOpsReportQueueRoute: typeof ApiPublicHooksProcessTorobOpsReportQueueRoute
   ApiAdminAutomationTorobEnqueueRoute: typeof ApiAdminAutomationTorobEnqueueRoute
@@ -4724,6 +4738,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksIssabelAmiRingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/call-transcript': {
+      id: '/api/public/hooks/call-transcript'
+      path: '/api/public/hooks/call-transcript'
+      fullPath: '/api/public/hooks/call-transcript'
+      preLoaderRoute: typeof ApiPublicHooksCallTranscriptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/process-pricing-queue': {
       id: '/api/public/hooks/process-pricing-queue'
       path: '/api/public/hooks/process-pricing-queue'
@@ -5466,6 +5487,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksImportIssabelCallsRoute: ApiPublicHooksImportIssabelCallsRoute,
   ApiPublicHooksIngestMarketRatesRoute: ApiPublicHooksIngestMarketRatesRoute,
   ApiPublicHooksIssabelAmiRingRoute: ApiPublicHooksIssabelAmiRingRoute,
+  ApiPublicHooksCallTranscriptRoute: ApiPublicHooksCallTranscriptRoute,
   ApiPublicHooksProcessPricingQueueRoute:
     ApiPublicHooksProcessPricingQueueRoute,
   ApiPublicHooksProcessTorobOpsReportQueueRoute:

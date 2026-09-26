@@ -1,0 +1,11 @@
+# cwd: D:\AfraKalaTest\wt-call-transcription
+# $env:DISABLE_LOVABLE_MCP=1; node scripts/ci/typecheck-against-baseline.mjs
+# exit 0
+
+typecheck-against-baseline summary:
+  raw errors: 73
+  unique keys: 39
+  keys at or below baseline: 39
+  keys cleared since baseline: 4
+  baseline unique keys: 43
+OK: all typecheck error keys are at or below baseline counts.

@@ -1,0 +1,17 @@
+# rockylinux:8  python 3.6.8  — 8 growing files, env token, chown asterisk
+# command: docker run --rm --name rocky-a9 -v .../capture_agent.py:/opt/capture_agent.py -v .../g4-rocky-retest.sh:/opt/retest.sh rockylinux:8 bash /opt/retest.sh
+
+Python 3.6.8
+AGENT_PID=67
+CMDLINE=/usr/libexec/platform-python /opt/capture_agent.py --watch /tmp/spool --url http://127.0.0.1:8099 --state /var/lib/afrakala-stt/offsets.json --spool /var/lib/afrakala-stt/spool --interval 0.2 --inactivity 8
+TOKEN_ON_CMDLINE=no
+PS_BEFORE=   67  8.0 16592 /usr/libexec/platform-python /opt/capture_agent.py --watch /tmp/spool --url http://127.0.0.1:8099 --state /var/lib/afrakala-stt/offsets.json --spool /var/lib/afrakala-stt/spool --interval 0.2 --inactivity 8
+CPU_PCT=0.750
+RSS_KB=17232
+RSS_MB=16.83
+PS_AFTER=   67  1.5 17232 /usr/libexec/platform-python /opt/capture_agent.py --watch /tmp/spool --url http://127.0.0.1:8099 --state /var/lib/afrakala-stt/offsets.json --spool /var/lib/afrakala-stt/spool --interval 0.2 --inactivity 8
+OFFSET_WRITTEN=yes
+OFFSET_BYTES=993
+-rw-r--r-- 1 asterisk asterisk 993 Sep 26 14:39 /var/lib/afrakala-stt/offsets.json
+TOKEN_ON_CMDLINE=no
+ROCKY_RETEST_DONE

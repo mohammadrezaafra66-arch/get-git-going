@@ -1,0 +1,16 @@
+# node docs/missions/call-transcription/g2-proof.mjs
+# exit 0  G2_PROOF_PASS
+
+rls:
+  sales: 1
+  accountant: 1
+  viewer: 0
+  manager: 4
+  admin: 4
+  anon_status: 401
+  anon_n: 0
+idempotency:
+  beforeDup: 1
+  afterDup: 1
+anonRpc: 401 permission denied for function link_pending_transcript_sessions
+salesRpc: 403 permission denied for function link_pending_transcript_sessions

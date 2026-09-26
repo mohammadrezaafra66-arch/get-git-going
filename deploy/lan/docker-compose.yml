@@ -98,6 +98,7 @@ services:
       # (POST /api/public/hooks/import-issabel-calls). خالی بودنش یعنی endpoint
       # با ۵۰۰ برمی‌گردد و هیچ کاری نمی‌کند — همان رفتار درست برای نصب پیکربندی‌نشده.
       ISSABEL_IMPORT_WORKER_TOKEN: ${ISSABEL_IMPORT_WORKER_TOKEN:-}
+      CALL_TRANSCRIPT_WORKER_TOKEN: ${CALL_TRANSCRIPT_WORKER_TOKEN:-}
       # Optional AMI keys — the ring listener runs on the HOST (not in web).
       # Passthrough only if you ever move the listener into a container; unused by web today.
       # ISSABEL_AMI_HOST: ${ISSABEL_AMI_HOST:-}

@@ -15,6 +15,7 @@ import {
   SalesDeskTiltCard,
 } from "@/components/sales-desk";
 import { loadSalesDossier } from "@/lib/sales-desk";
+import { CallTranscriptPanel } from "@/components/calls/CallTranscriptPanel";
 import { formatDateTimeFa, formatNumber, toFaDigits } from "@/lib/i18n/formatters";
 import {
   SALES_QUOTE_STATUS_LABELS,
@@ -344,6 +345,9 @@ function CustomerSalesDossierPage() {
                               </>
                             ) : null}
                           </p>
+                          <div className="mt-2">
+                            <CallTranscriptPanel callLogId={c.id} pollMs={5000} />
+                          </div>
                         </li>
                       ))}
                     </ul>
