@@ -81,7 +81,7 @@ test.describe("didar deals parity", () => {
   test("list empty text and counters", async ({ page }) => {
     await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("تعداد کل").first()).toBeVisible({ timeout: 20000 });
-    await expect(page.getByText("دیتایی یافت نشد! از صحت فیلترها اطمینان حاصل کنید.").or(page.getByText("وضعیت"))).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "وضعیت" })).toBeVisible();
     const total = Number(
       dbScalar("select count(*) from public.sales_interactions where kind='request' and deleted_at is null").trim(),
     );
@@ -181,7 +181,7 @@ test.describe("didar deals parity", () => {
   test("detail shows person and no invoice button", async ({ page }) => {
     const id = await createDeal(salesJwt(), `${STAMP} detail`);
     await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
-    await expect(page.getByText("شخص مرتبط")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole("heading", { name: "شخص مرتبط" })).toBeVisible({ timeout: 20000 });
     await expect(page.getByText("نمایه فرصت")).toBeVisible();
     await expect(page.getByText("کارت های جاری")).toBeVisible();
     await expect(page.getByRole("button", { name: "ایجاد فاکتور" })).toHaveCount(0);

@@ -212,6 +212,15 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
         </div>
       </header>
 
+      {capsQ.data?.show_rejected_quote_notice ? (
+        <div className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-950">
+          <p>
+            پیش‌فاکتور این معامله رد شد. اگر معامله از دست رفته، آن را ناموفق کنید و دلیل شکست را
+            انتخاب کنید.
+          </p>
+        </div>
+      ) : null}
+
       <ol className="flex flex-wrap gap-1">
         {(stagesQ.data ?? []).map((s) => (
           <li key={s.id}>
