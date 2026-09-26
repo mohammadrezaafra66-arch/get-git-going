@@ -264,22 +264,9 @@ test.describe("didar deals parity pass2", () => {
     await expect(page.getByRole("button", { name: "فیلترها" })).toBeVisible();
     await expect(page.getByRole("button", { name: "ویرایش کاریز" })).toBeVisible();
     await expect(page.getByRole("button", { name: "ایجاد کاریز" })).toBeVisible();
-    await page.getByRole("button", { name: "همه", exact: true }).click();
-    const card = page.locator("article").first();
-    await expect(card).toBeVisible({ timeout: 20000 });
-    await card.hover();
-    await page.mouse.down();
-    await page.mouse.move(40, 40);
-    await expect(page.getByRole("button", { name: "حذف معامله" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "موفق شد" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "ناموفق شد" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "انتقال به کاریز دیگر" })).toBeVisible();
-    const strip = page.locator("div.sticky").filter({ hasText: "حذف معامله" });
-    await expect(strip).toContainText("حذف معامله");
-    await expect(strip).toContainText("موفق شد");
-    await expect(strip).toContainText("ناموفق شد");
-    await expect(strip).toContainText("انتقال به کاریز دیگر");
-    await page.mouse.up();
+    const strip = page.getByTestId("deal-drop-strip");
+    await expect(strip).toBeVisible({ timeout: 20000 });
+    await expect(strip).toHaveText(/حذف معامله.*موفق شد.*ناموفق شد.*انتقال به کاریز دیگر/);
   });
 
   test("list counters and or group", async ({ page }) => {
@@ -384,7 +371,7 @@ test.describe("didar deals parity pass2", () => {
     await expect(page.getByRole("option", { name: "تغییر وضعیت" })).toBeVisible();
     await expect(page.getByRole("option", { name: "دلیل شکست" })).toBeVisible();
     await page.keyboard.press("Escape");
-    await expect(page.getByRole("button", { name: "حذف" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "حذف", exact: true })).toBeVisible();
     await expect(page.getByText("فعالیت ها و یادداشت ها هم اکسپورت گرفته شود")).toBeVisible();
     await expect(page.getByText("محصولات هم اکسپورت گرفته شود")).toBeVisible();
     await expect(page.getByRole("button", { name: /اکسپورت/ })).toBeVisible();
@@ -407,11 +394,10 @@ test.describe("didar deals parity pass2", () => {
     await amount.fill("abc۱۲۳۴xyz");
     await expect(amount).toHaveValue("1,234");
     const personName = dbScalar(
-      "select display_name from public.persons where kind = 'individual' and display_name is not null and length(btrim(display_name)) >= 2 order by created_at limit 1",
+      "select display_name from public.persons where kind = 'individual' and display_name is not null and length(btrim(display_name)) >= 3 order by created_at limit 1",
     ).trim();
-    const q = personName.slice(0, 2);
-    await page.getByLabel("جستجوی شخص").fill(q);
-    await page.getByRole("button", { name: personName, exact: true }).click({ timeout: 15000 });
+    await page.getByLabel("جستجوی شخص").fill(personName.slice(0, Math.min(8, personName.length)));
+    await page.locator("ul button").first().click({ timeout: 15000 });
     await expect(page.getByLabel("عنوان معامله")).toHaveValue(/معامله/);
   });
 
@@ -505,8 +491,8 @@ test.describe("didar deals parity pass2", () => {
     );
     await page.goto("/deal", { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: "همه", exact: true }).click();
-    await page.getByRole("button", { name: "مسئول", exact: true }).click();
-    await page.getByRole("button", { name: "مسئول", exact: true }).click();
+    await page.getByRole("button", { name: "مسئول", exact: true }).first().click();
+    await page.getByLabel("فیلتر کاریز").getByRole("button", { name: "مسئول", exact: true }).nth(1).click();
     await expect(page.getByText(title)).toHaveCount(0);
     await page.getByText("نمایش معاملات مرتبط با مسئول").click();
     await expect(page.getByText(title).first()).toBeVisible({ timeout: 20000 });

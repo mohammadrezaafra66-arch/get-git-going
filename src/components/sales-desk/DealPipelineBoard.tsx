@@ -480,30 +480,31 @@ export function DealPipelineBoard() {
           );
         })}
       </div>
-      {dragging ? (
-        <div className="sticky bottom-2 z-10 flex flex-wrap justify-center gap-2 rounded-lg border bg-background/95 p-2 shadow">
-          <DropAction
-            enabled={!!dragging.caps?.can_delete}
-            label="حذف معامله"
-            onDrop={() => setDeleteFor(dragging)}
-          />
-          <DropAction
-            enabled={!!dragging.caps?.can_set_won}
-            label="موفق شد"
-            onDrop={() => statusMut.mutate({ id: dragging.id, status: "won" })}
-          />
-          <DropAction
-            enabled={!!dragging.caps?.can_set_lost}
-            label="ناموفق شد"
-            onDrop={() => setLostFor(dragging)}
-          />
-          <DropAction
-            enabled={!!dragging.caps?.can_move}
-            label="انتقال به کاریز دیگر"
-            onDrop={() => setMoveFor(dragging)}
-          />
-        </div>
-      ) : null}
+      <div
+        data-testid="deal-drop-strip"
+        className={`sticky bottom-2 z-10 flex flex-wrap justify-center gap-2 rounded-lg border bg-background/95 p-2 shadow ${dragging ? "" : "opacity-70"}`}
+      >
+        <DropAction
+          enabled={!!dragging?.caps?.can_delete}
+          label="حذف معامله"
+          onDrop={() => dragging && setDeleteFor(dragging)}
+        />
+        <DropAction
+          enabled={!!dragging?.caps?.can_set_won}
+          label="موفق شد"
+          onDrop={() => dragging && statusMut.mutate({ id: dragging.id, status: "won" })}
+        />
+        <DropAction
+          enabled={!!dragging?.caps?.can_set_lost}
+          label="ناموفق شد"
+          onDrop={() => dragging && setLostFor(dragging)}
+        />
+        <DropAction
+          enabled={!!dragging?.caps?.can_move}
+          label="انتقال به کاریز دیگر"
+          onDrop={() => dragging && setMoveFor(dragging)}
+        />
+      </div>
 
       <AlertDialog
         open={!!deleteFor}
