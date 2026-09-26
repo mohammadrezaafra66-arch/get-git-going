@@ -36,10 +36,20 @@ export function DealHistoryFeed(props: { dealId: string; dealTitle: string }) {
     },
   });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">در حال بارگذاری…</p>;
+  if (q.isLoading) {
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="deal-history-feed">
+        در حال بارگذاری…
+      </p>
+    );
+  }
   const rows = q.data?.rows ?? [];
   if (rows.length === 0) {
-    return <p className="text-sm text-muted-foreground">سابقه‌ای ثبت نشده است.</p>;
+    return (
+      <p className="text-sm text-muted-foreground" data-testid="deal-history-feed">
+        سابقه‌ای ثبت نشده است.
+      </p>
+    );
   }
   return (
     <ul className="space-y-2 text-sm" data-testid="deal-history-feed">

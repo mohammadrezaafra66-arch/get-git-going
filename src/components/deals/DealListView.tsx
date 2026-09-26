@@ -16,6 +16,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { formatDateFa } from "@/lib/i18n/formatters";
 import { formatDealIrr, formatDealNumber, formatDealPercent } from "@/lib/deals/format";
+import {
+  addBulkCounts,
+  classifyBulkRefusal,
+  emptyBulkCounts,
+  formatBulkMutationSummary,
+  type BulkCounts,
+} from "@/lib/deals/bulk-summary";
 import { fetchAllPages } from "@/lib/deals/paged";
 import { loadDealLookupNames, loadDealStaffNames } from "@/lib/deals/names";
 import { DealDeleteConfirm } from "./DealDeleteConfirm";
@@ -481,7 +488,7 @@ export function DealListView() {
             <div className="flex min-w-0 flex-col gap-1">
               <Label>مسئول</Label>
               <Select value={bulkOwner} onValueChange={setBulkOwner} disabled={!privileged && mutableSelected.length === 0}>
-                <SelectTrigger aria-label="مسئول" disabled={!privileged && selectedRows.some((r) => !canMutateDeal(r))}><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="مسئول"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unchanged">بدون تغییر</SelectItem>
                   {(staffQ.data ?? []).map((p) => (
@@ -562,19 +569,29 @@ export function DealListView() {
               void (async () => {
                 const ownerIds = bulkOwner !== "unchanged" ? mutableSelected.map((r) => r.id) : [];
                 const otherIds = selected.filter((id) => !mutableSelected.some((r) => r.id === id));
-                if (bulkOwner !== "unchanged") await applyBulk(ownerIds, "owner", bulkOwner);
+                let counts = emptyBulkCounts();
+                const summarize = bulkOwner !== "unchanged" || bulkStatus !== "unchanged";
+                if (bulkOwner !== "unchanged") {
+                  counts = addBulkCounts(counts, await applyBulk(ownerIds, "owner", bulkOwner));
+                  counts = addBulkCounts(counts, { ok: 0, closed: 0, denied: otherIds.length });
+                }
                 if (bulkVisibility !== "unchanged") await applyBulk(selected, "visibility", bulkVisibility);
                 if (bulkTag !== "unchanged") await applyBulk(selected, "tag", bulkTag);
                 if (bulkPipeline !== "unchanged") {
                   const first = (await listSalesPipelineStages({ pipelineId: bulkPipeline, activeOnly: true }))[0]?.id;
                   await applyBulk(selected, "pipeline", bulkPipeline, bulkPipeline, first);
                 }
-                if (bulkStatus !== "unchanged") await applyBulk(selected, "status", bulkStatus);
-                return bulkOwner !== "unchanged" ? otherIds.length : 0;
+                if (bulkStatus !== "unchanged") {
+                  counts = addBulkCounts(counts, await applyBulk(selected, "status", bulkStatus));
+                }
+                return { summarize, counts };
               })()
-                .then((denied) => {
-                  toast.success("بروزرسانی شد");
-                  if (denied > 0) toast.message(`${formatDealNumber(denied)} معامله به دلیل نداشتن دسترسی تغییر نکرد`);
+                .then(({ summarize, counts }) => {
+                  if (summarize) {
+                    toast.message(formatBulkMutationSummary({ ...counts, okVerb: "تغییر کرد" }));
+                  } else {
+                    toast.success("بروزرسانی شد");
+                  }
                   void qc.invalidateQueries({ queryKey: ["sales-desk"] });
                 })
                 .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)));
@@ -586,6 +603,12 @@ export function DealListView() {
             type="button"
             size="sm"
             variant="outline"
+            disabled={!privileged && mutableSelected.length === 0}
+            title={
+              !privileged && mutableSelected.length === 0
+                ? "فقط معاملات خودتان را می‌توانید حذف کنید"
+                : undefined
+            }
             onClick={() => setDeleteOpen(true)}
           >
             حذف
@@ -686,15 +709,22 @@ export function DealListView() {
         count={selected.length}
         onOpenChange={setDeleteOpen}
         onConfirm={() => {
-          const ids = mutableSelected.map((r) => r.id);
-          const denied = selected.length - ids.length;
-          void Promise.all(ids.map((id) => deleteSalesDealSafe(id))).then(() => {
-            if (ids.length) toast.success("حذف");
-            if (denied > 0) toast.message(`${formatDealNumber(denied)} معامله به دلیل نداشتن دسترسی تغییر نکرد`);
+          void (async () => {
+            const counts = emptyBulkCounts();
+            counts.denied = selected.length - mutableSelected.length;
+            for (const r of mutableSelected) {
+              try {
+                await deleteSalesDeal(r.id);
+                counts.ok += 1;
+              } catch (e) {
+                counts[classifyBulkRefusal(salesDeskErrorMessage((e as Error).message))] += 1;
+              }
+            }
+            toast.message(formatBulkMutationSummary({ ...counts, okVerb: "حذف شد" }));
             setSelected([]);
             setDeleteOpen(false);
             void qc.invalidateQueries({ queryKey: ["sales-desk"] });
-          });
+          })();
         }}
       />
       <LostReasonDialog
@@ -703,23 +733,26 @@ export function DealListView() {
         openActivityCount={0}
         pending={false}
         onConfirm={(lost) => {
-          void Promise.all(
-            selected.map((id) =>
-              updateSalesInteractionStatus({
-                id,
-                status: "lost",
-                lostReasonId: lost.lostReasonId,
-                lostReasonNote: lost.lostReasonNote,
-                lostReasonOther: lost.lostReasonOther,
-              }),
-            ),
-          )
-            .then(() => {
-              toast.success("بروزرسانی");
-              setLostOpen(false);
-              void qc.invalidateQueries({ queryKey: ["sales-desk"] });
-            })
-            .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)));
+          void (async () => {
+            const counts = emptyBulkCounts();
+            for (const id of selected) {
+              try {
+                await updateSalesInteractionStatus({
+                  id,
+                  status: "lost",
+                  lostReasonId: lost.lostReasonId,
+                  lostReasonNote: lost.lostReasonNote,
+                  lostReasonOther: lost.lostReasonOther,
+                });
+                counts.ok += 1;
+              } catch (e) {
+                counts[classifyBulkRefusal(salesDeskErrorMessage((e as Error).message))] += 1;
+              }
+            }
+            toast.message(formatBulkMutationSummary({ ...counts, okVerb: "تغییر کرد" }));
+            setLostOpen(false);
+            void qc.invalidateQueries({ queryKey: ["sales-desk"] });
+          })();
         }}
       />
     </div>
@@ -887,24 +920,44 @@ async function applyBulk(
   value: string,
   pipelineId?: string,
   firstStageId?: string,
-) {
+): Promise<BulkCounts> {
+  const counts = emptyBulkCounts();
   if (field === "status" && value && value !== "lost") {
-    await Promise.all(ids.map((id) => updateSalesInteractionStatus({ id, status: value as "open" | "won" })));
-    return;
+    for (const id of ids) {
+      try {
+        await updateSalesInteractionStatus({ id, status: value as "open" | "won" });
+        counts.ok += 1;
+      } catch (e) {
+        counts[classifyBulkRefusal(salesDeskErrorMessage((e as Error).message))] += 1;
+      }
+    }
+    return counts;
   }
   if (field === "owner" && value) {
     const results = await Promise.all(
       ids.map((id) =>
-        supabase.from("sales_interactions" as never).update({ salesperson_id: value } as never).eq("id" as never, id as never),
+        supabase
+          .from("sales_interactions" as never)
+          .update({ salesperson_id: value } as never)
+          .eq("id" as never, id as never)
+          .select("id" as never),
       ),
     );
-    const err = results.find((r) => r.error)?.error;
-    if (err) throw new Error(err.message);
-    return;
+    for (const r of results) {
+      if (r.error) {
+        counts[classifyBulkRefusal(salesDeskErrorMessage(r.error.message))] += 1;
+      } else if (!r.data || (r.data as unknown[]).length === 0) {
+        counts.denied += 1;
+      } else {
+        counts.ok += 1;
+      }
+    }
+    return counts;
   }
   if (field === "pipeline" && pipelineId && firstStageId) {
     await Promise.all(ids.map((id) => moveSalesDeal({ id, pipelineId, stageId: firstStageId })));
-    return;
+    counts.ok = ids.length;
+    return counts;
   }
   if (field === "tag" && value) {
     const { data: tag } = await supabase
@@ -923,7 +976,8 @@ async function applyBulk(
     );
     const err = results.find((r) => r.error)?.error;
     if (err) throw new Error(err.message);
-    return;
+    counts.ok = ids.length;
+    return counts;
   }
   if (field === "visibility" && value) {
     await Promise.all(
@@ -934,16 +988,10 @@ async function applyBulk(
           .eq("id" as never, id as never),
       ),
     );
-    return;
+    counts.ok = ids.length;
+    return counts;
   }
-}
-
-async function deleteSalesDealSafe(id: string) {
-  try {
-    await deleteSalesDeal(id);
-  } catch (e) {
-    toast.error(salesDeskErrorMessage((e as Error).message));
-  }
+  return counts;
 }
 
 function exportSelected(

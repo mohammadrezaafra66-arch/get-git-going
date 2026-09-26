@@ -153,8 +153,38 @@ export function DealTagPicker(props: { dealId: string }) {
       return (data ?? []) as { id: string; title: string }[];
     },
   });
+  const assignedQ = useQuery({
+    queryKey: ["sales-desk", "deal-tags-on", props.dealId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales_interaction_tags" as never)
+        .select("tag_id" as never)
+        .eq("interaction_id" as never, props.dealId as never);
+      if (error) throw new Error(error.message);
+      const ids = ((data ?? []) as Array<{ tag_id: string }>).map((r) => r.tag_id);
+      if (!ids.length) return [] as string[];
+      const { data: defs, error: defErr } = await supabase
+        .from("deal_tags" as never)
+        .select("id, title" as never)
+        .in("id" as never, ids as never);
+      if (defErr) throw new Error(defErr.message);
+      return ((defs ?? []) as Array<{ id: string; title: string }>).map((t) => t.title);
+    },
+  });
   return (
     <div data-testid="pass3-d3-tag">
+      <p className="mb-1">برچسب</p>
+      <div className="mb-2 flex min-h-6 flex-wrap gap-1">
+        {(assignedQ.data ?? []).length === 0 ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          (assignedQ.data ?? []).map((title) => (
+            <span key={title} className="rounded-full border px-2 py-0.5 text-xs">
+              {title}
+            </span>
+          ))
+        )}
+      </div>
       <Select
         onValueChange={(tagId) => {
           void supabase
