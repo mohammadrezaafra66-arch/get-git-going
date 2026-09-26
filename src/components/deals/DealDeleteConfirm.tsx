@@ -26,7 +26,9 @@ export function DealDeleteConfirm(props: {
       <AlertDialogContent dir="rtl" className="z-[60]">
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription className="sr-only">{title}</AlertDialogDescription>
+          <AlertDialogDescription>
+            پس از حذف، معامله در فهرست «معاملات حذف شده» می‌ماند.
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={props.pending}>انصراف</AlertDialogCancel>

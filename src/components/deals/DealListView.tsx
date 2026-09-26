@@ -573,7 +573,7 @@ export function DealListView() {
                 return bulkOwner !== "unchanged" ? otherIds.length : 0;
               })()
                 .then((denied) => {
-                  toast.success("بروزرسانی");
+                  toast.success("بروزرسانی شد");
                   if (denied > 0) toast.message(`${formatDealNumber(denied)} معامله به دلیل نداشتن دسترسی تغییر نکرد`);
                   void qc.invalidateQueries({ queryKey: ["sales-desk"] });
                 })
@@ -646,11 +646,6 @@ export function DealListView() {
               <tr>
                 <td colSpan={visibleCols.length + 1} className="p-8 text-center text-muted-foreground">
                   دیتایی یافت نشد! از صحت فیلترها اطمینان حاصل کنید.
-                  <div>
-                    <Button type="button" variant="link" onClick={resetDefault}>
-                      بازگشت به فیلتر پیش‌فرض
-                    </Button>
-                  </div>
                 </td>
               </tr>
             ) : (

@@ -134,7 +134,7 @@ function suite(role: "sales" | "admin") {
       await page.getByLabel("ویرایش گروهی معاملات").getByLabel("برچسب").click();
       await page.getByRole("option", { name: tag, exact: true }).click();
       await page.getByRole("button", { name: "بروزرسانی" }).click();
-      await expect(page.getByText("بروزرسانی")).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByText("بروزرسانی شد")).toBeVisible({ timeout: 20_000 });
       const tags = Number(
         dbScalar(
           `select count(*) from public.sales_interaction_tags t join public.deal_tags d on d.id = t.tag_id where t.interaction_id = '${id}' and d.title = '${tag.replace(/'/g, "''")}'`,
@@ -154,6 +154,7 @@ function suite(role: "sales" | "admin") {
       const title = `${STAMP} ${role} p4`;
       await createDeal("manager", title);
       await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
+      await page.getByRole("heading", { name: "لیست معاملات" }).waitFor({ timeout: 20_000 });
       await page.getByRole("button", { name: "بازگشت به فیلتر پیش‌فرض" }).click();
       await expect(page.locator("body")).not.toContainText("دیتایی یافت نشد!");
       await expect(page.getByText("مسئول معامله برابر باشد با")).toHaveCount(0);
@@ -186,17 +187,29 @@ function suite(role: "sales" | "admin") {
         dbScalar("select count(*) from public.sales_interactions where kind='request' and deleted_at is null").trim(),
       );
       await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
+      await page.getByRole("heading", { name: "لیست معاملات" }).waitFor({ timeout: 20_000 });
       await page.getByRole("button", { name: "حذف فیلتر" }).click();
-      if (open > 400) {
+      const loadAll = async () => {
         const more = page.getByRole("button", { name: "بارگذاری بیشتر" });
-        while (await more.isVisible().catch(() => false)) await more.click();
+        await expect
+          .poll(async () => page.locator("tbody tr").count(), { timeout: 30_000 })
+          .toBeGreaterThan(1);
+        while (await more.isVisible().catch(() => false)) {
+          const n = await page.locator("tbody tr").count();
+          await more.click();
+          await expect
+            .poll(async () => page.locator("tbody tr").count(), { timeout: 30_000 })
+            .toBeGreaterThan(n);
+        }
+      };
+      if (open > 400) {
+        await loadAll();
         const n = await page.locator("tbody tr").count();
         expect(n).toBeGreaterThan(400);
       }
       await page.getByLabel("معاملات حذف شده").check();
       if (deleted > 400) {
-        const more = page.getByRole("button", { name: "بارگذاری بیشتر" });
-        while (await more.isVisible().catch(() => false)) await more.click();
+        await loadAll();
         const n = await page.locator("tbody tr").count();
         expect(n).toBeGreaterThan(400);
       } else {
@@ -261,7 +274,7 @@ function suite(role: "sales" | "admin") {
       });
       await page.reload({ waitUntil: "domcontentloaded" });
       await page.getByRole("button", { name: "ناموفق شد" }).click();
-      await page.getByLabel("دلیل شکست").click();
+      await page.getByLabel("دلیل شکست", { exact: true }).click();
       await page.getByRole("option", { name: "سایر" }).click();
       await expect(page.getByLabel("توضیح دلیل شکست")).toBeVisible();
       await expect(page.getByLabel("سایر")).toHaveCount(0);
