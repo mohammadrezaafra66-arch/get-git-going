@@ -16,6 +16,7 @@
  *     در `src`/`dst`/`dstchannel` درمی‌آید، نه از نام context.
  */
 import mysql from "mysql2/promise";
+import { collectRecordingMeta } from "./transcript-filename";
 
 const TEHRAN_TZ = "Asia/Tehran" as const;
 
@@ -53,6 +54,7 @@ export type CdrLeg = {
   uniqueid: string;
   linkedid: string;
   sequence: number;
+  recordingfile: string;
 };
 
 export type GroupedCall = {
@@ -73,6 +75,8 @@ export type GroupedCall = {
   legCount: number;
   dcontexts: string[];
   queue: string | null;
+  recordingFiles: string[];
+  legUniqueids: string[];
 };
 
 /**
@@ -264,6 +268,8 @@ export function groupLegsIntoCall(legs: CdrLeg[], dialPrefix: string): GroupedCa
 
   const queue = ordered.map((l) => l.dst).find((d) => QUEUE_RE.test(d)) ?? null;
 
+  const { recordingFiles, legUniqueids } = collectRecordingMeta(ordered);
+
   return {
     linkedId: origin.linkedid,
     startedAtUtc,
@@ -281,6 +287,8 @@ export function groupLegsIntoCall(legs: CdrLeg[], dialPrefix: string): GroupedCa
     legCount: ordered.length,
     dcontexts: [...new Set(ordered.map((l) => l.dcontext))],
     queue,
+    recordingFiles,
+    legUniqueids,
   };
 }
 
@@ -355,7 +363,7 @@ export async function fetchIssabelCalls(
       // تا تماسی که روی مرز بازه نشسته نصفه گروه‌بندی نشود.
       const [legRows] = await connection.query<mysql.RowDataPacket[]>(
         `SELECT calldate, src, dst, dcontext, channel, dstchannel, disposition,
-                duration, billsec, uniqueid, linkedid, sequence
+                duration, billsec, uniqueid, linkedid, sequence, recordingfile
            FROM cdr
           WHERE linkedid IN (?)
           ORDER BY linkedid, sequence`,
@@ -378,6 +386,7 @@ export async function fetchIssabelCalls(
           uniqueid: String(row.uniqueid ?? ""),
           linkedid: String(row.linkedid ?? ""),
           sequence: Number(row.sequence ?? 0),
+          recordingfile: String(row.recordingfile ?? ""),
         };
         const bucket = byLinkedId.get(leg.linkedid);
         if (bucket) bucket.push(leg);
