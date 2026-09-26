@@ -42,11 +42,24 @@ def normalize_key(text) -> str:
 
 # ============================ قیمت ============================
 
+_TOMAN_NEAR_RE = re.compile(
+    r"([\d][\d,٬.٫ ]{0,24})\s*تومان"
+)
+
+
 def to_int_price(text) -> int:
-    """از یک متن آزاد، عدد قیمت را بیرون می‌کشد. اگر عددی نبود صفر برمی‌گرداند."""
-    cleaned = normalize_digits(text).replace(",", "").replace("٬", "").replace(".", "")
-    digits = "".join(re.findall(r"\d+", cleaned))
-    return int(digits) if digits else 0
+    """First تومان-adjacent number only. Never concatenate distant digit runs."""
+    cleaned = normalize_digits(text)
+    m = _TOMAN_NEAR_RE.search(cleaned)
+    blob = m.group(1) if m else cleaned
+    # Drop thousand separators; keep spaces so "30 350000000" stays two groups.
+    blob = blob.replace(",", "").replace("٬", "").replace(".", "").replace("٫", "")
+    groups = re.findall(r"\d+", blob)
+    if m and groups:
+        return int(groups[-1])
+    if len(groups) == 1:
+        return int(groups[0])
+    return 0
 
 
 def format_price(value) -> str:

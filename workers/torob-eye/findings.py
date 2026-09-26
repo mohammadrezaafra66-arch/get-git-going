@@ -12,6 +12,7 @@ def cheapest_non_own(snaps: list[dict[str, Any]]) -> dict[str, Any] | None:
         s
         for s in snaps
         if not s.get("is_own_shop")
+        and not s.get("excluded")
         and isinstance(s.get("price_toman"), int)
         and s["price_toman"] > 0
     ]
@@ -58,7 +59,7 @@ async def run_after_cycle(
         client,
         "torob_offer_snapshots",
         {
-            "select": "product_id,seller_name,seller_shop_url,seller_shop_id,price_toman,is_own_shop,torob_url,fetched_at,run_id",
+            "select": "product_id,seller_name,seller_shop_url,seller_shop_id,price_toman,is_own_shop,excluded,exclude_reason,torob_url,fetched_at,run_id",
             "order": "fetched_at.desc",
             "limit": "2000",
         },

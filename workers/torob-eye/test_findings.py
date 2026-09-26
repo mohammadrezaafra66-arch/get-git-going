@@ -27,6 +27,36 @@ class FindingsTest(unittest.TestCase):
         self.assertEqual(classify(100, 60, False, False), "manual_review")
         self.assertEqual(classify(100, 90, True, False), "suspected_bait")
 
+    def test_excluded_snapshot_never_becomes_cheapest(self):
+        cheap = cheapest_non_own(
+            [
+                {
+                    "seller_name": "outlier",
+                    "price_toman": 1,
+                    "is_own_shop": False,
+                    "excluded": True,
+                    "exclude_reason": "placeholder",
+                },
+                {"seller_name": "رقیب", "price_toman": 1800, "is_own_shop": False, "excluded": False},
+            ]
+        )
+        self.assertIsNotNone(cheap)
+        self.assertEqual(cheap["seller_name"], "رقیب")
+
+    def test_all_excluded_returns_none(self):
+        self.assertIsNone(
+            cheapest_non_own(
+                [
+                    {
+                        "seller_name": "bad",
+                        "price_toman": 50_000_000_000,
+                        "is_own_shop": False,
+                        "excluded": True,
+                    }
+                ]
+            )
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
