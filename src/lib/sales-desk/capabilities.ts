@@ -10,6 +10,7 @@ export type DealCapabilities = {
   can_move: boolean;
   can_delete: boolean;
   can_restore: boolean;
+  can_view_price: boolean;
   open_activity_count: number;
   latest_quote_id: string | null;
   latest_quote_status: string | null;

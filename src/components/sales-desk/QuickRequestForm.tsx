@@ -122,7 +122,6 @@ export function QuickRequestForm({
     mutationFn: async () => {
       if (!personId) throw new Error("ابتدا شخص را انتخاب کنید");
       const trimmed = body.trim();
-      if (!trimmed) throw new Error("متن درخواست الزامی است");
       const nextFollowUpAt = combineTehranFollowUpIso(followUpDate, followUpTime);
       // C2 — zod requires salespersonId uuid before createSalesInteraction
       return createSalesInteraction(

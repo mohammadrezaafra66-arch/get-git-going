@@ -6,6 +6,9 @@ export type SalesPipeline = {
   title: string;
   is_active: boolean;
   sort_order: number;
+  probability_enabled?: boolean;
+  rotten_enabled?: boolean;
+  total_rotten_days?: number | null;
 };
 
 export type SalesPipelineStage = {
@@ -15,6 +18,13 @@ export type SalesPipelineStage = {
   sort_order: number;
   is_active: boolean;
   auto_event: "quote_created" | "quote_sent" | null;
+  description?: string | null;
+  probability?: number;
+  idle_enabled?: boolean;
+  rotten_enabled?: boolean;
+  idle_days?: number | null;
+  rotten_days?: number | null;
+  warning_percent?: number | null;
 };
 
 type UntypedRpc = (
@@ -31,7 +41,9 @@ export async function listSalesPipelines(opts?: {
 }): Promise<SalesPipeline[]> {
   let q = supabase
     .from("sales_pipelines" as never)
-    .select("id, title, is_active, sort_order" as never)
+    .select(
+      "id, title, is_active, sort_order, probability_enabled, rotten_enabled, total_rotten_days" as never,
+    )
     .order("sort_order" as never, { ascending: true } as never);
   if (opts?.activeOnly) q = q.eq("is_active" as never, true as never);
   const { data, error } = await q;
@@ -45,7 +57,9 @@ export async function listSalesPipelineStages(opts?: {
 }): Promise<SalesPipelineStage[]> {
   let q = supabase
     .from("sales_pipeline_stages" as never)
-    .select("id, pipeline_id, title, sort_order, is_active, auto_event" as never)
+    .select(
+      "id, pipeline_id, title, sort_order, is_active, auto_event, description, probability, idle_enabled, rotten_enabled, idle_days, rotten_days, warning_percent" as never,
+    )
     .order("sort_order" as never, { ascending: true } as never);
   if (opts?.pipelineId) q = q.eq("pipeline_id" as never, opts.pipelineId as never);
   if (opts?.activeOnly) q = q.eq("is_active" as never, true as never);
@@ -59,6 +73,9 @@ export async function upsertSalesPipeline(input: {
   title: string;
   is_active?: boolean;
   sort_order?: number;
+  probability_enabled?: boolean;
+  rotten_enabled?: boolean;
+  total_rotten_days?: number | null;
 }): Promise<string> {
   if (input.id) {
     const { error } = await supabase
@@ -67,6 +84,9 @@ export async function upsertSalesPipeline(input: {
         title: input.title,
         is_active: input.is_active ?? true,
         sort_order: input.sort_order ?? 0,
+        probability_enabled: input.probability_enabled,
+        rotten_enabled: input.rotten_enabled,
+        total_rotten_days: input.total_rotten_days,
       } as never)
       .eq("id" as never, input.id as never);
     if (error) throw new Error(salesDeskErrorMessage(error.message));
@@ -78,6 +98,9 @@ export async function upsertSalesPipeline(input: {
       title: input.title,
       is_active: input.is_active ?? true,
       sort_order: input.sort_order ?? 0,
+      probability_enabled: input.probability_enabled ?? true,
+      rotten_enabled: input.rotten_enabled ?? true,
+      total_rotten_days: input.total_rotten_days ?? 45,
     } as never)
     .select("id" as never)
     .single();
@@ -92,6 +115,13 @@ export async function upsertSalesPipelineStage(input: {
   sort_order: number;
   is_active?: boolean;
   auto_event?: "quote_created" | "quote_sent" | null;
+  description?: string | null;
+  probability?: number;
+  idle_enabled?: boolean;
+  rotten_enabled?: boolean;
+  idle_days?: number | null;
+  rotten_days?: number | null;
+  warning_percent?: number | null;
 }): Promise<string> {
   const payload = {
     pipeline_id: input.pipeline_id,
@@ -99,6 +129,13 @@ export async function upsertSalesPipelineStage(input: {
     sort_order: input.sort_order,
     is_active: input.is_active ?? true,
     auto_event: input.auto_event ?? null,
+    description: input.description ?? null,
+    probability: input.probability ?? 100,
+    idle_enabled: input.idle_enabled ?? true,
+    rotten_enabled: input.rotten_enabled ?? true,
+    idle_days: input.idle_days ?? 7,
+    rotten_days: input.rotten_days ?? 14,
+    warning_percent: input.warning_percent ?? 80,
   };
   if (input.id) {
     const { error } = await supabase

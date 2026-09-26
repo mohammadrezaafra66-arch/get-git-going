@@ -62,9 +62,9 @@ const KIND_LABEL: Record<PersonKind, string> = {
 };
 
 const SCOPE_LABEL: Record<PersonVisibilityScope, string> = {
-  internal_general: "داخلی",
-  restricted_finance: "محدود-مالی",
-  restricted_executive: "محدود-مدیریتی",
+  internal_general: "همه افراد شرکت",
+  restricted_finance: "مسئول و هم گروهی ها",
+  restricted_executive: "مسئول ،هم گروهی ها و زیر گروه ها",
 };
 
 async function authHeaders(): Promise<{ Authorization: string }> {
@@ -93,6 +93,57 @@ function TimestampWithTooltip({ iso, label }: { iso: string; label: string }) {
         </Tooltip>
       </dd>
     </div>
+  );
+}
+
+function PersonDealsCard({ personId }: { personId: string }) {
+  const dealsQ = useQuery({
+    queryKey: ["person", personId, "deals"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales_interactions" as never)
+        .select("id, title, status, created_at" as never)
+        .eq("kind" as never, "request" as never)
+        .eq("person_id" as never, personId as never)
+        .is("deleted_at" as never, null as never)
+        .order("created_at" as never, { ascending: false } as never)
+        .limit(20);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Array<{
+        id: string;
+        title: string | null;
+        status: string;
+        created_at: string;
+      }>;
+    },
+  });
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>معاملات</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {dealsQ.isLoading ? (
+          <p className="text-sm text-muted-foreground">در حال بارگذاری…</p>
+        ) : (dealsQ.data ?? []).length === 0 ? (
+          <p className="text-sm text-muted-foreground">معامله‌ای برای این شخص نیست.</p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {(dealsQ.data ?? []).map((d) => (
+              <li key={d.id}>
+                <Link
+                  to="/deal/$dealId"
+                  params={{ dealId: d.id }}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  {d.title || "بدون عنوان"}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -421,6 +472,8 @@ function PersonProfilePage() {
             RLS, validation triggers and audit triggers have all existed for months with no UI
             reading them at all. Renders itself away when no definition applies to this person. */}
         <PersonCustomFields personId={personId} personKind={person.kind} />
+
+        <PersonDealsCard personId={personId} />
 
         {/* 5–6. Alerts: merge + collision */}
         <div className="grid gap-4 lg:grid-cols-2">

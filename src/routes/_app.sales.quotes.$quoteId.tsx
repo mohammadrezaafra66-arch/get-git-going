@@ -294,7 +294,7 @@ function QuoteDetailPage() {
                   label="معامله"
                   value={
                     <Link
-                      to="/operations/sales-desk/deals/$dealId"
+                      to="/deal/$dealId"
                       params={{ dealId: quote.interaction_id }}
                       className="text-primary underline-offset-2 hover:underline"
                     >

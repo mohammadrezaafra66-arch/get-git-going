@@ -85,6 +85,13 @@ export async function createSalesInteraction(
     p_next_follow_up_at: input.nextFollowUpAt ?? null,
     p_source: input.source ?? "manual",
     p_status: input.status ?? "open",
+    p_pipeline_id: input.pipelineId ?? null,
+    p_stage_id: input.stageId ?? null,
+    p_expected_close_on: (input as { expectedCloseOn?: string | null }).expectedCloseOn ?? null,
+    p_acquaintance_id: (input as { acquaintanceId?: string | null }).acquaintanceId ?? null,
+    p_company_person_id: (input as { companyPersonId?: string | null }).companyPersonId ?? null,
+    p_probability: (input as { probability?: number | null }).probability ?? null,
+    p_is_vip: (input as { isVip?: boolean }).isVip ?? false,
   });
   if (error) throw new Error(salesDeskErrorMessage(error.message));
   if (typeof data !== "string" || !data) {
@@ -214,13 +221,25 @@ export async function loadDealById(id: string): Promise<{
   pipeline_id: string | null;
   stage_id: string | null;
   deleted_at: string | null;
+  display_code: number | null;
+  probability: number | null;
+  expected_close_on: string | null;
+  company_person_id: string | null;
+  acquaintance_id: string | null;
+  is_vip: boolean;
+  pinned_at: string | null;
+  register_time: string | null;
+  last_activity_at: string | null;
+  won_by: string | null;
+  lost_by: string | null;
+  stage_entered_at: string | null;
   author?: { id: string; full_name: string | null } | null;
   salesperson?: { id: string; full_name: string | null } | null;
 } | null> {
   const { data, error } = await supabase
     .from("sales_interactions" as never)
     .select(
-      "id, person_id, customer_id, kind, title, body, status, salesperson_id, author_id, won_at, lost_at, lost_reason_id, lost_reason_note, lost_reason_other, next_follow_up_at, created_at, pipeline_id, stage_id, deleted_at" as never,
+      "id, person_id, customer_id, kind, title, body, status, salesperson_id, author_id, won_at, lost_at, lost_reason_id, lost_reason_note, lost_reason_other, next_follow_up_at, created_at, pipeline_id, stage_id, deleted_at, display_code, probability, expected_close_on, company_person_id, acquaintance_id, is_vip, pinned_at, register_time, last_activity_at, won_by, lost_by, stage_entered_at" as never,
     )
     .eq("id" as never, id as never)
     .maybeSingle();
@@ -246,6 +265,18 @@ export async function loadDealById(id: string): Promise<{
     pipeline_id: string | null;
     stage_id: string | null;
     deleted_at: string | null;
+    display_code: number | null;
+    probability: number | null;
+    expected_close_on: string | null;
+    company_person_id: string | null;
+    acquaintance_id: string | null;
+    is_vip: boolean;
+    pinned_at: string | null;
+    register_time: string | null;
+    last_activity_at: string | null;
+    won_by: string | null;
+    lost_by: string | null;
+    stage_entered_at: string | null;
   };
   const profileIds = [row.author_id, row.salesperson_id].filter(Boolean) as string[];
   let author: { id: string; full_name: string | null } | null = null;

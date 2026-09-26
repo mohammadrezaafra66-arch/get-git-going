@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatNumber } from "@/lib/i18n/formatters";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import { supabase } from "@/integrations/supabase/client";
 import { followUpLightsForDeals, type FollowUpTrafficLight } from "@/lib/sales-desk/activities";
 import { loadDealCapabilities, type DealCapabilities } from "@/lib/sales-desk/capabilities";
@@ -47,6 +48,8 @@ import {
 import { updateSalesInteractionStatus, salesDeskErrorMessage } from "@/lib/sales-desk";
 import { FollowUpTrafficLightIcon } from "./FollowUpTrafficLightIcon";
 import { LostReasonDialog, type LostReasonSubmit } from "./LostReasonDialog";
+import { DealCreateDialog } from "@/components/deals/DealCreateDialog";
+import { DealPageHeader, DealViewTabs, HealthCircle, soonToast } from "@/components/deals/DealChrome";
 
 type StatusFilter = "open" | "won" | "lost" | "all" | "deleted";
 
@@ -64,6 +67,8 @@ type DealCard = {
   light: FollowUpTrafficLight;
   caps: DealCapabilities | null;
   latest_quote_amount: number;
+  last_activity_age_days: number | null;
+  health_circle: string | null;
 };
 
 const LIGHT_RANK: Record<FollowUpTrafficLight, number> = {
@@ -81,6 +86,7 @@ function sortCards(a: DealCard, b: DealCard): number {
 
 export function DealPipelineBoard() {
   const qc = useQueryClient();
+  const { profile } = useAuth();
   const [pipelineId, setPipelineId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -88,6 +94,13 @@ export function DealPipelineBoard() {
   const [moveFor, setMoveFor] = useState<DealCard | null>(null);
   const [deleteFor, setDeleteFor] = useState<DealCard | null>(null);
   const [deletePending, setDeletePending] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [dateChip, setDateChip] = useState<"all" | "due">("due");
+  const [ownerId, setOwnerId] = useState("");
+  const [vipOnly, setVipOnly] = useState(false);
+  const [noActivity, setNoActivity] = useState(false);
+  const [rottenOnly, setRottenOnly] = useState(false);
 
   const pipesQ = useQuery({
     queryKey: ["sales-desk", "pipelines"],
@@ -146,11 +159,16 @@ export function DealPipelineBoard() {
     const map = new Map<string, DealCard[]>();
     for (const s of stages) map.set(s.id, []);
     for (const c of cards) {
+      if (ownerId && c.salesperson_id !== ownerId) continue;
+      if (vipOnly && !(c as DealCard & { is_vip?: boolean }).is_vip) continue;
+      if (noActivity && (c.last_activity_age_days ?? 0) < 1) continue;
+      if (rottenOnly && c.health_circle !== "red") continue;
+      if (dateChip === "due" && c.light === "grey") continue;
       if (c.stage_id && map.has(c.stage_id)) map.get(c.stage_id)!.push(c);
     }
     for (const list of map.values()) list.sort(sortCards);
     return map;
-  }, [cards, stages]);
+  }, [cards, stages, ownerId, vipOnly, noActivity, rottenOnly, dateChip]);
 
   if (statusFilter === "deleted") {
     return (
@@ -161,6 +179,22 @@ export function DealPipelineBoard() {
           onPipeline={setPipelineId}
           statusFilter={statusFilter}
           onStatus={setStatusFilter}
+          ownerId={ownerId}
+          onOwner={setOwnerId}
+          vipOnly={vipOnly}
+          onVip={setVipOnly}
+          noActivity={noActivity}
+          onNoActivity={setNoActivity}
+          rottenOnly={rottenOnly}
+          onRotten={setRottenOnly}
+          profileId={profile?.id ?? ""}
+          onClear={() => {
+            setOwnerId("");
+            setVipOnly(false);
+            setNoActivity(false);
+            setRottenOnly(false);
+            setDateChip("due");
+          }}
         />
         {dealsQ.isLoading ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -209,12 +243,53 @@ export function DealPipelineBoard() {
 
   return (
     <div className="space-y-3" dir="rtl">
+      <DealPageHeader title="کاریز معاملات">
+        <div className="flex flex-wrap items-center gap-2">
+          <DealViewTabs active="kanban" />
+          <Button type="button" onClick={() => setCreateOpen(true)}>
+            افزودن معامله
+          </Button>
+          <Button type="button" variant="outline" onClick={() => void dealsQ.refetch()}>
+            بروزرسانی سریع صفحه
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => void (window.location.href = "/settings/sales-pipelines")}>
+            ویرایش کاریز
+          </Button>
+          <Button type="button" variant="ghost" onClick={() => void (window.location.href = "/settings/sales-pipelines")}>
+            ایجاد کاریز
+          </Button>
+        </div>
+      </DealPageHeader>
+      <div className="flex flex-wrap gap-2 text-sm">
+        <Button type="button" size="sm" variant={dateChip === "all" ? "default" : "outline"} onClick={() => setDateChip("all")}>
+          همه
+        </Button>
+        <Button type="button" size="sm" variant={dateChip === "due" ? "default" : "outline"} onClick={() => setDateChip("due")}>
+          امروز و تاریخ گذشته
+        </Button>
+      </div>
       <BoardFilters
         pipes={pipesQ.data ?? []}
         pipelineId={activePipelineId}
         onPipeline={setPipelineId}
         statusFilter={statusFilter}
         onStatus={setStatusFilter}
+        ownerId={ownerId}
+        onOwner={setOwnerId}
+        vipOnly={vipOnly}
+        onVip={setVipOnly}
+        noActivity={noActivity}
+        onNoActivity={setNoActivity}
+        rottenOnly={rottenOnly}
+        onRotten={setRottenOnly}
+        profileId={profile?.id ?? ""}
+        onClear={() => {
+          setOwnerId("");
+          setVipOnly(false);
+          setNoActivity(false);
+          setRottenOnly(false);
+          setDateChip("due");
+        }}
       />
       <div className="flex gap-3 overflow-x-auto pb-2">
         {stages.map((s) => {
@@ -246,9 +321,26 @@ export function DealPipelineBoard() {
               <header className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm">
                 <strong>{s.title}</strong>
                 <span className="text-xs text-muted-foreground">
-                  {col.length} · {formatNumber(sum)}
+                  ({col.length} عدد ، IRR {formatNumber(sum)})
                 </span>
               </header>
+              {s.sort_order === 1 ? (
+                <button
+                  type="button"
+                  className="mx-2 mt-2 w-[calc(100%-1rem)] rounded border border-dashed py-2 text-sm"
+                  onClick={() => setQuickOpen(true)}
+                >
+                  + افزودن سریع معامله
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="mx-2 mt-2 w-[calc(100%-1rem)] rounded border border-dashed py-2 text-sm"
+                  onClick={() => setQuickOpen(true)}
+                >
+                  +
+                </button>
+              )}
               <div className="space-y-2 p-2">
                 {col.map((c) => (
                   <article
@@ -264,16 +356,25 @@ export function DealPipelineBoard() {
                   >
                     <div className="flex items-start justify-between gap-1">
                       <Link
-                        to="/operations/sales-desk/deals/$dealId"
+                        to="/deal/$dealId"
                         params={{ dealId: c.id }}
                         className="font-medium text-primary underline-offset-2 hover:underline"
+                        title="در یک نگاه"
                       >
                         {c.title || "بدون عنوان"}
                       </Link>
-                      <FollowUpTrafficLightIcon light={c.light} />
+                      <span className="flex items-center gap-1">
+                        <HealthCircle circle={c.health_circle} />
+                        <FollowUpTrafficLightIcon light={c.light} />
+                      </span>
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">{c.person_name}</p>
-                    <p className="text-xs text-muted-foreground">{c.salesperson_name}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      با {c.person_name}
+                    </p>
+                    <p className="text-xs">IRR {formatNumber(c.latest_quote_amount)}</p>
+                    {c.last_activity_age_days != null ? (
+                      <p className="text-xs text-muted-foreground">{c.last_activity_age_days} روز پیش</p>
+                    ) : null}
                     {c.caps?.show_rejected_quote_notice ? (
                       <Badge variant="destructive" className="mt-1 text-[10px]">
                         پیش‌فاکتور رد شد
@@ -282,6 +383,9 @@ export function DealPipelineBoard() {
                   </article>
                 ))}
               </div>
+              <footer className="px-3 pb-2 text-xs text-muted-foreground">
+                نمایش {col.length} از {col.length} معامله این مرحله
+              </footer>
             </section>
           );
         })}
@@ -372,6 +476,8 @@ export function DealPipelineBoard() {
           invalidate();
         }}
       />
+      <DealCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <DealCreateDialog open={quickOpen} onOpenChange={setQuickOpen} quick />
     </div>
   );
 }
@@ -382,6 +488,16 @@ function BoardFilters(props: {
   onPipeline: (id: string) => void;
   statusFilter: StatusFilter;
   onStatus: (s: StatusFilter) => void;
+  ownerId: string;
+  onOwner: (id: string) => void;
+  vipOnly: boolean;
+  onVip: (v: boolean) => void;
+  noActivity: boolean;
+  onNoActivity: (v: boolean) => void;
+  rottenOnly: boolean;
+  onRotten: (v: boolean) => void;
+  onClear: () => void;
+  profileId: string;
 }) {
   return (
     <div className="flex flex-wrap items-end gap-3">
@@ -418,6 +534,35 @@ function BoardFilters(props: {
           </SelectContent>
         </Select>
       </div>
+      <Button
+        type="button"
+        size="sm"
+        variant={props.ownerId ? "default" : "ghost"}
+        onClick={() => props.onOwner(props.ownerId ? "" : (props.profileId || ""))}
+      >
+        مسئول
+      </Button>
+      <label className="flex items-center gap-1 text-xs">
+        <input type="checkbox" checked={props.vipOnly} onChange={(e) => props.onVip(e.target.checked)} /> مشتری ویژه
+      </label>
+      <label className="flex items-center gap-1 text-xs">
+        <input type="checkbox" /> بدون برچسب
+      </label>
+      <span className="text-xs">برچسب:</span>
+      <span className="text-xs">شیوه آشنایی:</span>
+      <span className="text-xs">زمان ثبت معامله / ۶ ماه گذشته</span>
+      <label className="flex items-center gap-1 text-xs">
+        <input type="checkbox" checked={props.noActivity} onChange={(e) => props.onNoActivity(e.target.checked)} /> معاملاتی که فعالیتی روی آن‌ها نیست
+      </label>
+      <label className="flex items-center gap-1 text-xs">
+        <input type="checkbox" checked={props.rottenOnly} onChange={(e) => props.onRotten(e.target.checked)} /> نمایش معاملات فاسد شده
+      </label>
+      <Button type="button" size="sm" variant="ghost" onClick={props.onClear}>
+        حذف فیلتر
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
+        فیلتر پیشرفته
+      </Button>
     </div>
   );
 }
@@ -528,7 +673,7 @@ async function loadBoardDeals(
   let q = supabase
     .from("sales_interactions" as never)
     .select(
-      "id, title, status, pipeline_id, stage_id, stage_entered_at, salesperson_id, person_id, deleted_at" as never,
+      "id, title, status, pipeline_id, stage_id, stage_entered_at, salesperson_id, person_id, deleted_at, is_vip, last_activity_at" as never,
     )
     .eq("kind" as never, "request" as never)
     .eq("pipeline_id" as never, pipelineId as never)
@@ -550,9 +695,11 @@ async function loadBoardDeals(
     stage_entered_at: string | null;
     salesperson_id: string | null;
     person_id: string;
+    is_vip?: boolean;
+    last_activity_at?: string | null;
   }>;
   const ids = rows.map((r) => r.id);
-  const [caps, lights, persons, profiles, quotes] = await Promise.all([
+  const [caps, lights, persons, profiles, quotes, health] = await Promise.all([
     loadDealCapabilities(ids),
     followUpLightsForDeals(ids),
     rows.length
@@ -575,6 +722,12 @@ async function loadBoardDeals(
           .from("sales_quotes" as never)
           .select("id, interaction_id, final_amount, created_at" as never)
           .in("interaction_id" as never, ids as never)
+      : Promise.resolve({ data: [] }),
+    ids.length
+      ? supabase
+          .from("sales_deal_health" as never)
+          .select("id, last_activity_age_days, health_circle" as never)
+          .in("id" as never, ids as never)
       : Promise.resolve({ data: [] }),
   ]);
   const personMap = new Map(
@@ -614,5 +767,13 @@ async function loadBoardDeals(
     light: lights.get(r.id) ?? "yellow",
     caps: caps.get(r.id) ?? null,
     latest_quote_amount: latestAmount.get(r.id)?.amount ?? 0,
+    last_activity_age_days:
+      ((health.data ?? []) as Array<{ id: string; last_activity_age_days: number | null }>).find(
+        (h) => h.id === r.id,
+      )?.last_activity_age_days ?? null,
+    health_circle:
+      ((health.data ?? []) as Array<{ id: string; health_circle: string | null }>).find(
+        (h) => h.id === r.id,
+      )?.health_circle ?? null,
   }));
 }
