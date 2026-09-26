@@ -164,7 +164,7 @@ export function OutcomeButtons({
             </Button>
           </>
         ) : null}
-        {canDelete ? (
+        {canDelete && !isDeal ? (
           <Button
             type="button"
             size="sm"

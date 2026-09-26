@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ import { VISIBILITY_LABELS } from "./DealChrome";
 import { DealPersonPicker } from "./DealPersonPicker";
 import { dealAmountNumber, formatDealAmountInput } from "@/lib/deals/amount";
 import { didarDealTitleFromPerson } from "@/lib/deals/title";
+import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
 type Props = {
   open: boolean;
@@ -59,6 +60,9 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [relatedIds, setRelatedIds] = useState<string[]>([]);
   const [nextFollow, setNextFollow] = useState("");
+  const [autoTitle, setAutoTitle] = useState("");
+  const pendingRef = useRef(false);
+  const requestKeyRef = useRef<string | null>(null);
 
   const pipesQ = useQuery({
     queryKey: ["sales-desk", "pipelines"],
@@ -98,15 +102,18 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
     if (!open) {
       setCreatedId(null);
       setPending(false);
+      pendingRef.current = false;
+      requestKeyRef.current = null;
       return;
     }
+    if (!requestKeyRef.current) requestKeyRef.current = safeRandomUUID();
     if (!salespersonId && profile?.id) setSalespersonId(profile.id);
     if (!pipelineId && pipesQ.data?.[0]) setPipelineId(pipesQ.data[0].id);
     if (!stageId && stagesQ.data?.[0]) setStageId(stagesQ.data[0].id);
   }, [open, profile?.id, pipesQ.data, stagesQ.data, salespersonId, pipelineId, stageId]);
 
   const submit = async (asWon: boolean) => {
-    if (pending) return;
+    if (pendingRef.current || pending) return;
     if (!personId) {
       toast.error("شناسه شخص الزامی است.");
       return;
@@ -115,6 +122,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
       toast.error("مسئول معامله الزامی است");
       return;
     }
+    pendingRef.current = true;
     setPending(true);
     try {
       const id = await createSalesInteraction({
@@ -137,6 +145,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
         estimatedAmount: dealAmountNumber(amount),
         introducerPersonId: introducerId || null,
         existingId: createdId,
+        clientRequestKey: requestKeyRef.current,
         nextFollowUpAt: nextFollow ? `${nextFollow}T12:00:00+03:30` : null,
       } as never);
       if (visibility) {
@@ -162,12 +171,15 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
       setIntroducerId(null);
       setCompanyId(null);
       setCreatedId(null);
+      setAutoTitle("");
+      requestKeyRef.current = null;
       return id;
     } catch (e) {
       const cid = (e as { createdId?: string }).createdId;
       if (cid) setCreatedId(cid);
       toast.error(salesDeskErrorMessage((e as Error).message));
     } finally {
+      pendingRef.current = false;
       setPending(false);
     }
   };
@@ -192,7 +204,14 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
                   setPersonName(p.display_name);
                   setPersonKind(p.kind ?? "individual");
                   if (p.id && p.display_name) {
-                    setTitle(didarDealTitleFromPerson({ displayName: p.display_name, kind: p.kind }));
+                    const next = didarDealTitleFromPerson({ displayName: p.display_name, kind: p.kind });
+                    setTitle((cur) => {
+                      if (!cur.trim() || cur === autoTitle) {
+                        setAutoTitle(next);
+                        return next;
+                      }
+                      return cur;
+                    });
                   }
                 }}
               />

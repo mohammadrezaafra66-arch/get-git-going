@@ -39,6 +39,8 @@ type CreateSalesInteractionBase = {
   introducerPersonId?: string | null;
   /** Retry follow-up writes without inserting a second deal. */
   existingId?: string | null;
+  /** Client request key — same key returns the same deal (Q1). */
+  clientRequestKey?: string | null;
 };
 
 /** kind=request requires non-empty salespersonId (zod + trigger RESPONSIBLE_REQUIRED). */
@@ -101,6 +103,7 @@ export async function createSalesInteraction(
       p_estimated_amount: (input as { estimatedAmount?: number | null }).estimatedAmount ?? null,
       p_introducer_person_id:
         (input as { introducerPersonId?: string | null }).introducerPersonId ?? null,
+      p_client_request_key: input.clientRequestKey ?? null,
     });
     if (error) throw new Error(salesDeskErrorMessage(error.message));
     if (typeof data !== "string" || !data) {
@@ -118,13 +121,21 @@ export async function createSalesInteraction(
       await insertSalesInteractionItems(id, input.items);
     }
 
-    if (input.kind === "request" && input.pipelineId && input.stageId) {
-      const { error: moveErr } = await rpc()("sales_deal_move", {
-        p_id: id,
-        p_pipeline_id: input.pipelineId,
-        p_stage_id: input.stageId,
-      });
-      if (moveErr) throw new Error(salesDeskErrorMessage(moveErr.message));
+    if (input.kind === "request" && input.pipelineId && input.stageId && !input.existingId) {
+      const { data: placed } = await supabase
+        .from("sales_interactions" as never)
+        .select("pipeline_id, stage_id" as never)
+        .eq("id" as never, id as never)
+        .maybeSingle();
+      const cur = placed as { pipeline_id?: string | null; stage_id?: string | null } | null;
+      if (cur?.pipeline_id !== input.pipelineId || cur?.stage_id !== input.stageId) {
+        const { error: moveErr } = await rpc()("sales_deal_move", {
+          p_id: id,
+          p_pipeline_id: input.pipelineId,
+          p_stage_id: input.stageId,
+        });
+        if (moveErr) throw new Error(salesDeskErrorMessage(moveErr.message));
+      }
     }
 
     return id;
@@ -296,6 +307,7 @@ export async function loadDealById(id: string): Promise<{
     won_by: string | null;
     lost_by: string | null;
     stage_entered_at: string | null;
+    estimated_amount?: number | null;
   };
   const profileIds = [row.author_id, row.salesperson_id].filter(Boolean) as string[];
   let author: { id: string; full_name: string | null } | null = null;

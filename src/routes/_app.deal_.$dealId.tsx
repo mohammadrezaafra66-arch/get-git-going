@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_app/deal_/$dealId")({
 function DealPage() {
   const { dealId } = Route.useParams();
   return (
-    <div className="p-4">
+    <div className="min-w-0 max-w-full overflow-x-hidden p-4">
       <DealDidarDetail dealId={dealId} />
     </div>
   );

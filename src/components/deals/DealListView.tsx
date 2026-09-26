@@ -22,7 +22,7 @@ import {
   moveSalesDeal,
   restoreSalesDeal,
 } from "@/lib/sales-desk/pipelines";
-import { DealViewTabs, DealPageHeader, soonToast } from "./DealChrome";
+import { DealViewTabs, DealPageHeader, soonToast, VISIBILITY_LABELS } from "./DealChrome";
 import { DealCreateDialog } from "./DealCreateDialog";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { DEAL_SORT_OPTIONS, type DealSortId } from "@/lib/deals/sort";
@@ -127,8 +127,6 @@ export function DealListView() {
   const [includeDeleted, setIncludeDeleted] = useState(false);
   const [sortId, setSortId] = useState<DealSortId>(0);
   const [clauses, setClauses] = useState<DealFilterClause[]>([]);
-  const [bulkField, setBulkField] = useState("");
-  const [bulkValue, setBulkValue] = useState("");
   const [lostOpen, setLostOpen] = useState(false);
   const [exportNotes, setExportNotes] = useState(false);
   const [exportProducts, setExportProducts] = useState(false);
@@ -143,6 +141,37 @@ export function DealListView() {
     enabled: !!activePipe,
     queryFn: () => listSalesPipelineStages({ pipelineId: activePipe, activeOnly: true }),
   });
+  const staffQ = useQuery({
+    queryKey: ["sales-desk", "staff-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("profiles").select("id, full_name").limit(80);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; full_name: string | null }[];
+    },
+  });
+  const tagsQ = useQuery({
+    queryKey: ["sales-desk", "deal-tags"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_tags" as never)
+        .select("id, title" as never)
+        .order("title" as never, { ascending: true } as never);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; title: string }[];
+    },
+  });
+  const reasonsQ = useQuery({
+    queryKey: ["sales-desk", "deal-lost-reasons-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_lost_reasons" as never)
+        .select("id, title" as never)
+        .eq("is_active" as never, true as never)
+        .order("sort_order" as never, { ascending: true } as never);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; title: string }[];
+    },
+  });
 
   const listQ = useQuery({
     queryKey: ["sales-desk", "deal-list", activePipe, stageId, ownerId, from, to, includeDeleted],
@@ -152,8 +181,13 @@ export function DealListView() {
 
   const rawRows = listQ.data?.rows ?? [];
   const relatedMap = listQ.data?.related ?? {};
-  const totals = listQ.data?.totals ?? { all: 0, won: 0, lost: 0, open: 0, allAmt: 0, wonAmt: 0, lostAmt: 0, openAmt: 0 };
   const names = listQ.data?.names ?? {};
+  const [bulkOwner, setBulkOwner] = useState("unchanged");
+  const [bulkVisibility, setBulkVisibility] = useState("unchanged");
+  const [bulkTag, setBulkTag] = useState("unchanged");
+  const [bulkPipeline, setBulkPipeline] = useState("unchanged");
+  const [bulkStatus, setBulkStatus] = useState("unchanged");
+  const [bulkLost, setBulkLost] = useState("unchanged");
   const rows = useMemo(() => {
     let list = rawRows.filter((r) =>
       rowMatchesClauses(r as unknown as Record<string, unknown>, clauses, relatedMap[r.id]),
@@ -187,6 +221,21 @@ export function DealListView() {
     return [...list].sort((a, b) => String(key(a)).localeCompare(String(key(b)), "fa"));
   }, [rawRows, clauses, relatedMap, sortId, names]);
 
+  const totals = useMemo(() => {
+    const sum = (pred: (r: Row) => boolean) =>
+      rows.filter(pred).reduce((n, r) => n + Number(r.estimated_amount ?? 0), 0);
+    return {
+      all: rows.length,
+      won: rows.filter((r) => r.status === "won").length,
+      lost: rows.filter((r) => r.status === "lost").length,
+      open: rows.filter((r) => r.status === "open").length,
+      allAmt: sum(() => true),
+      wonAmt: sum((r) => r.status === "won"),
+      lostAmt: sum((r) => r.status === "lost"),
+      openAmt: sum((r) => r.status === "open"),
+    };
+  }, [rows]);
+
   const visibleCols = useMemo(
     () => ALL_COLS.filter((c) => cols.includes(c.id)),
     [cols],
@@ -199,6 +248,8 @@ export function DealListView() {
     const b = monthBounds();
     setFrom(b.start);
     setTo(b.end);
+    setClauses([]);
+    setAndOr("and");
   };
 
   return (
@@ -258,7 +309,7 @@ export function DealListView() {
           <SelectContent>
             {DEAL_SORT_OPTIONS.map((o) => (
               <SelectItem key={o.id} value={String(o.id)}>
-                {o.id} {o.label}
+                {o.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -410,44 +461,100 @@ export function DealListView() {
       ) : null}
 
       {selected.length > 0 ? (
-        <div className="flex min-w-0 flex-wrap items-center gap-2 rounded border p-2 text-sm">
+        <div className="min-w-0 space-y-2 rounded border p-2 text-sm" aria-label="ویرایش گروهی معاملات">
           <span>ویرایش گروهی معاملات · تغییرات {selected.length} معامله انتخابی</span>
-          <Select value={bulkField} onValueChange={setBulkField}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="فیلد" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="owner">مسئول</SelectItem>
-              <SelectItem value="visibility">امنیت</SelectItem>
-              <SelectItem value="tag">برچسب</SelectItem>
-              <SelectItem value="pipeline">کاریز</SelectItem>
-              <SelectItem value="status">تغییر وضعیت</SelectItem>
-              <SelectItem value="lost_reason">دلیل شکست</SelectItem>
-            </SelectContent>
-          </Select>
-          {bulkField === "status" ? (
-            <Select value={bulkValue} onValueChange={setBulkValue}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="وضعیت" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="open">جاری</SelectItem>
-                <SelectItem value="won">موفق</SelectItem>
-                <SelectItem value="lost">ناموفق</SelectItem>
-              </SelectContent>
-            </Select>
-          ) : (
-            <input className="rounded border px-2 py-1" value={bulkValue} onChange={(e) => setBulkValue(e.target.value)} placeholder="مقدار" />
-          )}
+          <div className="grid min-w-0 gap-2 md:grid-cols-2">
+            <label className="flex min-w-0 flex-col gap-1">
+              مسئول
+              <Select value={bulkOwner} onValueChange={setBulkOwner}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unchanged">بدون تغییر</SelectItem>
+                  {(staffQ.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.full_name ?? p.id}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1">
+              امنیت
+              <Select value={bulkVisibility} onValueChange={setBulkVisibility}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unchanged">بدون تغییر</SelectItem>
+                  {VISIBILITY_LABELS.map((l) => (
+                    <SelectItem key={l} value={l}>{l}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1">
+              برچسب
+              <Select value={bulkTag} onValueChange={setBulkTag}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unchanged">بدون تغییر</SelectItem>
+                  {(tagsQ.data ?? []).map((t) => (
+                    <SelectItem key={t.id} value={t.title}>{t.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1">
+              کاریز
+              <Select value={bulkPipeline} onValueChange={setBulkPipeline}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unchanged">بدون تغییر</SelectItem>
+                  {(pipesQ.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>{p.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1">
+              تغییر وضعیت
+              <Select value={bulkStatus} onValueChange={setBulkStatus}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unchanged">بدون تغییر</SelectItem>
+                  <SelectItem value="open">جاری</SelectItem>
+                  <SelectItem value="won">موفق</SelectItem>
+                  <SelectItem value="lost">ناموفق</SelectItem>
+                </SelectContent>
+              </Select>
+            </label>
+            <label className="flex min-w-0 flex-col gap-1">
+              دلیل شکست
+              <Select value={bulkLost} onValueChange={setBulkLost}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unchanged">بدون تغییر</SelectItem>
+                  {(reasonsQ.data ?? []).map((r) => (
+                    <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          </div>
           <Button
             type="button"
             size="sm"
             onClick={() => {
-              if (bulkField === "status" && bulkValue === "lost") {
+              if (bulkStatus === "lost") {
                 setLostOpen(true);
                 return;
               }
-              void applyBulk(selected, bulkField, bulkValue, activePipe, stagesQ.data?.[0]?.id)
+              void (async () => {
+                if (bulkOwner !== "unchanged") await applyBulk(selected, "owner", bulkOwner);
+                if (bulkVisibility !== "unchanged") await applyBulk(selected, "visibility", bulkVisibility);
+                if (bulkTag !== "unchanged") await applyBulk(selected, "tag", bulkTag);
+                if (bulkPipeline !== "unchanged") {
+                  const first = (await listSalesPipelineStages({ pipelineId: bulkPipeline, activeOnly: true }))[0]?.id;
+                  await applyBulk(selected, "pipeline", bulkPipeline, bulkPipeline, first);
+                }
+                if (bulkStatus !== "unchanged") await applyBulk(selected, "status", bulkStatus);
+              })()
                 .then(() => {
                   toast.success("بروزرسانی");
                   void qc.invalidateQueries({ queryKey: ["sales-desk"] });

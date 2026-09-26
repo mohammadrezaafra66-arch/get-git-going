@@ -70,10 +70,11 @@ export function rowMatchesClauses(
   clauses: DealFilterClause[],
   relatedUserIds?: string[],
 ): boolean {
-  if (clauses.length === 0) return true;
+  const active = clauses.filter((c) => c.value.trim() !== "");
+  if (active.length === 0) return true;
   let acc = true;
   let started = false;
-  for (const c of clauses) {
+  for (const c of active) {
     const raw =
       c.field === "related_user"
         ? relatedUserIds?.includes(c.value)
