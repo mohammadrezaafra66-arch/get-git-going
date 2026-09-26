@@ -247,7 +247,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" dir="rtl">
+            <DropdownMenuContent align="end">
               <DropdownMenuItem
                 title="پرونده‌های مهم را دم دست نگه دارید!"
                 onClick={() => {
