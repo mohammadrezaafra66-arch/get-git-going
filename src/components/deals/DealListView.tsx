@@ -603,9 +603,8 @@ export function DealListView() {
             type="button"
             size="sm"
             variant="outline"
-            disabled={!privileged && mutableSelected.length === 0}
             title={
-              !privileged && mutableSelected.length === 0
+              !privileged && selectedRows.some((r) => !canMutateDeal(r))
                 ? "فقط معاملات خودتان را می‌توانید حذف کنید"
                 : undefined
             }
