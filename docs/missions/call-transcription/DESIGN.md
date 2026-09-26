@@ -1,9 +1,9 @@
 # طراحی فاز A — رونویسی تماس فارسی
 
-شاخه: `feature/call-transcription` @ G1
+شاخه: `feature/call-transcription` @ G1 applied
 ماشین سرویس: `192.168.170.8` (تست). تولید و PBX دست‌نخورده می‌مانند.
 
-این سند تصمیم‌های ساخت است. اگر مالک فقط «تأیید» بفرستد، پیش‌فرض‌های بخش ۸ اعمال می‌شود و کار بدون توقف دیگر تا پایان فاز A ادامه می‌یابد.
+پاسخ مالک در ۱۴۰۵-۰۷-۰۴ اعمال شد. ساخت بدون توقف دیگر تا پایان فاز A ادامه می‌یابد.
 
 ---
 
@@ -33,7 +33,7 @@ flowchart LR
 |---|---|---|---|
 | capture → STT | HTTP JSON + بدنهٔ PCM خام (یا chunk base64 در JSON کوچک) | `Authorization: Bearer ${STT_INGEST_TOKEN}` | `http://192.168.170.8:8090/ingest` و `/ingest/eof` |
 | STT سلامت | HTTP | بدون توکن | `GET /health` ، `GET /metrics` |
-| STT → AfraKala | HTTP JSON | `Authorization: Bearer ${CALL_TRANSCRIPT_WORKER_TOKEN}` | `http://127.0.0.1:3100/api/public/hooks/call-transcript` (لیست هدف در config؛ در این مأموریت فقط تست) |
+| STT → AfraKala | HTTP JSON | `Authorization: Bearer ${CALL_TRANSCRIPT_WORKER_TOKEN}` | از داخل کانتینر STT: `http://192.168.170.8:3100/api/public/hooks/call-transcript` (نه `127.0.0.1` — آن خودِ کانتینر است). لیست هدف در config؛ تولید بعدی: `http://192.168.170.10:3000` |
 | مرورگر → متن | PostgREST از طریق Kong | JWT نقش کاربر + RLS | همان استک فعلی؛ Realtime نیست |
 | پیام‌رسان (اختیاری G6) | OpenAI-compatible | `WHISPER_API_KEY` اگر ست شود | `POST http://192.168.170.8:8090/v1/audio/transcriptions` |
 
@@ -51,10 +51,14 @@ flowchart LR
 
 **محدودیت منابع STT (تا Ollama گرسنه نماند)**
 
-در G0 فرآیند/کانتینر Ollama دیده نشد؛ حدها با فرض برگشت آن گذاشته می‌شود:
+بازبینی C6 در ۱۴۰۵-۰۷-۰۴: `curl.exe -s http://localhost:11434/api/ps` → `{"models":[]}` (هیچ مدلی load نیست). `GET /api/tags` مدل‌های `qwen2.5:14b`، `qwen2.5:7b`، `bge-m3`، `qwen3.6` را نشان داد. Ollama روی هاست گوش می‌دهد، نه به‌صورت کانتینر Docker. حدهای CPU/RAM همان طرح اولیه می‌ماند:
 
 - سرویس inference: `cpus: 6.0` ، `mem_limit: 16g` ، reservation `cpus: 2` / `memory: 4g`
 - بقیهٔ هسته‌ها و RAM برای وب، DB، و Ollama می‌ماند
+
+**فایروال ویندوز (C4 — اقدام مالک، عامل اجرا نمی‌کند)**
+
+PBX باید به `192.168.170.8:8090` برسد. قاعدهٔ inbound فقط از `192.168.170.252` و خود ماشین تست. دستور دقیق در `RUNBOOK-pbx-install.md` می‌آید. عامل این دستور را اجرا نمی‌کند.
 
 کد سرویس در ریپو: `deploy/stt/` (compose جدا با نام پروژه `afrakala-stt`). پوشهٔ `services/` در این ریپو رسم نیست؛ workerهای LAN امروز زیر `deploy/` زندگی می‌کنند.
 
@@ -84,8 +88,8 @@ popup هر ۱۰۰۰ ms از `call_ring_events` می‌خواند و `linkedid` /
 
 1. `call_ring_events.uniqueid = recording_uniqueid`
 2. `call_ring_events.linkedid = recording_uniqueid`
-3. اگر داخلی از نام فایل استخراج شد: همان `extension` + `event_at` در بازهٔ ±۵ دقیقه از `TIMESTR` (تهران تفسیر می‌شود، ذخیره UTC)
-4. اگر صف است: هر ring با `linkedid` برابر یکی از (۲) یا زمان نزدیک؛ `employee_id` فقط وقتی ست می‌شود که دقیقاً یک کاندیدای mapped بماند
+3. اگر داخلی از نام فایل استخراج شد: همان `extension` + `event_at` در بازهٔ **±۳۰ ثانیه** از `TIMESTR` (تهران تفسیر می‌شود، ذخیره UTC) — **فقط اگر دقیقاً یک کاندیدا بماند**؛ وگرنه unlink (فقط admin/manager)
+4. اگر صف است: هر ring با `linkedid` برابر یکی از (۲)؛ `employee_id` فقط وقتی ست می‌شود که دقیقاً یک کاندیدای mapped بماند
 
 نتیجه روی `call_transcript_sessions`: `ring_event_id`، `linkedid`، `extension`، `employee_id` (از ring یا از `call_log_extensions`).
 
@@ -103,12 +107,14 @@ UI زنده کارت جاری را با `metadata.uniqueid` / `metadata.linkedid
 
 کلیدهای قبلی (`raw_number`, `matched_via`, `queue`, `dcontexts`, `leg_count`, `unknown_number`, `stripped_number`) دست نمی‌خورند.
 
-تابع `link_pending_transcript_sessions()` (SQL، قابل صدا از importer و از hook) برای sessionهای بدون `call_log_id`:
+تابع `link_pending_transcript_sessions()` (SQL، فقط `service_role` / `supabase_admin`؛ `REVOKE EXECUTE FROM PUBLIC, anon, authenticated`) برای sessionهای بدون `call_log_id`:
 
 1. basename فایل = هر عضو `call_logs.metadata.recording_files`
 2. وگرنه `recording_uniqueid` = هر عضو `metadata.leg_uniqueids`
 3. وگرنه `recording_uniqueid = call_logs.external_id` (وقتی کانال ضبط همان linkedid است)
-4. وگرنه همان `extension` و `started_at` در ±۲ دقیقه از `TIMESTR` — فقط اگر دقیقاً یک ردیف بماند؛ این تطبیق `link_method='time_extension'` ثبت می‌شود
+4. وگرنه همان `extension` و `started_at` در **±۶۰ ثانیه** از `TIMESTR` — **فقط اگر دقیقاً یک ردیف بماند**؛ وگرنه unlink. `link_method='time_extension'`
+
+fixture اجباری G2: دو تماس روی یک داخلی با فاصلهٔ ۴۰ ثانیه نباید به هم وصل شوند.
 
 پس از تطبیق: `call_log_id`، `linkedid`، `employee_id` از `call_logs`، `status` به `final` یا `pending_final`.
 
@@ -164,7 +170,7 @@ UI زنده کارت جاری را با `metadata.uniqueid` / `metadata.linkedid
 
 UNIQUE `(session_id, segment_seq, kind)` — تحویل دوباره همان یک ردیف (idempotent). چک: `kind IN (...)`؛ برای JSONB اگر بعداً اضافه شد `COALESCE`.
 
-INSERT/UPDATE/DELETE برای `authenticated` وجود ندارد. hook با `supabaseAdmin` می‌نویسد. GRANT SELECT به `authenticated`.
+INSERT/UPDATE/DELETE برای `authenticated` وجود ندارد. hook با `supabaseAdmin` می‌نویسد. GRANT SELECT به `authenticated`. `REVOKE ALL` هر دو جدول از `anon` و `PUBLIC`.
 
 ### RLS (سخت‌گیرانه‌تر یا برابر `call_logs`)
 
@@ -178,15 +184,15 @@ OR public.has_role((SELECT auth.uid()), 'manager'::text)
 
 برای `segments` از طریق JOIN به session همان عبارت. `FORCE ROW LEVEL SECURITY`. بدون سیاست DELETE برای authenticated (حذف بی‌اثر + 204 تکرار نمی‌شود چون کلاینت حذف نمی‌کند).
 
-وقتی `employee_id` هنوز NULL است، فروشنده صفر ردیف می‌بیند؛ admin/manager همه را می‌بینند.
+وقتی `employee_id` هنوز NULL است، sales/accountant صفر ردیف می‌بینند؛ admin/manager همه را می‌بینند. حسابدار (مثلاً داخلی `402`) فقط ردیف `employee_id` خودش را می‌بیند — RLS او را به bypass ادمین اضافه نمی‌کند.
 
 ### `role_permissions`
 
 ماژول `call-transcripts` برای **هر** `role_name` موجود:
 
-- `can_view`: فقط `admin`, `manager`, `sales`
+- `can_view`: `admin`, `manager`, `sales`, **`accountant`**
 - بقیهٔ فلگ‌ها false
-- `viewer` و `accountant` ردیف صریح با `can_view=false` می‌گیرند تا `has_dynamic_permission` باز نشود
+- `viewer` ردیف صریح با `can_view=false` می‌گیرد تا `has_dynamic_permission` باز نشود
 
 صفحهٔ جدا اگر ساخته شود از همین ماژول است. popup فعلی از allowlist مسیر sales-desk استفاده می‌کند؛ دیدن ردیف باز هم با RLS است نه با ماژول.
 
@@ -291,4 +297,17 @@ Hook: `POST /api/public/hooks/call-transcript` با همان الگوی `checkTo
 
 ## تصمیم‌های مالک
 
-*(خالی تا پاسخ G1. اگر پاسخ «تأیید» باشد اینجا نوشته می‌شود: Q1=a، Q2=a، Q3=a، Q4=a.)*
+اعمال‌شده ۱۴۰۵-۰۷-۰۴ پس از تأیید با تغییرات اجباری.
+
+| شناسه | تصمیم | اثر |
+|---|---|---|
+| Q1 | خروجی نسخهٔ Python از PBX چسبانده نشد (`<paste here>`). پیش‌فرض **(a)** | عامل capture یک فایل stdlib سازگار با Python 3.6 / `platform-python` |
+| Q2 | **(a)** | پس از G6 شاخه روی 3100 می‌ماند؛ به `e0374408` برنمی‌گردد |
+| Q3 | **(a)** | متن زندهٔ صف فقط با `employee_id` قطعی؛ وگرنه admin/manager |
+| Q4 | **(a)** | بعد از final قطعه‌های `committed` می‌مانند |
+| C1 | هدف STT→افراکالا از داخل Docker | `http://192.168.170.8:3100/api/public/hooks/call-transcript`؛ تست G3 از داخل کانتینر |
+| C2 | `can_view` برای accountant هم true | RLS همچنان فقط ردیف خود؛ تست G2 با `test.accountant` |
+| C3 | پنجرهٔ زمانی تنگ | زنده ±۳۰s، نهایی ±۶۰s، فقط یک کاندیدا؛ fixture دو تماس ۴۰ ثانیه‌ای بدون اتصال غلط |
+| C4 | فایروال | قاعده inbound 8090 فقط از `.252` و `.8`؛ دستور در runbook؛ عامل اجرا نمی‌کند |
+| C5 | ACL تابع و جدول | `REVOKE EXECUTE` تابع از PUBLIC/anon/authenticated؛ `REVOKE ALL` جداول از anon؛ اثبات با JWT anon |
+| C6 | Ollama زنده است | `/api/ps` خالی (idle)؛ مدل‌ها روی `/api/tags`؛ حد CPU همان طرح |
