@@ -387,6 +387,15 @@ test.describe("deal pipeline admin settings", () => {
       await page.getByPlaceholder("عنوان مرحله جدید").fill(`${STAMP} مرحله`);
       await page.getByRole("button", { name: "افزودن مرحله" }).click();
     }
+    await expect
+      .poll(
+        () =>
+          dbScalar(
+            `select coalesce(id::text,'') from public.sales_pipeline_stages where pipeline_id = '${pipe2}' order by sort_order limit 1`,
+          ).trim(),
+        { timeout: 10_000 },
+      )
+      .toMatch(/[0-9a-f-]{36}/);
     const sid = dbScalar(
       `select id from public.sales_pipeline_stages where pipeline_id = '${pipe2}' order by sort_order limit 1`,
     ).trim();

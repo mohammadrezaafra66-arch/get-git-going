@@ -93,7 +93,10 @@ function suite(role: "sales" | "admin") {
       await pickPerson(page);
       await page.getByLabel("عنوان معامله").fill(title);
       const save = page.getByRole("button", { name: "ذخیره معامله" });
-      await Promise.all([save.click(), save.click()]);
+      await save.evaluate((el) => {
+        (el as HTMLButtonElement).click();
+        (el as HTMLButtonElement).click();
+      });
       await expect(save).toBeDisabled();
       await expect(page.getByRole("heading", { name: "افزودن معامله" })).toBeHidden({ timeout: 30_000 });
       const n = Number(
@@ -149,7 +152,7 @@ function suite(role: "sales" | "admin") {
       await openKanbanAll(page);
       const filters = page.getByLabel("فیلتر کاریز");
       await expect(filters.getByText("برچسب", { exact: true }).first()).toBeVisible({ timeout: 20_000 });
-      await expect(filters.getByLabel("برچسب")).toBeVisible();
+      await expect(filters.getByRole("combobox", { name: "برچسب" })).toBeVisible();
       await filters.getByText("معاملاتی که فعالیتی روی آن‌ها نیست").click();
       await expect(page.locator("article").filter({ hasText: title })).toBeVisible({ timeout: 20_000 });
     });
@@ -240,9 +243,10 @@ function suite(role: "sales" | "admin") {
       await expect(block.getByText("تغییر تاریخ موفق شدن")).toBeVisible({ timeout: 20_000 });
       await expect(block.getByText("به‌زودی")).toHaveCount(0);
       await block.getByText("تغییر تاریخ موفق شدن").locator("..").getByPlaceholder("انتخاب تاریخ").click();
-      const day = page.locator(".rmdp-day:not(.rmdp-disabled):not(.rmdp-selected)").first();
+      const day = page.locator(".rmdp-day:not(.rmdp-disabled)").first();
       await expect(day).toBeVisible();
       await day.click();
+      await block.getByRole("button", { name: "ثبت تاریخ موفق شدن" }).click();
       await expect.poll(() =>
         dbScalar(`select won_at is not null from public.sales_interactions where id = '${id}'`).trim(),
       ).toBe("t");
