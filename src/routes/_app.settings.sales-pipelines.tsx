@@ -30,6 +30,7 @@ import {
   type SalesPipelineStage,
 } from "@/lib/sales-desk/pipelines";
 import { salesDeskErrorMessage } from "@/lib/sales-desk";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_app/settings/sales-pipelines")({
   staticData: {
@@ -161,6 +162,7 @@ function SalesPipelinesSettingsPage() {
               <StageRow key={s.id} stage={s} canEdit={canEdit} onSaved={refresh} />
             ))}
           </ul>
+          {pipeId ? <StageRequiredFields pipelineId={pipeId} stages={stagesQ.data ?? []} canEdit={canEdit} /> : null}
         </CardContent>
       </Card>
     </div>
@@ -379,5 +381,101 @@ function StageRow(props: { stage: SalesPipelineStage; canEdit: boolean; onSaved:
         </>
       ) : null}
     </li>
+  );
+}
+
+function StageRequiredFields(props: {
+  pipelineId: string;
+  stages: SalesPipelineStage[];
+  canEdit: boolean;
+}) {
+  const qc = useQueryClient();
+  const [title, setTitle] = useState("");
+  const fieldsQ = useQuery({
+    queryKey: ["settings", "deal-fields"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_field_definitions" as never)
+        .select("id, title, is_active" as never)
+        .order("sort_order" as never, { ascending: true } as never);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; title: string; is_active: boolean }[];
+    },
+  });
+  const rulesQ = useQuery({
+    queryKey: ["settings", "deal-field-rules", props.pipelineId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_field_stage_rules" as never)
+        .select("definition_id, stage_id, required" as never);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { definition_id: string; stage_id: string; required: boolean }[];
+    },
+  });
+  return (
+    <div className="space-y-2 rounded border p-2">
+      <h3 className="text-sm font-medium">فیلدهای اجباری هر مرحله</h3>
+      {props.canEdit ? (
+        <div className="flex flex-wrap gap-2">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان فیلد جدید" className="max-w-xs" />
+          <Button
+            type="button"
+            size="sm"
+            disabled={!title.trim()}
+            onClick={() =>
+              supabase
+                .from("deal_field_definitions" as never)
+                .insert({ title: title.trim(), field_type: "text" } as never)
+                .then(({ error }) => {
+                  if (error) toast.error(error.message);
+                  else {
+                    setTitle("");
+                    void qc.invalidateQueries({ queryKey: ["settings", "deal-fields"] });
+                  }
+                })
+            }
+          >
+            ایجاد فیلد
+          </Button>
+        </div>
+      ) : null}
+      <ul className="space-y-2 text-xs">
+        {(fieldsQ.data ?? []).map((f) => (
+          <li key={f.id} className="flex flex-wrap items-center gap-2">
+            <span>{f.title}</span>
+            {props.stages.map((s) => {
+              const on = (rulesQ.data ?? []).some((r) => r.definition_id === f.id && r.stage_id === s.id && r.required);
+              return (
+                <label key={s.id} className="flex items-center gap-1">
+                  <input
+                    type="checkbox"
+                    disabled={!props.canEdit}
+                    checked={on}
+                    onChange={(e) => {
+                      const op = e.target.checked
+                        ? supabase.from("deal_field_stage_rules" as never).insert({
+                            definition_id: f.id,
+                            stage_id: s.id,
+                            required: true,
+                          } as never)
+                        : supabase
+                            .from("deal_field_stage_rules" as never)
+                            .delete()
+                            .eq("definition_id" as never, f.id as never)
+                            .eq("stage_id" as never, s.id as never);
+                      void op.then(({ error }) => {
+                        if (error) toast.error(error.message);
+                        else void qc.invalidateQueries({ queryKey: ["settings", "deal-field-rules"] });
+                      });
+                    }}
+                  />
+                  {s.title}
+                </label>
+              );
+            })}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

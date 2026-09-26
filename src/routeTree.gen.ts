@@ -228,6 +228,7 @@ import { Route as AppSalesQuotesIndexRouteImport } from './routes/_app.sales.quo
 import { Route as AppSalesQuotesQuoteIdRouteImport } from './routes/_app.sales.quotes.$quoteId'
 import { Route as AppSalesQuotesNewRouteImport } from './routes/_app.sales.quotes.new'
 import { Route as AppSalesReportsDealLostRouteImport } from './routes/_app.sales.reports.deal-lost'
+import { Route as AppSalesReportsDealsRouteImport } from './routes/_app.sales.reports.deals'
 import { Route as AppSalesCustomersCreateRouteImport } from './routes/_app.sales_.customers_.create'
 import { Route as AppSalesCustomersCreditAllocationGuideRouteImport } from './routes/_app.sales_.customers_.credit-allocation-guide'
 import { Route as AppSalesCustomersCreditTrainingRouteImport } from './routes/_app.sales_.customers_.credit-training'
@@ -1410,6 +1411,11 @@ const AppSalesReportsDealLostRoute = AppSalesReportsDealLostRouteImport.update({
   path: '/reports/deal-lost',
   getParentRoute: () => AppSalesRoute,
 } as any)
+const AppSalesReportsDealsRoute = AppSalesReportsDealsRouteImport.update({
+  id: '/reports/deals',
+  path: '/reports/deals',
+  getParentRoute: () => AppSalesRoute,
+} as any)
 const AppSalesCustomersCreateRoute = AppSalesCustomersCreateRouteImport.update({
   id: '/sales_/customers_/create',
   path: '/sales/customers/create',
@@ -1788,6 +1794,7 @@ export interface FileRoutesByFullPath {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/reports/deal-lost': typeof AppSalesReportsDealLostRoute
+  '/sales/reports/deals': typeof AppSalesReportsDealsRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
@@ -2031,6 +2038,7 @@ export interface FileRoutesByTo {
   '/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/sales/reports/deal-lost': typeof AppSalesReportsDealLostRoute
+  '/sales/reports/deals': typeof AppSalesReportsDealsRoute
   '/sales/customers/create': typeof AppSalesCustomersCreateRoute
   '/sales/customers/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/sales/customers/credit-training': typeof AppSalesCustomersCreditTrainingRoute
@@ -2280,6 +2288,7 @@ export interface FileRoutesById {
   '/_app/sales/quotes/$quoteId': typeof AppSalesQuotesQuoteIdRoute
   '/_app/sales/quotes/new': typeof AppSalesQuotesNewRoute
   '/_app/sales/reports/deal-lost': typeof AppSalesReportsDealLostRoute
+  '/_app/sales/reports/deals': typeof AppSalesReportsDealsRoute
   '/_app/sales_/customers_/create': typeof AppSalesCustomersCreateRoute
   '/_app/sales_/customers_/credit-allocation-guide': typeof AppSalesCustomersCreditAllocationGuideRoute
   '/_app/sales_/customers_/credit-training': typeof AppSalesCustomersCreditTrainingRoute
@@ -2529,6 +2538,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/reports/deal-lost'
+    | '/sales/reports/deals'
     | '/sales/customers/create'
     | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
@@ -2772,6 +2782,7 @@ export interface FileRouteTypes {
     | '/sales/quotes/$quoteId'
     | '/sales/quotes/new'
     | '/sales/reports/deal-lost'
+    | '/sales/reports/deals'
     | '/sales/customers/create'
     | '/sales/customers/credit-allocation-guide'
     | '/sales/customers/credit-training'
@@ -3020,6 +3031,7 @@ export interface FileRouteTypes {
     | '/_app/sales/quotes/$quoteId'
     | '/_app/sales/quotes/new'
     | '/_app/sales/reports/deal-lost'
+    | '/_app/sales/reports/deals'
     | '/_app/sales_/customers_/create'
     | '/_app/sales_/customers_/credit-allocation-guide'
     | '/_app/sales_/customers_/credit-training'
@@ -4623,6 +4635,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesReportsDealLostRouteImport
       parentRoute: typeof AppSalesRoute
     }
+    '/_app/sales/reports/deals': {
+      id: '/_app/sales/reports/deals'
+      path: '/reports/deals'
+      fullPath: '/sales/reports/deals'
+      preLoaderRoute: typeof AppSalesReportsDealsRouteImport
+      parentRoute: typeof AppSalesRoute
+    }
     '/_app/sales_/customers_/create': {
       id: '/_app/sales_/customers_/create'
       path: '/sales/customers/create'
@@ -4927,6 +4946,7 @@ interface AppSalesRouteChildren {
   AppSalesStockAlertsRoute: typeof AppSalesStockAlertsRoute
   AppSalesIndexRoute: typeof AppSalesIndexRoute
   AppSalesReportsDealLostRoute: typeof AppSalesReportsDealLostRoute
+  AppSalesReportsDealsRoute: typeof AppSalesReportsDealsRoute
 }
 
 const AppSalesRouteChildren: AppSalesRouteChildren = {
@@ -4942,6 +4962,7 @@ const AppSalesRouteChildren: AppSalesRouteChildren = {
   AppSalesStockAlertsRoute: AppSalesStockAlertsRoute,
   AppSalesIndexRoute: AppSalesIndexRoute,
   AppSalesReportsDealLostRoute: AppSalesReportsDealLostRoute,
+  AppSalesReportsDealsRoute: AppSalesReportsDealsRoute,
 }
 
 const AppSalesRouteWithChildren = AppSalesRoute._addFileChildren(

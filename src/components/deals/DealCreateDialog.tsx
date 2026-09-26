@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,14 +18,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useDebounce } from "@/hooks/use-debounce";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { searchPersons } from "@/lib/persons/functions";
 import { createSalesInteraction, salesDeskErrorMessage } from "@/lib/sales-desk";
 import { listSalesPipelineStages, listSalesPipelines } from "@/lib/sales-desk/pipelines";
 import { supabase } from "@/integrations/supabase/client";
 import { RequestedProductsBlock, type RequestedProductLine } from "@/components/sales-desk";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { VISIBILITY_LABELS } from "./DealChrome";
+import { DealPersonPicker } from "./DealPersonPicker";
+import { dealAmountNumber, formatDealAmountInput } from "@/lib/deals/amount";
+import { didarDealTitleFromPerson } from "@/lib/deals/title";
 
 type Props = {
   open: boolean;
@@ -37,13 +38,14 @@ type Props = {
 export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
   const qc = useQueryClient();
   const { profile } = useAuth();
-  const searchFn = useServerFn(searchPersons);
   const [personId, setPersonId] = useState<string | null>(null);
   const [personName, setPersonName] = useState("");
+  const [personKind, setPersonKind] = useState<string>("individual");
   const [companyId, setCompanyId] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
-  const debounced = useDebounce(query, 350);
-  const [title, setTitle] = useState(quick ? "" : "");
+  const [companyName, setCompanyName] = useState("");
+  const [introducerId, setIntroducerId] = useState<string | null>(null);
+  const [introducerName, setIntroducerName] = useState("");
+  const [title, setTitle] = useState(quick ? "" : "معامله جدید");
   const [body, setBody] = useState("");
   const [amount, setAmount] = useState("");
   const [pipelineId, setPipelineId] = useState("");
@@ -88,11 +90,6 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
       return (data ?? []) as { id: string; full_name: string | null }[];
     },
   });
-  const searchQ = useQuery({
-    queryKey: ["persons-search", debounced],
-    enabled: open && debounced.trim().length >= 2,
-    queryFn: () => searchFn({ data: { query: debounced.trim() } }),
-  });
 
   useEffect(() => {
     if (!open) return;
@@ -100,10 +97,6 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
     if (!pipelineId && pipesQ.data?.[0]) setPipelineId(pipesQ.data[0].id);
     if (!stageId && stagesQ.data?.[0]) setStageId(stagesQ.data[0].id);
   }, [open, profile?.id, pipesQ.data, stagesQ.data, salespersonId, pipelineId, stageId]);
-
-  useEffect(() => {
-    if (personName && !title) setTitle(personName);
-  }, [personName, title]);
 
   const submit = async (asWon: boolean) => {
     if (!personId) {
@@ -120,7 +113,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
         kind: "request",
         personId,
         salespersonId,
-        title: title.trim() || personName,
+        title: title.trim() || didarDealTitleFromPerson({ displayName: personName, kind: personKind }),
         body,
         status: asWon ? "won" : "open",
         pipelineId: activePipe || null,
@@ -134,13 +127,27 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
         acquaintanceId: acqId || null,
         companyPersonId: companyId,
       } as never);
+      const patch: Record<string, unknown> = {};
+      const amt = dealAmountNumber(amount);
+      if (amt != null) patch.estimated_amount = amt;
+      if (introducerId) patch.introducer_person_id = introducerId;
+      if (Object.keys(patch).length) {
+        const { error } = await supabase
+          .from("sales_interactions" as never)
+          .update(patch as never)
+          .eq("id" as never, id as never);
+        if (error) throw new Error(error.message);
+      }
       toast.success(asWon ? "ذخیره به صورت فروش موفق" : "ذخیره معامله");
       void qc.invalidateQueries({ queryKey: ["sales-desk"] });
       onOpenChange(false);
       setPersonId(null);
-      setTitle("");
+      setTitle(quick ? "" : "معامله جدید");
       setBody("");
       setItems([]);
+      setAmount("");
+      setIntroducerId(null);
+      setCompanyId(null);
       return id;
     } catch (e) {
       toast.error(salesDeskErrorMessage((e as Error).message));
@@ -151,46 +158,52 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto" dir="rtl">
+      <DialogContent className="max-h-[90vh] w-[min(48rem,100vw)] max-w-full overflow-x-hidden overflow-y-auto" dir="rtl">
         <DialogHeader>
           <DialogTitle>افزودن معامله</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 md:grid-cols-[1fr_12rem]">
-          <div className="space-y-3">
+        <div className="grid min-w-0 gap-4 md:grid-cols-[1fr_12rem]">
+          <div className="min-w-0 space-y-3">
             <div>
               <Label>نام خانوادگی</Label>
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="جستجوی شخص"
+              <DealPersonPicker
+                label="جستجوی شخص"
+                valueId={personId}
+                valueName={personName}
+                kind="individual"
+                onPick={(p) => {
+                  setPersonId(p.id || null);
+                  setPersonName(p.display_name);
+                  setPersonKind(p.kind ?? "individual");
+                  if (p.id && p.display_name) {
+                    setTitle(didarDealTitleFromPerson({ displayName: p.display_name, kind: p.kind }));
+                  }
+                }}
               />
-              {searchQ.data ? (
-                <ul className="mt-1 max-h-32 overflow-auto rounded border text-sm">
-                  {(searchQ.data as Array<{ id: string; display_name: string }>).map((p) => (
-                    <li key={p.id}>
-                      <button
-                        type="button"
-                        className="w-full px-2 py-1 text-right hover:bg-muted"
-                        onClick={() => {
-                          setPersonId(p.id);
-                          setPersonName(p.display_name);
-                          setQuery(p.display_name);
-                          if (!title) setTitle(p.display_name);
-                        }}
-                      >
-                        {p.display_name}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
             </div>
             <div>
               <Label>نام شرکت</Label>
-              <Input
-                value={companyId ?? ""}
-                onChange={(e) => setCompanyId(e.target.value || null)}
-                placeholder="شناسه شرکت (اختیاری)"
+              <DealPersonPicker
+                label="جستجوی شرکت"
+                valueId={companyId}
+                valueName={companyName}
+                kind="organization"
+                onPick={(p) => {
+                  setCompanyId(p.id || null);
+                  setCompanyName(p.display_name);
+                }}
+              />
+            </div>
+            <div>
+              <Label>معرف</Label>
+              <DealPersonPicker
+                label="جستجوی معرف"
+                valueId={introducerId}
+                valueName={introducerName}
+                onPick={(p) => {
+                  setIntroducerId(p.id || null);
+                  setIntroducerName(p.display_name);
+                }}
               />
             </div>
             <div>
@@ -199,7 +212,12 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
             </div>
             <div>
               <Label>مبلغ حدودی معامله</Label>
-              <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="IRR" />
+              <Input
+                value={amount}
+                inputMode="numeric"
+                placeholder="IRR"
+                onChange={(e) => setAmount(formatDealAmountInput(e.target.value))}
+              />
             </div>
             <RequestedProductsBlock lines={items} onChange={setItems} />
             <div>
@@ -219,22 +237,25 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
             </div>
             <div>
               <Label>تاریخ احتمالی بسته شدن معامله</Label>
-              <Input type="date" value={closeOn} onChange={(e) => setCloseOn(e.target.value)} />
+              <JalaliDateInput value={closeOn || null} onChange={setCloseOn} />
             </div>
             <div>
               <Label>مراحل کاریز</Label>
-              <Select value={stageId || undefined} onValueChange={setStageId}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(stagesQ.data ?? []).map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
+              <ol className="flex flex-wrap gap-1">
+                {(stagesQ.data ?? []).map((s) => (
+                  <li key={s.id}>
+                    <button
+                      type="button"
+                      className={`rounded-sm border px-2 py-1 text-xs ${
+                        s.id === stageId ? "bg-green-200" : "bg-muted"
+                      }`}
+                      onClick={() => setStageId(s.id)}
+                    >
                       {s.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </button>
+                  </li>
+                ))}
+              </ol>
             </div>
             <div>
               <Label>شیوه آشنایی</Label>
@@ -282,7 +303,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
               </Select>
             </div>
             <div>
-              <Label>توضیحات</Label>
+              <Label>متن درخواست</Label>
               <Textarea value={body} onChange={(e) => setBody(e.target.value)} />
             </div>
             <p className="text-xs text-muted-foreground">

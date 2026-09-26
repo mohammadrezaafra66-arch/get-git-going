@@ -234,5 +234,87 @@ test.describe("didar deals parity", () => {
     });
     await expect(page.getByText("عنوان معامله")).toBeVisible();
     await expect(page.locator("label", { hasText: "عنوان معامله *" })).toHaveCount(0);
+    await expect(page.getByText("متن درخواست")).toBeVisible();
+    await expect(page.getByText("معرف")).toBeVisible();
+  });
+
+  test("sidebar معاملات is first item", async ({ page }) => {
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    const first = page.locator("nav a, aside a").filter({ hasText: "معاملات" }).first();
+    await expect(first).toBeVisible({ timeout: 20000 });
+  });
+
+  test("kanban drop strip labels and date chip default", async ({ page }) => {
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("button", { name: "امروز و تاریخ گذشته" })).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(page.getByText("نوع معاملات")).toBeVisible();
+    await expect(page.getByRole("button", { name: "فیلترها" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "ویرایش کاریز" })).toBeVisible();
+  });
+
+  test("list counters and or group", async ({ page }) => {
+    await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("تعداد کل").first()).toBeVisible({ timeout: 20000 });
+    await page.getByRole("button", { name: "یا" }).click();
+    await expect(page.getByTestId("deal-advanced-filter")).toBeVisible();
+  });
+
+  test("history feed is not the pass1 stub", async ({ page }) => {
+    const id = await createDeal(salesJwt(), `${STAMP} hist`);
+    await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("tab", { name: "سابقه" }).click();
+    await expect(page.getByText("سابقه در تب قبلی جزئیات.")).toHaveCount(0);
+    await expect(page.getByText(/را ایجاد کرد/).first()).toBeVisible({ timeout: 20000 });
+  });
+
+  test("deleted deal banner and not جاری", async ({ page }) => {
+    const id = await createDeal(salesJwt(), `${STAMP} del-ui`);
+    const del = await rest(salesJwt(), "/rpc/sales_deal_delete", {
+      method: "POST",
+      body: JSON.stringify({ p_id: id }),
+    });
+    expect(del.status, del.text).toBe(200);
+    await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("deal-deleted-banner")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText("بازیابی").first()).toBeVisible();
+    await expect(page.getByTestId("deal-deleted-banner")).not.toContainText("جاری");
+  });
+
+  test("detail header menu and no survey", async ({ page }) => {
+    const id = await createDeal(salesJwt(), `${STAMP} menu`);
+    await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "منوی معامله" }).click();
+    await expect(page.getByRole("menuitem", { name: "پین کردن" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "ویرایش" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "کپی معامله" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "حذف" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "نظرسنجی" })).toHaveCount(0);
+    await expect(page.getByText("مسئول")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "پرداخت" })).toBeVisible();
+  });
+
+  test("activity form closed by default", async ({ page }) => {
+    const id = await createDeal(salesJwt(), `${STAMP} act`);
+    await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
+    await expect(
+      page.getByText("هیچ فعالیتی برای این معامله برنامه ریزی نکردی!"),
+    ).toBeVisible({ timeout: 20000 });
+  });
+
+  test("reports two cohorts", async ({ page }) => {
+    await page.goto("/sales/reports/deals", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("تحلیل معاملات (تاریخ ثبت)")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText("تحلیل فروش (تاریخ موفق/ناموفق)")).toBeVisible();
+  });
+
+  test("deal page reload twenty times stays authenticated", async ({ page }) => {
+    const id = await createDeal(salesJwt(), `${STAMP} reload`);
+    for (let i = 0; i < 20; i += 1) {
+      await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
+      await expect(page.getByText("خطا در سیستم احراز هویت")).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "شخص مرتبط" })).toBeVisible({ timeout: 20000 });
+    }
   });
 });
