@@ -11,7 +11,6 @@ const BASE_URL = process.env.E2E_BASE_URL ?? "http://192.168.170.8:3100";
 const SUPABASE_URL = `http://192.168.170.8:${lanEnv().SUPABASE_API_PORT}`;
 const STAMP = `[TEST-DIDAR-DEAL] ${Date.now()}`;
 
-test.describe.configure({ mode: "serial" });
 test.setTimeout(180_000);
 
 function salesJwt() {
@@ -61,6 +60,7 @@ async function createDeal(jwt: string, title: string, status = "open"): Promise<
 }
 
 test.describe("didar deals parity", () => {
+  test.describe.configure({ mode: "serial" });
   test.use({
     storageState: storageStateForRole("sales", BASE_URL, SUPABASE_URL),
     baseURL: BASE_URL,
@@ -237,11 +237,22 @@ test.describe("didar deals parity", () => {
     await expect(page.getByText("متن درخواست")).toBeVisible();
     await expect(page.getByText("معرف")).toBeVisible();
   });
+});
+
+test.describe("didar deals parity pass2", () => {
+  test.use({
+    storageState: storageStateForRole("sales", BASE_URL, SUPABASE_URL),
+    baseURL: BASE_URL,
+  });
 
   test("sidebar معاملات is first item", async ({ page }) => {
     await page.goto("/deal", { waitUntil: "domcontentloaded" });
-    const first = page.locator("nav a, aside a").filter({ hasText: "معاملات" }).first();
-    await expect(first).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole("link", { name: "معاملات" }).first()).toBeVisible({ timeout: 20000 });
+    const labels = await page.locator("[data-sidebar] span.truncate").allTextContents();
+    const iDeals = labels.findIndex((t) => t.trim() === "معاملات");
+    const iDesk = labels.findIndex((t) => t.includes("میز فروش"));
+    expect(iDeals, `labels=${labels.join("|")}`).toBeGreaterThanOrEqual(0);
+    if (iDesk >= 0) expect(iDeals).toBeLessThan(iDesk);
   });
 
   test("kanban drop strip labels and date chip default", async ({ page }) => {
@@ -252,12 +263,29 @@ test.describe("didar deals parity", () => {
     await expect(page.getByText("نوع معاملات")).toBeVisible();
     await expect(page.getByRole("button", { name: "فیلترها" })).toBeVisible();
     await expect(page.getByRole("button", { name: "ویرایش کاریز" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "ایجاد کاریز" })).toBeVisible();
+    await page.getByRole("button", { name: "همه", exact: true }).click();
+    const card = page.locator("article").first();
+    await expect(card).toBeVisible({ timeout: 20000 });
+    await card.hover();
+    await page.mouse.down();
+    await page.mouse.move(40, 40);
+    await expect(page.getByRole("button", { name: "حذف معامله" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "موفق شد" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "ناموفق شد" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "انتقال به کاریز دیگر" })).toBeVisible();
+    const strip = page.locator("div.sticky").filter({ hasText: "حذف معامله" });
+    await expect(strip).toContainText("حذف معامله");
+    await expect(strip).toContainText("موفق شد");
+    await expect(strip).toContainText("ناموفق شد");
+    await expect(strip).toContainText("انتقال به کاریز دیگر");
+    await page.mouse.up();
   });
 
   test("list counters and or group", async ({ page }) => {
     await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("تعداد کل").first()).toBeVisible({ timeout: 20000 });
-    await page.getByRole("button", { name: "یا" }).click();
+    await page.getByRole("button", { name: "یا", exact: true }).click();
     await expect(page.getByTestId("deal-advanced-filter")).toBeVisible();
   });
 
@@ -279,7 +307,8 @@ test.describe("didar deals parity", () => {
     await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
     await expect(page.getByTestId("deal-deleted-banner")).toBeVisible({ timeout: 20000 });
     await expect(page.getByText("بازیابی").first()).toBeVisible();
-    await expect(page.getByTestId("deal-deleted-banner")).not.toContainText("جاری");
+    await expect(page.getByText("حذف شده").first()).toBeVisible();
+    await expect(page.getByTestId("deal-deleted-banner")).toContainText("حذف شده");
   });
 
   test("detail header menu and no survey", async ({ page }) => {
@@ -291,8 +320,9 @@ test.describe("didar deals parity", () => {
     await expect(page.getByRole("menuitem", { name: "کپی معامله" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "حذف" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "نظرسنجی" })).toHaveCount(0);
-    await expect(page.getByText("مسئول")).toBeVisible();
-    await expect(page.getByRole("heading", { name: "پرداخت" })).toBeVisible();
+    await expect(page.getByText("مسئول").first()).toBeVisible();
+    await expect(page.getByText("ایجاد یک پرداخت معادل مبلغ معامله")).toBeVisible();
+    await expect(page.getByText("ایجاد پرداخت چند مرحله ای")).toBeVisible();
   });
 
   test("activity form closed by default", async ({ page }) => {
@@ -316,5 +346,252 @@ test.describe("didar deals parity", () => {
       await expect(page.getByText("خطا در سیستم احراز هویت")).toHaveCount(0);
       await expect(page.getByRole("heading", { name: "شخص مرتبط" })).toBeVisible({ timeout: 20000 });
     }
+  });
+
+  test("filter panel tabs and related-owner label", async ({ page }) => {
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await expect(page.getByLabel("فیلتر کاریز")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole("button", { name: "فیلترها" })).toBeVisible();
+    await expect(page.getByLabel("فیلتر کاریز").getByText("نوع معاملات")).toBeVisible();
+    await expect(page.getByLabel("فیلتر کاریز").getByText("وضعیت", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("مشتری ویژه")).toBeVisible();
+    await page.getByRole("button", { name: "مسئول", exact: true }).click();
+    await expect(page.getByText("نمایش معاملات مرتبط با مسئول")).toBeVisible();
+  });
+
+  test("card health warning last-activity and avatar", async ({ page }) => {
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "همه", exact: true }).click();
+    await expect(page.getByText("برای این معامله فعالیت ثبت نشده!").first()).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(page.locator("[title='تاریخ آخرین فعالیت']").first()).toBeVisible();
+    await expect(page.locator("article span[title]").first()).toBeVisible();
+  });
+
+  test("bulk edit fields export checkboxes and sms soon", async ({ page }) => {
+    const title = `${STAMP} bulk`;
+    await createDeal(salesJwt(), title);
+    await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("تعداد کل").first()).toBeVisible({ timeout: 20000 });
+    await page.getByRole("checkbox", { name: /انتخاب این صفحه/ }).check();
+    await expect(page.getByText(/ویرایش گروهی معاملات/)).toBeVisible();
+    await page.getByRole("combobox").filter({ hasText: "فیلد" }).click();
+    await expect(page.getByRole("option", { name: "مسئول" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "امنیت" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "برچسب" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "کاریز" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "تغییر وضعیت" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "دلیل شکست" })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("button", { name: "حذف" })).toBeVisible();
+    await expect(page.getByText("فعالیت ها و یادداشت ها هم اکسپورت گرفته شود")).toBeVisible();
+    await expect(page.getByText("محصولات هم اکسپورت گرفته شود")).toBeVisible();
+    await expect(page.getByRole("button", { name: /اکسپورت/ })).toBeVisible();
+    await page.getByRole("button", { name: /ارسال پیامک/ }).click();
+    await expect(page.getByText("به‌زودی").first()).toBeVisible();
+  });
+
+  test("create form introducer jalali amount digits and company picker", async ({ page }) => {
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "افزودن معامله" }).click();
+    await expect(page.getByText("معرف")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("متن درخواست")).toBeVisible();
+    await expect(page.getByLabel("جستجوی شرکت")).toBeVisible();
+    await expect(page.getByLabel("جستجوی معرف")).toBeVisible();
+    await expect(page.getByText("مراحل کاریز")).toBeVisible();
+    await expect(page.getByPlaceholder("انتخاب تاریخ")).toBeVisible();
+    await expect(page.locator("input[type='date']")).toHaveCount(0);
+    await expect(page.getByText(/mm\/dd\/yyyy/i)).toHaveCount(0);
+    const amount = page.getByPlaceholder("IRR");
+    await amount.fill("abc۱۲۳۴xyz");
+    await expect(amount).toHaveValue("1,234");
+    const personName = dbScalar(
+      "select display_name from public.persons where kind = 'individual' and display_name is not null and length(btrim(display_name)) >= 2 order by created_at limit 1",
+    ).trim();
+    const q = personName.slice(0, 2);
+    await page.getByLabel("جستجوی شخص").fill(q);
+    await page.getByRole("button", { name: personName, exact: true }).click({ timeout: 15000 });
+    await expect(page.getByLabel("عنوان معامله")).toHaveValue(/معامله/);
+  });
+
+  test("header title does not double معامله", async ({ page }) => {
+    const id = await createDeal(salesJwt(), `معامله ${STAMP} nodouble`);
+    await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
+    await expect(page.locator("h1")).toBeVisible({ timeout: 20000 });
+    const h1 = (await page.locator("h1").innerText()).replace(/\s+/g, " ");
+    expect(h1).not.toMatch(/معامله معامله/);
+    expect(h1.startsWith("معامله")).toBeTruthy();
+  });
+
+  test("activity empty planned text until form opened", async ({ page }) => {
+    const id = await createDeal(salesJwt(), `${STAMP} planned`);
+    await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
+    await expect(
+      page.getByText("هیچ فعالیتی برای این معامله برنامه ریزی نکردی!"),
+    ).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole("textbox", { name: /عنوان فعالیت|شرح/ })).toHaveCount(0);
+  });
+
+  test("list sort 0-10 and advanced field catalog", async ({ page }) => {
+    await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("مرتب سازی")).toBeVisible({ timeout: 20000 });
+    await page.getByText("مرتب سازی").locator("..").getByRole("combobox").click();
+    await expect(page.getByRole("option", { name: /0 تاریخ ثبت/ })).toBeVisible();
+    await expect(page.getByRole("option", { name: /10 زمان فعالیت بعدی/ })).toBeVisible();
+    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "فیلتر پیشرفته" }).click();
+    await expect(page.getByTestId("deal-advanced-filter")).toBeVisible();
+    await page.getByTestId("deal-advanced-filter").getByRole("combobox").first().click();
+    await expect(page.getByRole("option", { name: "کاربر مرتبط معامله" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "معرف معامله" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "تاریخ ثبت" })).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+
+  test("zoom overlay در یک نگاه", async ({ page }) => {
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "همه", exact: true }).click();
+    await page.locator("button[title='در یک نگاه']").first().click({ timeout: 20000 });
+    await expect(page.getByRole("heading", { name: "در یک نگاه" })).toBeVisible();
+  });
+
+  test("kanban no-tag acquaintance and 6m actually filter", async ({ page }) => {
+    const taggedTitle = `${STAMP} tagged`;
+    const plainTitle = `${STAMP} plain`;
+    const oldTitle = `${STAMP} oldreg`;
+    const taggedId = await createDeal(salesJwt(), taggedTitle);
+    const plainId = await createDeal(salesJwt(), plainTitle);
+    const oldId = await createDeal(salesJwt(), oldTitle);
+    adminSql(
+      `insert into public.deal_tags (title) values ('[TEST-PASS2-TAG]') on conflict (title) do nothing`,
+    );
+    const tagId = dbScalar("select id from public.deal_tags where title = '[TEST-PASS2-TAG]'").trim();
+    adminSql(
+      `insert into public.sales_interaction_tags (interaction_id, tag_id) values ('${taggedId}', '${tagId}') on conflict do nothing`,
+    );
+    adminSql(
+      `update public.sales_interactions set register_time = now() - interval '8 months' where id = '${oldId}'`,
+    );
+    const acqId = dbScalar(
+      "select id from public.acquaintance_methods where is_active order by sort_order limit 1",
+    ).trim();
+    if (acqId) {
+      adminSql(`update public.sales_interactions set acquaintance_id = '${acqId}' where id = '${plainId}'`);
+    }
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "همه", exact: true }).click();
+    await expect(page.getByText(plainTitle).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText(taggedTitle).first()).toBeVisible();
+    await page.getByText("بدون برچسب").click();
+    await expect(page.getByText(plainTitle).first()).toBeVisible();
+    await expect(page.getByText(taggedTitle)).toHaveCount(0);
+    await page.getByText("بدون برچسب").click();
+    await expect(page.getByText(oldTitle)).toHaveCount(0);
+    await page.getByText("زمان ثبت معامله").locator("..").getByRole("combobox").click();
+    await page.getByRole("option", { name: "همه" }).click();
+    await expect(page.getByText(oldTitle).first()).toBeVisible();
+    await expect(page.getByText("شیوه آشنایی:")).toBeVisible();
+  });
+
+  test("related user OR query on kanban owner tab", async ({ page }) => {
+    const title = `${STAMP} related`;
+    const id = await createDeal(salesJwt(), title);
+    const adminId = userIdFor("admin");
+    const salesId = userIdFor("sales");
+    adminSql(`update public.sales_interactions set salesperson_id = '${adminId}' where id = '${id}'`);
+    adminSql(
+      `insert into public.deal_related_users (interaction_id, profile_id) values ('${id}', '${salesId}') on conflict do nothing`,
+    );
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "همه", exact: true }).click();
+    await page.getByRole("button", { name: "مسئول", exact: true }).click();
+    await page.getByRole("button", { name: "مسئول", exact: true }).click();
+    await expect(page.getByText(title)).toHaveCount(0);
+    await page.getByText("نمایش معاملات مرتبط با مسئول").click();
+    await expect(page.getByText(title).first()).toBeVisible({ timeout: 20000 });
+  });
+
+  test("edit تاریخ معامله after create and list restore", async ({ page }) => {
+    const id = await createDeal(salesJwt(), `${STAMP} regtime`);
+    await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
+    await expect(page.getByText(/تاریخ معامله/).first()).toBeVisible({ timeout: 20000 });
+    await expect(page.getByPlaceholder("انتخاب تاریخ").first()).toBeVisible();
+    const del = await rest(salesJwt(), "/rpc/sales_deal_delete", {
+      method: "POST",
+      body: JSON.stringify({ p_id: id }),
+    });
+    expect(del.status, del.text).toBe(200);
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await page.getByText("نوع معاملات").locator("..").getByRole("combobox").click();
+    await page.getByRole("option", { name: "معاملات حذف شده" }).click();
+    await expect(page.getByRole("button", { name: "بازیابی" }).first()).toBeVisible({ timeout: 20000 });
+  });
+
+  test("per-stage required extra field trigger", async () => {
+    const id = await createDeal(salesJwt(), `${STAMP} reqfield`);
+    const current = dbScalar(`select stage_id from public.sales_interactions where id = '${id}'`).trim();
+    const other = dbScalar(
+      `select id from public.sales_pipeline_stages where pipeline_id = (select pipeline_id from public.sales_interactions where id = '${id}') and id <> '${current}' and coalesce(is_active, true) order by sort_order limit 1`,
+    ).trim();
+    expect(other.length).toBeGreaterThan(10);
+    const defId = adminSql(
+      `insert into public.deal_field_definitions (title, field_type, is_active) values ('[TEST-PASS2-REQ]', 'text', true) returning id`,
+    )
+      .trim()
+      .match(/[0-9a-f-]{36}/i)?.[0];
+    if (!defId) throw new Error("def insert failed");
+    try {
+      adminSql(
+        `insert into public.deal_field_stage_rules (definition_id, stage_id, required) values ('${defId}', '${other}', true)`,
+      );
+      let blocked = false;
+      try {
+        adminSql(`update public.sales_interactions set stage_id = '${other}' where id = '${id}'`);
+      } catch (e) {
+        blocked = /P0001|اجباری|required|ERROR/i.test(String(e));
+      }
+      expect(blocked).toBe(true);
+      adminSql(
+        `insert into public.deal_field_values (interaction_id, definition_id, value_text) values ('${id}', '${defId}', 'ok') on conflict do nothing`,
+      );
+      adminSql(`update public.deal_field_values set value_text = 'ok' where interaction_id = '${id}' and definition_id = '${defId}'`);
+      adminSql(`update public.sales_interactions set stage_id = '${other}' where id = '${id}'`);
+      expect(dbScalar(`select stage_id from public.sales_interactions where id = '${id}'`).trim()).toBe(other);
+    } finally {
+      adminSql(`delete from public.deal_field_stage_rules where definition_id = '${defId}'`);
+      adminSql(`delete from public.deal_field_values where definition_id = '${defId}'`);
+      adminSql(`delete from public.deal_field_definitions where id = '${defId}'`);
+    }
+  });
+
+  test("list and create dialog do not overflow at mobile width", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("تعداد کل").first()).toBeVisible({ timeout: 20000 });
+    const listOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+    );
+    expect(listOverflow).toBe(false);
+    await page.goto("/deal", { waitUntil: "domcontentloaded" });
+    await page.getByRole("button", { name: "افزودن معامله" }).click();
+    await expect(page.getByText("متن درخواست")).toBeVisible({ timeout: 15000 });
+    const createOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+    );
+    expect(createOverflow).toBe(false);
+  });
+});
+
+test.describe("didar deals parity pass2 admin", () => {
+  test.use({
+    storageState: storageStateForRole("admin", BASE_URL, SUPABASE_URL),
+    baseURL: BASE_URL,
+  });
+
+  test("pipeline settings required extra fields UI", async ({ page }) => {
+    await page.goto("/settings/sales-pipelines", { waitUntil: "domcontentloaded" });
+    await expect(page.getByText("فیلدهای اجباری هر مرحله")).toBeVisible({ timeout: 20000 });
+    await expect(page.getByPlaceholder("عنوان فیلد جدید")).toBeVisible();
   });
 });

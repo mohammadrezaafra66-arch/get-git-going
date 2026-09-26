@@ -242,7 +242,7 @@ export function DealPipelineBoard() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-sm"
               >
                 <Link
-                  to="/operations/sales-desk/deals/$dealId"
+                  to="/deal/$dealId"
                   params={{ dealId: c.id }}
                   className="font-medium text-primary underline-offset-2 hover:underline"
                 >

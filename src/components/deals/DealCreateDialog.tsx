@@ -208,7 +208,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
             </div>
             <div>
               <Label>عنوان معامله</Label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+              <Input aria-label="عنوان معامله" value={title} onChange={(e) => setTitle(e.target.value)} />
             </div>
             <div>
               <Label>مبلغ حدودی معامله</Label>
