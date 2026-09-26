@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, Pencil } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -202,8 +202,12 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
 
   const closed = deal.status === "won" || deal.status === "lost";
   const pipeTitle = pipesQ.data?.find((p) => p.id === deal.pipeline_id)?.title ?? "کاریز افراکالا";
-  const amount =
-    Number(deal.estimated_amount ?? paidQ.data?.deal_amount ?? quotesQ.data?.[0]?.final_amount ?? 0);
+  const amount = Number(
+    deal.estimated_amount ??
+      (paidQ.data?.deal_amount && Number(paidQ.data.deal_amount) > 0 ? paidQ.data.deal_amount : null) ??
+      quotesQ.data?.[0]?.final_amount ??
+      0,
+  );
   const paidLabel = paidQ.data?.is_paid ? "پرداخت شده" : "پرداخت نشده";
   const planned = (activitiesQ.data ?? []).filter((a) => !a.done_at);
   const notes = notesQ.data ?? [];
@@ -211,7 +215,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
   const deleted = !!deal.deleted_at;
 
   return (
-    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden" dir="rtl">
+    <div className="min-w-0 w-full max-w-full space-y-4 overflow-x-hidden" dir="rtl">
       {deleted ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm" data-testid="deal-deleted-banner">
           <p>این معامله حذف شده است و جاری نیست.</p>
@@ -233,11 +237,24 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           ) : null}
         </div>
       ) : null}
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">
+      <header
+        className="flex min-w-0 flex-wrap items-center justify-between gap-2"
+        aria-label="سربرگ معامله"
+      >
+        <h1 className="min-w-0 max-w-full break-words text-xl font-semibold">
           {dealHeaderTitle(deal.title)} {deal.display_code != null ? `#${deal.display_code}` : ""}
         </h1>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-0 flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            title="ویرایش"
+            aria-label="ویرایش معامله"
+            onClick={() => setEditOpen(true)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
           <OutcomeButtons
             interactionId={deal.id}
             currentStatus={deal.status}
@@ -352,8 +369,8 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
         ))}
       </ol>
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
-        <section className="space-y-3">
+      <div className="grid min-w-0 max-w-full gap-4 overflow-x-hidden lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <section className="min-w-0 max-w-full space-y-3 overflow-x-hidden">
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -420,12 +437,15 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
                 مرتب سازی: تاریخ برنامه‌ریزی/انجام فعالیت
               </button>
             </div>
-            <TabsList>
+            <TabsList className="flex h-auto min-w-0 max-w-full flex-wrap">
               <TabsTrigger value="all">همه</TabsTrigger>
               <TabsTrigger value="activities">فعالیت ها</TabsTrigger>
               <TabsTrigger value="notes">یادداشت ها</TabsTrigger>
               <TabsTrigger value="files">پیوست ها</TabsTrigger>
-              <TabsTrigger value="history">سابقه</TabsTrigger>
+              <TabsTrigger value="history">
+                تاریخچه
+                <span className="sr-only">سابقه</span>
+              </TabsTrigger>
               <TabsTrigger value="quotes">پیش فاکتور</TabsTrigger>
             </TabsList>
             <TabsContent value="all">
@@ -493,7 +513,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           </Tabs>
         </section>
 
-        <aside className="space-y-3 text-sm">
+        <aside className="min-w-0 max-w-full space-y-3 overflow-x-hidden text-sm">
           <section className="rounded border p-3">
             <h2 className="mb-2 font-medium">اطلاعات معامله</h2>
             <p>مسئول {deal.salesperson?.full_name ?? "—"}</p>

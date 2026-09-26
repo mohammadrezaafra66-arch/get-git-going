@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/use-debounce";
-import { searchPersons } from "@/lib/persons/functions";
+import { supabase } from "@/integrations/supabase/client";
 
 type Hit = { id: string; display_name: string; kind?: string };
 
@@ -14,20 +13,25 @@ export function DealPersonPicker(props: {
   kind?: "individual" | "organization" | "all";
   onPick: (hit: Hit) => void;
 }) {
-  const searchFn = useServerFn(searchPersons);
   const [query, setQuery] = useState(props.valueName);
   const debounced = useDebounce(query, 350);
   const searchQ = useQuery({
     queryKey: ["deal-person-search", props.kind ?? "all", debounced],
     enabled: debounced.trim().length >= 2,
-    queryFn: () =>
-      searchFn({
-        data: { query: debounced.trim(), kind: props.kind === "all" ? undefined : props.kind },
-      }),
+    queryFn: async () => {
+      let q = supabase
+        .from("persons")
+        .select("id, display_name, kind")
+        .ilike("display_name", `%${debounced.trim()}%`)
+        .eq("is_active", true)
+        .limit(20);
+      if (props.kind && props.kind !== "all") q = q.eq("kind", props.kind);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Hit[];
+    },
   });
-  const hits = ((searchQ.data ?? []) as Hit[]).filter((p) =>
-    props.kind && props.kind !== "all" ? p.kind === props.kind : true,
-  );
+  const hits = (searchQ.data ?? []) as Hit[];
   return (
     <div>
       <Input

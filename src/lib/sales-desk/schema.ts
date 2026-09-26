@@ -31,6 +31,7 @@ export const createDealInteractionSchema = z.object({
   estimatedAmount: z.number().nonnegative().nullable().optional(),
   introducerPersonId: z.string().uuid().nullable().optional(),
   existingId: z.string().uuid().nullable().optional(),
+  clientRequestKey: z.string().min(8).max(80).nullable().optional(),
   items: z
     .array(
       z.object({

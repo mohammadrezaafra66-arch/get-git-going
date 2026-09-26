@@ -78,15 +78,16 @@ export function LostReasonDialog({
       setLocalError("دلیل شکست را انتخاب کنید");
       return;
     }
-    if (isOther && !other.trim()) {
-      setLocalError("دلیل شکست را انتخاب کنید");
+    if (isOther && !note.trim() && !other.trim()) {
+      setLocalError("برای دلیل «سایر» نوشتن توضیح الزامی است");
       return;
     }
     setLocalError(null);
+    const explain = note.trim() || other.trim();
     onConfirm({
       lostReasonId: reasonId,
       lostReasonNote: note.trim() || null,
-      lostReasonOther: isOther ? other.trim() : null,
+      lostReasonOther: isOther ? explain : null,
     });
   };
 
@@ -106,7 +107,7 @@ export function LostReasonDialog({
               </p>
             ) : (
               <Select value={reasonId || undefined} onValueChange={setReasonId}>
-                <SelectTrigger>
+                <SelectTrigger aria-label="دلیل شکست">
                   <SelectValue placeholder="دلیل شکست را انتخاب کنید" />
                 </SelectTrigger>
                 <SelectContent>
@@ -124,6 +125,7 @@ export function LostReasonDialog({
             <Label htmlFor="lost-reason-note">توضیح دلیل شکست</Label>
             <Textarea
               id="lost-reason-note"
+              aria-label="توضیح دلیل شکست"
               value={note}
               onChange={(e) => setNote(e.target.value)}
               rows={2}

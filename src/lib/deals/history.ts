@@ -19,6 +19,7 @@ const FIELD_FA: Record<string, string> = {
   company: "شرکت",
   expected_close: "تاریخ احتمالی بستن معامله",
   register_time: "تاریخ معامله",
+  won_at: "تاریخ موفق شدن",
   acquaintance: "شیوه آشنایی",
   status: "وضعیت",
   stage: "مرحله کاریز",
@@ -44,7 +45,12 @@ export function formatDealHistorySentence(
   const title = dealTitle.trim() || "بدون عنوان";
   const when = formatDateTimeFa(row.created_at);
   if (row.event === "create") {
-    return `${actor} معامله با عنوان ${title} را ایجاد کرد — ${when}`;
+    return `${actor} معامله با عنوان ${title} را ایجاد کرد`;
+  }
+  if (row.event === "status" || row.field_name === "status") {
+    if (row.to_value === "won") return `${actor} معامله با عنوان ${title} را موفق کرد`;
+    if (row.to_value === "lost") return `${actor} معامله با عنوان ${title} را ناموفق کرد`;
+    if (row.to_value === "open") return `${actor} معامله با عنوان ${title} را به جاری برگرداند`;
   }
   const field = fieldFa(row.field_name, row.event);
   const before = resolveVal(row.from_value, names);

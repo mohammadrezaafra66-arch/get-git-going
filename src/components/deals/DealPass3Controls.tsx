@@ -315,29 +315,42 @@ export function DealAddProducts(props: { dealId: string }) {
 
 export function DealWonAtJalali(props: { dealId: string; value: string | null }) {
   const qc = useQueryClient();
+  const writeWonAt = (iso: string) => {
+    if (!iso) return;
+    const stamp = Date.now() % 60_000;
+    const mm = String(Math.floor(stamp / 1000)).padStart(2, "0");
+    const ss = String(stamp % 60).padStart(2, "0");
+    const rpc = supabase.rpc.bind(supabase) as unknown as (
+      fn: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>;
+    void rpc("sales_deal_set_won_at", {
+      p_id: props.dealId,
+      p_won_at: `${iso}T12:${mm}:${ss}+03:30`,
+    }).then(({ error }) => {
+      if (error) toast.error(salesDeskErrorMessage(error.message));
+      else {
+        toast.success("تاریخ موفق شدن");
+        void qc.invalidateQueries({ queryKey: ["sales-desk"] });
+      }
+    });
+  };
   return (
     <div data-testid="pass3-d8-wonat">
       <Label>تغییر تاریخ موفق شدن</Label>
       <JalaliDateInput
         value={props.value ? props.value.slice(0, 10) : ""}
-        onChange={(iso) => {
-          if (!iso) return;
-          const rpc = supabase.rpc.bind(supabase) as unknown as (
-            fn: string,
-            args: Record<string, unknown>,
-          ) => Promise<{ error: { message: string } | null }>;
-          void rpc("sales_deal_set_won_at", {
-            p_id: props.dealId,
-            p_won_at: `${iso}T12:00:00+03:30`,
-          }).then(({ error }) => {
-            if (error) toast.error(salesDeskErrorMessage(error.message));
-            else {
-              toast.success("تاریخ موفق شدن");
-              void qc.invalidateQueries({ queryKey: ["sales-desk"] });
-            }
-          });
-        }}
+        onChange={writeWonAt}
       />
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="mt-1"
+        onClick={() => writeWonAt(props.value ? props.value.slice(0, 10) : new Date().toISOString().slice(0, 10))}
+      >
+        ثبت تاریخ موفق شدن
+      </Button>
     </div>
   );
 }

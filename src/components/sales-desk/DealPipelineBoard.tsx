@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/select";
 import { formatNumber } from "@/lib/i18n/formatters";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { hasPermissionEx, rolePermissionsReady } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
 import { followUpLightsForDeals, type FollowUpTrafficLight } from "@/lib/sales-desk/activities";
 import { loadDealCapabilities, type DealCapabilities } from "@/lib/sales-desk/capabilities";
@@ -76,6 +77,8 @@ type DealCard = {
   acquaintance_id?: string | null;
   tag_ids?: string[];
   related_user_ids?: string[];
+  last_activity_at?: string | null;
+  has_activity?: boolean;
 };
 
 const LIGHT_RANK: Record<FollowUpTrafficLight, number> = {
@@ -93,7 +96,11 @@ function sortCards(a: DealCard, b: DealCard): number {
 
 export function DealPipelineBoard() {
   const qc = useQueryClient();
-  const { profile } = useAuth();
+  const { profile, roles } = useAuth();
+  const canManagePipelines =
+    rolePermissionsReady(roles) &&
+    (hasPermissionEx(roles, "sales-pipelines", "create") ||
+      hasPermissionEx(roles, "sales-pipelines", "update"));
   const [pipelineId, setPipelineId] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -113,6 +120,7 @@ export function DealPipelineBoard() {
   const [registerWindow, setRegisterWindow] = useState<"all" | "6m">("6m");
   const [relatedOwner, setRelatedOwner] = useState(false);
   const [filterTab, setFilterTab] = useState<"filters" | "owner">("filters");
+  const [tagId, setTagId] = useState("");
 
   const pipesQ = useQuery({
     queryKey: ["sales-desk", "pipelines"],
@@ -173,9 +181,10 @@ export function DealPipelineBoard() {
     for (const c of cards) {
       if (ownerId && c.salesperson_id !== ownerId && !(relatedOwner && c.related_user_ids?.includes(ownerId))) continue;
       if (vipOnly && !c.is_vip) continue;
-      if (noActivity && (c.last_activity_age_days ?? 0) < 1) continue;
+      if (noActivity && c.has_activity) continue;
       if (rottenOnly && c.health_circle !== "red") continue;
       if (noTag && (c.tag_ids?.length ?? 0) > 0) continue;
+      if (tagId && !(c.tag_ids ?? []).includes(tagId)) continue;
       if (acqId && c.acquaintance_id !== acqId) continue;
       if (registerWindow === "6m" && c.register_time) {
         const cut = new Date();
@@ -187,7 +196,7 @@ export function DealPipelineBoard() {
     }
     for (const list of map.values()) list.sort(sortCards);
     return map;
-  }, [cards, stages, ownerId, relatedOwner, vipOnly, noActivity, rottenOnly, noTag, acqId, registerWindow, dateChip]);
+  }, [cards, stages, ownerId, relatedOwner, vipOnly, noActivity, rottenOnly, noTag, tagId, acqId, registerWindow, dateChip]);
 
   if (statusFilter === "deleted") {
     return (
@@ -196,6 +205,8 @@ export function DealPipelineBoard() {
           pipes={pipesQ.data ?? []}
           pipelineId={activePipelineId}
           onPipeline={setPipelineId}
+          tagId={tagId}
+          onTag={setTagId}
           statusFilter={statusFilter}
           onStatus={setStatusFilter}
           ownerId={ownerId}
@@ -223,6 +234,7 @@ export function DealPipelineBoard() {
             setNoActivity(false);
             setRottenOnly(false);
             setNoTag(false);
+            setTagId("");
             setAcqId("");
             setRegisterWindow("6m");
             setRelatedOwner(false);
@@ -279,6 +291,18 @@ export function DealPipelineBoard() {
       <DealPageHeader title="کاریز معاملات">
         <div className="flex flex-wrap items-center gap-2">
           <DealViewTabs active="kanban" />
+          <Select value={activePipelineId || undefined} onValueChange={setPipelineId}>
+            <SelectTrigger className="w-56" aria-label="کاریز">
+              <SelectValue placeholder="کاریز" />
+            </SelectTrigger>
+            <SelectContent>
+              {(pipesQ.data ?? []).map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button type="button" onClick={() => setCreateOpen(true)}>
             افزودن معامله
           </Button>
@@ -288,26 +312,30 @@ export function DealPipelineBoard() {
           <Button type="button" variant="outline" onClick={() => void dealsQ.refetch()}>
             بروزرسانی سریع صفحه
           </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            title="ویرایش کاریز"
-            aria-label="ویرایش کاریز"
-            onClick={() => void (window.location.href = "/settings/sales-pipelines")}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            title="ایجاد کاریز"
-            aria-label="ایجاد کاریز"
-            onClick={() => void (window.location.href = "/settings/sales-pipelines")}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
+          {canManagePipelines ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title="ویرایش کاریز"
+                aria-label="ویرایش کاریز"
+                onClick={() => void (window.location.href = "/settings/sales-pipelines")}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title="ایجاد کاریز"
+                aria-label="ایجاد کاریز"
+                onClick={() => void (window.location.href = "/settings/sales-pipelines")}
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </>
+          ) : null}
         </div>
       </DealPageHeader>
       <div className="flex flex-wrap gap-2 text-sm">
@@ -322,6 +350,8 @@ export function DealPipelineBoard() {
         pipes={pipesQ.data ?? []}
         pipelineId={activePipelineId}
         onPipeline={setPipelineId}
+        tagId={tagId}
+        onTag={setTagId}
         statusFilter={statusFilter}
         onStatus={setStatusFilter}
         ownerId={ownerId}
@@ -349,6 +379,7 @@ export function DealPipelineBoard() {
             setNoActivity(false);
             setRottenOnly(false);
             setNoTag(false);
+            setTagId("");
             setAcqId("");
             setRegisterWindow("6m");
             setRelatedOwner(false);
@@ -414,8 +445,12 @@ export function DealPipelineBoard() {
                     key={c.id}
                     draggable={!!c.caps?.can_move}
                     onDragStart={(e) => {
-                      e.dataTransfer.setData("text/deal-id", c.id);
-                      e.dataTransfer.effectAllowed = "move";
+                      try {
+                        e.dataTransfer.setData("text/deal-id", c.id);
+                        e.dataTransfer.effectAllowed = "move";
+                      } catch {
+                        /* Playwright dispatchEvent may omit dataTransfer */
+                      }
                       setDraggingId(c.id);
                     }}
                     onDragEnd={() => setDraggingId(null)}
@@ -486,9 +521,10 @@ export function DealPipelineBoard() {
           );
         })}
       </div>
+      {draggingId ? (
       <div
         data-testid="deal-drop-strip"
-        className={`sticky bottom-2 z-10 flex flex-wrap justify-center gap-2 rounded-lg border bg-background/95 p-2 shadow ${dragging ? "" : "opacity-70"}`}
+        className="fixed inset-x-0 bottom-0 z-20 flex flex-wrap justify-center gap-2 border-t bg-background/95 p-2 shadow"
       >
         <DropAction
           enabled={!!dragging?.caps?.can_delete}
@@ -511,6 +547,7 @@ export function DealPipelineBoard() {
           onDrop={() => dragging && setMoveFor(dragging)}
         />
       </div>
+      ) : null}
 
       <AlertDialog
         open={!!deleteFor}
@@ -583,6 +620,8 @@ function BoardFilters(props: {
   pipes: SalesPipeline[];
   pipelineId: string;
   onPipeline: (id: string) => void;
+  tagId: string;
+  onTag: (id: string) => void;
   statusFilter: StatusFilter;
   onStatus: (s: StatusFilter) => void;
   ownerId: string;
@@ -618,6 +657,17 @@ function BoardFilters(props: {
       return (data ?? []) as { id: string; title: string }[];
     },
   });
+  const tagsQ = useQuery({
+    queryKey: ["sales-desk", "deal-tags"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("deal_tags" as never)
+        .select("id, title" as never)
+        .order("title" as never, { ascending: true } as never);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; title: string }[];
+    },
+  });
   return (
     <aside className="min-w-0 rounded-lg border p-3" aria-label="فیلتر کاریز">
       <div className="mb-2 flex gap-2 text-sm">
@@ -646,15 +696,16 @@ function BoardFilters(props: {
       ) : (
         <div className="flex flex-wrap items-end gap-3">
           <div className="space-y-1">
-            <Label>کاریز</Label>
-            <Select value={props.pipelineId || undefined} onValueChange={props.onPipeline}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="کاریز" />
+            <Label>برچسب</Label>
+            <Select value={props.tagId || "all"} onValueChange={(v) => props.onTag(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-44" aria-label="برچسب">
+                <SelectValue placeholder="برچسب" />
               </SelectTrigger>
               <SelectContent>
-                {props.pipes.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.title}
+                <SelectItem value="all">همه</SelectItem>
+                {(tagsQ.data ?? []).map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.title}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -865,7 +916,7 @@ async function loadBoardDeals(
     estimated_amount?: number | null;
   }>;
   const ids = rows.map((r) => r.id);
-  const [caps, lights, persons, profiles, quotes, health, tags, related] = await Promise.all([
+  const [caps, lights, persons, profiles, quotes, health, tags, related, activities] = await Promise.all([
     loadDealCapabilities(ids),
     followUpLightsForDeals(ids),
     rows.length
@@ -907,6 +958,13 @@ async function loadBoardDeals(
           .select("interaction_id, profile_id" as never)
           .in("interaction_id" as never, ids as never)
       : Promise.resolve({ data: [] }),
+    ids.length
+      ? supabase
+          .from("sales_interactions" as never)
+          .select("deal_id" as never)
+          .in("deal_id" as never, ids as never)
+          .not("activity_type_id" as never, "is" as never, null as never)
+      : Promise.resolve({ data: [] }),
   ]);
   const personMap = new Map(
     ((persons.data ?? []) as { id: string; display_name: string }[]).map((p) => [p.id, p]),
@@ -946,6 +1004,7 @@ async function loadBoardDeals(
     caps: caps.get(r.id) ?? null,
     latest_quote_amount: latestAmount.get(r.id)?.amount ?? 0,
     estimated_amount: r.estimated_amount ?? null,
+    last_activity_at: r.last_activity_at ?? null,
     last_activity_age_days:
       ((health.data ?? []) as Array<{ id: string; last_activity_age_days: number | null }>).find(
         (h) => h.id === r.id,
@@ -963,5 +1022,8 @@ async function loadBoardDeals(
     related_user_ids: ((related.data ?? []) as Array<{ interaction_id: string; profile_id: string }>)
       .filter((t) => t.interaction_id === r.id)
       .map((t) => t.profile_id),
+    has_activity: ((activities.data ?? []) as Array<{ deal_id: string | null }>).some(
+      (a) => a.deal_id === r.id,
+    ),
   }));
 }
