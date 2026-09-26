@@ -37,6 +37,18 @@ O2. Unattended runs: never ask the owner; take the least invasive reversible opt
 O3. Write `uncertain` instead of guessing.
 O4. Business runs on `sales_quotes`, not `invoices`; the calendar day is `public.tehran_today()`; server time is UTC.
 
+## Known traps (each one cost real time)
+
+T1. A cached `docker compose build` can reuse the previous image while `APP_GIT_SHA` still shows the old SHA. After every build, verify `APP_GIT_SHA` equals `git rev-parse --short HEAD` AND that a file from the new commit exists under `/app/.output`. If not, rebuild with `build --no-cache web`. Incident: 2 Mehr 1405 production release — image `lan` identical to the rollback image.
+T2. Set `$env:DISABLE_LOVABLE_MCP="1"` before any build on Windows; the Lovable plugin breaks on backslash paths. `npm run build` on Windows is broken — build inside Docker only.
+T3. A CHECK constraint does not reject NULL (only FALSE). A missing JSONB key is NULL and passes. Wrap comparisons in `COALESCE(..., false)` and use `IS DISTINCT FROM`.
+T4. `has_role` and `has_any_role` each have two overloads (`app_role` and `text`); neither can be dropped (storage policies use the enum, ~147 policies use text). Calling them through `supabase.rpc(...)` fails with PGRST203 — read `user_roles` with the admin client instead. `user_roles.role` is text; compare via `public.has_role`, never `role = <enum>`.
+T5. A new CHECK constraint or NOT NULL on an existing table fails on production data that the test DB does not have. Every such migration first counts violating rows and handles them in the same file (disable/re-enable only the specific triggers needed, inside one transaction). Incident: 2 Mehr 1405 — `sales_interactions_status_by_kind_check` violated by 32 historical rows (`done`/`cancelled`) on production; a partial failure rolled back an UPDATE silently.
+T6. `schema_full_export.sql` is stale and unreliable. Use live `pg_policies`, `pg_get_functiondef`, `information_schema`.
+T7. The site runs on plain HTTP. `getUserMedia`, `crypto.randomUUID` and `crypto.subtle` exist only in a Secure Context; voice, some uploads and API-key generation fail. No polyfill fixes this.
+T8. API DELETE on a table without a DELETE policy returns 204 and deletes nothing. Specs count rows, never trust the status code.
+T9. Real column names come from querying, not guessing: `persons.display_name` (not full_name), `products.name` (not title), credit in `customer_credit_balance`.
+
 ## Mandatory principles
 
 1. Keep the project self-hostable on Linux + Docker + Supabase Self-host.
