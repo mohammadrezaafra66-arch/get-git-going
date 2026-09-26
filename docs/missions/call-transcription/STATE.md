@@ -1,42 +1,32 @@
 # STATE — رونویسی تماس، فاز A
 
-تاریخ به‌روزرسانی: 2026-09-26 (G2 complete → G3)
+تاریخ به‌روزرسانی: 2026-09-26 (G6 docs؛ PR بعدی)
 شاخه: `feature/call-transcription`
 worktree: `D:\AfraKalaTest\wt-call-transcription`
 
 ## HANDOFF STATE
 
-- **gate فعلی:** G2 تمام شد؛ بعدی G3
-- **آخرین گام تمام‌شده:** مهاجرت 592+593، hook، RLS/idempotency/cross-link، typecheck
-- **گام بعدی:** سرویس STT در `deploy/stt/` + مدل‌ها روی `D:\afrakala-stt\` + بنچمارک
-- **مسدودکننده‌های باز:** هیچ
-- **کانتینر / سرویس تازه‌استارت‌شده توسط این مأموریت:** فقط `docker restart afrakala-lan-rest` بعد از 592 و 593
-- **SHA وب 3100 پیش از هر deploy این مأموریت:** `e0374408`
-- **مهاجرت اعمال‌شده:** `20260926183000` (592)، `20260926184500` (593)
+- **gate فعلی:** G3–G5 تمام؛ G6 در حال commit/PR
+- **آخرین گام تمام‌شده:** Playwright زنده+نهایی 2 passed؛ بنچمارک در g3-bench.json
+- **گام بعدی:** commit + push + `gh pr create` به staging (ادغام نشود)
+- **مسدودکننده‌های باز:** WER بدون کلیپ eval؛ فایروال C4 اقدام مالک
+- **کانتینر / سرویس تازه‌استارت‌شده:** `afrakala-lan-web` (چند recreate)؛ `afrakala-stt`
+- **SHA وب 3100:** ایمیج شامل UI است؛ برچسب GIT_SHA تا commit بعدی `c8396231`
+- **مهاجرت اعمال‌شده:** 592، 593
 - **شمارهٔ بعدی پیشنهادی مهاجرت:** 594
 
 ## تصمیم‌های مالک (G1)
 
-Q1=a (Python 3.6؛ خروجی PBX نچسبید). Q2=a (3100 روی این شاخه بماند). Q3=a. Q4=a. C1–C6 در DESIGN.md.
+Q1=a Q2=a Q3=a Q4=a. C1–C6 در DESIGN.md.
 
-## شواهد G2
+## شواهد فشرده
 
-- Unit: `npx tsx --test` روی filename/validate/CDR meta — 14 pass, EXIT=0
-- Live Kong: `node docs/missions/call-transcription/g2-proof.mjs` → `G2_PROOF_PASS`
-  - sales=1, accountant=1, viewer=0, manager=4, admin=4, anon_n=0 (401)
-  - idempotency before=1 after=1
-  - two calls 40s apart: `crossLinkUnlinked=t`
-  - anon RPC 401 / 42501؛ sales RPC 403 / 42501
-- Typecheck: raw 73، unique 39، at or below baseline 39، EXIT=0
-
-## سازگاری‌ها
-
-| فرض | یافته | کار به‌جای آن |
-|---|---|---|
-| `MIN(uuid)` در SQL | Postgres MIN برای uuid ندارد | 593 با COUNT + SELECT جدا |
-| Ollama در Docker | API روی `:11434` idle است | حد CPU همان طرح |
-| worktree بدون `node_modules` | junction به `app\node_modules` برای typecheck | commit نمی‌شود |
-
-## بنچمارک
-
-خالی — مال G3.
+- G2_PROOF_PASS
+- C1 داخل کانتینر 200
+- A4 forwarded_n=0
+- A1 گرم ۸ استریم RTF max 0.37
+- latency 40: p50 24.5ms p95 43.85ms
+- Rocky 3.6.8 RSS 17MB
+- Playwright 2 passed
+- Typecheck unique 39 EXIT=0
+- Ollama `/api/ps` خالی

@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { formatDateFa, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { PersianDatePicker } from "@/components/common/PersianDatePicker";
 import { SalesDeskShell, SalesDeskTiltCard } from "@/components/sales-desk";
+import { CallTranscriptPanel } from "@/components/calls/CallTranscriptPanel";
 
 /**
  * Wave 6 / C-8 — گزارش فعالیت تلفنی به تفکیک داخلی.
@@ -601,6 +602,9 @@ function CallActivityPage() {
                             </p>
                           ) : null}
                         </div>
+                      </div>
+                      <div className="mt-2">
+                        <CallTranscriptPanel callLogId={call.id} pollMs={5000} />
                       </div>
                     </li>
                   );

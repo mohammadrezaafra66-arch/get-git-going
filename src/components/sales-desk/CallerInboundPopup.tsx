@@ -44,6 +44,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { CallNoteForm } from "./CallNoteForm";
 import { QuickRequestForm } from "./QuickRequestForm";
+import { CallTranscriptPanel } from "@/components/calls/CallTranscriptPanel";
 
 const RING_POLL_MS = 1_000;
 const CDR_POLL_MS = 5_000;
@@ -532,6 +533,19 @@ export function CallerInboundPopup() {
 
           {active ? (
             <div className="space-y-4 pb-6">
+              <CallTranscriptPanel
+                linkedid={
+                  typeof active.call.metadata?.linkedid === "string"
+                    ? active.call.metadata.linkedid
+                    : null
+                }
+                uniqueid={
+                  typeof active.call.metadata?.uniqueid === "string"
+                    ? active.call.metadata.uniqueid
+                    : null
+                }
+                pollMs={RING_POLL_MS}
+              />
               <div className="flex flex-wrap gap-2">
                 <QuickAddCustomerDialog
                   buttonLabel="ثبت شخص"

@@ -1,0 +1,17 @@
+{
+  "health": { "ok": true, "vosk": true, "whisper": true },
+  "c1": { "url": "http://192.168.170.8:3100/api/public/hooks/call-transcript", "from": "afrakala-stt", "status": 200 },
+  "a4": { "silence_forwarded": 0, "noise_forwarded": 0, "pass": true },
+  "a1_rtf": {
+    "cold_1_stream_wall_s": 106.93,
+    "warm_6": { "wall_s": 1.638, "rtf_mean": 0.157, "rtf_max": 0.247 },
+    "warm_8": { "wall_s": 2.36, "rtf_mean": 0.237, "rtf_max": 0.37, "a1": true },
+    "live_engine": "vosk-model-fa-0.42",
+    "final_engine": "faster-whisper-small int8",
+    "note": "first stream includes Vosk RAM load; A1 judged on warm 8-stream"
+  },
+  "latency_40_ingest_ms": { "p50": 24.5, "p95": 43.85, "min": 18, "max": 29919 },
+  "wer": { "status": "no_eval_pairs", "eval_dir": "D:/afrakala-stt/eval" },
+  "restart": { "health_after_restart": true },
+  "engine_rule": "Vosk live (A1 warm RTF<=0.5 at 8). Whisper small for final (A3). large-v3 not downloaded yet."
+}

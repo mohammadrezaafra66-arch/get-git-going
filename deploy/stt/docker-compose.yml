@@ -1,0 +1,31 @@
+name: afrakala-stt
+
+services:
+  stt:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: afrakala-stt:local
+    container_name: afrakala-stt
+    restart: unless-stopped
+    cpus: 6.0
+    mem_limit: 16g
+    mem_reservation: 4g
+    # Soft reservation (2 CPU / 4g) — compose non-swarm honors mem_reservation;
+    # cpus cap is 6 so Ollama/web/db keep the rest of the host.
+    ports:
+      - "192.168.170.8:8090:8090"
+    env_file:
+      - D:/afrakala-stt/.env
+    environment:
+      STT_MODELS_DIR: /models
+      STT_DATA_DIR: /data
+      STT_EVAL_DIR: /eval
+      STT_TARGETS: ${STT_TARGETS:-http://192.168.170.8:3100/api/public/hooks/call-transcript}
+      STT_BIND: 0.0.0.0
+    volumes:
+      - D:/afrakala-stt/models:/models
+      - D:/afrakala-stt/data:/data
+      - D:/afrakala-stt/eval:/eval
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
