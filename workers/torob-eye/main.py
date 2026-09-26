@@ -120,18 +120,23 @@ async def load_watch_products(client: httpx.AsyncClient) -> list[dict]:
         )
         row_ids = [c["row_id"] for c in watch_cells or [] if c.get("row_id")]
         if row_ids:
-            pid_cells = await sb_get(
-                client,
-                "dynamic_table_cells",
-                {
-                    "column_id": f"eq.{pid_col}",
-                    "row_id": f"in.({','.join(str(x) for x in row_ids)})",
-                    "select": "row_id,value_text,value_uuid",
-                    "limit": "2000",
-                },
-            )
+            quoted = ",".join(f'"{x}"' for x in row_ids)
+            try:
+                pid_cells = await sb_get(
+                    client,
+                    "dynamic_table_cells",
+                    {
+                        "column_id": f"eq.{pid_col}",
+                        "row_id": f"in.({quoted})",
+                        "select": "row_id,value_text",
+                        "limit": "2000",
+                    },
+                )
+            except Exception as exc:
+                print(f"watch pid cells failed: {exc}", flush=True)
+                pid_cells = []
             for cell in pid_cells or []:
-                pid = cell.get("value_uuid") or cell.get("value_text")
+                pid = cell.get("value_text")
                 if pid:
                     pids.append(str(pid).strip())
     if not pids:
@@ -619,7 +624,10 @@ async def scheduler() -> None:
                 if last_cycle and time.time() - last_cycle < cycle_s:
                     await asyncio.sleep(30)
                     continue
-                await one_cycle(browser, client, settings)
+                try:
+                    await one_cycle(browser, client, settings)
+                except Exception as exc:
+                    print(f"eye cycle crashed: {exc}", flush=True)
                 last_cycle = time.time()
         finally:
             await browser.close()
