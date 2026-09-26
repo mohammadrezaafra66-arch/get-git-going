@@ -190,6 +190,7 @@ import { Route as AppTorobOpsFindingsRouteImport } from './routes/_app.torob-ops
 import { Route as AppTorobOpsRunsRouteImport } from './routes/_app.torob-ops_.runs'
 import { Route as AppTorobOpsSettingsRouteImport } from './routes/_app.torob-ops_.settings'
 import { Route as AppTorobOpsShopsRouteImport } from './routes/_app.torob-ops_.shops'
+import { Route as AppTorobOpsHistoryRouteImport } from './routes/_app.torob-ops_.history'
 import { Route as AppUsersUserIdRouteImport } from './routes/_app.users.$userId'
 import { Route as AppUsersPendingRouteImport } from './routes/_app.users.pending'
 import { Route as AppWarehousesKardexRouteImport } from './routes/_app.warehouses_.kardex'
@@ -1201,6 +1202,11 @@ const AppTorobOpsShopsRoute = AppTorobOpsShopsRouteImport.update({
   path: '/torob-ops/shops',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTorobOpsHistoryRoute = AppTorobOpsHistoryRouteImport.update({
+  id: '/torob-ops_/history',
+  path: '/torob-ops/history',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUsersUserIdRoute = AppUsersUserIdRouteImport.update({
   id: '/$userId',
   path: '/$userId',
@@ -1752,6 +1758,7 @@ export interface FileRoutesByFullPath {
   '/torob-ops/runs': typeof AppTorobOpsRunsRoute
   '/torob-ops/settings': typeof AppTorobOpsSettingsRoute
   '/torob-ops/shops': typeof AppTorobOpsShopsRoute
+  '/torob-ops/history': typeof AppTorobOpsHistoryRoute
   '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
   '/warehouses/kardex': typeof AppWarehousesKardexRoute
@@ -1996,6 +2003,7 @@ export interface FileRoutesByTo {
   '/torob-ops/runs': typeof AppTorobOpsRunsRoute
   '/torob-ops/settings': typeof AppTorobOpsSettingsRoute
   '/torob-ops/shops': typeof AppTorobOpsShopsRoute
+  '/torob-ops/history': typeof AppTorobOpsHistoryRoute
   '/users/$userId': typeof AppUsersUserIdRoute
   '/users/pending': typeof AppUsersPendingRoute
   '/warehouses/kardex': typeof AppWarehousesKardexRoute
@@ -2246,6 +2254,7 @@ export interface FileRoutesById {
   '/_app/torob-ops_/runs': typeof AppTorobOpsRunsRoute
   '/_app/torob-ops_/settings': typeof AppTorobOpsSettingsRoute
   '/_app/torob-ops_/shops': typeof AppTorobOpsShopsRoute
+  '/_app/torob-ops_/history': typeof AppTorobOpsHistoryRoute
   '/_app/users/$userId': typeof AppUsersUserIdRoute
   '/_app/users/pending': typeof AppUsersPendingRoute
   '/_app/warehouses_/kardex': typeof AppWarehousesKardexRoute
@@ -2496,6 +2505,7 @@ export interface FileRouteTypes {
     | '/torob-ops/runs'
     | '/torob-ops/settings'
     | '/torob-ops/shops'
+    | '/torob-ops/history'
     | '/users/$userId'
     | '/users/pending'
     | '/warehouses/kardex'
@@ -2740,6 +2750,7 @@ export interface FileRouteTypes {
     | '/torob-ops/runs'
     | '/torob-ops/settings'
     | '/torob-ops/shops'
+    | '/torob-ops/history'
     | '/users/$userId'
     | '/users/pending'
     | '/warehouses/kardex'
@@ -2989,6 +3000,7 @@ export interface FileRouteTypes {
     | '/_app/torob-ops_/runs'
     | '/_app/torob-ops_/settings'
     | '/_app/torob-ops_/shops'
+    | '/_app/torob-ops_/history'
     | '/_app/users/$userId'
     | '/_app/users/pending'
     | '/_app/warehouses_/kardex'
@@ -4369,6 +4381,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTorobOpsShopsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/torob-ops_/history': {
+      id: '/_app/torob-ops_/history'
+      path: '/torob-ops/history'
+      fullPath: '/torob-ops/history'
+      preLoaderRoute: typeof AppTorobOpsHistoryRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/users/$userId': {
       id: '/_app/users/$userId'
       path: '/$userId'
@@ -5179,6 +5198,7 @@ interface AppRouteChildren {
   AppTorobOpsRunsRoute: typeof AppTorobOpsRunsRoute
   AppTorobOpsSettingsRoute: typeof AppTorobOpsSettingsRoute
   AppTorobOpsShopsRoute: typeof AppTorobOpsShopsRoute
+  AppTorobOpsHistoryRoute: typeof AppTorobOpsHistoryRoute
   AppWarehousesKardexRoute: typeof AppWarehousesKardexRoute
   AppWarehousesTransfersRoute: typeof AppWarehousesTransfersRoute
   AppDataTablesIndexRoute: typeof AppDataTablesIndexRoute
@@ -5350,6 +5370,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppTorobOpsRunsRoute: AppTorobOpsRunsRoute,
   AppTorobOpsSettingsRoute: AppTorobOpsSettingsRoute,
   AppTorobOpsShopsRoute: AppTorobOpsShopsRoute,
+  AppTorobOpsHistoryRoute: AppTorobOpsHistoryRoute,
   AppWarehousesKardexRoute: AppWarehousesKardexRoute,
   AppWarehousesTransfersRoute: AppWarehousesTransfersRoute,
   AppDataTablesIndexRoute: AppDataTablesIndexRoute,

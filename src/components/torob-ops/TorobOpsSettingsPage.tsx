@@ -107,9 +107,30 @@ function SettingsInner() {
   return (
     <div className="space-y-4 p-4">
       <PageHeader
-        title="تنظیمات گزارش خودکار"
-        description="فلگ ارسال خودکار، کلید اضطراری، قالب متن، و اجرای worker توسط ادمین."
+        title="تنظیمات عملیات ترب"
+        description="چشم ترب، ارسال خودکار، کلید اضطراری، قالب متن، و اجرای صف گزارش."
       />
+
+      <Card>
+        <CardContent className="space-y-4 py-4">
+          <div className="font-medium">چشم ترب</div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm">فعال</div>
+            <Switch
+              checked={settingsQ.data?.eye_enabled !== false}
+              onCheckedChange={(v) =>
+                updateFn({ data: withOpsSession({ eye_enabled: v }) }).then(() =>
+                  qc.invalidateQueries({ queryKey: ["torob-ops-settings"] }),
+                )
+              }
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            فاصله درخواست ۳۰–۶۰ ثانیه، چرخه هر ۴ ساعت، پنجره ۸ تا ۲۲ تهران. از دکمه ذخیره پایین برای
+            سقف گزارش و کلید اضطراری استفاده کنید.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardContent className="space-y-4 py-4">
