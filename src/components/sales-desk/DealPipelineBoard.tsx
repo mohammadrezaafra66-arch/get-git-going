@@ -936,6 +936,7 @@ async function loadBoardDeals(
     )
     .eq("kind" as never, "request" as never)
     .eq("pipeline_id" as never, pipelineId as never)
+    .order("created_at" as never, { ascending: false } as never)
     .limit(400);
   if (statusFilter === "deleted") {
     q = q.not("deleted_at" as never, "is" as never, null as never);
