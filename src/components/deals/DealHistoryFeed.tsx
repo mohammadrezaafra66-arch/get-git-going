@@ -48,7 +48,7 @@ export function DealHistoryFeed(props: { dealId: string; dealTitle: string }) {
     },
   });
 
-  if (q.isLoading) return <p className="text-sm text-muted-foreground">…</p>;
+  if (q.isLoading) return <p className="text-sm text-muted-foreground">در حال بارگذاری…</p>;
   const rows = q.data?.rows ?? [];
   if (rows.length === 0) {
     return <p className="text-sm text-muted-foreground">سابقه‌ای ثبت نشده است.</p>;
@@ -56,7 +56,7 @@ export function DealHistoryFeed(props: { dealId: string; dealTitle: string }) {
   return (
     <ul className="space-y-2 text-sm" data-testid="deal-history-feed">
       {rows.map((r) => (
-        <li key={r.id} className="rounded border p-2 leading-6">
+        <li key={r.id} className="deal-elev rounded-xl border bg-card p-3 leading-7">
           {formatDealHistorySentence(r, q.data?.names ?? {}, props.dealTitle)}
         </li>
       ))}

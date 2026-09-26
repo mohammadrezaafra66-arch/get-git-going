@@ -10,7 +10,7 @@ export const Route = createFileRoute("/_app/deal/filter")({
     await requireAnyRole(["admin", "manager", "sales"]);
   },
   component: () => (
-    <div className="p-4">
+    <div className="deal-surface p-4">
       <DealListView />
     </div>
   ),

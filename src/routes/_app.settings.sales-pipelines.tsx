@@ -68,7 +68,7 @@ function SalesPipelinesSettingsPage() {
   };
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div dir="rtl" className="deal-surface space-y-4">
       <PageHeader title="کاریزهای فروش" description="ساخت و ویرایش کاریز و مراحل فروش" />
       <Card>
         <CardHeader>
@@ -181,7 +181,7 @@ function PipelineRow(props: {
   const [rottenOn, setRottenOn] = useState(props.pipe.rotten_enabled ?? true);
   const [totalDays, setTotalDays] = useState(String(props.pipe.total_rotten_days ?? 45));
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm">
+    <li className="deal-elev flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 text-sm">
       <Button
         type="button"
         size="sm"
@@ -271,7 +271,7 @@ function StageRow(props: { stage: SalesPipelineStage; canEdit: boolean; onSaved:
   const [idleDays, setIdleDays] = useState(String(props.stage.idle_days ?? 7));
   const [rottenDays, setRottenDays] = useState(String(props.stage.rotten_days ?? 14));
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-md border p-2 text-sm">
+    <li className="deal-elev flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2 text-sm">
       <Input
         value={title}
         disabled={!props.canEdit}

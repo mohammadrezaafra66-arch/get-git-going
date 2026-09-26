@@ -60,16 +60,27 @@ export function DealPageHeader(props: {
     <div className="flex flex-wrap items-center justify-between gap-3" dir="rtl">
       <div>
         <p className="text-xs text-muted-foreground">معاملات</p>
-        <h1 className="text-xl font-semibold">{props.title}</h1>
+        <h1 className="text-xl font-semibold leading-7">{props.title}</h1>
       </div>
       {props.children}
     </div>
   );
 }
 
+export function DealStatusPill(props: { status: string; deleted?: string | null }) {
+  const key = props.deleted ? "deleted" : props.status;
+  const label =
+    key === "deleted" ? "حذف شده" : key === "open" ? "جاری" : key === "won" ? "موفق" : key === "lost" ? "ناموفق" : props.status;
+  const tone =
+    key === "won" ? "deal-status-won" : key === "lost" || key === "deleted" ? "deal-status-lost" : "deal-status-open";
+  return (
+    <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs leading-6 ${tone}`}>{label}</span>
+  );
+}
+
 export function HealthCircle(props: { circle: "red" | "yellow" | "none" | string | null }) {
   if (!props.circle || props.circle === "none") return null;
-  const color = props.circle === "red" ? "bg-red-500" : "bg-yellow-400";
+  const color = props.circle === "red" ? "bg-destructive" : "bg-amber-500";
   return (
     <span
       className={`inline-block h-2.5 w-2.5 rounded-full ${color}`}

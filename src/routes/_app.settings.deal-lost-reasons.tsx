@@ -89,7 +89,7 @@ function DealLostReasonsSettingsPage() {
   };
 
   return (
-    <div className="space-y-5" dir="rtl">
+    <div className="deal-surface space-y-5" dir="rtl">
       <PageHeader
         title="دلایل شکست معامله"
         description="فهرست دلایل قابل انتخاب هنگام ناموفق شدن معامله"
@@ -152,7 +152,7 @@ function DealLostReasonsSettingsPage() {
                   <span className="font-medium">{r.title}</span>
                   <span>
                     {r.is_active ? (
-                      <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">فعال</Badge>
+                      <Badge variant="success">فعال</Badge>
                     ) : (
                       <span className="text-xs text-muted-foreground">—</span>
                     )}
@@ -171,7 +171,7 @@ function DealLostReasonsSettingsPage() {
                         title={r.is_active ? "غیرفعال" : "فعال"}
                       >
                         <Power
-                          className={`h-4 w-4 ${r.is_active ? "text-destructive" : "text-emerald-600"}`}
+                          className={`h-4 w-4 ${r.is_active ? "text-destructive" : "text-success"}`}
                         />
                       </Button>
                     ) : null}

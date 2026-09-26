@@ -146,7 +146,7 @@ export function LostReasonDialog({
           ) : null}
 
           {openActivityCount > 0 ? (
-            <p className="text-sm text-amber-800">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
               این معامله {openActivityCount} فعالیت باز دارد.
             </p>
           ) : null}

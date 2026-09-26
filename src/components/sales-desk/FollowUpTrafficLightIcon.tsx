@@ -3,10 +3,10 @@ import { Circle } from "lucide-react";
 import type { FollowUpTrafficLight } from "@/lib/sales-desk/activities";
 
 const COLOR: Record<FollowUpTrafficLight, string> = {
-  yellow: "text-amber-400 fill-amber-400",
-  red: "text-red-500 fill-red-500",
-  green: "text-emerald-500 fill-emerald-500",
-  grey: "text-slate-400 fill-slate-400",
+  yellow: "text-amber-500 fill-amber-500",
+  red: "text-destructive fill-destructive",
+  green: "text-success fill-success",
+  grey: "text-muted-foreground fill-muted-foreground",
 };
 
 const TITLE: Record<FollowUpTrafficLight, string> = {

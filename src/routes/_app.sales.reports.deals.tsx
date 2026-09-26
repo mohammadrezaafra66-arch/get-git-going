@@ -52,7 +52,7 @@ function DealCohortReportsPage() {
   const active = tab === "register" ? register : close;
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="deal-surface space-y-4" dir="rtl">
       <PageHeader
         title="گزارش معاملات"
         description="دو نما: تاریخ ثبت و تاریخ موفق/ناموفق"
@@ -75,10 +75,21 @@ function DealCohortReportsPage() {
           <CardTitle className="text-base">{tab === "register" ? "cohort تاریخ ثبت" : "cohort تاریخ بستن"}</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-2 text-sm md:grid-cols-4">
-          <p>تعداد کل {active.count}</p>
-          <p>موفق {active.won} · IRR {formatNumber(active.wonAmt)}</p>
-          <p>ناموفق {active.lost} · IRR {formatNumber(active.lostAmt)}</p>
-          <p>جاری {active.open} · IRR {formatNumber(active.openAmt)}</p>
+          {q.isLoading ? (
+            <>
+              <div className="h-16 animate-pulse rounded-xl bg-muted" />
+              <div className="h-16 animate-pulse rounded-xl bg-muted" />
+              <div className="h-16 animate-pulse rounded-xl bg-muted" />
+              <div className="h-16 animate-pulse rounded-xl bg-muted" />
+            </>
+          ) : (
+            <>
+              <p className="deal-elev rounded-xl border bg-card p-3">تعداد کل {active.count}</p>
+              <p className="deal-elev deal-stat-won rounded-xl border bg-card p-3">موفق {active.won} · IRR {formatNumber(active.wonAmt)}</p>
+              <p className="deal-elev deal-stat-lost rounded-xl border bg-card p-3">ناموفق {active.lost} · IRR {formatNumber(active.lostAmt)}</p>
+              <p className="deal-elev deal-stat-open rounded-xl border bg-card p-3">جاری {active.open} · IRR {formatNumber(active.openAmt)}</p>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

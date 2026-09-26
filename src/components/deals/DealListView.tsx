@@ -23,7 +23,7 @@ import {
   moveSalesDeal,
   restoreSalesDeal,
 } from "@/lib/sales-desk/pipelines";
-import { DealViewTabs, DealPageHeader, soonToast, VISIBILITY_LABELS } from "./DealChrome";
+import { DealViewTabs, DealPageHeader, DealStatusPill, soonToast, VISIBILITY_LABELS } from "./DealChrome";
 import { DealCreateDialog } from "./DealCreateDialog";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { DEAL_SORT_OPTIONS, type DealSortId } from "@/lib/deals/sort";
@@ -254,7 +254,7 @@ export function DealListView() {
   };
 
   return (
-    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden" dir="rtl">
+    <div className="deal-surface min-w-0 max-w-full space-y-4 overflow-x-hidden" dir="rtl">
       <DealPageHeader title="لیست معاملات">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <DealViewTabs active="list" />
@@ -296,10 +296,10 @@ export function DealListView() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-4">
-        <div className="rounded border p-2">تعداد کل {totals.all} · IRR {formatNumber(totals.allAmt)}</div>
-        <div className="rounded border p-2">معامله موفق {totals.won} · IRR {formatNumber(totals.wonAmt)}</div>
-        <div className="rounded border p-2">معامله ناموفق {totals.lost} · IRR {formatNumber(totals.lostAmt)}</div>
-        <div className="rounded border p-2">معامله جاری {totals.open} · IRR {formatNumber(totals.openAmt)}</div>
+        <div className="deal-elev rounded-xl border bg-card p-2">تعداد کل {totals.all} · IRR {formatNumber(totals.allAmt)}</div>
+        <div className="deal-elev deal-stat-won rounded-xl border bg-card p-2">معامله موفق {totals.won} · IRR {formatNumber(totals.wonAmt)}</div>
+        <div className="deal-elev deal-stat-lost rounded-xl border bg-card p-2">معامله ناموفق {totals.lost} · IRR {formatNumber(totals.lostAmt)}</div>
+        <div className="deal-elev deal-stat-open rounded-xl border bg-card p-2">معامله جاری {totals.open} · IRR {formatNumber(totals.openAmt)}</div>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span>مرتب سازی</span>
@@ -462,7 +462,7 @@ export function DealListView() {
       ) : null}
 
       {selected.length > 0 ? (
-        <div className="min-w-0 space-y-2 rounded border p-2 text-sm" aria-label="ویرایش گروهی معاملات">
+        <div className="deal-elev min-w-0 space-y-2 rounded-xl border bg-card p-3 text-sm" aria-label="ویرایش گروهی معاملات">
           <span>ویرایش گروهی معاملات · تغییرات {selected.length} معامله انتخابی</span>
           <div className="grid min-w-0 gap-2 md:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-1">
@@ -603,7 +603,7 @@ export function DealListView() {
         </div>
       ) : null}
 
-      <div className="max-w-full overflow-x-auto rounded border">
+      <div className="deal-elev max-w-full overflow-x-auto rounded-xl border bg-card">
         <table className="w-full text-sm md:min-w-[60rem]">
           <thead>
             <tr className="border-b bg-muted/40">
@@ -622,7 +622,15 @@ export function DealListView() {
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
+            {listQ.isLoading ? (
+              <tr>
+                <td colSpan={visibleCols.length + 1} className="space-y-2 p-4">
+                  <div className="h-8 animate-pulse rounded bg-muted" />
+                  <div className="h-8 animate-pulse rounded bg-muted" />
+                  <div className="h-8 animate-pulse rounded bg-muted" />
+                </td>
+              </tr>
+            ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={visibleCols.length + 1} className="p-8 text-center text-muted-foreground">
                   دیتایی یافت نشد! از صحت فیلترها اطمینان حاصل کنید.
@@ -635,7 +643,7 @@ export function DealListView() {
               </tr>
             ) : (
               rows.map((r) => (
-                <tr key={r.id} className="border-b">
+                <tr key={r.id} className="border-b hover:bg-primary/5">
                   <td className="p-2">
                     <Checkbox
                       checked={selected.includes(r.id)}
@@ -697,7 +705,7 @@ function cell(
     case "status":
       return (
         <span className="inline-flex items-center gap-2">
-          {statusFa(r.status, r.deleted_at)}
+          <DealStatusPill status={r.status} deleted={r.deleted_at} />
           {r.deleted_at ? (
             <button
               type="button"
