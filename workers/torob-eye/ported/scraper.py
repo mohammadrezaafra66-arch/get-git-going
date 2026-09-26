@@ -22,7 +22,7 @@ SELLER_ROW_SELECTOR = "div[class*='SellerRow']"
 _PRICE_LINE_RE = re.compile(r"^[\d۰-۹,.٬\s]+تومان")
 _UNAVAILABLE_RE = re.compile(r"^ناموجود")
 _TOMAN_PRICE_RE = re.compile(
-    r"([\d۰-۹][\d۰-۹,.٬\s]{0,24})\s*تومان"
+    r"([\d۰-۹][\d۰-۹,.٬٫ ]{0,24})\s*تومان"
 )
 
 

@@ -25,7 +25,8 @@ import search  # noqa: E402
 import bait  # noqa: E402
 import findings  # noqa: E402
 import link_discovery  # noqa: E402
-import snapshots  # noqa: E402
+import prices as prices_mod  # noqa: E402
+import snapshots as snap_mod  # noqa: E402
 import submit  # noqa: E402
 
 TEHRAN = ZoneInfo("Asia/Tehran")
@@ -68,7 +69,7 @@ async def sb_get(client: httpx.AsyncClient, path: str, params: dict | None = Non
 async def sb_post(client: httpx.AsyncClient, path: str, body, prefer: str = "return=representation"):
     h = {**headers(), "Prefer": prefer}
     r = await client.post(rest(path), headers=h, json=body, timeout=60)
-    snapshots.raise_if_bad_response(r.status_code, r.text, path)
+    snap_mod.raise_if_bad_response(r.status_code, r.text, path)
     if r.content:
         return r.json()
     return None
@@ -171,10 +172,29 @@ async def load_watch_products(client: httpx.AsyncClient) -> list[dict]:
         prows = await sb_get(
             client,
             "products",
-            {"id": f"eq.{pid}", "is_active": "eq.true", "select": "id,name,torob_url"},
+            {
+                "id": f"eq.{pid}",
+                "is_active": "eq.true",
+                "select": "id,name,torob_url,brand_id,model,color,capacity",
+            },
         )
         if prows:
             out.append(prows[0])
+    brand_ids = [p.get("brand_id") for p in out if p.get("brand_id")]
+    brands: dict[str, str] = {}
+    if brand_ids:
+        brows = await sb_get(
+            client,
+            "brands",
+            {
+                "id": f"in.({','.join(str(x) for x in brand_ids)})",
+                "select": "id,name",
+            },
+        )
+        for row in brows or []:
+            brands[row["id"]] = row.get("name") or ""
+    for product in out:
+        product["brand"] = brands.get(product.get("brand_id") or "", "")
     print(f"watch products loaded={len(out)}", flush=True)
     return out
 
@@ -309,8 +329,7 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
                     skip_reasons.append({"product_id": product["id"], "reason": "no_sellers"})
                     continue
                 own = await sb_get(client, "torob_ops_own_shops", {"is_active": "eq.true", "select": "shop_name,domain"})
-                snapshots = []
-                prices = []
+                offer_rows = []
                 for row in rows:
                     price = row.get("price") or row.get("price_toman")
                     name = row.get("shop") or row.get("name") or row.get("seller")
@@ -324,9 +343,7 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
                         on = (shop.get("shop_name") or "").strip().lower()
                         if on and name and on in str(name).lower():
                             is_own = True
-                    if isinstance(price, int) and price > 0:
-                        prices.append(price)
-                    snapshots.append(
+                    offer_rows.append(
                         {
                             "run_id": run_id,
                             "product_id": product["id"],
@@ -339,26 +356,25 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
                             "is_own_shop": is_own,
                         }
                     )
-                if snapshots:
+                offer_rows = prices_mod.annotate_snapshots(offer_rows)
+                if offer_rows:
                     try:
                         await sb_post(
                             client,
                             "torob_offer_snapshots",
-                            [snapshots.sanitize_snapshot_row(s) for s in snapshots],
+                            [snap_mod.sanitize_snapshot_row(s) for s in offer_rows],
                         )
-                    except snapshots.SnapshotWriteError as exc:
+                    except snap_mod.SnapshotWriteError as exc:
                         insert_failed = True
                         print(f"snapshot insert failed: {exc}", flush=True)
                         raise
-                if prices:
+                stats = prices_mod.observatory_stats(offer_rows)
+                if stats:
                     await upsert_observatory(
                         client,
                         product,
                         {
-                            "torob_min_price_toman": min(prices),
-                            "torob_max_price_toman": max(prices),
-                            "torob_avg_price_toman": int(sum(prices) / len(prices)),
-                            "torob_seller_count": len(prices),
+                            **stats,
                             "torob_last_seen_at": datetime.now(timezone.utc).isoformat(),
                         },
                     )
@@ -442,7 +458,7 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
     finally:
         await context.close()
 
-    status = snapshots.finalize_run_status(
+    status = snap_mod.finalize_run_status(
         insert_failed=insert_failed,
         block_events=block_events,
         succeeded=succeeded,

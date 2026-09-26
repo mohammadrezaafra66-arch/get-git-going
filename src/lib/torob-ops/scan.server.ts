@@ -130,6 +130,8 @@ type SnapshotRow = {
   seller_shop_id: string | null;
   price_toman: number | null;
   is_own_shop: boolean;
+  excluded?: boolean | null;
+  exclude_reason?: string | null;
   torob_url: string | null;
   fetched_at: string;
 };
@@ -144,7 +146,7 @@ async function loadLatestSnapshots(productIds: string[]): Promise<Map<string, Sn
     const { data } = await torobOpsAdmin()
       .from("torob_offer_snapshots")
       .select(
-        "product_id, seller_name, seller_shop_url, seller_shop_id, price_toman, is_own_shop, torob_url, fetched_at",
+        "product_id, seller_name, seller_shop_url, seller_shop_id, price_toman, is_own_shop, excluded, exclude_reason, torob_url, fetched_at",
       )
       .in("product_id", ids)
       .order("fetched_at", { ascending: false })
@@ -164,7 +166,11 @@ async function loadLatestSnapshots(productIds: string[]): Promise<Map<string, Sn
 function cheapestNonOwnSnapshot(rows: SnapshotRow[] | undefined): SnapshotRow | null {
   if (!rows?.length) return null;
   const priced = rows.filter(
-    (r) => !r.is_own_shop && r.price_toman != null && Number(r.price_toman) > 0,
+    (r) =>
+      !r.is_own_shop &&
+      !r.excluded &&
+      r.price_toman != null &&
+      Number(r.price_toman) > 0,
   );
   if (priced.length === 0) return null;
   return priced.reduce((a, b) => (Number(a.price_toman) <= Number(b.price_toman) ? a : b));

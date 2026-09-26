@@ -44,5 +44,9 @@ def sanitize_snapshot_row(row: dict[str, Any]) -> dict[str, Any]:
         "price_toman": price,
         "availability": None if row.get("availability") is None else str(row.get("availability"))[:80],
         "is_own_shop": bool(row.get("is_own_shop")),
+        "excluded": bool(row.get("excluded")),
+        "exclude_reason": None
+        if row.get("exclude_reason") is None
+        else str(row.get("exclude_reason"))[:80],
     }
     return out
