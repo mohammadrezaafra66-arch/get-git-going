@@ -1,0 +1,24 @@
+python : E
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-4d4785b5-23b7-4a18-aa60-fe82337fffb4.ps1:117 char:1
++ python -m unittest test_snapshots.py 2>&1 | Out-File "D:\AfraKalaTest ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (E:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+======================================================================
+ERROR: test_snapshots (unittest.loader._FailedTest.test_snapshots)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_snapshots
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\unittest\loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\AfraKalaTest\wt-torob-eye\workers\torob-eye\test_snapshots.py", line 7, in <module>
+    from snapshots import SnapshotWriteError, finalize_run_status, raise_if_bad_response
+ModuleNotFoundError: No module named 'snapshots'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)
