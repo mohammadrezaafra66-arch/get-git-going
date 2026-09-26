@@ -1,6 +1,6 @@
 /**
  * Deal pipelines v1 — G8 against 3100.
- * Titles start with [TEST-DEAL]. Cleanup is a separate admin SQL pass.
+ * Titles start with [TEST-DEAL]. G8.9 afterAll deactivates pipelines it creates.
  */
 import { execFileSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
@@ -359,6 +359,12 @@ test.describe("deal pipeline admin settings", () => {
   test.use({
     storageState: storageStateForRole("admin", BASE_URL, SUPABASE_URL),
     baseURL: BASE_URL,
+  });
+
+  test.afterAll(() => {
+    adminSql(
+      "UPDATE public.sales_pipelines SET is_active = false, sort_order = GREATEST(sort_order, 100 + (SELECT COALESCE(MAX(sort_order), 0) FROM public.sales_pipelines p WHERE p.title NOT LIKE '%[TEST-DEAL]%')) WHERE title LIKE '%[TEST-DEAL]%'",
+    );
   });
 
   test("G8.9 second pipeline move", async ({ page }) => {
