@@ -1,0 +1,9 @@
+# after docker compose up -d --force-recreate stt
+
+18:18:59 {"ok":false,"ready":false,"status":"not-ready","vosk":true,"vosk_loaded":false,"whisper":true,"whisper_loaded":false,"loading":true,"sessions":0}
+18:19:49 {"ok":false,"ready":false,"status":"not-ready","vosk":true,"vosk_loaded":true,"whisper":true,"whisper_loaded":false,"loading":true,"sessions":0}
+18:19:55 {"ok":true,"ready":true,"status":"ready","vosk":true,"vosk_loaded":true,"whisper":true,"whisper_loaded":true,"whisper_name":"whisper-small-persian-ct2","loading":false,"sessions":0}
+READY_AFTER_SEC 58.24
+
+# first simulated call first segment after this ready (later A2 run):
+# R4_FIRST_SEGMENT_S 0.434  (and 0.359 on a subsequent ready stack)

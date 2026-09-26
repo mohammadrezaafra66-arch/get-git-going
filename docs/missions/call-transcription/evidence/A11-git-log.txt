@@ -1,0 +1,16 @@
+# git -C D:\AfraKalaTest\wt-call-transcription log -p -- deploy/stt deploy/lan/.env.lan.example docs/missions/call-transcription
+# | Select-String STT_INGEST_TOKEN|CALL_TRANSCRIPT_WORKER_TOKEN
+#
+# Name hits only (placeholders and getenv). Value-like hex after '=' : none.
+
++STT_INGEST_TOKEN=
++CALL_TRANSCRIPT_WORKER_TOKEN=
++    return os.environ.get("CALL_TRANSCRIPT_WORKER_TOKEN", "")
++INGEST_TOKEN = os.environ.get("STT_INGEST_TOKEN", "")
++        raise HTTPException(status_code=500, detail="STT_INGEST_TOKEN is not configured")
++    p.add_argument("--token", default="", help="optional; prefer STT_INGEST_TOKEN env")
++        sys.stderr.write("STT_INGEST_TOKEN missing\n")
++| `STT_INGEST_TOKEN` | PBX/شبیه‌ساز → STT | `.env` پروژهٔ `afrakala-stt` روی دیسک D: — خارج از گیت |
++| `CALL_TRANSCRIPT_WORKER_TOKEN` | STT → hook افراکالا | همان `.env` STT + `deploy/lan/.env.lan` |
+
+A11_VALUE_HEX_AFTER_EQUALS: (empty — no matches)

@@ -195,12 +195,16 @@ def main(argv=None):
     p = argparse.ArgumentParser(description="AfraKala Phase A capture agent")
     p.add_argument("--watch", default="/var/spool/asterisk/monitor")
     p.add_argument("--url", default=os.environ.get("STT_URL", "http://192.168.170.8:8090"))
-    p.add_argument("--token", default=os.environ.get("STT_INGEST_TOKEN", ""))
+    # Token is read from the environment. --token exists only for local tests;
+    # systemd ExecStart must not pass it (visible in ps).
+    p.add_argument("--token", default="", help="optional; prefer STT_INGEST_TOKEN env")
     p.add_argument("--state", default=os.environ.get("STT_STATE", STATE_DEFAULT))
     p.add_argument("--spool", default=os.environ.get("STT_SPOOL", SPOOL_DEFAULT))
     p.add_argument("--interval", type=float, default=0.5)
     p.add_argument("--inactivity", type=float, default=20.0)
     args = p.parse_args(argv)
+    if not args.token:
+        args.token = os.environ.get("STT_INGEST_TOKEN", "")
     if not args.token:
         sys.stderr.write("STT_INGEST_TOKEN missing\n")
         return 2

@@ -1,0 +1,7 @@
+# node docs/missions/call-transcription/a5-link-proof.mjs
+# exit 0
+
+live: linked 2 / total 2 (uniqueid)
+final: linked 2 / total 2 (recording_file)
+cross_40s_unlinked: true
+A5_PASS live=2/2 final=2/2 cross_unlinked=1

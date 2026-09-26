@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import os
-import shutil
 import time
-from collections import defaultdict
 from pathlib import Path
 from typing import Any
+
+import anyio
 
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, PlainTextResponse
@@ -13,7 +13,17 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, ge
 
 from . import engines, forward, vad
 
-app = FastAPI(title="afrakala-stt", version="0.1.0")
+app = FastAPI(title="afrakala-stt", version="0.2.0")
+
+
+@app.on_event("startup")
+def _preload_on_start() -> None:
+    engines.start_preload_thread()
+
+
+def _require_ready() -> None:
+    if not engines.models_ready():
+        raise HTTPException(status_code=503, detail="not-ready")
 
 DATA = Path(os.environ.get("STT_DATA_DIR", "/data"))
 EVAL = Path(os.environ.get("STT_EVAL_DIR", "/eval"))
@@ -63,12 +73,9 @@ def _session(filename: str, uniqueid: str, meta: dict[str, Any]) -> dict[str, An
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    return {
-        "ok": True,
-        "vosk": engines.vosk_ready(),
-        "whisper": engines.whisper_dir() is not None,
-        "sessions": len(SESSIONS),
-    }
+    payload = engines.health_payload()
+    payload["sessions"] = len(SESSIONS)
+    return payload
 
 
 @app.get("/metrics")
@@ -78,6 +85,7 @@ def metrics() -> PlainTextResponse:
 
 @app.post("/ingest")
 async def ingest(request: Request, authorization: str | None = Header(default=None)) -> JSONResponse:
+    _require_ready()
     _check_ingest(authorization)
     ctype = request.headers.get("content-type", "")
     meta: dict[str, Any]
@@ -115,7 +123,10 @@ async def ingest(request: Request, authorization: str | None = Header(default=No
     MET_CHUNKS.inc()
 
     forwarded: list[dict[str, Any]] = []
-    if s["rec"] is not None and vad.has_enough_speech(bytes(s["pcm"][-16000:])):
+    tail = bytes(s["pcm"][-48000:])  # last 3 s at 8 kHz — trailing silence is common
+    if s["rec"] is not None and (
+        vad.has_enough_speech(tail) or vad.has_enough_speech(bytes(s["pcm"]))
+    ):
         committed, partial = engines.vosk_accept(s["rec"], pcm)
         text = committed or partial
         kind = "committed" if committed else "partial"
@@ -143,6 +154,7 @@ async def ingest(request: Request, authorization: str | None = Header(default=No
 
 @app.post("/ingest/eof")
 async def ingest_eof(request: Request, authorization: str | None = Header(default=None)) -> JSONResponse:
+    _require_ready()
     _check_ingest(authorization)
     body = await request.json()
     filename = Path(str(body.get("recording_filename") or "")).name
@@ -164,10 +176,10 @@ async def ingest_eof(request: Request, authorization: str | None = Header(defaul
     engine = "vosk-fa-0.42"
     try:
         if engines.whisper_dir() is not None and vad.has_enough_speech(pcm):
-            wtext, rtf = engines.whisper_transcribe_wav(scratch)
+            wtext, rtf = await anyio.to_thread.run_sync(engines.whisper_transcribe_wav, scratch)
             if wtext:
                 texts = [wtext]
-                engine = "faster-whisper-int8"
+                engine = f"faster-whisper-int8:{engines.health_payload().get('whisper_name')}"
             MET_RTF.labels("whisper").observe(rtf)
     except Exception as exc:  # noqa: BLE001
         wtext = ""
@@ -201,6 +213,7 @@ async def ingest_eof(request: Request, authorization: str | None = Header(defaul
 @app.post("/v1/audio/transcriptions")
 async def openai_compat(request: Request) -> JSONResponse:
     """OpenAI-compatible stub used by messenger when WHISPER_API_URL is set."""
+    _require_ready()
     form = await request.form()
     upload = form.get("file")
     if upload is None:

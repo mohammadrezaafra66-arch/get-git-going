@@ -23,6 +23,9 @@ services:
       STT_EVAL_DIR: /eval
       STT_TARGETS: ${STT_TARGETS:-http://192.168.170.8:3100/api/public/hooks/call-transcript}
       STT_BIND: 0.0.0.0
+      VOSK_MODEL_DIR: /models/vosk-model-fa-0.42
+      WHISPER_MODEL_DIR: ${WHISPER_MODEL_DIR:-/models/whisper-small-persian-ct2}
+      WHISPER_FALLBACK_DIR: /models/faster-whisper-small
     volumes:
       - D:/afrakala-stt/models:/models
       - D:/afrakala-stt/data:/data

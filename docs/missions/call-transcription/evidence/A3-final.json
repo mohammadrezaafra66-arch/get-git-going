@@ -1,0 +1,12 @@
+{
+  "n": 48,
+  "audio_s": 853.9,
+  "audio_min": 14.23,
+  "p50_s": 29.356,
+  "p95_s": 57.505,
+  "max_s": 76.18,
+  "pass_latency": true,
+  "peak_concurrent": 8,
+  "expected_audio_min": 345,
+  "note": "8-wide finals; p95 close->eof+hook 57.5s <= 300s; processed 14.23 min not 345 min"
+}
