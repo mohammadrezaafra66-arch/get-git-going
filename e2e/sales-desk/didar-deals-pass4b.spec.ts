@@ -208,16 +208,21 @@ test.describe("pass4b sales permissions", () => {
     baseURL: BASE_URL,
   });
 
-  test("W5 bulk حذف is disabled when selection includes others' deals", async ({ page }) => {
+  test("W5 bulk حذف of others stays in DB and is counted in one summary", async ({ page }) => {
     const title = `${STAMP} w5-other`;
-    await createDeal("manager", title);
+    const id = await createDeal("manager", title);
     await openListAll(page);
     const row = page.locator("tr").filter({ hasText: title });
     await expect(row).toBeVisible({ timeout: 30_000 });
     await row.getByRole("checkbox").check();
     const del = page.getByLabel("ویرایش گروهی معاملات").getByRole("button", { name: "حذف" });
-    await expect(del).toBeDisabled();
     await expect(del).toHaveAttribute("title", "فقط معاملات خودتان را می‌توانید حذف کنید");
+    await del.click();
+    await page.getByRole("alertdialog").getByRole("button", { name: "حذف" }).click();
+    await expect(
+      page.getByText("۰ معامله حذف شد؛ ۱ معامله به دلیل نداشتن دسترسی تغییر نکرد"),
+    ).toBeVisible({ timeout: 20_000 });
+    expect(dealDeleted(id)).toBe(false);
   });
 
   test("W6 sales PostgREST PATCH owner on manager deal is refused", async () => {

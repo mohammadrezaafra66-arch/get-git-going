@@ -51,7 +51,7 @@ export function DealEditDialog(props: {
       <DialogContent
         dir="rtl"
         data-testid="pass3-d1-edit"
-        className="deal-surface z-[60] max-h-[calc(100dvh-5.5rem)] overflow-y-auto max-md:top-auto max-md:bottom-16 max-md:translate-y-0"
+        className="deal-surface z-[60] max-h-[calc(100dvh-5.5rem)] overflow-y-auto max-md:top-auto max-md:bottom-16 max-md:translate-y-0 data-[state=open]:zoom-in-100"
       >
         <DialogHeader>
           <DialogTitle>ویرایش</DialogTitle>
@@ -68,7 +68,12 @@ export function DealEditDialog(props: {
           onChange={(e) => setAmount(formatDealAmountInput(e.target.value))}
         />
         <div className="flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="outline" className="min-h-11 shrink-0" onClick={() => props.onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-12 min-h-12 shrink-0"
+            onClick={() => props.onOpenChange(false)}
+          >
             انصراف
           </Button>
           <Button
