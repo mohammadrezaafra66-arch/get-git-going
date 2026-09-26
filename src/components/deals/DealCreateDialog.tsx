@@ -56,6 +56,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
   const [visibility, setVisibility] = useState<string>("همه افراد شرکت");
   const [items, setItems] = useState<RequestedProductLine[]>([]);
   const [pending, setPending] = useState(false);
+  const [createdId, setCreatedId] = useState<string | null>(null);
 
   const pipesQ = useQuery({
     queryKey: ["sales-desk", "pipelines"],
@@ -92,13 +93,18 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
   });
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setCreatedId(null);
+      setPending(false);
+      return;
+    }
     if (!salespersonId && profile?.id) setSalespersonId(profile.id);
     if (!pipelineId && pipesQ.data?.[0]) setPipelineId(pipesQ.data[0].id);
     if (!stageId && stagesQ.data?.[0]) setStageId(stagesQ.data[0].id);
   }, [open, profile?.id, pipesQ.data, stagesQ.data, salespersonId, pipelineId, stageId]);
 
   const submit = async (asWon: boolean) => {
+    if (pending) return;
     if (!personId) {
       toast.error("شناسه شخص الزامی است.");
       return;
@@ -125,19 +131,12 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
         })),
         expectedCloseOn: closeOn || null,
         acquaintanceId: acqId || null,
-        companyPersonId: companyId,
+        companyPersonId: companyId || null,
+        estimatedAmount: dealAmountNumber(amount),
+        introducerPersonId: introducerId || null,
+        existingId: createdId,
       } as never);
-      const patch: Record<string, unknown> = {};
-      const amt = dealAmountNumber(amount);
-      if (amt != null) patch.estimated_amount = amt;
-      if (introducerId) patch.introducer_person_id = introducerId;
-      if (Object.keys(patch).length) {
-        const { error } = await supabase
-          .from("sales_interactions" as never)
-          .update(patch as never)
-          .eq("id" as never, id as never);
-        if (error) throw new Error(error.message);
-      }
+      setCreatedId(id);
       toast.success(asWon ? "ذخیره به صورت فروش موفق" : "ذخیره معامله");
       void qc.invalidateQueries({ queryKey: ["sales-desk"] });
       onOpenChange(false);
@@ -148,8 +147,11 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
       setAmount("");
       setIntroducerId(null);
       setCompanyId(null);
+      setCreatedId(null);
       return id;
     } catch (e) {
+      const cid = (e as { createdId?: string }).createdId;
+      if (cid) setCreatedId(cid);
       toast.error(salesDeskErrorMessage((e as Error).message));
     } finally {
       setPending(false);
@@ -317,13 +319,13 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
           </aside>
         </div>
         <div className="flex flex-wrap justify-end gap-2">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          <Button type="button" variant="outline" disabled={pending} onClick={() => onOpenChange(false)}>
             انصراف
           </Button>
-          <Button type="button" variant="secondary" disabled={pending} onClick={() => void submit(true)}>
+          <Button type="button" variant="secondary" disabled={pending} aria-busy={pending} onClick={() => void submit(true)}>
             ذخیره به صورت فروش موفق
           </Button>
-          <Button type="button" disabled={pending} onClick={() => void submit(false)}>
+          <Button type="button" disabled={pending} aria-busy={pending} onClick={() => void submit(false)}>
             ذخیره معامله
           </Button>
         </div>
