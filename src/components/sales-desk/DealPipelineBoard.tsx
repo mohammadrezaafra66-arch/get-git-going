@@ -68,6 +68,7 @@ type DealCard = {
   light: FollowUpTrafficLight;
   caps: DealCapabilities | null;
   latest_quote_amount: number;
+  estimated_amount?: number | null;
   last_activity_age_days: number | null;
   health_circle: string | null;
   is_vip?: boolean;
@@ -357,7 +358,10 @@ export function DealPipelineBoard() {
       <div className="flex gap-3 overflow-x-auto pb-2">
         {stages.map((s) => {
           const col = byStage.get(s.id) ?? [];
-          const sum = col.reduce((n, c) => n + c.latest_quote_amount, 0);
+          const sum = col.reduce(
+            (n, c) => n + Number(c.estimated_amount ?? c.latest_quote_amount ?? 0),
+            0,
+          );
           return (
             <section
               key={s.id}
@@ -421,7 +425,7 @@ export function DealPipelineBoard() {
                       <DealZoomOverlay
                         title={c.title || "بدون عنوان"}
                         personName={c.person_name}
-                        amountLabel={`IRR ${formatNumber(c.latest_quote_amount)}`}
+                        amountLabel={`IRR ${formatNumber(Number(c.estimated_amount ?? c.latest_quote_amount ?? 0))}`}
                         ageLabel={
                           c.last_activity_age_days != null
                             ? `${c.last_activity_age_days} روز پیش`
@@ -436,7 +440,9 @@ export function DealPipelineBoard() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       با {c.person_name}
                     </p>
-                    <p className="text-xs">IRR {formatNumber(c.latest_quote_amount)}</p>
+                    <p className="text-xs" data-testid="pass3-b2-amount">
+                      IRR {formatNumber(Number(c.estimated_amount ?? c.latest_quote_amount ?? 0))}
+                    </p>
                     {c.last_activity_age_days != null ? (
                       <p
                         className="text-xs text-muted-foreground"
@@ -830,7 +836,7 @@ async function loadBoardDeals(
   let q = supabase
     .from("sales_interactions" as never)
     .select(
-      "id, title, status, pipeline_id, stage_id, stage_entered_at, salesperson_id, person_id, deleted_at, is_vip, last_activity_at, register_time, acquaintance_id" as never,
+      "id, title, status, pipeline_id, stage_id, stage_entered_at, salesperson_id, person_id, deleted_at, is_vip, last_activity_at, register_time, acquaintance_id, estimated_amount" as never,
     )
     .eq("kind" as never, "request" as never)
     .eq("pipeline_id" as never, pipelineId as never)
@@ -856,6 +862,7 @@ async function loadBoardDeals(
     last_activity_at?: string | null;
     register_time?: string | null;
     acquaintance_id?: string | null;
+    estimated_amount?: number | null;
   }>;
   const ids = rows.map((r) => r.id);
   const [caps, lights, persons, profiles, quotes, health, tags, related] = await Promise.all([
@@ -938,6 +945,7 @@ async function loadBoardDeals(
     light: lights.get(r.id) ?? "yellow",
     caps: caps.get(r.id) ?? null,
     latest_quote_amount: latestAmount.get(r.id)?.amount ?? 0,
+    estimated_amount: r.estimated_amount ?? null,
     last_activity_age_days:
       ((health.data ?? []) as Array<{ id: string; last_activity_age_days: number | null }>).find(
         (h) => h.id === r.id,

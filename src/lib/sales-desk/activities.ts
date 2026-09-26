@@ -474,6 +474,18 @@ export async function dealIdsWithNoOpenActivity(
   return new Set(dealIds.filter((id) => !withAct.has(id)));
 }
 
+export async function listDealNotes(dealId: string): Promise<SalesActivityRow[]> {
+  const { data, error } = await supabase
+    .from("sales_interactions" as never)
+    .select(ACTIVITY_SELECT as never)
+    .eq("deal_id" as never, dealId as never)
+    .eq("kind" as never, "note" as never)
+    .order("created_at" as never, { ascending: false } as never)
+    .limit(50);
+  if (error) throw new Error(salesDeskErrorMessage(error.message));
+  return (data ?? []) as unknown as SalesActivityRow[];
+}
+
 export async function listActivitiesForDeal(
   dealId: string,
 ): Promise<SalesActivityRow[]> {
