@@ -1,15 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { isAllowedFindingStatusTransition } from "./finding-status";
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { isAllowedFindingStatusTransition } from "./finding-status.ts";
 
-describe("isAllowedFindingStatusTransition", () => {
-  it("allows review-desk moves and blocks a sales-role skip to reported", () => {
-    expect(isAllowedFindingStatusTransition("cheaper_competitor", "confirmed_bait")).toBe(
-      true,
-    );
-    expect(isAllowedFindingStatusTransition("confirmed_bait", "queued_for_report")).toBe(
-      true,
-    );
-    expect(isAllowedFindingStatusTransition("cheaper_competitor", "reported")).toBe(false);
-    expect(isAllowedFindingStatusTransition("queued_for_report", "reported")).toBe(false);
-  });
+test("allows review-desk moves and blocks a skip to reported", () => {
+  assert.equal(isAllowedFindingStatusTransition("cheaper_competitor", "confirmed_bait"), true);
+  assert.equal(isAllowedFindingStatusTransition("confirmed_bait", "queued_for_report"), true);
+  assert.equal(isAllowedFindingStatusTransition("cheaper_competitor", "reported"), false);
+  assert.equal(isAllowedFindingStatusTransition("queued_for_report", "reported"), false);
 });

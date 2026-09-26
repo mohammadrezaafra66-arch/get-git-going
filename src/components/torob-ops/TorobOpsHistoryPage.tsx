@@ -7,28 +7,40 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { TorobOpsGate } from "./TorobOpsGate";
 
+type Snap = {
+  fetched_at: string;
+  seller_name: string | null;
+  price_toman: number | null;
+};
+
 function HistoryInner() {
   const [productId, setProductId] = useState("");
   const q = useQuery({
     queryKey: ["torob-offer-snapshots", productId],
     enabled: productId.length === 36,
-    queryFn: async () => {
-      const { data, error } = await (supabase as unknown as {
-        from: (table: string) => ReturnType<typeof supabase.from>;
-      })
-        .from("torob_offer_snapshots")
-        .select("fetched_at, seller_name, price_toman, is_own_shop")
-        .eq("product_id", productId)
-        .order("fetched_at", { ascending: true })
-        .limit(500);
-      if (error) throw error;
-      return data ?? [];
+    queryFn: async (): Promise<Snap[]> => {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      const base = import.meta.env.VITE_SUPABASE_URL as string;
+      const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+      const url =
+        `${base}/rest/v1/torob_offer_snapshots` +
+        `?product_id=eq.${productId}` +
+        `&select=fetched_at,seller_name,price_toman` +
+        `&order=fetched_at.asc&limit=500`;
+      const res = await fetch(url, {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${token ?? key}`,
+        },
+      });
+      if (!res.ok) throw new Error(`history ${res.status}`);
+      return (await res.json()) as Snap[];
     },
   });
 
   const chart = useMemo(() => {
-    const rows = q.data ?? [];
-    return rows.map((r) => ({
+    return (q.data ?? []).map((r) => ({
       t: r.fetched_at,
       price: r.price_toman,
       seller: r.seller_name,
