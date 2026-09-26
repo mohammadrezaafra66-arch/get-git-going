@@ -17,7 +17,7 @@ function jwtFor(role: "sales" | "admin") {
   return mintJwt(userIdFor(role));
 }
 
-const AMOUNT_FA = "۱,۲۵۰,۰۰۰";
+const AMOUNT_FA = "۱٬۲۵۰٬۰۰۰";
 
 function defaultPipeline(): { pipelineId: string; stageId: string } {
   const pipelineId = dbScalar(

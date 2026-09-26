@@ -24,6 +24,8 @@ import { insertSalesInteractionItems } from "@/lib/sales-desk/items";
 import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { DealPersonPicker } from "./DealPersonPicker";
 import { RequestedProductsBlock, type RequestedProductLine } from "@/components/sales-desk";
+import { formatDealAmountInput, dealAmountNumber } from "@/lib/deals/amount";
+import { loadDealStaffNames } from "@/lib/deals/names";
 
 function patchDeal(id: string, patch: Record<string, unknown>) {
   return supabase
@@ -43,10 +45,14 @@ export function DealEditDialog(props: {
   const qc = useQueryClient();
   const [title, setTitle] = useState(props.title);
   const [body, setBody] = useState(props.body);
-  const [amount, setAmount] = useState(props.amount);
+  const [amount, setAmount] = useState(formatDealAmountInput(props.amount));
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent dir="rtl" data-testid="pass3-d1-edit">
+      <DialogContent
+        dir="rtl"
+        data-testid="pass3-d1-edit"
+        className="z-[60] max-h-[calc(100dvh-5.5rem)] overflow-y-auto max-md:top-auto max-md:bottom-16 max-md:translate-y-0"
+      >
         <DialogHeader>
           <DialogTitle>ویرایش</DialogTitle>
         </DialogHeader>
@@ -55,26 +61,36 @@ export function DealEditDialog(props: {
         <Label>متن درخواست</Label>
         <Textarea value={body} onChange={(e) => setBody(e.target.value)} />
         <Label>مبلغ حدودی معامله</Label>
-        <Input value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))} />
-        <Button
-          type="button"
-          onClick={() => {
-            void patchDeal(props.dealId, {
-              title,
-              body,
-              estimated_amount: amount ? Number(amount) : null,
-            }).then(({ error }) => {
-              if (error) toast.error(salesDeskErrorMessage(error.message));
-              else {
-                toast.success("ویرایش");
-                void qc.invalidateQueries({ queryKey: ["sales-desk"] });
-                props.onOpenChange(false);
-              }
-            });
-          }}
-        >
-          ذخیره معامله
-        </Button>
+        <Input
+          value={amount}
+          inputMode="numeric"
+          placeholder="IRR"
+          onChange={(e) => setAmount(formatDealAmountInput(e.target.value))}
+        />
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button type="button" variant="outline" onClick={() => props.onOpenChange(false)}>
+            انصراف
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              void patchDeal(props.dealId, {
+                title,
+                body,
+                estimated_amount: dealAmountNumber(amount),
+              }).then(({ error }) => {
+                if (error) toast.error(salesDeskErrorMessage(error.message));
+                else {
+                  toast.success("ویرایش");
+                  void qc.invalidateQueries({ queryKey: ["sales-desk"] });
+                  props.onOpenChange(false);
+                }
+              });
+            }}
+          >
+            ذخیره معامله
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
@@ -240,9 +256,7 @@ export function DealRelatedUsersAdd(props: { dealId: string }) {
   const staffQ = useQuery({
     queryKey: ["sales-desk", "staff-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, full_name").limit(80);
-      if (error) throw new Error(error.message);
-      return (data ?? []) as { id: string; full_name: string | null }[];
+      return loadDealStaffNames();
     },
   });
   return (

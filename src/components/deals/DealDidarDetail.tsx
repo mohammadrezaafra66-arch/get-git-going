@@ -12,7 +12,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatDateFa, formatDateTimeFa, formatNumber } from "@/lib/i18n/formatters";
+import { formatDateFa, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatDealIrr, formatDealNumber, formatDealPercent } from "@/lib/deals/format";
+import { loadDealLookupNames } from "@/lib/deals/names";
+import { DealDeleteConfirm } from "./DealDeleteConfirm";
 import {
   ActivityForm,
   OutcomeButtons,
@@ -57,6 +60,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [lostOpenSignal, setLostOpenSignal] = useState(0);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [feedSort, setFeedSort] = useState<"planned" | "done">("planned");
   const [activityOpen, setActivityOpen] = useState(false);
   const [registerOn, setRegisterOn] = useState("");
@@ -124,19 +128,17 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
     queryKey: ["sales-desk", "deal-person", deal?.person_id],
     enabled: !!deal?.person_id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("persons")
-        .select("id, display_name, kind")
-        .eq("id", deal!.person_id)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
+      const names = await loadDealLookupNames([deal!.person_id]);
+      const display = names[deal!.person_id];
       const { data: ids } = await supabase
         .from("person_identifiers")
         .select("kind, value_raw")
         .eq("person_id", deal!.person_id)
         .limit(8);
       return {
-        person: data as { id: string; display_name: string; kind: string } | null,
+        person: display
+          ? { id: deal!.person_id, display_name: display, kind: "individual" }
+          : null,
         phones: (ids ?? []) as { kind: string; value_raw: string }[],
       };
     },
@@ -145,13 +147,9 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
     queryKey: ["sales-desk", "deal-company", deal?.company_person_id],
     enabled: !!deal?.company_person_id,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("persons")
-        .select("id, display_name")
-        .eq("id", deal!.company_person_id!)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return data as { id: string; display_name: string } | null;
+      const names = await loadDealLookupNames([deal!.company_person_id!]);
+      const display = names[deal!.company_person_id!];
+      return display ? { id: deal!.company_person_id!, display_name: display } : null;
     },
   });
   const acqQ = useQuery({
@@ -192,8 +190,8 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
     enabled: !!(deal?.won_by || deal?.lost_by),
     queryFn: async () => {
       const ids = [deal?.won_by, deal?.lost_by].filter(Boolean) as string[];
-      const { data } = await supabase.from("profiles").select("id, full_name").in("id", ids);
-      return new Map((data ?? []).map((p) => [p.id, p.full_name]));
+      const names = await loadDealLookupNames(ids);
+      return new Map(Object.entries(names));
     },
   });
 
@@ -267,11 +265,11 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" aria-label="منوی معامله">
+              <Button type="button" variant="ghost" className="min-h-10 min-w-10" aria-label="منوی معامله">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" collisionPadding={16} side="bottom">
               <DropdownMenuItem
                 title="پرونده‌های مهم را دم دست نگه دارید!"
                 onClick={() => {
@@ -312,22 +310,9 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               >
                 کپی معامله
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => {
-                  if (!capsQ.data?.can_delete) {
-                    toast.error("حذف مجاز نیست.");
-                    return;
-                  }
-                  deleteSalesDeal(deal.id)
-                    .then(() => {
-                      toast.success("حذف شد");
-                      void navigate({ to: "/deal" });
-                    })
-                    .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)));
-                }}
-              >
-                حذف
-              </DropdownMenuItem>
+              {capsQ.data?.can_delete ? (
+                <DropdownMenuItem onClick={() => setDeleteOpen(true)}>حذف</DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -342,14 +327,23 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
         </div>
       ) : null}
 
-      <ol className="flex flex-wrap gap-1">
-        {(stagesQ.data ?? []).map((s) => (
-          <li key={s.id}>
+      <ol className="flex flex-nowrap gap-1 overflow-x-auto">
+        {(stagesQ.data ?? []).map((s, i, all) => {
+          const currentIdx = all.findIndex((x) => x.id === deal.stage_id);
+          const done = currentIdx >= 0 && i < currentIdx;
+          return (
+          <li key={s.id} className="shrink-0">
             <button
               type="button"
               title={`${pipeTitle} - ${s.title}`}
-              className={`rounded-sm border px-2 py-1 text-xs ${
-                s.id === deal.stage_id ? "border-primary/30 bg-primary/15 text-primary" : "bg-muted"
+              aria-current={s.id === deal.stage_id ? "step" : undefined}
+              data-completed={done ? "true" : undefined}
+              className={`min-h-10 rounded-sm border px-3 text-xs ${
+                s.id === deal.stage_id
+                  ? "border-primary/30 bg-primary/15 text-primary"
+                  : done
+                    ? "border-primary/20 bg-primary/10 text-primary/80 line-through decoration-primary/40"
+                    : "bg-muted"
               } ${closed ? "cursor-not-allowed opacity-70" : ""}`}
               disabled={closed || !capsQ.data?.can_move}
               onClick={() => {
@@ -363,10 +357,12 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
                   .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)));
               }}
             >
+              {done ? "✓ " : ""}
               {s.title}
             </button>
           </li>
-        ))}
+          );
+        })}
       </ol>
 
       <div className="grid min-w-0 max-w-full gap-4 overflow-x-hidden lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -518,7 +514,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
             <h2 className="mb-2 font-medium">اطلاعات معامله</h2>
             <p>مسئول {deal.salesperson?.full_name ?? "—"}</p>
             <DealTagPicker dealId={deal.id} />
-            <p>احتمال موفق شدن / {deal.probability ?? 100}٪</p>
+            <p>احتمال موفق شدن / {formatDealPercent(deal.probability ?? 100)}</p>
             <p>تاریخ احتمالی بستن معامله {deal.expected_close_on ? formatDateFa(deal.expected_close_on) : "—"}</p>
             <div className="space-y-1">
               <p>تاریخ معامله {formatDateFa(deal.register_time ?? deal.created_at)}</p>
@@ -545,7 +541,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               />
             </div>
             <p data-testid="pass3-b3-amount">
-              IRR {formatNumber(Number(amount))} ({paidLabel})
+              {formatDealIrr(Number(amount))} ({paidLabel})
             </p>
             <DealAddProducts dealId={deal.id} />
             <p>توضیحات / {deal.body?.trim() || "-"}</p>
@@ -670,8 +666,8 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="font-medium">نمایه فرصت</h2>
             <p>تاریخ ایجاد فرصت {formatDateFa(deal.register_time ?? deal.created_at)}</p>
-            <p>سن فرصت {healthQ.data?.opportunity_age_days ?? 0} روز</p>
-            <p>روز غیر فعال {healthQ.data?.idle_days_count ?? 0}</p>
+            <p>سن فرصت {formatDealNumber(healthQ.data?.opportunity_age_days ?? 0)} روز</p>
+            <p>روز غیر فعال {formatDealNumber(healthQ.data?.idle_days_count ?? 0)}</p>
             <Button type="button" size="sm" variant="link" onClick={soonToast}>
               مشاهده بیشتر
             </Button>
@@ -679,6 +675,20 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           <Badge variant="outline">{deleted ? "حذف شده" : salesInteractionStatusLabel(deal.status)}</Badge>
         </aside>
       </div>
+      <DealDeleteConfirm
+        open={deleteOpen}
+        count={1}
+        onOpenChange={setDeleteOpen}
+        onConfirm={() => {
+          deleteSalesDeal(deal.id)
+            .then(() => {
+              toast.success("حذف شد");
+              setDeleteOpen(false);
+              void navigate({ to: "/deal" });
+            })
+            .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)));
+        }}
+      />
       <DealEditDialog
         open={editOpen}
         onOpenChange={setEditOpen}

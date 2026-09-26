@@ -27,6 +27,7 @@ import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { VISIBILITY_LABELS } from "./DealChrome";
 import { DealPersonPicker } from "./DealPersonPicker";
 import { dealAmountNumber, formatDealAmountInput } from "@/lib/deals/amount";
+import { loadDealStaffNames } from "@/lib/deals/names";
 import { didarDealTitleFromPerson } from "@/lib/deals/title";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
 
@@ -92,9 +93,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
     queryKey: ["sales-desk", "staff-profiles"],
     enabled: open,
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, full_name").limit(80);
-      if (error) throw new Error(error.message);
-      return (data ?? []) as { id: string; full_name: string | null }[];
+      return loadDealStaffNames();
     },
   });
 
@@ -115,7 +114,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
   const submit = async (asWon: boolean) => {
     if (pendingRef.current || pending) return;
     if (!personId) {
-      toast.error("شناسه شخص الزامی است.");
+      toast.error("انتخاب شخص الزامی است.");
       return;
     }
     if (!salespersonId) {
@@ -186,14 +185,14 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="deal-surface max-h-[90vh] w-[min(48rem,100vw)] max-w-full overflow-x-hidden overflow-y-auto" dir="rtl">
+      <DialogContent className="deal-surface z-[60] max-h-[calc(100dvh-5.5rem)] w-[min(48rem,100vw)] max-w-full overflow-x-hidden overflow-y-auto max-md:top-auto max-md:bottom-16 max-md:translate-y-0" dir="rtl">
         <DialogHeader>
           <DialogTitle>افزودن معامله</DialogTitle>
         </DialogHeader>
         <div className="grid min-w-0 gap-4 md:grid-cols-[1fr_12rem]">
           <div className="min-w-0 space-y-3">
             <div>
-              <Label>نام خانوادگی</Label>
+              <Label>شخص</Label>
               <DealPersonPicker
                 label="جستجوی شخص"
                 valueId={personId}
@@ -281,7 +280,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
                   <li key={s.id}>
                     <button
                       type="button"
-                      className={`rounded-sm border px-2 py-1 text-xs ${
+                      className={`min-h-10 rounded-sm border px-2 py-1 text-xs ${
                         s.id === stageId ? "border-primary/30 bg-primary/15 text-primary" : "bg-muted"
                       }`}
                       onClick={() => setStageId(s.id)}
