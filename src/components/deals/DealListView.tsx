@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -464,10 +465,10 @@ export function DealListView() {
         <div className="min-w-0 space-y-2 rounded border p-2 text-sm" aria-label="ویرایش گروهی معاملات">
           <span>ویرایش گروهی معاملات · تغییرات {selected.length} معامله انتخابی</span>
           <div className="grid min-w-0 gap-2 md:grid-cols-2">
-            <label className="flex min-w-0 flex-col gap-1">
-              مسئول
+            <div className="flex min-w-0 flex-col gap-1">
+              <Label>مسئول</Label>
               <Select value={bulkOwner} onValueChange={setBulkOwner}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="مسئول"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unchanged">بدون تغییر</SelectItem>
                   {(staffQ.data ?? []).map((p) => (
@@ -475,11 +476,11 @@ export function DealListView() {
                   ))}
                 </SelectContent>
               </Select>
-            </label>
-            <label className="flex min-w-0 flex-col gap-1">
-              امنیت
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <Label>امنیت</Label>
               <Select value={bulkVisibility} onValueChange={setBulkVisibility}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="امنیت"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unchanged">بدون تغییر</SelectItem>
                   {VISIBILITY_LABELS.map((l) => (
@@ -487,11 +488,11 @@ export function DealListView() {
                   ))}
                 </SelectContent>
               </Select>
-            </label>
-            <label className="flex min-w-0 flex-col gap-1">
-              برچسب
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <Label>برچسب</Label>
               <Select value={bulkTag} onValueChange={setBulkTag}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="برچسب"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unchanged">بدون تغییر</SelectItem>
                   {(tagsQ.data ?? []).map((t) => (
@@ -499,11 +500,11 @@ export function DealListView() {
                   ))}
                 </SelectContent>
               </Select>
-            </label>
-            <label className="flex min-w-0 flex-col gap-1">
-              کاریز
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <Label>کاریز</Label>
               <Select value={bulkPipeline} onValueChange={setBulkPipeline}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="کاریز"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unchanged">بدون تغییر</SelectItem>
                   {(pipesQ.data ?? []).map((p) => (
@@ -511,11 +512,11 @@ export function DealListView() {
                   ))}
                 </SelectContent>
               </Select>
-            </label>
-            <label className="flex min-w-0 flex-col gap-1">
-              تغییر وضعیت
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <Label>تغییر وضعیت</Label>
               <Select value={bulkStatus} onValueChange={setBulkStatus}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="تغییر وضعیت"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unchanged">بدون تغییر</SelectItem>
                   <SelectItem value="open">جاری</SelectItem>
@@ -523,11 +524,11 @@ export function DealListView() {
                   <SelectItem value="lost">ناموفق</SelectItem>
                 </SelectContent>
               </Select>
-            </label>
-            <label className="flex min-w-0 flex-col gap-1">
-              دلیل شکست
+            </div>
+            <div className="flex min-w-0 flex-col gap-1">
+              <Label>دلیل شکست</Label>
               <Select value={bulkLost} onValueChange={setBulkLost}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-label="دلیل شکست"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unchanged">بدون تغییر</SelectItem>
                   {(reasonsQ.data ?? []).map((r) => (
@@ -535,7 +536,7 @@ export function DealListView() {
                   ))}
                 </SelectContent>
               </Select>
-            </label>
+            </div>
           </div>
           <Button
             type="button"

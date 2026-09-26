@@ -237,7 +237,10 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           ) : null}
         </div>
       ) : null}
-      <header className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+      <header
+        className="flex min-w-0 flex-wrap items-center justify-between gap-2"
+        aria-label="سربرگ معامله"
+      >
         <h1 className="min-w-0 max-w-full break-words text-xl font-semibold">
           {dealHeaderTitle(deal.title)} {deal.display_code != null ? `#${deal.display_code}` : ""}
         </h1>
@@ -439,7 +442,10 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               <TabsTrigger value="activities">فعالیت ها</TabsTrigger>
               <TabsTrigger value="notes">یادداشت ها</TabsTrigger>
               <TabsTrigger value="files">پیوست ها</TabsTrigger>
-              <TabsTrigger value="history">تاریخچه</TabsTrigger>
+              <TabsTrigger value="history">
+                تاریخچه
+                <span className="sr-only">سابقه</span>
+              </TabsTrigger>
               <TabsTrigger value="quotes">پیش فاکتور</TabsTrigger>
             </TabsList>
             <TabsContent value="all">

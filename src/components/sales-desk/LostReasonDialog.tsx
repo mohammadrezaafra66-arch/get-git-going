@@ -83,10 +83,11 @@ export function LostReasonDialog({
       return;
     }
     setLocalError(null);
+    const explain = note.trim() || other.trim();
     onConfirm({
       lostReasonId: reasonId,
       lostReasonNote: note.trim() || null,
-      lostReasonOther: isOther ? other.trim() : null,
+      lostReasonOther: isOther ? explain : null,
     });
   };
 

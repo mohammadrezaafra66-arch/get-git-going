@@ -149,7 +149,7 @@ function suite(role: "sales" | "admin") {
       await openKanbanAll(page);
       const filters = page.getByLabel("فیلتر کاریز");
       await expect(filters.getByText("برچسب", { exact: true }).first()).toBeVisible({ timeout: 20_000 });
-      await expect(filters.getByRole("combobox").filter({ hasText: /برچسب|همه|انتخاب/ }).or(filters.locator("label", { hasText: "برچسب" }))).toBeVisible();
+      await expect(filters.getByLabel("برچسب")).toBeVisible();
       await filters.getByText("معاملاتی که فعالیتی روی آن‌ها نیست").click();
       await expect(page.locator("article").filter({ hasText: title })).toBeVisible({ timeout: 20_000 });
     });
@@ -160,16 +160,16 @@ function suite(role: "sales" | "admin") {
       await openKanbanAll(page);
       const card = page.locator("article").filter({ hasText: title });
       await expect(card).toBeVisible({ timeout: 30_000 });
-      const strip = page.getByRole("button", { name: "حذف معامله" });
+      const strip = page.getByTestId("deal-drop-strip");
       await expect(strip).toBeHidden();
       await card.dispatchEvent("dragstart");
-      await expect(page.getByRole("button", { name: "حذف معامله" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "موفق شد" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "ناموفق شد" })).toBeVisible();
-      await expect(page.getByRole("button", { name: "انتقال به کاریز دیگر" })).toBeVisible();
-      const pos = await page.getByRole("button", { name: "حذف معامله" }).evaluate((el) => {
-        const node = el.closest("div");
-        const cs = node ? getComputedStyle(node) : getComputedStyle(el);
+      await expect(strip).toBeVisible();
+      await expect(strip.getByRole("button", { name: "حذف معامله", exact: true })).toBeVisible();
+      await expect(strip.getByRole("button", { name: "موفق شد", exact: true })).toBeVisible();
+      await expect(strip.getByRole("button", { name: "ناموفق شد", exact: true })).toBeVisible();
+      await expect(strip.getByRole("button", { name: "انتقال به کاریز دیگر", exact: true })).toBeVisible();
+      const pos = await strip.evaluate((el) => {
+        const cs = getComputedStyle(el);
         return { position: cs.position, bottom: cs.bottom };
       });
       expect(pos.position).toBe("fixed");
@@ -208,12 +208,12 @@ function suite(role: "sales" | "admin") {
       await row.getByRole("checkbox").click();
       const panel = page.getByLabel("ویرایش گروهی معاملات");
       await expect(panel).toBeVisible();
-      await expect(panel.locator("label", { hasText: /^مسئول$/ })).toBeVisible();
-      await expect(panel.locator("label", { hasText: /^امنیت$/ })).toBeVisible();
-      await expect(panel.locator("label", { hasText: /^برچسب$/ })).toBeVisible();
-      await expect(panel.locator("label", { hasText: /^کاریز$/ })).toBeVisible();
-      await expect(panel.locator("label", { hasText: /^تغییر وضعیت$/ })).toBeVisible();
-      await expect(panel.locator("label", { hasText: /^دلیل شکست$/ })).toBeVisible();
+      await expect(panel.getByText("مسئول", { exact: true })).toBeVisible();
+      await expect(panel.getByText("امنیت", { exact: true })).toBeVisible();
+      await expect(panel.getByText("برچسب", { exact: true })).toBeVisible();
+      await expect(panel.getByText("کاریز", { exact: true })).toBeVisible();
+      await expect(panel.getByText("تغییر وضعیت", { exact: true })).toBeVisible();
+      await expect(panel.getByText("دلیل شکست", { exact: true })).toBeVisible();
       await expect(panel.getByText("بدون تغییر").first()).toBeVisible();
       await expect(panel.getByText("فیلد", { exact: true })).toHaveCount(0);
     });
@@ -221,11 +221,9 @@ function suite(role: "sales" | "admin") {
     test("Q9 header has no standalone حذف and has a pencil edit icon", async ({ page }) => {
       const id = await createDeal(role, `${STAMP} ${role} q9`);
       await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
-      const header = page.locator("header").first();
+      const header = page.getByLabel("سربرگ معامله");
       await expect(header.getByRole("button", { name: "حذف", exact: true })).toHaveCount(0);
-      await expect(header.getByLabel("ویرایش معامله").or(header.getByTitle("ویرایش"))).toBeVisible({
-        timeout: 20_000,
-      });
+      await expect(header.getByLabel("ویرایش معامله")).toBeVisible({ timeout: 20_000 });
       await page.getByLabel("منوی معامله").click();
       await expect(page.getByRole("menuitem", { name: "حذف" })).toBeVisible();
     });
@@ -242,7 +240,9 @@ function suite(role: "sales" | "admin") {
       await expect(block.getByText("تغییر تاریخ موفق شدن")).toBeVisible({ timeout: 20_000 });
       await expect(block.getByText("به‌زودی")).toHaveCount(0);
       await block.getByText("تغییر تاریخ موفق شدن").locator("..").getByPlaceholder("انتخاب تاریخ").click();
-      await page.locator(".rmdp-day:not(.rmdp-disabled)").first().click();
+      const day = page.locator(".rmdp-day:not(.rmdp-disabled):not(.rmdp-selected)").first();
+      await expect(day).toBeVisible();
+      await day.click();
       await expect.poll(() =>
         dbScalar(`select won_at is not null from public.sales_interactions where id = '${id}'`).trim(),
       ).toBe("t");
