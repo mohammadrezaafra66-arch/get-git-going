@@ -760,7 +760,15 @@ async function applyBulk(
     );
     return;
   }
-  if (field === "visibility") {
+  if (field === "visibility" && value) {
+    await Promise.all(
+      ids.map((id) =>
+        supabase
+          .from("sales_interactions" as never)
+          .update({ visibility_label: value } as never)
+          .eq("id" as never, id as never),
+      ),
+    );
     return;
   }
 }

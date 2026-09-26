@@ -57,6 +57,8 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
   const [items, setItems] = useState<RequestedProductLine[]>([]);
   const [pending, setPending] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [relatedIds, setRelatedIds] = useState<string[]>([]);
+  const [nextFollow, setNextFollow] = useState("");
 
   const pipesQ = useQuery({
     queryKey: ["sales-desk", "pipelines"],
@@ -135,7 +137,19 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
         estimatedAmount: dealAmountNumber(amount),
         introducerPersonId: introducerId || null,
         existingId: createdId,
+        nextFollowUpAt: nextFollow ? `${nextFollow}T12:00:00+03:30` : null,
       } as never);
+      if (visibility) {
+        await supabase
+          .from("sales_interactions" as never)
+          .update({ visibility_label: visibility } as never)
+          .eq("id" as never, id as never);
+      }
+      if (relatedIds.length) {
+        await supabase.from("deal_related_users" as never).insert(
+          relatedIds.map((profile_id) => ({ interaction_id: id, profile_id })) as never,
+        );
+      }
       setCreatedId(id);
       toast.success(asWon ? "ذخیره به صورت فروش موفق" : "ذخیره معامله");
       void qc.invalidateQueries({ queryKey: ["sales-desk"] });
@@ -289,7 +303,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div data-testid="pass3-d10-visibility">
               <Label>مجوز مشاهده</Label>
               <Select value={visibility} onValueChange={setVisibility}>
                 <SelectTrigger>
@@ -308,10 +322,33 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
               <Label>متن درخواست</Label>
               <Textarea value={body} onChange={(e) => setBody(e.target.value)} />
             </div>
-            <p className="text-xs text-muted-foreground">
-              کاربران مرتبط · فعالیت بعدی · فیلدها · محصولات درخواستی · ایجاد کننده:{" "}
-              {profile?.full_name ?? "—"}
-            </p>
+            <div data-testid="pass3-d9-create-extra" className="space-y-2">
+              <Label>کاربران مرتبط</Label>
+              <Select
+                onValueChange={(uid) => {
+                  if (!relatedIds.includes(uid)) setRelatedIds([...relatedIds, uid]);
+                }}
+              >
+                <SelectTrigger aria-label="کاربران مرتبط">
+                  <SelectValue placeholder="کاربران مرتبط" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(staffQ.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.full_name ?? p.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {relatedIds.length ? (
+                <p className="text-xs">{relatedIds.length} کاربر مرتبط</p>
+              ) : null}
+              <Label>فعالیت بعدی</Label>
+              <JalaliDateInput value={nextFollow || null} onChange={setNextFollow} />
+              <p className="text-xs text-muted-foreground">
+                فیلدها · محصولات درخواستی · ایجاد کننده: {profile?.full_name ?? "—"}
+              </p>
+            </div>
           </div>
           <aside className="space-y-2 text-sm">
             <div>اطلاعات خریدار</div>

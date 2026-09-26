@@ -24,6 +24,7 @@ import {
   listSalesInteractionItems,
   listActivitiesForDeal,
 } from "@/lib/sales-desk";
+import { listDealNotes } from "@/lib/sales-desk/activities";
 import { loadDealCapabilities } from "@/lib/sales-desk/capabilities";
 import {
   deleteSalesDeal,
@@ -39,6 +40,18 @@ import { MessengerSoonButtons, soonToast } from "./DealChrome";
 import { DealHistoryFeed } from "./DealHistoryFeed";
 import { DealPersonPicker } from "./DealPersonPicker";
 import { dealHeaderTitle } from "@/lib/deals/title";
+import {
+  DealAcquaintanceSet,
+  DealAddProducts,
+  DealEditDialog,
+  DealFeedZoom,
+  DealFileAdd,
+  DealNoteForm,
+  DealPersonChange,
+  DealRelatedUsersAdd,
+  DealTagPicker,
+  DealWonAtJalali,
+} from "./DealPass3Controls";
 
 export function DealDidarDetail({ dealId }: { dealId: string }) {
   const qc = useQueryClient();
@@ -48,6 +61,9 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
   const [activityOpen, setActivityOpen] = useState(false);
   const [registerOn, setRegisterOn] = useState("");
   const [companyEdit, setCompanyEdit] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [zoomOpen, setZoomOpen] = useState(false);
 
   const dealQ = useQuery({
     queryKey: ["sales-desk", "deal", dealId],
@@ -167,6 +183,10 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
     queryKey: ["sales-desk", "deal-activities", dealId],
     queryFn: () => listActivitiesForDeal(dealId),
   });
+  const notesQ = useQuery({
+    queryKey: ["sales-desk", "deal-notes", dealId],
+    queryFn: () => listDealNotes(dealId),
+  });
   const actorsQ = useQuery({
     queryKey: ["sales-desk", "deal-actors", deal?.won_by, deal?.lost_by],
     enabled: !!(deal?.won_by || deal?.lost_by),
@@ -182,24 +202,11 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
 
   const closed = deal.status === "won" || deal.status === "lost";
   const pipeTitle = pipesQ.data?.find((p) => p.id === deal.pipeline_id)?.title ?? "کاریز افراکالا";
-  const amount = paidQ.data?.deal_amount ?? quotesQ.data?.[0]?.final_amount ?? 0;
+  const amount =
+    Number(deal.estimated_amount ?? paidQ.data?.deal_amount ?? quotesQ.data?.[0]?.final_amount ?? 0);
   const paidLabel = paidQ.data?.is_paid ? "پرداخت شده" : "پرداخت نشده";
   const planned = (activitiesQ.data ?? []).filter((a) => !a.done_at);
-
-  const setWonAt = async () => {
-    const raw = window.prompt("تغییر تاریخ موفق شدن (ISO)");
-    if (!raw) return;
-    const rpc = supabase.rpc.bind(supabase) as unknown as (
-      fn: string,
-      args: Record<string, unknown>,
-    ) => Promise<{ error: { message: string } | null }>;
-    const { error } = await rpc("sales_deal_set_won_at", { p_id: dealId, p_won_at: raw });
-    if (error) toast.error(salesDeskErrorMessage(error.message));
-    else {
-      toast.success("تاریخ موفق شدن");
-      void qc.invalidateQueries({ queryKey: ["sales-desk"] });
-    }
-  };
+  const notes = notesQ.data ?? [];
 
   const deleted = !!deal.deleted_at;
 
@@ -266,7 +273,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               >
                 پین کردن
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={soonToast}>ویرایش</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setEditOpen(true)}>ویرایش</DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => {
                   void createSalesInteraction({
@@ -359,7 +366,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
             >
               افزودن فعالیت جدید
             </Button>
-            <Button type="button" size="sm" variant="outline" onClick={soonToast}>
+            <Button type="button" size="sm" variant="outline" onClick={() => setNoteOpen(true)}>
               افزودن یادداشت
             </Button>
             <Button
@@ -402,7 +409,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           <Tabs defaultValue="all">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span>تاریخچه</span>
-              <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setZoomOpen(true)}>
                 بزرگتر ببین و فیلتر کن
               </Button>
               <button
@@ -446,10 +453,29 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               )}
             </TabsContent>
             <TabsContent value="notes">
-              <p className="text-sm text-muted-foreground">هنوز یادداشت یا فعالیتی ثبت نشده</p>
+              {notes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">هنوز یادداشت یا فعالیتی ثبت نشده</p>
+              ) : (
+                <ul className="space-y-1 text-sm" data-testid="pass3-d11-notes">
+                  {notes.map((a) => (
+                    <li key={a.id}>{a.body || a.title || "یادداشت"}</li>
+                  ))}
+                </ul>
+              )}
+              {noteOpen || notes.length > 0 ? (
+                <DealNoteForm
+                  dealId={deal.id}
+                  personId={deal.person_id}
+                  salespersonId={deal.salesperson_id ?? ""}
+                />
+              ) : (
+                <Button type="button" size="sm" className="mt-2" onClick={() => setNoteOpen(true)}>
+                  افزودن یادداشت
+                </Button>
+              )}
             </TabsContent>
             <TabsContent value="files">
-              <p className="text-sm text-muted-foreground">پیوستی نیست.</p>
+              <DealFileAdd dealId={deal.id} />
             </TabsContent>
             <TabsContent value="history">
               <DealHistoryFeed dealId={deal.id} dealTitle={deal.title ?? ""} />
@@ -476,9 +502,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           <section className="rounded border p-3">
             <h2 className="mb-2 font-medium">اطلاعات معامله</h2>
             <p>مسئول {deal.salesperson?.full_name ?? "—"}</p>
-            <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
-              اضافه کردن برچسب
-            </Button>
+            <DealTagPicker dealId={deal.id} />
             <p>احتمال موفق شدن / {deal.probability ?? 100}٪</p>
             <p>تاریخ احتمالی بستن معامله {deal.expected_close_on ? formatDateFa(deal.expected_close_on) : "—"}</p>
             <div className="space-y-1">
@@ -505,17 +529,13 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
                 }}
               />
             </div>
-            <p>
+            <p data-testid="pass3-b3-amount">
               IRR {formatNumber(Number(amount))} ({paidLabel})
             </p>
-            <Button type="button" size="sm" variant="link" onClick={soonToast}>
-              + افزودن محصول
-            </Button>
+            <DealAddProducts dealId={deal.id} />
             <p>توضیحات / {deal.body?.trim() || "-"}</p>
             {deal.status === "won" ? (
-              <Button type="button" size="sm" variant="outline" onClick={() => void setWonAt()}>
-                تغییر تاریخ موفق شدن
-              </Button>
+              <DealWonAtJalali dealId={deal.id} value={deal.won_at} />
             ) : null}
             {deal.lost_reason_note || deal.lost_reason_other ? (
               <p>
@@ -536,10 +556,12 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               "—"
             )}
             <MessengerSoonButtons />
-            <div className="mt-1 flex gap-2">
-              <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
-                تغییر شخص مرتبط
-              </Button>
+            <div className="mt-1 flex flex-col gap-2">
+              <DealPersonChange
+                dealId={deal.id}
+                personId={deal.person_id}
+                personName={personQ.data?.person?.display_name ?? ""}
+              />
               <Button type="button" size="sm" variant="ghost" onClick={() => toast.error("شخص روی معامله الان الزامی است.")}>
                 قطع اتصال شخص
               </Button>
@@ -616,16 +638,12 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           <section className="rounded border p-3">
             <h2 className="font-medium">شیوه آشنایی</h2>
             {acqQ.data?.title ?? "شیوه آشنایی در این معامله مشخص نیست!"}
-            <Button type="button" size="sm" variant="link" onClick={soonToast}>
-              مشخص کردن شیوه آشنایی
-            </Button>
+            <DealAcquaintanceSet dealId={deal.id} current={deal.acquaintance_id} />
           </section>
           <section className="rounded border p-3">
             <h2 className="font-medium">افراد درگیر در معامله</h2>
             <p>اگر شخصی مرتبط با این معامله است با + اضافه کنید</p>
-            <Button type="button" size="sm" variant="link" onClick={soonToast}>
-              +
-            </Button>
+            <DealRelatedUsersAdd dealId={deal.id} />
           </section>
           <section className="rounded border p-3">
             <h2 className="font-medium">کارت های جاری</h2>
@@ -646,6 +664,32 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           <Badge variant="outline">{deleted ? "حذف شده" : salesInteractionStatusLabel(deal.status)}</Badge>
         </aside>
       </div>
+      <DealEditDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        dealId={deal.id}
+        title={deal.title ?? ""}
+        body={deal.body ?? ""}
+        amount={deal.estimated_amount != null ? String(deal.estimated_amount) : ""}
+      />
+      <DealFeedZoom
+        open={zoomOpen}
+        onOpenChange={setZoomOpen}
+        items={(activitiesQ.data ?? []).map((a) => ({
+          id: a.id,
+          title: a.title || a.body,
+          kind: a.kind,
+        }))}
+      />
+      {noteOpen ? (
+        <div className="rounded border p-3">
+          <DealNoteForm
+            dealId={deal.id}
+            personId={deal.person_id}
+            salespersonId={deal.salesperson_id ?? ""}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
