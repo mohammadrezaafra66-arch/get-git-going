@@ -215,7 +215,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
   const deleted = !!deal.deleted_at;
 
   return (
-    <div className="min-w-0 w-full max-w-full space-y-4 overflow-x-hidden" dir="rtl">
+    <div className="deal-surface min-w-0 w-full max-w-full space-y-4 overflow-x-hidden" dir="rtl">
       {deleted ? (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm" data-testid="deal-deleted-banner">
           <p>این معامله حذف شده است و جاری نیست.</p>
@@ -334,7 +334,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
       </header>
 
       {capsQ.data?.show_rejected_quote_notice ? (
-        <div className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-2 text-sm text-amber-950">
+        <div className="flex flex-wrap items-start justify-between gap-2 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-foreground">
           <p>
             پیش‌فاکتور این معامله رد شد. اگر معامله از دست رفته، آن را ناموفق کنید و دلیل شکست را
             انتخاب کنید.
@@ -349,7 +349,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               type="button"
               title={`${pipeTitle} - ${s.title}`}
               className={`rounded-sm border px-2 py-1 text-xs ${
-                s.id === deal.stage_id ? "bg-yellow-300" : "bg-muted"
+                s.id === deal.stage_id ? "border-primary/30 bg-primary/15 text-primary" : "bg-muted"
               } ${closed ? "cursor-not-allowed opacity-70" : ""}`}
               disabled={closed || !capsQ.data?.can_move}
               onClick={() => {
@@ -514,7 +514,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
         </section>
 
         <aside className="min-w-0 max-w-full space-y-3 overflow-x-hidden text-sm">
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="mb-2 font-medium">اطلاعات معامله</h2>
             <p>مسئول {deal.salesperson?.full_name ?? "—"}</p>
             <DealTagPicker dealId={deal.id} />
@@ -561,7 +561,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
             {deal.lost_by ? <p>ناموفق‌کننده: {actorsQ.data?.get(deal.lost_by) ?? deal.lost_by}</p> : null}
           </section>
 
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="mb-2 font-medium">شخص مرتبط</h2>
             {personQ.data?.person ? (
               <Link to="/persons/$personId" params={{ personId: personQ.data.person.id }}>
@@ -583,7 +583,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
             </div>
           </section>
 
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="mb-2 font-medium">شرکت مرتبط</h2>
             {companyQ.data ? (
               <div>
@@ -628,13 +628,13 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
             ) : null}
           </section>
 
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="font-medium">فیلدهای معامله</h2>
             <Button type="button" size="sm" variant="link" onClick={() => void navigate({ to: "/settings/deal-lost-reasons" })}>
               ایجاد فیلد جدید
             </Button>
           </section>
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="mb-2 font-medium">پرداخت</h2>
             <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
               ایجاد یک پرداخت معادل مبلغ معامله
@@ -643,31 +643,31 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               ایجاد پرداخت چند مرحله ای
             </Button>
           </section>
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="font-medium">محصولات درخواستی</h2>
             {(itemsQ.data ?? []).length === 0 ? "—" : `${itemsQ.data?.length} مورد`}
           </section>
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             ایجاد کننده معامله: {deal.author?.full_name ?? "—"}
           </section>
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="font-medium">شیوه آشنایی</h2>
             {acqQ.data?.title ?? "شیوه آشنایی در این معامله مشخص نیست!"}
             <DealAcquaintanceSet dealId={deal.id} current={deal.acquaintance_id} />
           </section>
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="font-medium">افراد درگیر در معامله</h2>
             <p>اگر شخصی مرتبط با این معامله است با + اضافه کنید</p>
             <DealRelatedUsersAdd dealId={deal.id} />
           </section>
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="font-medium">کارت های جاری</h2>
             <p>این پرونده هیچ کارتی ندارد</p>
             <Button type="button" size="sm" variant="link" onClick={soonToast}>
               همه کارت ها
             </Button>
           </section>
-          <section className="rounded border p-3">
+          <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="font-medium">نمایه فرصت</h2>
             <p>تاریخ ایجاد فرصت {formatDateFa(deal.register_time ?? deal.created_at)}</p>
             <p>سن فرصت {healthQ.data?.opportunity_age_days ?? 0} روز</p>
@@ -697,7 +697,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
         }))}
       />
       {noteOpen ? (
-        <div className="rounded border p-3">
+        <div className="deal-elev rounded-xl border bg-card p-3">
           <DealNoteForm
             dealId={deal.id}
             personId={deal.person_id}

@@ -73,6 +73,8 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -187,7 +189,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-pulse {
+  .animate-pulse,
+  .animate-spin,
+  .animate-in,
+  .animate-out {
     animation: none !important;
   }
 }
@@ -593,4 +598,54 @@
 }
 .module-paper-grid :where(.border-b.border-border) {
   border-color: color-mix(in srgb, var(--module-rule) 80%, var(--border));
+}
+
+/* Direction A — Teal paper. Scoped to deal surfaces so other modules stay unchanged. */
+.deal-surface {
+  --deal-paper: oklch(0.98 0.008 185);
+  --background: oklch(0.98 0.008 185);
+  color: var(--foreground);
+  line-height: 1.7;
+}
+.module-paper-grid:has(.deal-surface) {
+  background: var(--paper);
+}
+.deal-elev {
+  box-shadow:
+    0 1px 0 rgb(15 47 44 / 0.04),
+    0 8px 24px rgb(15 47 44 / 0.06);
+}
+.deal-col-accent {
+  border-inline-start: 3px solid var(--primary);
+}
+.deal-status-open {
+  color: var(--primary);
+  background: color-mix(in oklab, var(--primary) 10%, var(--card));
+  border-color: color-mix(in oklab, var(--primary) 30%, var(--border));
+}
+.deal-status-won {
+  color: var(--success);
+  background: color-mix(in oklab, var(--success) 10%, var(--card));
+  border-color: color-mix(in oklab, var(--success) 30%, var(--border));
+}
+.deal-status-lost,
+.deal-status-deleted {
+  color: var(--destructive);
+  background: color-mix(in oklab, var(--destructive) 10%, var(--card));
+  border-color: color-mix(in oklab, var(--destructive) 30%, var(--border));
+}
+.deal-stat-open { box-shadow: inset 3px 0 0 var(--primary); }
+.deal-stat-won { box-shadow: inset 3px 0 0 var(--success); }
+.deal-stat-lost { box-shadow: inset 3px 0 0 var(--destructive); }
+.dark .deal-surface {
+  --background: oklch(0.18 0.02 195);
+  --card: oklch(0.22 0.02 195);
+  --primary: oklch(0.72 0.1 195);
+  --primary-foreground: oklch(0.18 0.02 195);
+  --ring: oklch(0.72 0.1 195);
+}
+@media (prefers-reduced-motion: reduce) {
+  .deal-elev {
+    box-shadow: none;
+  }
 }

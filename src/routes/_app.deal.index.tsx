@@ -7,7 +7,7 @@ export const Route = createFileRoute("/_app/deal/")({
 
 function DealKanbanPage() {
   return (
-    <div className="p-4">
+    <div className="deal-surface p-4">
       <DealPipelineBoard />
     </div>
   );

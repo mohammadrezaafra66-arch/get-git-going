@@ -29,7 +29,7 @@ export function DealZoomOverlay(props: {
           <DialogHeader>
             <DialogTitle>در یک نگاه</DialogTitle>
           </DialogHeader>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-3 text-sm leading-7">
             <p className="text-lg font-semibold">{props.title}</p>
             <p>با {props.personName}</p>
             <p>{props.amountLabel}</p>

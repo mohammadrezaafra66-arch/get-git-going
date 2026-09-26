@@ -66,7 +66,7 @@ export function DealForecastView() {
   }, [dealsQ.data]);
 
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="deal-surface space-y-4" dir="rtl">
       <DealPageHeader title="بیش بینی">
         <div className="flex flex-wrap items-center gap-2">
           <DealViewTabs active="forecast" />
@@ -98,7 +98,7 @@ export function DealForecastView() {
       </div>
       <div className="grid grid-cols-7 gap-2">
         {days.map((d) => (
-          <div key={d} className="min-h-24 rounded border p-1 text-xs">
+          <div key={d} className="deal-elev min-h-24 rounded-xl border bg-card p-1 text-xs">
             <div className="font-medium">{d}</div>
             {(byDay.get(d) ?? []).map((deal) => (
               <div key={deal.id}>

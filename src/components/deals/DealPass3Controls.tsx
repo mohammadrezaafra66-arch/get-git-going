@@ -415,7 +415,7 @@ export function DealFeedZoom(props: {
   const shown = props.items.filter((i) => kind === "all" || i.kind === kind);
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
-      <DialogContent dir="rtl" className="max-h-[80vh] overflow-y-auto" data-testid="pass3-d13-zoom">
+      <DialogContent dir="rtl" className="max-h-[80vh] overflow-y-auto sm:max-w-lg" data-testid="pass3-d13-zoom">
         <DialogHeader>
           <DialogTitle>بزرگتر ببین و فیلتر کن</DialogTitle>
         </DialogHeader>

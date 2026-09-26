@@ -121,6 +121,7 @@ export function DealPipelineBoard() {
   const [relatedOwner, setRelatedOwner] = useState(false);
   const [filterTab, setFilterTab] = useState<"filters" | "owner">("filters");
   const [tagId, setTagId] = useState("");
+  const [overStageId, setOverStageId] = useState<string | null>(null);
 
   const pipesQ = useQuery({
     queryKey: ["sales-desk", "pipelines"],
@@ -200,7 +201,7 @@ export function DealPipelineBoard() {
 
   if (statusFilter === "deleted") {
     return (
-      <div className="space-y-3" dir="rtl">
+      <div className="deal-surface space-y-3" dir="rtl">
         <BoardFilters
           pipes={pipesQ.data ?? []}
           pipelineId={activePipelineId}
@@ -243,7 +244,7 @@ export function DealPipelineBoard() {
         />
         {dealsQ.isLoading ? (
           <p className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" /> …
+            <Loader2 className="h-4 w-4 animate-spin" /> در حال بارگذاری…
           </p>
         ) : cards.length === 0 ? (
           <p className="text-sm text-muted-foreground">معاملهٔ حذف‌شده‌ای نیست.</p>
@@ -252,7 +253,7 @@ export function DealPipelineBoard() {
             {cards.map((c) => (
               <li
                 key={c.id}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-sm"
+                className="deal-elev flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-card p-3 text-sm"
               >
                 <Link
                   to="/deal/$dealId"
@@ -287,7 +288,7 @@ export function DealPipelineBoard() {
   }
 
   return (
-    <div className="min-w-0 max-w-full space-y-3 overflow-x-hidden" dir="rtl">
+    <div className="deal-surface min-w-0 max-w-full space-y-3 overflow-x-hidden" dir="rtl">
       <DealPageHeader title="کاریز معاملات">
         <div className="flex flex-wrap items-center gap-2">
           <DealViewTabs active="kanban" />
@@ -387,6 +388,14 @@ export function DealPipelineBoard() {
           }}
         />
       <div className="flex gap-3 overflow-x-auto pb-2">
+        {stages.length === 0 && (stagesQ.isLoading || pipesQ.isLoading) ? (
+          [0, 1, 2].map((i) => (
+            <section key={i} className="deal-elev deal-col-accent min-w-[16rem] flex-1 rounded-xl border bg-card p-3">
+              <div className="h-5 w-24 animate-pulse rounded bg-muted" />
+              <div className="mt-3 h-20 animate-pulse rounded-xl bg-muted" />
+            </section>
+          ))
+        ) : null}
         {stages.map((s) => {
           const col = byStage.get(s.id) ?? [];
           const sum = col.reduce(
@@ -396,12 +405,19 @@ export function DealPipelineBoard() {
           return (
             <section
               key={s.id}
-              className="min-w-[16rem] flex-1 rounded-lg border bg-muted/20"
+              className={`deal-elev deal-col-accent min-w-[16rem] flex-1 rounded-xl border bg-card ${
+                overStageId === s.id ? "bg-primary/5 ring-2 ring-primary/40" : ""
+              }`}
               onDragOver={(e) => {
                 e.preventDefault();
+                setOverStageId(s.id);
+              }}
+              onDragLeave={() => {
+                setOverStageId((cur) => (cur === s.id ? null : cur));
               }}
               onDrop={(e) => {
                 e.preventDefault();
+                setOverStageId(null);
                 const id = e.dataTransfer.getData("text/deal-id") || draggingId;
                 if (!id) return;
                 const card = cards.find((c) => c.id === id);
@@ -425,7 +441,7 @@ export function DealPipelineBoard() {
               {s.sort_order === 1 ? (
                 <button
                   type="button"
-                  className="mx-2 mt-2 w-[calc(100%-1rem)] rounded border border-dashed py-2 text-sm"
+                  className="mx-2 mt-2 w-[calc(100%-1rem)] rounded border border-dashed border-primary/40 py-2 text-sm text-primary"
                   onClick={() => setQuickOpen(true)}
                 >
                   + افزودن سریع معامله
@@ -433,13 +449,19 @@ export function DealPipelineBoard() {
               ) : (
                 <button
                   type="button"
-                  className="mx-2 mt-2 w-[calc(100%-1rem)] rounded border border-dashed py-2 text-sm"
+                  className="mx-2 mt-2 w-[calc(100%-1rem)] rounded border border-dashed border-primary/40 py-2 text-sm text-primary"
                   onClick={() => setQuickOpen(true)}
                 >
                   +
                 </button>
               )}
               <div className="space-y-2 p-2">
+                {dealsQ.isLoading && col.length === 0 ? (
+                  <>
+                    <div className="h-16 animate-pulse rounded-xl bg-muted" />
+                    <div className="h-16 animate-pulse rounded-xl bg-muted" />
+                  </>
+                ) : null}
                 {col.map((c) => (
                   <article
                     key={c.id}
@@ -453,8 +475,13 @@ export function DealPipelineBoard() {
                       }
                       setDraggingId(c.id);
                     }}
-                    onDragEnd={() => setDraggingId(null)}
-                    className="cursor-grab rounded-md border bg-background p-2 text-sm shadow-sm"
+                    onDragEnd={() => {
+                      setDraggingId(null);
+                      setOverStageId(null);
+                    }}
+                    className={`deal-elev cursor-grab rounded-xl border bg-card p-3 text-sm hover:border-primary/40 ${
+                      draggingId === c.id ? "opacity-50" : ""
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-1">
                       <DealZoomOverlay
@@ -529,21 +556,25 @@ export function DealPipelineBoard() {
         <DropAction
           enabled={!!dragging?.caps?.can_delete}
           label="حذف معامله"
+          tone="del"
           onDrop={() => dragging && setDeleteFor(dragging)}
         />
         <DropAction
           enabled={!!dragging?.caps?.can_set_won}
           label="موفق شد"
+          tone="won"
           onDrop={() => dragging && statusMut.mutate({ id: dragging.id, status: "won" })}
         />
         <DropAction
           enabled={!!dragging?.caps?.can_set_lost}
           label="ناموفق شد"
+          tone="lost"
           onDrop={() => dragging && setLostFor(dragging)}
         />
         <DropAction
           enabled={!!dragging?.caps?.can_move}
           label="انتقال به کاریز دیگر"
+          tone="move"
           onDrop={() => dragging && setMoveFor(dragging)}
         />
       </div>
@@ -565,6 +596,7 @@ export function DealPipelineBoard() {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletePending}>انصراف</AlertDialogCancel>
             <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               disabled={deletePending || !deleteFor}
               onClick={(e) => {
                 e.preventDefault();
@@ -669,7 +701,7 @@ function BoardFilters(props: {
     },
   });
   return (
-    <aside className="min-w-0 rounded-lg border p-3" aria-label="فیلتر کاریز">
+    <aside className="deal-elev min-w-0 rounded-xl border bg-card p-2 sm:p-3" aria-label="فیلتر کاریز">
       <div className="mb-2 flex gap-2 text-sm">
         <Button type="button" size="sm" variant={props.filterTab === "filters" ? "default" : "ghost"} onClick={() => props.onFilterTab("filters")}>
           فیلترها
@@ -781,7 +813,20 @@ function BoardFilters(props: {
   );
 }
 
-function DropAction(props: { enabled: boolean; label: string; onDrop: () => void }) {
+function DropAction(props: {
+  enabled: boolean;
+  label: string;
+  onDrop: () => void;
+  tone?: "del" | "won" | "lost" | "move";
+}) {
+  const tone =
+    props.tone === "del"
+      ? "border-destructive/40 bg-destructive/10 text-destructive"
+      : props.tone === "won"
+        ? "border-success/40 bg-success/10 text-success"
+        : props.tone === "lost"
+          ? "border-destructive/40 bg-destructive/10 text-destructive"
+          : "border-primary/40 bg-primary/10 text-primary";
   return (
     <button
       type="button"
@@ -793,7 +838,7 @@ function DropAction(props: { enabled: boolean; label: string; onDrop: () => void
         e.preventDefault();
         if (props.enabled) props.onDrop();
       }}
-      className="rounded-md border px-3 py-1.5 text-sm disabled:opacity-40"
+      className={`rounded-md border px-3 py-1.5 text-sm disabled:opacity-40 ${tone}`}
     >
       {props.label}
     </button>

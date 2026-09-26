@@ -186,7 +186,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] w-[min(48rem,100vw)] max-w-full overflow-x-hidden overflow-y-auto" dir="rtl">
+      <DialogContent className="deal-surface max-h-[90vh] w-[min(48rem,100vw)] max-w-full overflow-x-hidden overflow-y-auto" dir="rtl">
         <DialogHeader>
           <DialogTitle>افزودن معامله</DialogTitle>
         </DialogHeader>
@@ -282,7 +282,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
                     <button
                       type="button"
                       className={`rounded-sm border px-2 py-1 text-xs ${
-                        s.id === stageId ? "bg-green-200" : "bg-muted"
+                        s.id === stageId ? "border-primary/30 bg-primary/15 text-primary" : "bg-muted"
                       }`}
                       onClick={() => setStageId(s.id)}
                     >
@@ -369,7 +369,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
               </p>
             </div>
           </div>
-          <aside className="space-y-2 text-sm">
+          <aside className="deal-elev space-y-2 rounded-xl border bg-card p-3 text-sm">
             <div>اطلاعات خریدار</div>
             <div>افزودن محصول</div>
           </aside>
