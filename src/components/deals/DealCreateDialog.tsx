@@ -27,6 +27,7 @@ import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { VISIBILITY_LABELS } from "./DealChrome";
 import { DealPersonPicker } from "./DealPersonPicker";
 import { dealAmountNumber, formatDealAmountInput } from "@/lib/deals/amount";
+import { formatDealNumber } from "@/lib/deals/format";
 import { loadDealStaffNames } from "@/lib/deals/names";
 import { didarDealTitleFromPerson } from "@/lib/deals/title";
 import { safeRandomUUID } from "@/lib/utils/safe-uuid";
@@ -359,7 +360,7 @@ export function DealCreateDialog({ open, onOpenChange, quick }: Props) {
                 </SelectContent>
               </Select>
               {relatedIds.length ? (
-                <p className="text-xs">{relatedIds.length} کاربر مرتبط</p>
+                <p className="text-xs">{formatDealNumber(relatedIds.length)} کاربر مرتبط</p>
               ) : null}
               <Label>فعالیت بعدی</Label>
               <JalaliDateInput value={nextFollow || null} onChange={setNextFollow} />

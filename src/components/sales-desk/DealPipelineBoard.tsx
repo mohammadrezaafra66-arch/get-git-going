@@ -544,7 +544,7 @@ export function DealPipelineBoard() {
                 ))}
               </div>
               <footer className="px-3 pb-2 text-xs text-muted-foreground">
-                نمایش {col.length} از {col.length} معامله این مرحله
+                نمایش {formatDealNumber(col.length)} از {formatDealNumber(col.length)} معامله این مرحله
               </footer>
             </section>
           );

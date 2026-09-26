@@ -12,8 +12,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { formatDateFa, formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatDateFa, formatDateTimeFa, toFaDigits } from "@/lib/i18n/formatters";
 import { formatDealIrr, formatDealNumber, formatDealPercent } from "@/lib/deals/format";
+import { CLOSED_DEAL_DELETE_HINT } from "@/lib/deals/bulk-summary";
 import { loadDealLookupNames } from "@/lib/deals/names";
 import { DealDeleteConfirm } from "./DealDeleteConfirm";
 import {
@@ -68,6 +69,8 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
   const [editOpen, setEditOpen] = useState(false);
   const [noteOpen, setNoteOpen] = useState(false);
   const [zoomOpen, setZoomOpen] = useState(false);
+  const [feedTab, setFeedTab] = useState("all");
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const dealQ = useQuery({
     queryKey: ["sales-desk", "deal", dealId],
@@ -195,7 +198,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
     },
   });
 
-  if (dealQ.isLoading) return <p className="text-sm">در حال بارگذاری…</p>;
+  if (dealQ.isLoading && !deal) return <p className="text-sm">در حال بارگذاری…</p>;
   if (!deal) return <p className="text-sm">معامله یافت نشد.</p>;
 
   const closed = deal.status === "won" || deal.status === "lost";
@@ -240,7 +243,8 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
         aria-label="سربرگ معامله"
       >
         <h1 className="min-w-0 max-w-full break-words text-xl font-semibold">
-          {dealHeaderTitle(deal.title)} {deal.display_code != null ? `#${deal.display_code}` : ""}
+          {dealHeaderTitle(deal.title)}{" "}
+          {deal.display_code != null ? `#${toFaDigits(deal.display_code)}` : ""}
         </h1>
         <div className="flex min-w-0 flex-wrap gap-2">
           <Button
@@ -263,7 +267,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               void qc.invalidateQueries({ queryKey: ["sales-desk"] });
             }}
           />
-          <DropdownMenu>
+          <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
             <DropdownMenuTrigger asChild>
               <Button type="button" variant="ghost" className="min-h-10 min-w-10" aria-label="منوی معامله">
                 <MoreHorizontal className="h-4 w-4" />
@@ -312,6 +316,10 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               </DropdownMenuItem>
               {capsQ.data?.can_delete ? (
                 <DropdownMenuItem onClick={() => setDeleteOpen(true)}>حذف</DropdownMenuItem>
+              ) : closed ? (
+                <DropdownMenuItem disabled title={CLOSED_DEAL_DELETE_HINT}>
+                  حذف
+                </DropdownMenuItem>
               ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
@@ -419,9 +427,11 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               />
             )}
           </div>
-          <Tabs defaultValue="all">
+          <Tabs value={feedTab} onValueChange={setFeedTab}>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <span>تاریخچه</span>
+              <button type="button" className="font-medium" onClick={() => setFeedTab("history")}>
+                تاریخچه
+              </button>
               <Button type="button" size="sm" variant="ghost" onClick={() => setZoomOpen(true)}>
                 بزرگتر ببین و فیلتر کن
               </Button>
@@ -641,7 +651,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
           </section>
           <section className="deal-elev rounded-xl border bg-card p-3">
             <h2 className="font-medium">محصولات درخواستی</h2>
-            {(itemsQ.data ?? []).length === 0 ? "—" : `${itemsQ.data?.length} مورد`}
+            {(itemsQ.data ?? []).length === 0 ? "—" : `${formatDealNumber(itemsQ.data?.length)} مورد`}
           </section>
           <section className="deal-elev rounded-xl border bg-card p-3">
             ایجاد کننده معامله: {deal.author?.full_name ?? "—"}
