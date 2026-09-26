@@ -28,6 +28,9 @@ export const createDealInteractionSchema = z.object({
   dealId: z.string().uuid().nullable().optional(),
   pipelineId: z.string().uuid().nullable().optional(),
   stageId: z.string().uuid().nullable().optional(),
+  estimatedAmount: z.number().nonnegative().nullable().optional(),
+  introducerPersonId: z.string().uuid().nullable().optional(),
+  existingId: z.string().uuid().nullable().optional(),
   items: z
     .array(
       z.object({

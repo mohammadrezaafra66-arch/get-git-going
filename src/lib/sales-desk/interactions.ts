@@ -35,6 +35,10 @@ type CreateSalesInteractionBase = {
   items?: SalesInteractionItemInput[];
   pipelineId?: string | null;
   stageId?: string | null;
+  estimatedAmount?: number | null;
+  introducerPersonId?: string | null;
+  /** Retry follow-up writes without inserting a second deal. */
+  existingId?: string | null;
 };
 
 /** kind=request requires non-empty salespersonId (zod + trigger RESPONSIBLE_REQUIRED). */
@@ -74,48 +78,61 @@ export async function createSalesInteraction(
     if (!input.stageId && parsed.stageId) input.stageId = parsed.stageId;
   }
 
-  const { data, error } = await rpc()("sales_interaction_create", {
-    p_person_id: input.personId,
-    p_kind: input.kind,
-    p_body: input.body ?? "",
-    p_title: input.title ?? null,
-    p_customer_id: input.customerId ?? null,
-    p_salesperson_id: salespersonId,
-    p_call_log_id: input.callLogId ?? null,
-    p_next_follow_up_at: input.nextFollowUpAt ?? null,
-    p_source: input.source ?? "manual",
-    p_status: input.status ?? "open",
-    p_pipeline_id: input.pipelineId ?? null,
-    p_stage_id: input.stageId ?? null,
-    p_expected_close_on: (input as { expectedCloseOn?: string | null }).expectedCloseOn ?? null,
-    p_acquaintance_id: (input as { acquaintanceId?: string | null }).acquaintanceId ?? null,
-    p_company_person_id: (input as { companyPersonId?: string | null }).companyPersonId ?? null,
-    p_probability: (input as { probability?: number | null }).probability ?? null,
-    p_is_vip: (input as { isVip?: boolean }).isVip ?? false,
-  });
-  if (error) throw new Error(salesDeskErrorMessage(error.message));
-  if (typeof data !== "string" || !data) {
-    throw new Error("sales_interaction_create مقدار شناسه برنگرداند.");
-  }
-
-  if (input.dealId) {
-    await linkSalesInteractionDeal({ id: data, dealId: input.dealId });
-  }
-
-  if (input.items && input.items.length > 0) {
-    await insertSalesInteractionItems(data, input.items);
-  }
-
-  if (input.kind === "request" && input.pipelineId && input.stageId) {
-    const { error: moveErr } = await rpc()("sales_deal_move", {
-      p_id: data,
-      p_pipeline_id: input.pipelineId,
-      p_stage_id: input.stageId,
+  let id = input.existingId ?? null;
+  if (!id) {
+    const { data, error } = await rpc()("sales_interaction_create", {
+      p_person_id: input.personId,
+      p_kind: input.kind,
+      p_body: input.body ?? "",
+      p_title: input.title ?? null,
+      p_customer_id: input.customerId ?? null,
+      p_salesperson_id: salespersonId,
+      p_call_log_id: input.callLogId ?? null,
+      p_next_follow_up_at: input.nextFollowUpAt ?? null,
+      p_source: input.source ?? "manual",
+      p_status: input.status ?? "open",
+      p_pipeline_id: input.pipelineId ?? null,
+      p_stage_id: input.stageId ?? null,
+      p_expected_close_on: (input as { expectedCloseOn?: string | null }).expectedCloseOn ?? null,
+      p_acquaintance_id: (input as { acquaintanceId?: string | null }).acquaintanceId ?? null,
+      p_company_person_id: (input as { companyPersonId?: string | null }).companyPersonId ?? null,
+      p_probability: (input as { probability?: number | null }).probability ?? null,
+      p_is_vip: (input as { isVip?: boolean }).isVip ?? false,
+      p_estimated_amount: (input as { estimatedAmount?: number | null }).estimatedAmount ?? null,
+      p_introducer_person_id:
+        (input as { introducerPersonId?: string | null }).introducerPersonId ?? null,
     });
-    if (moveErr) throw new Error(salesDeskErrorMessage(moveErr.message));
+    if (error) throw new Error(salesDeskErrorMessage(error.message));
+    if (typeof data !== "string" || !data) {
+      throw new Error("sales_interaction_create مقدار شناسه برنگرداند.");
+    }
+    id = data;
   }
 
-  return data;
+  try {
+    if (input.dealId) {
+      await linkSalesInteractionDeal({ id, dealId: input.dealId });
+    }
+
+    if (input.items && input.items.length > 0) {
+      await insertSalesInteractionItems(id, input.items);
+    }
+
+    if (input.kind === "request" && input.pipelineId && input.stageId) {
+      const { error: moveErr } = await rpc()("sales_deal_move", {
+        p_id: id,
+        p_pipeline_id: input.pipelineId,
+        p_stage_id: input.stageId,
+      });
+      if (moveErr) throw new Error(salesDeskErrorMessage(moveErr.message));
+    }
+
+    return id;
+  } catch (e) {
+    const err = e instanceof Error ? e : new Error(String(e));
+    (err as Error & { createdId?: string }).createdId = id;
+    throw err;
+  }
 }
 
 /**
