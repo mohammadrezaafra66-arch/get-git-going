@@ -462,17 +462,12 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
                   ))}
                 </ul>
               )}
-              {noteOpen || notes.length > 0 ? (
-                <DealNoteForm
-                  dealId={deal.id}
-                  personId={deal.person_id}
-                  salespersonId={deal.salesperson_id ?? ""}
-                />
-              ) : (
-                <Button type="button" size="sm" className="mt-2" onClick={() => setNoteOpen(true)}>
-                  افزودن یادداشت
-                </Button>
-              )}
+              <DealNoteForm
+                dealId={deal.id}
+                personId={deal.person_id}
+                salespersonId={deal.salesperson_id ?? ""}
+                testId="pass3-d11-note"
+              />
             </TabsContent>
             <TabsContent value="files">
               <DealFileAdd dealId={deal.id} />

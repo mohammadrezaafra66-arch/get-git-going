@@ -80,11 +80,16 @@ export function DealEditDialog(props: {
   );
 }
 
-export function DealNoteForm(props: { dealId: string; personId: string; salespersonId: string }) {
+export function DealNoteForm(props: {
+  dealId: string;
+  personId: string;
+  salespersonId: string;
+  testId?: string;
+}) {
   const qc = useQueryClient();
   const [body, setBody] = useState("");
   return (
-    <div className="space-y-2" data-testid="pass3-d2-note">
+    <div className="space-y-2" data-testid={props.testId ?? "pass3-d2-note"}>
       <Textarea
         aria-label="متن یادداشت"
         value={body}
