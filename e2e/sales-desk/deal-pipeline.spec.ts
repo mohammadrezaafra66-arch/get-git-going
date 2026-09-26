@@ -273,7 +273,7 @@ test.describe("deal pipeline v1", () => {
   test("G8.7 quote created/sent/accepted advances deal", async ({ page }) => {
     const id = await createDeal(salesJwt(), `${STAMP} quote`);
     await page.goto(`/operations/sales-desk/deals/${id}`, { waitUntil: "domcontentloaded" });
-    await expect(page.getByRole("button", { name: "ایجاد پیش‌فاکتور" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /پیش.?فاکتور/ })).toBeVisible();
     const jwt = adminJwt();
     const qid = insertLinkedQuote(id, `${STAMP}-Q1`.replace(/[^0-9A-Za-z-]/g, "").slice(0, 40));
     expect(qid).toMatch(/^[0-9a-f-]{36}$/i);

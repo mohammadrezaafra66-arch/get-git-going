@@ -2,17 +2,17 @@ import { createFileRoute } from "@tanstack/react-router";
 import { requireAnyRole } from "@/lib/rbac/route-guards";
 import { DealDidarDetail } from "@/components/deals/DealDidarDetail";
 
-export const Route = createFileRoute("/_app/operations/sales-desk_/deals/$dealId")({
+export const Route = createFileRoute("/_app/deal_/$dealId")({
   staticData: {
     gate: { kind: "anyRole", allowed: ["admin", "manager", "sales"] },
   },
   beforeLoad: async () => {
     await requireAnyRole(["admin", "manager", "sales"]);
   },
-  component: DealDetailPage,
+  component: DealPage,
 });
 
-function DealDetailPage() {
+function DealPage() {
   const { dealId } = Route.useParams();
   return (
     <div className="p-4">

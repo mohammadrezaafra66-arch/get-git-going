@@ -591,8 +591,8 @@ const NAVIGATION_SEEDS = [
 
   // ۶) عملیات داخلی
   {
-    to: "/operations/sales-desk/pipeline",
-    label: "کاریز فروش",
+    to: "/deal",
+    label: "معاملات",
     icon: FolderKanban,
     module: "sales",
     group: "operations",
@@ -1521,6 +1521,10 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   // _app.operations.sales-desk.tsx / call-activity — requireAnyRole(admin,manager,sales)
   "/operations/sales-desk": ["admin", "manager", "sales"],
   "/operations/sales-desk/pipeline": ["admin", "manager", "sales"],
+  "/deal": ["admin", "manager", "sales"],
+  "/deal/filter": ["admin", "manager", "sales"],
+  "/deal/forecast": ["admin", "manager", "sales"],
+  "/deal/$dealId": ["admin", "manager", "sales"],
   "/operations/sales-desk/deals-for-others": ["admin", "manager", "sales"],
   "/operations/sales-desk/activities": ["admin", "manager", "sales"],
   "/settings/deal-lost-reasons": ["admin", "manager", "sales"],

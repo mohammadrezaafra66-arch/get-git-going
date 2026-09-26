@@ -45,9 +45,9 @@ const KIND_LABEL: Record<PersonKind, string> = {
   organization: "حقوقی",
 };
 const SCOPE_LABEL: Record<PersonVisibilityScope, string> = {
-  internal_general: "داخلی - عمومی",
-  restricted_finance: "محدود - مالی",
-  restricted_executive: "محدود - مدیریتی",
+  internal_general: "همه افراد شرکت",
+  restricted_finance: "مسئول و هم گروهی ها",
+  restricted_executive: "مسئول ،هم گروهی ها و زیر گروه ها",
 };
 
 export function PersonForm({

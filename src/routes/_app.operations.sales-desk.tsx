@@ -33,8 +33,8 @@ function SalesDeskPage() {
       actions={
         <div className="flex flex-wrap gap-2">
           <Button asChild variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm">
-            <Link to="/operations/sales-desk/pipeline">
-              کاریز فروش
+            <Link to="/deal">
+              معاملات
             </Link>
           </Button>
           <Button asChild variant="outline" size="sm" className="bg-white/70 backdrop-blur-sm">

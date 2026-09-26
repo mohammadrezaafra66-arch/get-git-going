@@ -13,7 +13,7 @@ const RESPONSIBLE_MSG = "مسئول معامله الزامی است";
 export const createDealInteractionSchema = z.object({
   personId: z.string().uuid({ message: "شناسه شخص نامعتبر است" }),
   kind: z.literal("request"),
-  body: z.string().trim().min(1, "متن درخواست الزامی است"),
+  body: z.string().trim().optional().default(""),
   title: z.string().max(120).nullable().optional(),
   customerId: z.string().uuid().nullable().optional().or(z.literal("").transform(() => null)),
   salespersonId: z
