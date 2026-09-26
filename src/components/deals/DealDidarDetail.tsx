@@ -1,10 +1,17 @@
 import { useState } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatDateFa, formatDateTimeFa, formatNumber } from "@/lib/i18n/formatters";
 import {
   ActivityForm,
@@ -12,21 +19,35 @@ import {
   salesInteractionStatusLabel,
 } from "@/components/sales-desk";
 import {
+  createSalesInteraction,
   loadDealById,
   listSalesInteractionItems,
   listActivitiesForDeal,
 } from "@/lib/sales-desk";
 import { loadDealCapabilities } from "@/lib/sales-desk/capabilities";
-import { listSalesPipelineStages, listSalesPipelines, moveSalesDeal } from "@/lib/sales-desk/pipelines";
+import {
+  deleteSalesDeal,
+  listSalesPipelineStages,
+  listSalesPipelines,
+  moveSalesDeal,
+  restoreSalesDeal,
+} from "@/lib/sales-desk/pipelines";
 import { supabase } from "@/integrations/supabase/client";
 import { salesDeskErrorMessage } from "@/lib/sales-desk";
+import { JalaliDateInput } from "@/shared/components/JalaliDateInput";
 import { MessengerSoonButtons, soonToast } from "./DealChrome";
+import { DealHistoryFeed } from "./DealHistoryFeed";
+import { DealPersonPicker } from "./DealPersonPicker";
+import { dealHeaderTitle } from "@/lib/deals/title";
 
 export function DealDidarDetail({ dealId }: { dealId: string }) {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [lostOpenSignal, setLostOpenSignal] = useState(0);
   const [feedSort, setFeedSort] = useState<"planned" | "done">("planned");
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [registerOn, setRegisterOn] = useState("");
+  const [companyEdit, setCompanyEdit] = useState(false);
 
   const dealQ = useQuery({
     queryKey: ["sales-desk", "deal", dealId],
@@ -180,11 +201,34 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
     }
   };
 
+  const deleted = !!deal.deleted_at;
+
   return (
-    <div className="space-y-4" dir="rtl">
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden" dir="rtl">
+      {deleted ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm" data-testid="deal-deleted-banner">
+          <p>این معامله حذف شده است و جاری نیست.</p>
+          {capsQ.data?.can_restore ? (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() =>
+                restoreSalesDeal(deal.id)
+                  .then(() => {
+                    toast.success("بازیابی شد");
+                    void qc.invalidateQueries({ queryKey: ["sales-desk"] });
+                  })
+                  .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)))
+              }
+            >
+              بازیابی
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">
-          معامله {deal.title} {deal.display_code != null ? `#${deal.display_code}` : ""}
+          {dealHeaderTitle(deal.title)} {deal.display_code != null ? `#${deal.display_code}` : ""}
         </h1>
         <div className="flex flex-wrap gap-2">
           <OutcomeButtons
@@ -197,18 +241,71 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               void qc.invalidateQueries({ queryKey: ["sales-desk"] });
             }}
           />
-          <Button type="button" variant="ghost" size="sm" onClick={soonToast} title="پرونده‌های مهم را دم دست نگه دارید!">
-            پین کردن
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={soonToast}>
-            ویرایش
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={soonToast}>
-            کپی معامله
-          </Button>
-          <Button type="button" variant="ghost" size="sm" onClick={soonToast}>
-            نظرسنجی
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" variant="ghost" size="sm" aria-label="منوی معامله">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                title="پرونده‌های مهم را دم دست نگه دارید!"
+                onClick={() => {
+                  void supabase
+                    .from("sales_interactions" as never)
+                    .update({ pinned_at: deal.pinned_at ? null : new Date().toISOString() } as never)
+                    .eq("id" as never, deal.id as never)
+                    .then(({ error }) => {
+                      if (error) toast.error(salesDeskErrorMessage(error.message));
+                      else {
+                        toast.success(deal.pinned_at ? "پین برداشته شد" : "پین کردن");
+                        void qc.invalidateQueries({ queryKey: ["sales-desk"] });
+                      }
+                    });
+                }}
+              >
+                پین کردن
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={soonToast}>ویرایش</DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  void createSalesInteraction({
+                    kind: "request",
+                    personId: deal.person_id,
+                    salespersonId: deal.salesperson_id ?? "",
+                    title: deal.title,
+                    body: deal.body,
+                    status: "open",
+                    pipelineId: deal.pipeline_id,
+                    stageId: deal.stage_id,
+                  } as never)
+                    .then((id) => {
+                      toast.success("کپی معامله");
+                      void navigate({ to: "/deal/$dealId", params: { dealId: id } });
+                    })
+                    .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)));
+                }}
+              >
+                کپی معامله
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  if (!capsQ.data?.can_delete) {
+                    toast.error("حذف مجاز نیست.");
+                    return;
+                  }
+                  deleteSalesDeal(deal.id)
+                    .then(() => {
+                      toast.success("حذف شد");
+                      void navigate({ to: "/deal" });
+                    })
+                    .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)));
+                }}
+              >
+                حذف
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
 
@@ -251,7 +348,15 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
       <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
         <section className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" onClick={() => document.getElementById("deal-activity")?.scrollIntoView()}>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setActivityOpen(true);
+                document.getElementById("deal-activity")?.scrollIntoView();
+              }}
+            >
               افزودن فعالیت جدید
             </Button>
             <Button type="button" size="sm" variant="outline" onClick={soonToast}>
@@ -271,22 +376,28 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
             </Button>
           </div>
           <div id="deal-activity">
-            {planned.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                هیچ فعالیتی برای این معامله برنامه ریزی نکردی! برای اینکه از دستش ندهی یک فعالیت
-                برایش تعریف کن.
-                <Button type="button" variant="link" onClick={soonToast}>
-                  چرا مهم است روی معامله جاری فعالیت برنامه ریزی شده داشته باشیم؟
+            {!activityOpen ? (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  هیچ فعالیتی برای این معامله برنامه ریزی نکردی! برای اینکه از دستش ندهی یک فعالیت
+                  برایش تعریف کن.
+                  <Button type="button" variant="link" onClick={soonToast}>
+                    چرا مهم است روی معامله جاری فعالیت برنامه ریزی شده داشته باشیم؟
+                  </Button>
+                </p>
+                <Button type="button" size="sm" onClick={() => setActivityOpen(true)}>
+                  افزودن فعالیت جدید
                 </Button>
-              </p>
-            ) : null}
-            <ActivityForm
-              personId={deal.person_id}
-              customerId={deal.customer_id}
-              dealId={deal.id}
-              compact
-              onCreated={() => void activitiesQ.refetch()}
-            />
+              </div>
+            ) : (
+              <ActivityForm
+                personId={deal.person_id}
+                customerId={deal.customer_id}
+                dealId={deal.id}
+                compact
+                onCreated={() => void activitiesQ.refetch()}
+              />
+            )}
           </div>
           <Tabs defaultValue="all">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -341,7 +452,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               <p className="text-sm text-muted-foreground">پیوستی نیست.</p>
             </TabsContent>
             <TabsContent value="history">
-              <p className="text-sm text-muted-foreground">سابقه در تب قبلی جزئیات.</p>
+              <DealHistoryFeed dealId={deal.id} dealTitle={deal.title ?? ""} />
             </TabsContent>
             <TabsContent value="quotes">
               {(quotesQ.data ?? []).length === 0 ? (
@@ -364,11 +475,36 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
         <aside className="space-y-3 text-sm">
           <section className="rounded border p-3">
             <h2 className="mb-2 font-medium">اطلاعات معامله</h2>
+            <p>مسئول {deal.salesperson?.full_name ?? "—"}</p>
             <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
               اضافه کردن برچسب
             </Button>
             <p>احتمال موفق شدن / {deal.probability ?? 100}٪</p>
-            <p>تاریخ احتمالی بستن معامله {deal.expected_close_on ?? "—"}</p>
+            <p>تاریخ احتمالی بستن معامله {deal.expected_close_on ? formatDateFa(deal.expected_close_on) : "—"}</p>
+            <div className="space-y-1">
+              <p>تاریخ معامله {formatDateFa(deal.register_time ?? deal.created_at)}</p>
+              <JalaliDateInput
+                value={registerOn || (deal.register_time ? deal.register_time.slice(0, 10) : "")}
+                onChange={(iso) => {
+                  setRegisterOn(iso);
+                  if (!iso) return;
+                  const rpc = supabase.rpc.bind(supabase) as unknown as (
+                    fn: string,
+                    args: Record<string, unknown>,
+                  ) => Promise<{ error: { message: string } | null }>;
+                  void rpc("sales_deal_set_register_time", {
+                    p_id: dealId,
+                    p_register_time: `${iso}T12:00:00+03:30`,
+                  }).then(({ error }) => {
+                    if (error) toast.error(salesDeskErrorMessage(error.message));
+                    else {
+                      toast.success("تاریخ معامله");
+                      void qc.invalidateQueries({ queryKey: ["sales-desk"] });
+                    }
+                  });
+                }}
+              />
+            </div>
             <p>
               IRR {formatNumber(Number(amount))} ({paidLabel})
             </p>
@@ -427,15 +563,47 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
             ) : (
               <p>این معامله به هیچ شرکتی وصل نیست</p>
             )}
-            <Button type="button" size="sm" variant="link" onClick={soonToast}>
+            <Button type="button" size="sm" variant="link" onClick={() => setCompanyEdit(true)}>
               + وصل کردن یک شرکت
             </Button>
+            {companyEdit ? (
+              <DealPersonPicker
+                label="جستجوی شرکت"
+                valueId={deal.company_person_id}
+                valueName={companyQ.data?.display_name ?? ""}
+                kind="organization"
+                onPick={(p) => {
+                  if (!p.id) return;
+                  void supabase
+                    .from("sales_interactions" as never)
+                    .update({ company_person_id: p.id } as never)
+                    .eq("id" as never, deal.id as never)
+                    .then(({ error }) => {
+                      if (error) toast.error(salesDeskErrorMessage(error.message));
+                      else {
+                        toast.success("شرکت وصل شد");
+                        setCompanyEdit(false);
+                        void qc.invalidateQueries({ queryKey: ["sales-desk"] });
+                      }
+                    });
+                }}
+              />
+            ) : null}
           </section>
 
           <section className="rounded border p-3">
             <h2 className="font-medium">فیلدهای معامله</h2>
             <Button type="button" size="sm" variant="link" onClick={() => void navigate({ to: "/settings/deal-lost-reasons" })}>
               ایجاد فیلد جدید
+            </Button>
+          </section>
+          <section className="rounded border p-3">
+            <h2 className="mb-2 font-medium">پرداخت</h2>
+            <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
+              ایجاد یک پرداخت معادل مبلغ معامله
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
+              ایجاد پرداخت چند مرحله ای
             </Button>
           </section>
           <section className="rounded border p-3">
@@ -475,7 +643,7 @@ export function DealDidarDetail({ dealId }: { dealId: string }) {
               مشاهده بیشتر
             </Button>
           </section>
-          <Badge variant="outline">{salesInteractionStatusLabel(deal.status)}</Badge>
+          <Badge variant="outline">{deleted ? "حذف شده" : salesInteractionStatusLabel(deal.status)}</Badge>
         </aside>
       </div>
     </div>

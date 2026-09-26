@@ -69,6 +69,13 @@ import type { NavigationEntry, NavigationEntrySeed } from "./types";
 import { resolveActiveModule } from "@/components/layout/primary-modules";
 
 const NAVIGATION_SEEDS = [
+  {
+    to: "/deal",
+    label: "معاملات",
+    icon: FolderKanban,
+    module: "sales",
+    group: "operations",
+  },
   // ۱) داشبورد
   { to: "/dashboard", label: "داشبورد", icon: LayoutDashboard, module: "dashboard", group: "main" },
   { to: "/notifications", label: "اعلان‌ها", icon: Bell, module: "messages", group: "main" },
@@ -591,13 +598,6 @@ const NAVIGATION_SEEDS = [
 
   // ۶) عملیات داخلی
   {
-    to: "/deal",
-    label: "معاملات",
-    icon: FolderKanban,
-    module: "sales",
-    group: "operations",
-  },
-  {
     // F1 sales-desk — میز تماس فروش (AC5/AC8)
     to: "/operations/sales-desk",
     label: "میز فروش",
@@ -636,6 +636,13 @@ const NAVIGATION_SEEDS = [
   {
     to: "/sales/reports/deal-lost",
     label: "دلایل شکست",
+    icon: BarChart3,
+    module: "deal-lost-report",
+    group: "reports",
+  },
+  {
+    to: "/sales/reports/deals",
+    label: "گزارش معاملات",
     icon: BarChart3,
     module: "deal-lost-report",
     group: "reports",
@@ -1530,6 +1537,7 @@ const ROLE_ALLOWLIST_BY_ROUTE: Record<string, AppRole[]> = {
   "/settings/deal-lost-reasons": ["admin", "manager", "sales"],
   "/settings/sales-pipelines": ["admin", "manager", "sales"],
   "/sales/reports/deal-lost": ["admin", "manager", "sales"],
+  "/sales/reports/deals": ["admin", "manager", "sales"],
   "/operations/call-activity": ["admin", "manager", "sales"],
   // Calm Mind work board — mirrors route requireAnyRole(admin|manager|sales|accountant)
   "/operations/work": ["admin", "manager", "sales", "accountant"],

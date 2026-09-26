@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Loader2, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +50,7 @@ import { FollowUpTrafficLightIcon } from "./FollowUpTrafficLightIcon";
 import { LostReasonDialog, type LostReasonSubmit } from "./LostReasonDialog";
 import { DealCreateDialog } from "@/components/deals/DealCreateDialog";
 import { DealPageHeader, DealViewTabs, HealthCircle, soonToast } from "@/components/deals/DealChrome";
+import { DealZoomOverlay } from "@/components/deals/DealZoomOverlay";
 
 type StatusFilter = "open" | "won" | "lost" | "all" | "deleted";
 
@@ -69,6 +70,11 @@ type DealCard = {
   latest_quote_amount: number;
   last_activity_age_days: number | null;
   health_circle: string | null;
+  is_vip?: boolean;
+  register_time?: string | null;
+  acquaintance_id?: string | null;
+  tag_ids?: string[];
+  related_user_ids?: string[];
 };
 
 const LIGHT_RANK: Record<FollowUpTrafficLight, number> = {
@@ -101,6 +107,11 @@ export function DealPipelineBoard() {
   const [vipOnly, setVipOnly] = useState(false);
   const [noActivity, setNoActivity] = useState(false);
   const [rottenOnly, setRottenOnly] = useState(false);
+  const [noTag, setNoTag] = useState(false);
+  const [acqId, setAcqId] = useState("");
+  const [registerWindow, setRegisterWindow] = useState<"all" | "6m">("6m");
+  const [relatedOwner, setRelatedOwner] = useState(false);
+  const [filterTab, setFilterTab] = useState<"filters" | "owner">("filters");
 
   const pipesQ = useQuery({
     queryKey: ["sales-desk", "pipelines"],
@@ -159,16 +170,23 @@ export function DealPipelineBoard() {
     const map = new Map<string, DealCard[]>();
     for (const s of stages) map.set(s.id, []);
     for (const c of cards) {
-      if (ownerId && c.salesperson_id !== ownerId) continue;
-      if (vipOnly && !(c as DealCard & { is_vip?: boolean }).is_vip) continue;
+      if (ownerId && c.salesperson_id !== ownerId && !(relatedOwner && c.related_user_ids?.includes(ownerId))) continue;
+      if (vipOnly && !c.is_vip) continue;
       if (noActivity && (c.last_activity_age_days ?? 0) < 1) continue;
       if (rottenOnly && c.health_circle !== "red") continue;
+      if (noTag && (c.tag_ids?.length ?? 0) > 0) continue;
+      if (acqId && c.acquaintance_id !== acqId) continue;
+      if (registerWindow === "6m" && c.register_time) {
+        const cut = new Date();
+        cut.setMonth(cut.getMonth() - 6);
+        if (new Date(c.register_time) < cut) continue;
+      }
       if (dateChip === "due" && c.light === "grey") continue;
       if (c.stage_id && map.has(c.stage_id)) map.get(c.stage_id)!.push(c);
     }
     for (const list of map.values()) list.sort(sortCards);
     return map;
-  }, [cards, stages, ownerId, vipOnly, noActivity, rottenOnly, dateChip]);
+  }, [cards, stages, ownerId, relatedOwner, vipOnly, noActivity, rottenOnly, noTag, acqId, registerWindow, dateChip]);
 
   if (statusFilter === "deleted") {
     return (
@@ -187,12 +205,26 @@ export function DealPipelineBoard() {
           onNoActivity={setNoActivity}
           rottenOnly={rottenOnly}
           onRotten={setRottenOnly}
+          noTag={noTag}
+          onNoTag={setNoTag}
+          acqId={acqId}
+          onAcq={setAcqId}
+          registerWindow={registerWindow}
+          onRegisterWindow={setRegisterWindow}
+          relatedOwner={relatedOwner}
+          onRelatedOwner={setRelatedOwner}
+          filterTab={filterTab}
+          onFilterTab={setFilterTab}
           profileId={profile?.id ?? ""}
           onClear={() => {
             setOwnerId("");
             setVipOnly(false);
             setNoActivity(false);
             setRottenOnly(false);
+            setNoTag(false);
+            setAcqId("");
+            setRegisterWindow("6m");
+            setRelatedOwner(false);
             setDateChip("due");
           }}
         />
@@ -210,7 +242,7 @@ export function DealPipelineBoard() {
                 className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-2 text-sm"
               >
                 <Link
-                  to="/operations/sales-desk/deals/$dealId"
+                  to="/deal/$dealId"
                   params={{ dealId: c.id }}
                   className="font-medium text-primary underline-offset-2 hover:underline"
                 >
@@ -242,21 +274,38 @@ export function DealPipelineBoard() {
   }
 
   return (
-    <div className="space-y-3" dir="rtl">
+    <div className="min-w-0 max-w-full space-y-3 overflow-x-hidden" dir="rtl">
       <DealPageHeader title="کاریز معاملات">
         <div className="flex flex-wrap items-center gap-2">
           <DealViewTabs active="kanban" />
           <Button type="button" onClick={() => setCreateOpen(true)}>
             افزودن معامله
           </Button>
+          <Button type="button" variant="outline" asChild>
+            <a href="/sales/reports/deals">گزارش معاملات</a>
+          </Button>
           <Button type="button" variant="outline" onClick={() => void dealsQ.refetch()}>
             بروزرسانی سریع صفحه
           </Button>
-          <Button type="button" variant="ghost" onClick={() => void (window.location.href = "/settings/sales-pipelines")}>
-            ویرایش کاریز
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            title="ویرایش کاریز"
+            aria-label="ویرایش کاریز"
+            onClick={() => void (window.location.href = "/settings/sales-pipelines")}
+          >
+            <Pencil className="h-4 w-4" />
           </Button>
-          <Button type="button" variant="ghost" onClick={() => void (window.location.href = "/settings/sales-pipelines")}>
-            ایجاد کاریز
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            title="ایجاد کاریز"
+            aria-label="ایجاد کاریز"
+            onClick={() => void (window.location.href = "/settings/sales-pipelines")}
+          >
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
       </DealPageHeader>
@@ -281,16 +330,30 @@ export function DealPipelineBoard() {
         noActivity={noActivity}
         onNoActivity={setNoActivity}
         rottenOnly={rottenOnly}
-        onRotten={setRottenOnly}
-        profileId={profile?.id ?? ""}
-        onClear={() => {
-          setOwnerId("");
-          setVipOnly(false);
-          setNoActivity(false);
-          setRottenOnly(false);
-          setDateChip("due");
-        }}
-      />
+          onRotten={setRottenOnly}
+          noTag={noTag}
+          onNoTag={setNoTag}
+          acqId={acqId}
+          onAcq={setAcqId}
+          registerWindow={registerWindow}
+          onRegisterWindow={setRegisterWindow}
+          relatedOwner={relatedOwner}
+          onRelatedOwner={setRelatedOwner}
+          filterTab={filterTab}
+          onFilterTab={setFilterTab}
+          profileId={profile?.id ?? ""}
+          onClear={() => {
+            setOwnerId("");
+            setVipOnly(false);
+            setNoActivity(false);
+            setRottenOnly(false);
+            setNoTag(false);
+            setAcqId("");
+            setRegisterWindow("6m");
+            setRelatedOwner(false);
+            setDateChip("due");
+          }}
+        />
       <div className="flex gap-3 overflow-x-auto pb-2">
         {stages.map((s) => {
           const col = byStage.get(s.id) ?? [];
@@ -355,14 +418,16 @@ export function DealPipelineBoard() {
                     className="cursor-grab rounded-md border bg-background p-2 text-sm shadow-sm"
                   >
                     <div className="flex items-start justify-between gap-1">
-                      <Link
-                        to="/deal/$dealId"
-                        params={{ dealId: c.id }}
-                        className="font-medium text-primary underline-offset-2 hover:underline"
-                        title="در یک نگاه"
-                      >
-                        {c.title || "بدون عنوان"}
-                      </Link>
+                      <DealZoomOverlay
+                        title={c.title || "بدون عنوان"}
+                        personName={c.person_name}
+                        amountLabel={`IRR ${formatNumber(c.latest_quote_amount)}`}
+                        ageLabel={
+                          c.last_activity_age_days != null
+                            ? `${c.last_activity_age_days} روز پیش`
+                            : null
+                        }
+                      />
                       <span className="flex items-center gap-1">
                         <HealthCircle circle={c.health_circle} />
                         <FollowUpTrafficLightIcon light={c.light} />
@@ -373,8 +438,33 @@ export function DealPipelineBoard() {
                     </p>
                     <p className="text-xs">IRR {formatNumber(c.latest_quote_amount)}</p>
                     {c.last_activity_age_days != null ? (
-                      <p className="text-xs text-muted-foreground">{c.last_activity_age_days} روز پیش</p>
+                      <p
+                        className="text-xs text-muted-foreground"
+                        title="تاریخ آخرین فعالیت"
+                      >
+                        {c.last_activity_age_days} روز پیش
+                      </p>
                     ) : null}
+                    {c.light === "yellow" ? (
+                      <p className="mt-1 flex items-start gap-1 text-xs text-amber-700">
+                        <span aria-hidden>⚠</span>
+                        برای این معامله فعالیت ثبت نشده!
+                      </p>
+                    ) : null}
+                    <span
+                      className="mt-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px]"
+                      title={c.salesperson_name}
+                      aria-label={c.salesperson_name}
+                    >
+                      {(c.salesperson_name || "؟").slice(0, 1)}
+                    </span>
+                    <Link
+                      to="/deal/$dealId"
+                      params={{ dealId: c.id }}
+                      className="mt-1 block text-xs text-primary underline"
+                    >
+                      {c.title || "بدون عنوان"}
+                    </Link>
                     {c.caps?.show_rejected_quote_notice ? (
                       <Badge variant="destructive" className="mt-1 text-[10px]">
                         پیش‌فاکتور رد شد
@@ -390,30 +480,31 @@ export function DealPipelineBoard() {
           );
         })}
       </div>
-      {dragging ? (
-        <div className="sticky bottom-2 z-10 flex flex-wrap justify-center gap-2 rounded-lg border bg-background/95 p-2 shadow">
-          <DropAction
-            enabled={!!dragging.caps?.can_set_won}
-            label="موفق شد"
-            onDrop={() => statusMut.mutate({ id: dragging.id, status: "won" })}
-          />
-          <DropAction
-            enabled={!!dragging.caps?.can_set_lost}
-            label="ناموفق شد"
-            onDrop={() => setLostFor(dragging)}
-          />
-          <DropAction
-            enabled={!!dragging.caps?.can_delete}
-            label="حذف فرصت"
-            onDrop={() => setDeleteFor(dragging)}
-          />
-          <DropAction
-            enabled={!!dragging.caps?.can_move}
-            label="انتقال به کاریز دیگر"
-            onDrop={() => setMoveFor(dragging)}
-          />
-        </div>
-      ) : null}
+      <div
+        data-testid="deal-drop-strip"
+        className={`sticky bottom-2 z-10 flex flex-wrap justify-center gap-2 rounded-lg border bg-background/95 p-2 shadow ${dragging ? "" : "opacity-70"}`}
+      >
+        <DropAction
+          enabled={!!dragging?.caps?.can_delete}
+          label="حذف معامله"
+          onDrop={() => dragging && setDeleteFor(dragging)}
+        />
+        <DropAction
+          enabled={!!dragging?.caps?.can_set_won}
+          label="موفق شد"
+          onDrop={() => dragging && statusMut.mutate({ id: dragging.id, status: "won" })}
+        />
+        <DropAction
+          enabled={!!dragging?.caps?.can_set_lost}
+          label="ناموفق شد"
+          onDrop={() => dragging && setLostFor(dragging)}
+        />
+        <DropAction
+          enabled={!!dragging?.caps?.can_move}
+          label="انتقال به کاریز دیگر"
+          onDrop={() => dragging && setMoveFor(dragging)}
+        />
+      </div>
 
       <AlertDialog
         open={!!deleteFor}
@@ -496,74 +587,140 @@ function BoardFilters(props: {
   onNoActivity: (v: boolean) => void;
   rottenOnly: boolean;
   onRotten: (v: boolean) => void;
+  noTag: boolean;
+  onNoTag: (v: boolean) => void;
+  acqId: string;
+  onAcq: (v: string) => void;
+  registerWindow: "all" | "6m";
+  onRegisterWindow: (v: "all" | "6m") => void;
+  relatedOwner: boolean;
+  onRelatedOwner: (v: boolean) => void;
+  filterTab: "filters" | "owner";
+  onFilterTab: (v: "filters" | "owner") => void;
   onClear: () => void;
   profileId: string;
 }) {
+  const acqQ = useQuery({
+    queryKey: ["sales-desk", "acquaintance"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("acquaintance_methods" as never)
+        .select("id, title" as never)
+        .eq("is_active" as never, true as never)
+        .order("sort_order" as never, { ascending: true } as never);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; title: string }[];
+    },
+  });
   return (
-    <div className="flex flex-wrap items-end gap-3">
-      <div className="space-y-1">
-        <Label>کاریز</Label>
-        <Select value={props.pipelineId || undefined} onValueChange={props.onPipeline}>
-          <SelectTrigger className="w-56">
-            <SelectValue placeholder="کاریز" />
-          </SelectTrigger>
-          <SelectContent>
-            {props.pipes.map((p) => (
-              <SelectItem key={p.id} value={p.id}>
-                {p.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <aside className="min-w-0 rounded-lg border p-3" aria-label="فیلتر کاریز">
+      <div className="mb-2 flex gap-2 text-sm">
+        <Button type="button" size="sm" variant={props.filterTab === "filters" ? "default" : "ghost"} onClick={() => props.onFilterTab("filters")}>
+          فیلترها
+        </Button>
+        <Button type="button" size="sm" variant={props.filterTab === "owner" ? "default" : "ghost"} onClick={() => props.onFilterTab("owner")}>
+          مسئول
+        </Button>
       </div>
-      <div className="space-y-1">
-        <Label>وضعیت</Label>
-        <Select
-          value={props.statusFilter}
-          onValueChange={(v) => props.onStatus(v as StatusFilter)}
-        >
-          <SelectTrigger className="w-44">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="open">جاری</SelectItem>
-            <SelectItem value="won">موفق</SelectItem>
-            <SelectItem value="lost">ناموفق</SelectItem>
-            <SelectItem value="all">همه</SelectItem>
-            <SelectItem value="deleted">معاملات حذف شده</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <Button
-        type="button"
-        size="sm"
-        variant={props.ownerId ? "default" : "ghost"}
-        onClick={() => props.onOwner(props.ownerId ? "" : (props.profileId || ""))}
-      >
-        مسئول
-      </Button>
-      <label className="flex items-center gap-1 text-xs">
-        <input type="checkbox" checked={props.vipOnly} onChange={(e) => props.onVip(e.target.checked)} /> مشتری ویژه
-      </label>
-      <label className="flex items-center gap-1 text-xs">
-        <input type="checkbox" /> بدون برچسب
-      </label>
-      <span className="text-xs">برچسب:</span>
-      <span className="text-xs">شیوه آشنایی:</span>
-      <span className="text-xs">زمان ثبت معامله / ۶ ماه گذشته</span>
-      <label className="flex items-center gap-1 text-xs">
-        <input type="checkbox" checked={props.noActivity} onChange={(e) => props.onNoActivity(e.target.checked)} /> معاملاتی که فعالیتی روی آن‌ها نیست
-      </label>
-      <label className="flex items-center gap-1 text-xs">
-        <input type="checkbox" checked={props.rottenOnly} onChange={(e) => props.onRotten(e.target.checked)} /> نمایش معاملات فاسد شده
-      </label>
-      <Button type="button" size="sm" variant="ghost" onClick={props.onClear}>
-        حذف فیلتر
-      </Button>
-      <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
-        فیلتر پیشرفته
-      </Button>
-    </div>
+      {props.filterTab === "owner" ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={props.ownerId ? "default" : "outline"}
+            onClick={() => props.onOwner(props.ownerId ? "" : props.profileId || "")}
+          >
+            مسئول
+          </Button>
+          <label className="flex items-center gap-1 text-xs">
+            <input type="checkbox" checked={props.relatedOwner} onChange={(e) => props.onRelatedOwner(e.target.checked)} />
+            نمایش معاملات مرتبط با مسئول
+          </label>
+        </div>
+      ) : (
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="space-y-1">
+            <Label>کاریز</Label>
+            <Select value={props.pipelineId || undefined} onValueChange={props.onPipeline}>
+              <SelectTrigger className="w-56">
+                <SelectValue placeholder="کاریز" />
+              </SelectTrigger>
+              <SelectContent>
+                {props.pipes.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>نوع معاملات</Label>
+            <Select
+              value={props.statusFilter}
+              onValueChange={(v) => props.onStatus(v as StatusFilter)}
+            >
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="open">جاری</SelectItem>
+                <SelectItem value="won">موفق</SelectItem>
+                <SelectItem value="lost">ناموفق</SelectItem>
+                <SelectItem value="all">همه</SelectItem>
+                <SelectItem value="deleted">معاملات حذف شده</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex items-center gap-1 text-xs">
+            <input type="checkbox" checked={props.vipOnly} onChange={(e) => props.onVip(e.target.checked)} /> مشتری ویژه
+          </label>
+          <label className="flex items-center gap-1 text-xs">
+            <input type="checkbox" checked={props.noTag} onChange={(e) => props.onNoTag(e.target.checked)} /> بدون برچسب
+          </label>
+          <div className="space-y-1">
+            <Label>شیوه آشنایی:</Label>
+            <Select value={props.acqId || "all"} onValueChange={(v) => props.onAcq(v === "all" ? "" : v)}>
+              <SelectTrigger className="w-44">
+                <SelectValue placeholder="همه" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">همه</SelectItem>
+                {(acqQ.data ?? []).map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    {a.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1">
+            <Label>زمان ثبت معامله</Label>
+            <Select value={props.registerWindow} onValueChange={(v) => props.onRegisterWindow(v as "all" | "6m")}>
+              <SelectTrigger className="w-44">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="6m">۶ ماه گذشته</SelectItem>
+                <SelectItem value="all">همه</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <label className="flex items-center gap-1 text-xs">
+            <input type="checkbox" checked={props.noActivity} onChange={(e) => props.onNoActivity(e.target.checked)} /> معاملاتی که فعالیتی روی آن‌ها نیست
+          </label>
+          <label className="flex items-center gap-1 text-xs">
+            <input type="checkbox" checked={props.rottenOnly} onChange={(e) => props.onRotten(e.target.checked)} /> نمایش معاملات فاسد شده
+          </label>
+          <Button type="button" size="sm" variant="ghost" onClick={props.onClear}>
+            حذف فیلتر
+          </Button>
+          <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
+            فیلتر پیشرفته
+          </Button>
+        </div>
+      )}
+    </aside>
   );
 }
 
@@ -673,7 +830,7 @@ async function loadBoardDeals(
   let q = supabase
     .from("sales_interactions" as never)
     .select(
-      "id, title, status, pipeline_id, stage_id, stage_entered_at, salesperson_id, person_id, deleted_at, is_vip, last_activity_at" as never,
+      "id, title, status, pipeline_id, stage_id, stage_entered_at, salesperson_id, person_id, deleted_at, is_vip, last_activity_at, register_time, acquaintance_id" as never,
     )
     .eq("kind" as never, "request" as never)
     .eq("pipeline_id" as never, pipelineId as never)
@@ -697,9 +854,11 @@ async function loadBoardDeals(
     person_id: string;
     is_vip?: boolean;
     last_activity_at?: string | null;
+    register_time?: string | null;
+    acquaintance_id?: string | null;
   }>;
   const ids = rows.map((r) => r.id);
-  const [caps, lights, persons, profiles, quotes, health] = await Promise.all([
+  const [caps, lights, persons, profiles, quotes, health, tags, related] = await Promise.all([
     loadDealCapabilities(ids),
     followUpLightsForDeals(ids),
     rows.length
@@ -728,6 +887,18 @@ async function loadBoardDeals(
           .from("sales_deal_health" as never)
           .select("id, last_activity_age_days, health_circle" as never)
           .in("id" as never, ids as never)
+      : Promise.resolve({ data: [] }),
+    ids.length
+      ? supabase
+          .from("sales_interaction_tags" as never)
+          .select("interaction_id, tag_id" as never)
+          .in("interaction_id" as never, ids as never)
+      : Promise.resolve({ data: [] }),
+    ids.length
+      ? supabase
+          .from("deal_related_users" as never)
+          .select("interaction_id, profile_id" as never)
+          .in("interaction_id" as never, ids as never)
       : Promise.resolve({ data: [] }),
   ]);
   const personMap = new Map(
@@ -775,5 +946,14 @@ async function loadBoardDeals(
       ((health.data ?? []) as Array<{ id: string; health_circle: string | null }>).find(
         (h) => h.id === r.id,
       )?.health_circle ?? null,
+    is_vip: r.is_vip,
+    register_time: r.register_time ?? null,
+    acquaintance_id: r.acquaintance_id ?? null,
+    tag_ids: ((tags.data ?? []) as Array<{ interaction_id: string; tag_id: string }>)
+      .filter((t) => t.interaction_id === r.id)
+      .map((t) => t.tag_id),
+    related_user_ids: ((related.data ?? []) as Array<{ interaction_id: string; profile_id: string }>)
+      .filter((t) => t.interaction_id === r.id)
+      .map((t) => t.profile_id),
   }));
 }

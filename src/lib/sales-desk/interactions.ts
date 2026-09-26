@@ -233,13 +233,15 @@ export async function loadDealById(id: string): Promise<{
   won_by: string | null;
   lost_by: string | null;
   stage_entered_at: string | null;
+  introducer_person_id?: string | null;
+  estimated_amount?: number | null;
   author?: { id: string; full_name: string | null } | null;
   salesperson?: { id: string; full_name: string | null } | null;
 } | null> {
   const { data, error } = await supabase
     .from("sales_interactions" as never)
     .select(
-      "id, person_id, customer_id, kind, title, body, status, salesperson_id, author_id, won_at, lost_at, lost_reason_id, lost_reason_note, lost_reason_other, next_follow_up_at, created_at, pipeline_id, stage_id, deleted_at, display_code, probability, expected_close_on, company_person_id, acquaintance_id, is_vip, pinned_at, register_time, last_activity_at, won_by, lost_by, stage_entered_at" as never,
+      "id, person_id, customer_id, kind, title, body, status, salesperson_id, author_id, won_at, lost_at, lost_reason_id, lost_reason_note, lost_reason_other, next_follow_up_at, created_at, pipeline_id, stage_id, deleted_at, display_code, probability, expected_close_on, company_person_id, acquaintance_id, is_vip, pinned_at, register_time, last_activity_at, won_by, lost_by, stage_entered_at, introducer_person_id, estimated_amount" as never,
     )
     .eq("id" as never, id as never)
     .maybeSingle();
