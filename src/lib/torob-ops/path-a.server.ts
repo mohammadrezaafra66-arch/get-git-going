@@ -12,13 +12,24 @@ export type TorobOpsSettings = {
   require_human_confirm_first_n: number;
   max_reports_per_hour: number;
   dedupe_window_hours: number;
+  eye_enabled?: boolean;
+  eye_delay_min_seconds?: number;
+  eye_delay_max_seconds?: number;
+  eye_cycle_hours?: number;
+  eye_window_start_hour?: number;
+  eye_window_end_hour?: number;
+  eye_backoff_min_seconds?: number;
+  eye_backoff_max_seconds?: number;
+  eye_block_alert_hours?: number;
+  eye_link_discovery_enabled?: boolean;
+  eye_bait_page_cap?: number;
 };
 
 export async function getTorobOpsSettings(): Promise<TorobOpsSettings> {
   const { data, error } = await torobOpsAdmin()
     .from("torob_ops_settings")
     .select(
-      "id, auto_report_enabled, kill_switch, require_human_confirm_first_n, max_reports_per_hour, dedupe_window_hours",
+      "id, auto_report_enabled, kill_switch, require_human_confirm_first_n, max_reports_per_hour, dedupe_window_hours, eye_enabled, eye_delay_min_seconds, eye_delay_max_seconds, eye_cycle_hours, eye_window_start_hour, eye_window_end_hour, eye_backoff_min_seconds, eye_backoff_max_seconds, eye_block_alert_hours, eye_link_discovery_enabled, eye_bait_page_cap",
     )
     .eq("id", 1)
     .maybeSingle();
@@ -44,8 +55,27 @@ export async function updateTorobOpsSettings(input: {
     require_human_confirm_first_n: number;
     max_reports_per_hour: number;
     dedupe_window_hours: number;
+    eye_enabled: boolean;
+    eye_delay_min_seconds: number;
+    eye_delay_max_seconds: number;
+    eye_cycle_hours: number;
+    eye_window_start_hour: number;
+    eye_window_end_hour: number;
+    eye_block_alert_hours: number;
+    eye_link_discovery_enabled: boolean;
+    eye_bait_page_cap: number;
   }>;
 }): Promise<TorobOpsSettings> {
+  if (input.patch.auto_report_enabled === true) {
+    const { count, error: shopErr } = await torobOpsAdmin()
+      .from("torob_ops_own_shops")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true);
+    if (shopErr) throw new Error(shopErr.message);
+    if (!count) {
+      throw new Error("تا وقتی فروشگاه خودتان ثبت نشده، ارسال خودکار روشن نمی‌شود.");
+    }
+  }
   const { error } = await torobOpsAdmin()
     .from("torob_ops_settings")
     .upsert({
