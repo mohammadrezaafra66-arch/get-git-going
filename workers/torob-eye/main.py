@@ -25,6 +25,7 @@ import search  # noqa: E402
 import bait  # noqa: E402
 import findings  # noqa: E402
 import link_discovery  # noqa: E402
+import snapshots  # noqa: E402
 import submit  # noqa: E402
 
 TEHRAN = ZoneInfo("Asia/Tehran")
@@ -67,7 +68,7 @@ async def sb_get(client: httpx.AsyncClient, path: str, params: dict | None = Non
 async def sb_post(client: httpx.AsyncClient, path: str, body, prefer: str = "return=representation"):
     h = {**headers(), "Prefer": prefer}
     r = await client.post(rest(path), headers=h, json=body, timeout=60)
-    r.raise_for_status()
+    snapshots.raise_if_bad_response(r.status_code, r.text, path)
     if r.content:
         return r.json()
     return None
@@ -276,6 +277,7 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
     skip_reasons = []
     block_events = []
     blocked_since = None
+    insert_failed = False
 
     context = await browser.new_context(
         user_agent=antidetect.pick_user_agent(),
@@ -338,7 +340,16 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
                         }
                     )
                 if snapshots:
-                    await sb_post(client, "torob_offer_snapshots", snapshots)
+                    try:
+                        await sb_post(
+                            client,
+                            "torob_offer_snapshots",
+                            [snapshots.sanitize_snapshot_row(s) for s in snapshots],
+                        )
+                    except snapshots.SnapshotWriteError as exc:
+                        insert_failed = True
+                        print(f"snapshot insert failed: {exc}", flush=True)
+                        raise
                 if prices:
                     await upsert_observatory(
                         client,
@@ -431,7 +442,11 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
     finally:
         await context.close()
 
-    status = "blocked" if block_events and succeeded == 0 else "completed"
+    status = snapshots.finalize_run_status(
+        insert_failed=insert_failed,
+        block_events=block_events,
+        succeeded=succeeded,
+    )
     await sb_patch(
         client,
         "torob_eye_runs",

@@ -1,0 +1,11 @@
+python : ...
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-2ba949d3-8b30-49ed-9b7d-74ffa6aff0d5.ps1:118 char:1
++ python -m unittest test_snapshots.py 2>&1 | Out-File "D:\AfraKalaTest ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+OK
