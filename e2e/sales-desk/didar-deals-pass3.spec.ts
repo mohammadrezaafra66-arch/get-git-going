@@ -146,8 +146,7 @@ function suite(role: "sales" | "admin") {
       const id = await createDeal(role, `${STAMP} ${role} d11`);
       await page.goto(`/deal/${id}`, { waitUntil: "domcontentloaded" });
       await page.getByRole("tab", { name: "یادداشت ها" }).click();
-      await page.getByRole("button", { name: "افزودن یادداشت" }).last().click();
-      await expect(page.getByTestId("pass3-d2-note")).toBeVisible();
+      await expect(page.getByTestId("pass3-d11-note")).toBeVisible();
     });
 
     test("D12 files tab", async ({ page }) => {
