@@ -1,0 +1,17 @@
+﻿CONTAINER ID   NAME                               CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+ccb75ca8f992   afrakala-lan-web                   1.92%     56.58MiB / 62.67GiB   0.09%     488kB / 750kB     0B / 0B           12
+0a6005009ae0   afrakala-stt                       560.89%   3.881GiB / 16GiB      24.26%    28MB / 635kB      0B / 573kB        28
+f59f3463cbd6   afrakala-lan-kong                  0.51%     2.024GiB / 62.67GiB   3.23%     536MB / 500MB     0B / 143kB        17
+2b38480ed3e4   afrakala-lan-db                    46.00%    170.7MiB / 62.67GiB   0.27%     169MB / 443MB     47.3MB / 90.7MB   19
+b5613b341c3b   claudegreenapi-frontend-1          0.00%     18.07MiB / 62.67GiB   0.03%     2.62kB / 126B     7.96MB / 4.1kB    17
+4df5fc531903   claudegreenapi-backend-1           5.57%     168.8MiB / 62.67GiB   0.26%     3.52MB / 4.51MB   47.9MB / 0B       23
+0bf8986e1b3b   claudegreenapi-beat-1              0.00%     96.05MiB / 62.67GiB   0.15%     2.1MB / 8.34MB    2.53MB / 2.11MB   1
+2290132cb6ef   claudegreenapi-worker-general-1    0.13%     530.4MiB / 62.67GiB   0.83%     97.6MB / 84.7MB   14.9MB / 2.24MB   9
+d0b3af241030   claudegreenapi-worker-webhooks-1   0.09%     297.7MiB / 62.67GiB   0.46%     51.7MB / 64MB     21.1MB / 4.05MB   6
+0445dfdc71a9   afrakala-lan-auth                  0.00%     8.168MiB / 62.67GiB   0.01%     407kB / 239kB     721kB / 0B        14
+5bc71d111149   claudegreenapi-db-1                0.00%     291.8MiB / 62.67GiB   0.45%     69.1MB / 55.8MB   197MB / 59.2MB    7
+fd4361b28b16   claudegreenapi-redis-1             0.69%     9.668MiB / 62.67GiB   0.02%     76.9MB / 74.6MB   13.5MB / 93.2MB   6
+0773875f280f   afrakala-lan-caddy                 0.00%     12.82MiB / 62.67GiB   0.02%     17.3kB / 126B     37.2MB / 12.3kB   13
+6a38313236a5   afrakala-lan-storage               1.39%     56.44MiB / 62.67GiB   0.09%     196kB / 201kB     1.68MB / 0B       11
+229c47f5a918   afrakala-lan-meta                  1.68%     104.5MiB / 62.67GiB   0.16%     16.9kB / 126B     64.4MB / 0B       11
+4752d528832a   afrakala-lan-rest                  4.47%     102.7MiB / 62.67GiB   0.16%     201MB / 201MB     0B / 0B           80

@@ -1,0 +1,16 @@
+﻿SET
+  current_user  
+----------------
+ supabase_admin
+(1 row)
+
+ public_view_n 
+---------------
+          2057
+(1 row)
+
+ cash_price_products 
+---------------------
+                 321
+(1 row)
+

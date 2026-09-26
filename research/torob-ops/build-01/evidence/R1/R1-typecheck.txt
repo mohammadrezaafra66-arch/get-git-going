@@ -1,0 +1,8 @@
+﻿typecheck-against-baseline summary:
+  raw errors: 73
+  unique keys: 39
+  keys at or below baseline: 39
+  keys cleared since baseline: 4
+  baseline unique keys: 43
+OK: all typecheck error keys are at or below baseline counts.
+exit=0

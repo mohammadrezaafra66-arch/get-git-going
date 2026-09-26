@@ -1,0 +1,15 @@
+﻿SET
+ column_name 
+-------------
+ id
+ name
+ is_active
+ brand_id
+ torob_url
+(5 rows)
+
+ priced_n | priced_with_url 
+----------+-----------------
+      321 |               1
+(1 row)
+

@@ -1,0 +1,24 @@
+python : E
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-ed505d2e-b3a5-4262-80f4-57690e9554b3.ps1:118 char:1
++ python -m unittest test_submit.py 2>&1 | Out-File -FilePath "D:\AfraK ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (E:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+======================================================================
+ERROR: test_submit (unittest.loader._FailedTest.test_submit)
+----------------------------------------------------------------------
+ImportError: Failed to import test module: test_submit
+Traceback (most recent call last):
+  File "C:\Program Files\Python312\Lib\unittest\loader.py", line 137, in loadTestsFromName
+    module = __import__(module_name)
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\AfraKalaTest\wt-torob-eye\workers\torob-eye\test_submit.py", line 7, in <module>
+    from submit import evaluate_guards, plan_report_actions
+ModuleNotFoundError: No module named 'submit'
+
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

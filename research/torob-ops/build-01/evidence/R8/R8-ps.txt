@@ -1,0 +1,17 @@
+﻿NAMES                              STATUS                   IMAGE
+afrakala-lan-web                   Up 6 minutes (healthy)   afrakala-app:lan
+afrakala-stt                       Up 14 minutes            afrakala-stt:local
+afrakala-lan-kong                  Up 5 hours (healthy)     kong:2.8.1
+afrakala-lan-db                    Up 6 hours (healthy)     supabase/postgres:15.6.1.139
+claudegreenapi-frontend-1          Up 8 hours               claudegreenapi-frontend
+claudegreenapi-backend-1           Up 8 hours               claudegreenapi-backend
+claudegreenapi-beat-1              Up 8 hours               claudegreenapi-beat
+claudegreenapi-worker-general-1    Up 8 hours               claudegreenapi-worker-general
+claudegreenapi-worker-webhooks-1   Up 8 hours               claudegreenapi-worker-webhooks
+afrakala-lan-auth                  Up 8 hours               supabase/gotrue:v2.158.1
+claudegreenapi-db-1                Up 8 hours               postgres:15-alpine
+claudegreenapi-redis-1             Up 8 hours               redis:7-alpine
+afrakala-lan-caddy                 Up 8 hours               caddy:2.8-alpine
+afrakala-lan-storage               Up 8 hours               supabase/storage-api:v1.11.13
+afrakala-lan-meta                  Up 8 hours (healthy)     supabase/postgres-meta:v0.84.2
+afrakala-lan-rest                  Up 54 minutes            postgrest/postgrest:v12.2.0

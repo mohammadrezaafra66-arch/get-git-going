@@ -384,6 +384,7 @@ services:
       TOROB_OPS_ACCOUNT_SECRET: ${TOROB_OPS_ACCOUNT_SECRET:-}
       APP_INTERNAL_URL: http://web:3000
       TOROB_EYE_STUB_BLOCK: ${TOROB_EYE_STUB_BLOCK:-0}
+      TOROB_EYE_REPORT_STUB_URL: ${TOROB_EYE_REPORT_STUB_URL:-http://web:3000/torob-eye/stub-report.html}
     networks:
       - afrakala-lan-net
     depends_on:

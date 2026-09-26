@@ -83,7 +83,7 @@ function RunsInner() {
     <div className="space-y-4 p-4">
       <PageHeader
         title="دستورهای اسکن ترب"
-        description="فقط محصولات دارای لینک ترب و برچسب. منبع قیمت فاز ۱: رصدخانه."
+        description="اسکن دکمه و اسکن خودکار بعد از چرخهٔ چشم. اگر یافته صفر باشد دلیل رد هر محصول اینجاست."
       />
 
       <Card>
@@ -144,6 +144,7 @@ function RunsInner() {
             findings_total: number;
             created_at: string;
             error_message: string | null;
+            skip_reasons?: Array<{ reason?: string; product_id?: string }>;
           }) => (
             <Card key={run.id}>
               <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
@@ -161,6 +162,22 @@ function RunsInner() {
                   </div>
                   {run.error_message ? (
                     <div className="text-destructive">{run.error_message}</div>
+                  ) : null}
+                  {run.findings_total === 0 ? (
+                    <div className="text-muted-foreground">
+                      یافته‌ای نبود.
+                      {(run.skip_reasons ?? []).length > 0
+                        ? ` دلایل: ${(run.skip_reasons ?? [])
+                            .map((s) => s.reason)
+                            .filter(Boolean)
+                            .slice(0, 8)
+                            .join("، ")}`
+                        : " دلیل رد ثبت نشده."}
+                    </div>
+                  ) : (run.skip_reasons ?? []).length > 0 ? (
+                    <div className="text-muted-foreground">
+                      ردشده: {toFaDigits(String(run.skip_reasons?.length ?? 0))}
+                    </div>
                   ) : null}
                 </div>
                 {run.status === "queued" || run.status === "running" ? (

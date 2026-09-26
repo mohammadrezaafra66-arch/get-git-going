@@ -1,0 +1,11 @@
+﻿=== git log --oneline 4ec3b7ef vs wait deployed is 4ec3b7ef same as staging ===
+deployed equals origin/staging tip
+=== vs old audit c8396231..origin/staging ===
+4ec3b7ef Merge pull request #482 from mohammadrezaafra66-arch/feature/didar-parity-deals-3b
+0e92dd80 fix(deals): make PASS 3b Q1/Q5/Q10 locators and won_at write reliable
+c9a61481 fix(deals): tighten PASS 3b locators and lost-other note
+c569b555 feat(deals): implement Didar PASS 3b owner Chrome findings
+e600a618 Merge pull request #481 from mohammadrezaafra66-arch/feature/didar-parity-deals-3
+95d54b83 fix(deals): give notes tab its own PASS 3 writer hook
+057e8040 Merge pull request #479 from mohammadrezaafra66-arch/feature/didar-parity-deals-3
+92745bcd feat(deals): implement Didar PASS 3 leftover amount, notes, files, and edit actions

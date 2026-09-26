@@ -1,0 +1,6 @@
+﻿SET
+ watch_active_rows | watch_active_and_active_product | watch_active_with_torob_url | watch_active_with_computed_base 
+-------------------+---------------------------------+-----------------------------+---------------------------------
+                 0 |                               0 |                           0 |                               0
+(1 row)
+

@@ -21,6 +21,11 @@ sys.path.insert(0, str(ROOT / "ported"))
 import antidetect  # noqa: E402
 import scraper  # noqa: E402
 import config  # noqa: E402
+import search  # noqa: E402
+import bait  # noqa: E402
+import findings  # noqa: E402
+import link_discovery  # noqa: E402
+import submit  # noqa: E402
 
 TEHRAN = ZoneInfo("Asia/Tehran")
 SUPABASE_URL = os.environ["SUPABASE_URL"].rstrip("/")
@@ -28,6 +33,10 @@ SERVICE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
 BOT_KEY = os.environ.get("TOROB_EYE_BOT_KEY", "").strip()
 APP_URL = os.environ.get("APP_INTERNAL_URL", "http://web:3000").rstrip("/")
 STUB_BLOCK = os.environ.get("TOROB_EYE_STUB_BLOCK", "0") == "1"
+SIMULATE_SUBMIT = os.environ.get("TOROB_OPS_SIMULATE_SUBMIT", "1") == "1"
+REPORT_STUB_URL = os.environ.get(
+    "TOROB_EYE_REPORT_STUB_URL", f"{APP_URL}/torob-eye/stub-report.html"
+)
 OBS_TABLE_ID = os.environ.get(
     "TOROB_OBS_TABLE_ID", "da8639ad-d5d3-4166-94df-cdad9dc21d5f"
 )
@@ -75,40 +84,92 @@ async def load_settings(client: httpx.AsyncClient) -> dict:
     return rows[0] if rows else {}
 
 
+def _watch_on(value) -> bool:
+    return value is True or value == 1 or str(value).lower() in {"true", "t", "1"}
+
+
 async def load_watch_products(client: httpx.AsyncClient) -> list[dict]:
-    r = await client.post(
-        rpc("query_dynamic_table_rows_v2"),
-        headers=headers(),
-        json={
-            "p_table_id": OBS_TABLE_ID,
-            "p_limit": 2000,
-            "p_offset": 0,
-            "p_show_inactive": False,
-        },
-        timeout=120,
+    tables = await sb_get(
+        client,
+        "dynamic_tables",
+        {"slug": "eq.afrakala-product-price-observatory", "select": "id", "limit": "1"},
     )
-    if r.status_code >= 400:
-        return []
+    table_id = (tables[0]["id"] if tables else OBS_TABLE_ID)
+    cols = await sb_get(
+        client,
+        "dynamic_table_columns",
+        {
+            "table_id": f"eq.{table_id}",
+            "column_key": "in.(is_watch_active,afrakala_product_id)",
+            "select": "id,column_key",
+        },
+    )
+    watch_col = next((c["id"] for c in cols if c.get("column_key") == "is_watch_active"), None)
+    pid_col = next((c["id"] for c in cols if c.get("column_key") == "afrakala_product_id"), None)
+    pids: list[str] = []
+    if watch_col and pid_col:
+        watch_cells = await sb_get(
+            client,
+            "dynamic_table_cells",
+            {
+                "column_id": f"eq.{watch_col}",
+                "value_boolean": "eq.true",
+                "select": "row_id",
+                "limit": "2000",
+            },
+        )
+        row_ids = [c["row_id"] for c in watch_cells or [] if c.get("row_id")]
+        if row_ids:
+            pid_cells = await sb_get(
+                client,
+                "dynamic_table_cells",
+                {
+                    "column_id": f"eq.{pid_col}",
+                    "row_id": f"in.({','.join(str(x) for x in row_ids)})",
+                    "select": "row_id,value_text,value_uuid",
+                    "limit": "2000",
+                },
+            )
+            for cell in pid_cells or []:
+                pid = cell.get("value_uuid") or cell.get("value_text")
+                if pid:
+                    pids.append(str(pid).strip())
+    if not pids:
+        r = await client.post(
+            rpc("query_dynamic_table_rows_v2"),
+            headers=headers(),
+            json={
+                "p_table_id": table_id,
+                "p_limit": 2000,
+                "p_offset": 0,
+                "p_show_inactive": False,
+            },
+            timeout=120,
+        )
+        if r.status_code >= 400:
+            print(f"watch rpc {r.status_code}: {r.text[:300]}", flush=True)
+        else:
+            for row in r.json() or []:
+                values = row.get("out_values") or {}
+                if not _watch_on(values.get("is_watch_active")):
+                    continue
+                pid = values.get("afrakala_product_id")
+                if pid:
+                    pids.append(str(pid).strip())
     out = []
-    for row in r.json() or []:
-        values = row.get("out_values") or {}
-        if values.get("is_watch_active") is not True:
+    seen = set()
+    for pid in pids:
+        if pid in seen:
             continue
-        pid = values.get("afrakala_product_id")
-        if not pid:
-            continue
+        seen.add(pid)
         prows = await sb_get(
             client,
             "products",
-            {
-                "id": f"eq.{pid}",
-                "is_active": "eq.true",
-                "select": "id,name,torob_url",
-            },
+            {"id": f"eq.{pid}", "is_active": "eq.true", "select": "id,name,torob_url"},
         )
-        if not prows:
-            continue
-        out.append(prows[0])
+        if prows:
+            out.append(prows[0])
+    print(f"watch products loaded={len(out)}", flush=True)
     return out
 
 
@@ -204,6 +265,7 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
         {"status": "running"},
     )
     run_id = run[0]["id"] if isinstance(run, list) else run["id"]
+    print(f"eye cycle start {run_id}", flush=True)
     products = await load_watch_products(client)
     attempted = succeeded = failed = skipped = 0
     skip_reasons = []
@@ -226,7 +288,7 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
             if not url:
                 skipped += 1
                 skip_reasons.append({"product_id": product["id"], "reason": "empty_torob_url"})
-                continue
+                continue  # no Torob request → no crawl delay
             try:
                 if STUB_BLOCK:
                     raise RuntimeError("forced_block_490")
@@ -308,6 +370,59 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
             delay_min = float(settings.get("eye_delay_min_seconds") or 30)
             delay_max = float(settings.get("eye_delay_max_seconds") or 60)
             await asyncio.sleep(random.uniform(delay_min, delay_max))
+        if settings.get("eye_link_discovery_enabled", True):
+            await discover_links(page, client, products, settings)
+        scan = None
+        try:
+            scan = await findings.run_after_cycle(
+                client, sb_get, sb_post, sb_patch, settings, run_id
+            )
+            print(
+                f"eye scan {scan['scan_id']} findings={len(scan['findings'])} skips={len(scan['skip_reasons'])}",
+                flush=True,
+            )
+            owner = settings.get("eye_owner_user_id")
+            for finding in scan["findings"]:
+                await notify(
+                    client,
+                    owner,
+                    "رقیب ارزان‌تر از ما",
+                    f"{finding.get('product_name_snapshot')}: {finding.get('seller_name')} {finding.get('their_price_toman')}",
+                    findings.notify_dedupe_key(
+                        finding["product_id"],
+                        finding.get("seller_name"),
+                        int(finding["their_price_toman"]),
+                    ),
+                )
+            cap = int(settings.get("eye_bait_page_cap") or 2)
+            used = 0
+            for finding in scan["findings"]:
+                if used >= cap:
+                    break
+                bait_url = finding.get("seller_offer_url") or finding.get("torob_url")
+                if not bait_url:
+                    continue
+                bait_result = await bait.check_page(page, bait_url)
+                used += 1
+                finding["evidence"] = {**(finding.get("evidence") or {}), "bait": bait_result}
+                if finding.get("id"):
+                    await sb_patch(
+                        client,
+                        "torob_ops_findings",
+                        {
+                            "evidence": finding["evidence"],
+                            "status": findings.classify(
+                                int(finding["our_price_toman"]),
+                                int(finding["their_price_toman"]),
+                                bool(bait_result.get("strong")),
+                                "fetch_failed" in (bait_result.get("signals") or []),
+                            ),
+                        },
+                        {"id": f"eq.{finding['id']}"},
+                    )
+        except Exception as exc:
+            print(f"after-cycle scan failed: {exc}", flush=True)
+        await process_report_queue(page, context, client, settings)
     finally:
         await context.close()
 
@@ -327,6 +442,163 @@ async def one_cycle(browser, client: httpx.AsyncClient, settings: dict) -> None:
         },
         {"id": f"eq.{run_id}"},
     )
+    print(
+        f"eye cycle done {run_id} attempted={attempted} ok={succeeded} skip={skipped} fail={failed}",
+        flush=True,
+    )
+
+
+async def discover_links(page, client: httpx.AsyncClient, products: list[dict], settings: dict) -> None:
+    empty = [p for p in products if not (p.get("torob_url") or "").strip()]
+    if not empty:
+        return
+    delay_min = float(settings.get("eye_delay_min_seconds") or 30)
+    delay_max = float(settings.get("eye_delay_max_seconds") or 60)
+    for product in empty:
+        try:
+            hits = await search.search_products(page, product.get("name") or "", print, limit=8)
+        except Exception as exc:
+            await sb_post(
+                client,
+                "torob_link_assignments",
+                {
+                    "product_id": product["id"],
+                    "url": None,
+                    "score": 0,
+                    "reasons": ["search_failed", str(exc)[:120]],
+                    "assigned": False,
+                },
+            )
+            continue
+        result = link_discovery.pick_assignment(product, hits)
+        rows = list(result["rejected"])
+        if result["chosen"]:
+            rows.append(result["chosen"])
+        for row in rows:
+            await sb_post(
+                client,
+                "torob_link_assignments",
+                {
+                    "product_id": product["id"],
+                    "url": row.get("url"),
+                    "score": row.get("score"),
+                    "reasons": row.get("reasons") or [],
+                    "assigned": bool(row.get("assigned")),
+                },
+            )
+        chosen = result["chosen"]
+        if chosen and chosen.get("assigned") and chosen.get("url"):
+            current = await sb_get(
+                client,
+                "products",
+                {"id": f"eq.{product['id']}", "select": "id,torob_url"},
+            )
+            if current and not (current[0].get("torob_url") or "").strip():
+                await sb_patch(
+                    client,
+                    "products",
+                    {"torob_url": chosen["url"]},
+                    {"id": f"eq.{product['id']}"},
+                )
+                product["torob_url"] = chosen["url"]
+        await asyncio.sleep(random.uniform(delay_min, delay_max))
+
+
+async def process_report_queue(page, context, client: httpx.AsyncClient, settings: dict) -> None:
+    own = await sb_get(client, "torob_ops_own_shops", {"is_active": "eq.true", "select": "id"})
+    queued = await sb_get(
+        client,
+        "torob_ops_findings",
+        {
+            "status": "eq.queued_for_report",
+            "select": "id,product_id,seller_name,seller_domain,torob_url,product_name_snapshot,our_price_toman,their_price_toman,evidence",
+            "order": "created_at.asc",
+            "limit": str(min(10, int(settings.get("max_reports_per_hour") or 10))),
+        },
+    )
+    logs = await sb_get(
+        client,
+        "torob_ops_report_logs",
+        {"select": "id,created_at", "created_at": "gte." + _hour_ago(), "limit": "50"},
+    )
+    templates = await sb_get(
+        client,
+        "torob_ops_report_templates",
+        {"is_active": "eq.true", "is_default": "eq.true", "select": "body", "limit": "1"},
+    )
+    body = (templates[0]["body"] if templates else "") or "{{product_name}} {{torob_url}}"
+    for finding in queued or []:
+        recent_same = False
+        if finding.get("product_id") and finding.get("seller_domain"):
+            since_h = int(settings.get("dedupe_window_hours") or 72)
+            dupes = await sb_get(
+                client,
+                "torob_ops_findings",
+                {
+                    "product_id": f"eq.{finding['product_id']}",
+                    "seller_domain": f"eq.{finding['seller_domain']}",
+                    "status": "in.(queued_for_report,reporting,reported)",
+                    "id": f"neq.{finding['id']}",
+                    "select": "id",
+                    "limit": "1",
+                },
+            )
+            recent_same = bool(dupes)
+        blocked = findings.queue_guard(settings, len(own or []), len(logs or []), recent_same)
+        if blocked:
+            print(f"report skip {finding['id']}: {blocked}", flush=True)
+            if blocked == "kill_switch":
+                break
+            continue
+        await sb_patch(
+            client,
+            "torob_ops_findings",
+            {"status": "reporting"},
+            {"id": f"eq.{finding['id']}"},
+        )
+        text = submit.apply_template(
+            body,
+            {
+                "product_name": finding.get("product_name_snapshot"),
+                "torob_url": finding.get("torob_url"),
+                "our_price": finding.get("our_price_toman"),
+                "their_price": finding.get("their_price_toman"),
+                "seller_domain": finding.get("seller_domain"),
+            },
+        )
+        stub = REPORT_STUB_URL if SIMULATE_SUBMIT else (finding.get("torob_url") or REPORT_STUB_URL)
+        try:
+            result = await submit.run_report_flow(
+                page, report_url=stub, report_text=text, simulate=SIMULATE_SUBMIT
+            )
+            ok = True
+            detail = f"steps={result['steps']}; skipped={result['skipped']}; submitted={result['submitted']}"
+        except Exception as exc:
+            ok = False
+            detail = str(exc)[:240]
+        await sb_post(
+            client,
+            "torob_ops_report_logs",
+            {
+                "finding_id": finding["id"],
+                "report_text": text,
+                "result": "submitted" if ok else "failed",
+                "notes": detail,
+                "mode": "auto",
+            },
+        )
+        await sb_patch(
+            client,
+            "torob_ops_findings",
+            {"status": "reported" if ok else "report_failed"},
+            {"id": f"eq.{finding['id']}"},
+        )
+
+
+def _hour_ago() -> str:
+    from datetime import timedelta
+
+    return (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
 
 
 async def scheduler() -> None:

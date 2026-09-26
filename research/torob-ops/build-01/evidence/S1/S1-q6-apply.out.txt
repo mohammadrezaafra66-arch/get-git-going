@@ -1,0 +1,36 @@
+﻿SET
+SELECT 15
+ q6_n 
+------
+   15
+(1 row)
+
+                  id                  |               brand_id               | has_url | rounded_sale_price 
+--------------------------------------+--------------------------------------+---------+--------------------
+ 41464c40-1bf7-4909-bc2e-4eeadaf02613 | 8d5f55ec-e5c8-4dab-977e-a62aa9954a6f | t       |          394300000
+ 05a2f6aa-0d74-498e-a487-a1cef4c3a02e | 0b15588a-3737-498b-929b-fad6e1d41370 | f       |           81700000
+ ff1da231-c434-42c3-9f1b-68e909f13808 | 0ed52b67-6454-4661-b973-ec6eb617b106 | f       |           13600000
+ 592df692-a9ce-4ce2-8c8b-89606bd8d0c2 | 1f6f699b-fce2-4a16-af8b-0a9e3dc0fdad | f       |            3000000
+ 00f41ff5-cd98-491c-9f04-c72156597ede | 34e19fd3-ba43-4125-a2a4-0aada110c409 | f       |          311700000
+ 2f71e92b-964f-4199-9077-fba0a33f409a | 4559985e-4852-41b4-900e-30def5c32edd | f       |           43000000
+ d935994d-c8ef-4964-9ef8-2c2e5adcf60b | 518f832f-aa20-44b0-ae1e-0676666843e2 | f       |           22600000
+ 02b2e6b5-121b-462a-b482-2386bd762d57 | 5db7f10b-43d7-4712-93a7-2fc1a20d9546 | f       |           20400000
+ 05c548dd-14c6-48cf-8a31-94e1449def1e | 66369ffc-af96-4fc6-95ff-41145d6b78c4 | f       |          220100000
+ 0da6176f-5a45-4e27-a453-c62d0932ab43 | 66b85f22-a6ba-4cd8-99f2-93474296f72c | f       |          106300000
+ 8b66c229-39b3-4dd3-bc2c-55aa5a94cd2e | 8318211b-070f-43e4-bdb8-9d4fd55b67ca | f       |           25100000
+ 5c3a6438-cbcb-47ad-bd43-12470228dc35 | 85207fbe-76bf-4f6e-b6dd-de843b820639 | f       |           52800000
+ 1ba5bd20-deeb-4b14-b631-b25ab4a1ac2c | 86d659d0-0dac-497f-8f97-c09221287c3e | f       |           85500000
+ 07ab23b6-4756-4909-a2f6-df65313ab1f9 | 886f74f5-c826-4d7a-b46a-72b3b0a54d88 | f       |          105000000
+ 30f8186b-db3b-4f80-8bac-6fb697c13771 | 8bfd5e0b-531d-459a-9549-57b7a3f5c4e1 | f       |           84500000
+(15 rows)
+
+UPDATE 0
+docker : psql:/tmp/S1-q6-apply.sql:83: ERROR:  relation "target_rows" does not exist
+At C:\Users\AFRA\AppData\Local\Temp\ps-script-12bb0081-5167-409a-a470-558e71536ad2.ps1:118 char:1
++ docker exec -e "PGPASSWORD=$pw" afrakala-lan-db psql -U supabase_admi ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (psql:/tmp/S1-q6... does not exist:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+LINE 3:   FROM target_rows t
+               ^

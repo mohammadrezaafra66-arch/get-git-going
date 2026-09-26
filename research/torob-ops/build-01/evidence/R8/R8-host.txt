@@ -1,0 +1,19 @@
+﻿=== OS ===
+
+
+Caption                : Microsoft Windows 11 Pro
+TotalVisibleMemorySize : 133952944
+FreePhysicalMemory     : 71021568
+NumberOfProcesses      : 402
+
+
+
+
+
+Name                      : 13th Gen Intel(R) Core(TM) i5-13400
+NumberOfCores             : 10
+NumberOfLogicalProcessors : 16
+LoadPercentage            : 93
+
+
+

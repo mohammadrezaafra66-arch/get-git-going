@@ -1,0 +1,1 @@
+﻿mem_limit=0 nano_cpus=0

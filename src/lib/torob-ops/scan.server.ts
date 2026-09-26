@@ -123,6 +123,53 @@ type ObservatoryRow = {
   product_name?: string;
 };
 
+type SnapshotRow = {
+  product_id: string;
+  seller_name: string | null;
+  seller_shop_url: string | null;
+  seller_shop_id: string | null;
+  price_toman: number | null;
+  is_own_shop: boolean;
+  torob_url: string | null;
+  fetched_at: string;
+};
+
+async function loadLatestSnapshots(productIds: string[]): Promise<Map<string, SnapshotRow[]>> {
+  const map = new Map<string, SnapshotRow[]>();
+  if (productIds.length === 0) return map;
+  const seen = new Set<string>();
+  const chunk = 200;
+  for (let i = 0; i < productIds.length; i += chunk) {
+    const ids = productIds.slice(i, i + chunk);
+    const { data } = await torobOpsAdmin()
+      .from("torob_offer_snapshots")
+      .select(
+        "product_id, seller_name, seller_shop_url, seller_shop_id, price_toman, is_own_shop, torob_url, fetched_at",
+      )
+      .in("product_id", ids)
+      .order("fetched_at", { ascending: false })
+      .limit(2000);
+    for (const row of (data ?? []) as SnapshotRow[]) {
+      const key = `${row.product_id}:${row.seller_shop_id ?? row.seller_name ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const list = map.get(row.product_id) ?? [];
+      list.push(row);
+      map.set(row.product_id, list);
+    }
+  }
+  return map;
+}
+
+function cheapestNonOwnSnapshot(rows: SnapshotRow[] | undefined): SnapshotRow | null {
+  if (!rows?.length) return null;
+  const priced = rows.filter(
+    (r) => !r.is_own_shop && r.price_toman != null && Number(r.price_toman) > 0,
+  );
+  if (priced.length === 0) return null;
+  return priced.reduce((a, b) => (Number(a.price_toman) <= Number(b.price_toman) ? a : b));
+}
+
 async function loadObservatoryByProductIds(
   productIds: string[],
 ): Promise<Map<string, ObservatoryRow>> {
@@ -234,23 +281,36 @@ export async function createAndRunTorobOpsScan(input: {
   try {
     const products = await loadCandidateProducts(input.labelIds);
     const productIds = products.map((p) => p.id);
-    const [ourPrices, observatory, ownShops] = await Promise.all([
+    const [ourPrices, observatory, ownShops, snapshots] = await Promise.all([
       loadOurPrices(productIds),
       loadObservatoryByProductIds(productIds),
       loadOwnShops(),
+      loadLatestSnapshots(productIds),
     ]);
 
     let baitChecksUsed = 0;
     const findings: Array<Record<string, unknown>> = [];
+    const skipReasons: Array<Record<string, unknown>> = [];
 
     for (const product of products) {
       const ourPrice = ourPrices.get(product.id);
+      const snap = cheapestNonOwnSnapshot(snapshots.get(product.id));
       const obs = observatory.get(product.id);
-      const theirMin = toNumber(obs?.torob_min_price_toman);
+      const theirMin = snap ? toNumber(snap.price_toman) : toNumber(obs?.torob_min_price_toman);
+      const priceSource = snap ? "extracted" : "observatory";
 
-      if (ourPrice == null || !Number.isFinite(ourPrice) || ourPrice <= 0) continue;
-      if (theirMin == null || theirMin <= 0) continue;
-      if (theirMin >= ourPrice) continue;
+      if (ourPrice == null || !Number.isFinite(ourPrice) || ourPrice <= 0) {
+        skipReasons.push({ product_id: product.id, reason: "no_our_price" });
+        continue;
+      }
+      if (theirMin == null || theirMin <= 0) {
+        skipReasons.push({ product_id: product.id, reason: "no_market_price" });
+        continue;
+      }
+      if (theirMin >= ourPrice) {
+        skipReasons.push({ product_id: product.id, reason: "not_cheaper", their: theirMin, our: ourPrice });
+        continue;
+      }
 
       // Observatory gives aggregate min — no per-seller identity yet.
       let bait = {
@@ -273,7 +333,10 @@ export async function createAndRunTorobOpsScan(input: {
         await new Promise((r) => setTimeout(r, 1500 + Math.floor(Math.random() * 2000)));
       }
 
-      if (isOwnShop(ownShops, null, bait.sellerDomain)) continue;
+      if (isOwnShop(ownShops, snap?.seller_name ?? null, bait.sellerDomain ?? snap?.seller_shop_url ?? null)) {
+        skipReasons.push({ product_id: product.id, reason: "own_shop", seller: snap?.seller_name });
+        continue;
+      }
 
       const status = classifyPathB({
         ourPrice,
@@ -291,12 +354,12 @@ export async function createAndRunTorobOpsScan(input: {
         product_id: product.id,
         product_name_snapshot: product.name,
         torob_url: product.torob_url,
-        seller_name: null,
+        seller_name: snap?.seller_name ?? null,
         seller_domain: bait.sellerDomain,
-        seller_offer_url: product.torob_url,
+        seller_offer_url: snap?.seller_shop_url ?? product.torob_url,
         our_price_toman: ourPrice,
         their_price_toman: theirMin,
-        price_source: "observatory",
+        price_source: priceSource,
         status: finalStatus,
         evidence: {
           torob_avg_price_toman: toNumber(obs?.torob_avg_price_toman),
@@ -325,6 +388,7 @@ export async function createAndRunTorobOpsScan(input: {
         finished_at: new Date().toISOString(),
         products_total: products.length,
         findings_total: findings.length,
+        skip_reasons: skipReasons,
       })
       .eq("id", runId);
 

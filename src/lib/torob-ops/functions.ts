@@ -234,7 +234,7 @@ export const torobOpsListRuns = createServerFn({ method: "POST" })
     const { data: rows, error } = await torobOpsAdmin()
       .from("torob_ops_scan_runs")
       .select(
-        "id, status, label_ids, created_by, started_at, finished_at, products_total, findings_total, error_message, notes, created_at",
+        "id, status, label_ids, created_by, started_at, finished_at, products_total, findings_total, error_message, notes, skip_reasons, created_at",
       )
       .order("created_at", { ascending: false })
       .limit(data.limit ?? 50);
