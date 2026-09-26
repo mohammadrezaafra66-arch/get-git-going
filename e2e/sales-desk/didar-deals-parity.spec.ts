@@ -361,7 +361,9 @@ test.describe("didar deals parity pass2", () => {
     await createDeal(salesJwt(), title);
     await page.goto("/deal/filter", { waitUntil: "domcontentloaded" });
     await expect(page.getByText("تعداد کل").first()).toBeVisible({ timeout: 20000 });
-    await page.getByRole("checkbox", { name: /انتخاب این صفحه/ }).check();
+    await page.getByRole("button", { name: "حذف فیلتر" }).click();
+    await expect(page.getByText(title).first()).toBeVisible({ timeout: 20000 });
+    await page.locator("tbody button[role='checkbox']").first().click();
     await expect(page.getByText(/ویرایش گروهی معاملات/)).toBeVisible();
     await page.getByRole("combobox").filter({ hasText: "فیلد" }).click();
     await expect(page.getByRole("option", { name: "مسئول" })).toBeVisible();
