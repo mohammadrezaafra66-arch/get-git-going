@@ -31,7 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatNumber } from "@/lib/i18n/formatters";
+import { formatDealDaysAgo, formatDealIrr, formatDealNumber } from "@/lib/deals/format";
+import { fetchAllPages } from "@/lib/deals/paged";
+import { loadDealLookupNames } from "@/lib/deals/names";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { hasPermissionEx, rolePermissionsReady } from "@/lib/rbac/roles";
 import { supabase } from "@/integrations/supabase/client";
@@ -435,13 +437,13 @@ export function DealPipelineBoard() {
               <header className="flex items-center justify-between gap-2 border-b px-3 py-2 text-sm">
                 <strong>{s.title}</strong>
                 <span className="text-xs text-muted-foreground">
-                  ({col.length} عدد ، IRR {formatNumber(sum)})
+                  ({formatDealNumber(col.length)} عدد ، {formatDealIrr(sum)})
                 </span>
               </header>
               {s.sort_order === 1 ? (
                 <button
                   type="button"
-                  className="mx-2 mt-2 w-[calc(100%-1rem)] rounded border border-dashed border-primary/40 py-2 text-sm text-primary"
+                  className="mx-2 mt-2 min-h-10 w-[calc(100%-1rem)] rounded border border-dashed border-primary/40 py-2 text-sm text-primary"
                   onClick={() => setQuickOpen(true)}
                 >
                   + افزودن سریع معامله
@@ -449,7 +451,7 @@ export function DealPipelineBoard() {
               ) : (
                 <button
                   type="button"
-                  className="mx-2 mt-2 w-[calc(100%-1rem)] rounded border border-dashed border-primary/40 py-2 text-sm text-primary"
+                  className="mx-2 mt-2 min-h-10 w-[calc(100%-1rem)] rounded border border-dashed border-primary/40 py-2 text-sm text-primary"
                   onClick={() => setQuickOpen(true)}
                 >
                   +
@@ -487,10 +489,10 @@ export function DealPipelineBoard() {
                       <DealZoomOverlay
                         title={c.title || "بدون عنوان"}
                         personName={c.person_name}
-                        amountLabel={`IRR ${formatNumber(Number(c.estimated_amount ?? c.latest_quote_amount ?? 0))}`}
+                        amountLabel={formatDealIrr(Number(c.estimated_amount ?? c.latest_quote_amount ?? 0))}
                         ageLabel={
                           c.last_activity_age_days != null
-                            ? `${c.last_activity_age_days} روز پیش`
+                            ? formatDealDaysAgo(c.last_activity_age_days)
                             : null
                         }
                       />
@@ -503,14 +505,14 @@ export function DealPipelineBoard() {
                       با {c.person_name}
                     </p>
                     <p className="text-xs" data-testid="pass3-b2-amount">
-                      IRR {formatNumber(Number(c.estimated_amount ?? c.latest_quote_amount ?? 0))}
+                      {formatDealIrr(Number(c.estimated_amount ?? c.latest_quote_amount ?? 0))}
                     </p>
                     {c.last_activity_age_days != null ? (
                       <p
                         className="text-xs text-muted-foreground"
                         title="تاریخ آخرین فعالیت"
                       >
-                        {c.last_activity_age_days} روز پیش
+                        {formatDealDaysAgo(c.last_activity_age_days)}
                       </p>
                     ) : null}
                     {c.light === "yellow" ? (
@@ -529,7 +531,7 @@ export function DealPipelineBoard() {
                     <Link
                       to="/deal/$dealId"
                       params={{ dealId: c.id }}
-                      className="mt-1 block text-xs text-primary underline"
+                      className="mt-1 flex min-h-10 items-center text-xs text-primary underline"
                     >
                       {c.title || "بدون عنوان"}
                     </Link>
@@ -929,24 +931,25 @@ async function loadBoardDeals(
   pipelineId: string,
   statusFilter: StatusFilter,
 ): Promise<DealCard[]> {
-  let q = supabase
-    .from("sales_interactions" as never)
-    .select(
-      "id, title, status, pipeline_id, stage_id, stage_entered_at, salesperson_id, person_id, deleted_at, is_vip, last_activity_at, register_time, acquaintance_id, estimated_amount" as never,
-    )
-    .eq("kind" as never, "request" as never)
-    .eq("pipeline_id" as never, pipelineId as never)
-    .order("created_at" as never, { ascending: false } as never)
-    .limit(400);
-  if (statusFilter === "deleted") {
-    q = q.not("deleted_at" as never, "is" as never, null as never);
-  } else {
-    q = q.is("deleted_at" as never, null as never);
-    if (statusFilter !== "all") q = q.eq("status" as never, statusFilter as never);
-  }
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  const rows = (data ?? []) as unknown as Array<{
+  const { rows } = await fetchAllPages((from, to) => {
+    let q = supabase
+      .from("sales_interactions" as never)
+      .select(
+        "id, title, status, pipeline_id, stage_id, stage_entered_at, salesperson_id, person_id, deleted_at, is_vip, last_activity_at, register_time, acquaintance_id, estimated_amount" as never,
+      )
+      .eq("kind" as never, "request" as never)
+      .eq("pipeline_id" as never, pipelineId as never)
+      .order("created_at" as never, { ascending: false } as never)
+      .range(from, to);
+    if (statusFilter === "deleted") {
+      q = q.not("deleted_at" as never, "is" as never, null as never);
+    } else {
+      q = q.is("deleted_at" as never, null as never);
+      if (statusFilter !== "all") q = q.eq("status" as never, statusFilter as never);
+    }
+    return q;
+  });
+  type BoardRow = {
     id: string;
     title: string | null;
     status: string;
@@ -960,26 +963,18 @@ async function loadBoardDeals(
     register_time?: string | null;
     acquaintance_id?: string | null;
     estimated_amount?: number | null;
-  }>;
-  const ids = rows.map((r) => r.id);
-  const [caps, lights, persons, profiles, quotes, health, tags, related, activities] = await Promise.all([
+  };
+  const typedRows = rows as BoardRow[];
+  const ids = typedRows.map((r) => r.id);
+  const [caps, lights, nameMap, quotes, health, tags, related, activities] = await Promise.all([
     loadDealCapabilities(ids),
     followUpLightsForDeals(ids),
-    rows.length
-      ? supabase
-          .from("persons")
-          .select("id, display_name")
-          .in("id", [...new Set(rows.map((r) => r.person_id))])
-      : Promise.resolve({ data: [] }),
-    rows.length
-      ? supabase
-          .from("profiles")
-          .select("id, full_name")
-          .in(
-            "id",
-            [...new Set(rows.map((r) => r.salesperson_id).filter(Boolean) as string[])],
-          )
-      : Promise.resolve({ data: [] }),
+    loadDealLookupNames([
+      ...new Set([
+        ...typedRows.map((r) => r.person_id),
+        ...typedRows.map((r) => r.salesperson_id).filter(Boolean) as string[],
+      ]),
+    ]),
     ids.length
       ? supabase
           .from("sales_quotes" as never)
@@ -1012,12 +1007,8 @@ async function loadBoardDeals(
           .not("activity_type_id" as never, "is" as never, null as never)
       : Promise.resolve({ data: [] }),
   ]);
-  const personMap = new Map(
-    ((persons.data ?? []) as { id: string; display_name: string }[]).map((p) => [p.id, p]),
-  );
-  const profileMap = new Map(
-    ((profiles.data ?? []) as { id: string; full_name: string | null }[]).map((p) => [p.id, p]),
-  );
+  const personMap = nameMap;
+  const profileMap = nameMap;
   const latestAmount = new Map<string, { at: string; amount: number }>();
   for (const qrow of (quotes.data ?? []) as Array<{
     interaction_id: string | null;
@@ -1033,7 +1024,7 @@ async function loadBoardDeals(
       });
     }
   }
-  return rows.map((r) => ({
+  return typedRows.map((r) => ({
     id: r.id,
     title: r.title,
     status: r.status,
@@ -1042,10 +1033,8 @@ async function loadBoardDeals(
     stage_entered_at: r.stage_entered_at,
     salesperson_id: r.salesperson_id,
     person_id: r.person_id,
-    person_name: personMap.get(r.person_id)?.display_name ?? "—",
-    salesperson_name: r.salesperson_id
-      ? profileMap.get(r.salesperson_id)?.full_name ?? "—"
-      : "—",
+    person_name: personMap[r.person_id] ?? "—",
+    salesperson_name: r.salesperson_id ? profileMap[r.salesperson_id] ?? "—" : "—",
     light: lights.get(r.id) ?? "yellow",
     caps: caps.get(r.id) ?? null,
     latest_quote_amount: latestAmount.get(r.id)?.amount ?? 0,

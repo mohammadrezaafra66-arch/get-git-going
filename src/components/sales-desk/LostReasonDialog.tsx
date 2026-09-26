@@ -51,7 +51,6 @@ export function LostReasonDialog({
 }: Props) {
   const [reasonId, setReasonId] = useState("");
   const [note, setNote] = useState("");
-  const [other, setOther] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
 
   const reasonsQ = useQuery({
@@ -65,7 +64,6 @@ export function LostReasonDialog({
     if (!open) {
       setReasonId("");
       setNote("");
-      setOther("");
       setLocalError(null);
     }
   }, [open]);
@@ -78,16 +76,15 @@ export function LostReasonDialog({
       setLocalError("دلیل شکست را انتخاب کنید");
       return;
     }
-    if (isOther && !note.trim() && !other.trim()) {
+    if (isOther && !note.trim()) {
       setLocalError("برای دلیل «سایر» نوشتن توضیح الزامی است");
       return;
     }
     setLocalError(null);
-    const explain = note.trim() || other.trim();
     onConfirm({
       lostReasonId: reasonId,
       lostReasonNote: note.trim() || null,
-      lostReasonOther: isOther ? explain : null,
+      lostReasonOther: isOther ? note.trim() : null,
     });
   };
 
@@ -131,19 +128,6 @@ export function LostReasonDialog({
               rows={2}
             />
           </div>
-
-          {isOther ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="lost-reason-other">سایر</Label>
-              <Textarea
-                id="lost-reason-other"
-                value={other}
-                onChange={(e) => setOther(e.target.value)}
-                rows={2}
-                placeholder="توضیح الزامی برای «سایر»"
-              />
-            </div>
-          ) : null}
 
           {openActivityCount > 0 ? (
             <p className="text-sm text-amber-800 dark:text-amber-200">

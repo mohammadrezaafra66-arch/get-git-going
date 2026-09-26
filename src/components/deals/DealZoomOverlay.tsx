@@ -14,7 +14,7 @@ export function DealZoomOverlay(props: {
     <>
       <button
         type="button"
-        className="text-right font-medium text-primary underline-offset-2 hover:underline"
+        className="min-h-10 text-right font-medium text-primary underline-offset-2 hover:underline"
         title="در یک نگاه"
         onClick={(e) => {
           e.preventDefault();

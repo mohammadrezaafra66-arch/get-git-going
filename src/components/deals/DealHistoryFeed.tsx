@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { formatDealHistorySentence, type DealHistoryRow } from "@/lib/deals/history";
+import { loadDealLookupNames } from "@/lib/deals/names";
 
 export function DealHistoryFeed(props: { dealId: string; dealTitle: string }) {
   const q = useQuery({
@@ -20,29 +21,16 @@ export function DealHistoryFeed(props: { dealId: string; dealTitle: string }) {
           rows.flatMap((r) => [r.from_value, r.to_value]).filter((v) => !!v && /^[0-9a-f-]{36}$/i.test(v!)) as string[],
         ),
       ];
-      const names: Record<string, string> = {};
-      if (actorIds.length) {
-        const { data: profiles } = await supabase.from("profiles").select("id, full_name").in("id", actorIds);
-        for (const p of (profiles ?? []) as { id: string; full_name: string | null }[]) {
-          names[p.id] = p.full_name ?? p.id;
-        }
-      }
+      const names: Record<string, string> = {
+        ...(await loadDealLookupNames([...actorIds, ...uuidVals])),
+      };
       if (uuidVals.length) {
-        const [{ data: stages }, { data: pipes }, { data: persons }] = await Promise.all([
+        const [{ data: stages }, { data: pipes }] = await Promise.all([
           supabase.from("sales_pipeline_stages" as never).select("id, title" as never).in("id" as never, uuidVals as never),
           supabase.from("sales_pipelines" as never).select("id, title" as never).in("id" as never, uuidVals as never),
-          supabase.from("persons").select("id, display_name").in("id", uuidVals),
         ]);
         for (const s of (stages ?? []) as { id: string; title: string }[]) names[s.id] = s.title;
         for (const p of (pipes ?? []) as { id: string; title: string }[]) names[p.id] = p.title;
-        for (const p of (persons ?? []) as { id: string; display_name: string }[]) names[p.id] = p.display_name;
-        const leftover = uuidVals.filter((id) => !names[id]);
-        if (leftover.length) {
-          const { data: more } = await supabase.from("profiles").select("id, full_name").in("id", leftover);
-          for (const p of (more ?? []) as { id: string; full_name: string | null }[]) {
-            names[p.id] = p.full_name ?? p.id;
-          }
-        }
       }
       return { rows, names };
     },

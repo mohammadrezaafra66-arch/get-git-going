@@ -14,7 +14,11 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import { formatDateFa, formatNumber } from "@/lib/i18n/formatters";
+import { formatDateFa } from "@/lib/i18n/formatters";
+import { formatDealIrr, formatDealNumber, formatDealPercent } from "@/lib/deals/format";
+import { fetchAllPages } from "@/lib/deals/paged";
+import { loadDealLookupNames, loadDealStaffNames } from "@/lib/deals/names";
+import { DealDeleteConfirm } from "./DealDeleteConfirm";
 import { updateSalesInteractionStatus, salesDeskErrorMessage } from "@/lib/sales-desk";
 import {
   listSalesPipelineStages,
@@ -46,6 +50,7 @@ const DEFAULT_COLS = [
   "owner",
   "pipeline",
   "stage",
+  "amount",
 ] as const;
 
 const ALL_COLS = [
@@ -94,6 +99,7 @@ type Row = {
   estimated_amount?: number | null;
   introducer_person_id?: string | null;
   author_id?: string | null;
+  tag_titles?: string;
 };
 
 function statusFa(s: string, deleted?: string | null) {
@@ -112,12 +118,16 @@ function monthBounds() {
 }
 
 export function DealListView() {
-  const { profile } = useAuth();
+  const { profile, roles } = useAuth();
   const qc = useQueryClient();
   const bounds = monthBounds();
+  const privileged = roles.includes("admin") || roles.includes("manager");
   const [pipelineId, setPipelineId] = useState("");
   const [stageId, setStageId] = useState("all");
-  const [ownerId, setOwnerId] = useState(profile?.id ?? "");
+  const [ownerId, setOwnerId] = useState("");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [listPages, setListPages] = useState(1);
+  const LIST_PAGE = 200;
   const [from, setFrom] = useState(bounds.start);
   const [to, setTo] = useState(bounds.end);
   const [cols, setCols] = useState<string[]>([...DEFAULT_COLS]);
@@ -145,9 +155,7 @@ export function DealListView() {
   const staffQ = useQuery({
     queryKey: ["sales-desk", "staff-profiles"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("profiles").select("id, full_name").limit(80);
-      if (error) throw new Error(error.message);
-      return (data ?? []) as { id: string; full_name: string | null }[];
+      return loadDealStaffNames();
     },
   });
   const tagsQ = useQuery({
@@ -175,9 +183,9 @@ export function DealListView() {
   });
 
   const listQ = useQuery({
-    queryKey: ["sales-desk", "deal-list", activePipe, stageId, ownerId, from, to, includeDeleted],
+    queryKey: ["sales-desk", "deal-list", activePipe, stageId, ownerId, from, to, includeDeleted, listPages],
     enabled: !!activePipe,
-    queryFn: () => loadList(activePipe, stageId, ownerId, from, to, includeDeleted),
+    queryFn: () => loadList(activePipe, stageId, ownerId, from, to, includeDeleted, listPages * LIST_PAGE),
   });
 
   const rawRows = listQ.data?.rows ?? [];
@@ -245,13 +253,18 @@ export function DealListView() {
   const resetDefault = () => {
     setPipelineId(pipesQ.data?.[0]?.id ?? "");
     setStageId("all");
-    setOwnerId(profile?.id ?? "");
+    setOwnerId("");
     const b = monthBounds();
     setFrom(b.start);
     setTo(b.end);
     setClauses([]);
     setAndOr("and");
+    setListPages(1);
   };
+
+  const canMutateDeal = (r: Row) => privileged || r.salesperson_id === profile?.id;
+  const selectedRows = rows.filter((r) => selected.includes(r.id));
+  const mutableSelected = selectedRows.filter(canMutateDeal);
 
   return (
     <div className="deal-surface min-w-0 max-w-full space-y-4 overflow-x-hidden" dir="rtl">
@@ -296,10 +309,10 @@ export function DealListView() {
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-center text-sm md:grid-cols-4">
-        <div className="deal-elev rounded-xl border bg-card p-2">تعداد کل {totals.all} · IRR {formatNumber(totals.allAmt)}</div>
-        <div className="deal-elev deal-stat-won rounded-xl border bg-card p-2">معامله موفق {totals.won} · IRR {formatNumber(totals.wonAmt)}</div>
-        <div className="deal-elev deal-stat-lost rounded-xl border bg-card p-2">معامله ناموفق {totals.lost} · IRR {formatNumber(totals.lostAmt)}</div>
-        <div className="deal-elev deal-stat-open rounded-xl border bg-card p-2">معامله جاری {totals.open} · IRR {formatNumber(totals.openAmt)}</div>
+        <div className="deal-elev rounded-xl border bg-card p-2">تعداد کل {formatDealNumber(totals.all)} · {formatDealIrr(totals.allAmt)}</div>
+        <div className="deal-elev deal-stat-won rounded-xl border bg-card p-2">معامله موفق {formatDealNumber(totals.won)} · {formatDealIrr(totals.wonAmt)}</div>
+        <div className="deal-elev deal-stat-lost rounded-xl border bg-card p-2">معامله ناموفق {formatDealNumber(totals.lost)} · {formatDealIrr(totals.lostAmt)}</div>
+        <div className="deal-elev deal-stat-open rounded-xl border bg-card p-2">معامله جاری {formatDealNumber(totals.open)} · {formatDealIrr(totals.openAmt)}</div>
       </div>
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span>مرتب سازی</span>
@@ -320,17 +333,17 @@ export function DealListView() {
       <p className="text-xs text-muted-foreground">بازگشت به لیست قدیم (در دسترس تا آذر ماه)</p>
 
       <div className="flex flex-wrap gap-2 text-xs">
-        <span className="rounded-full border px-2 py-1">
-          کاریز معامله برابر باشد با {pipesQ.data?.find((p) => p.id === activePipe)?.title ?? "کاریز افراکالا"}
-        </span>
-        <span className="rounded-full border px-2 py-1">تاریخ ثبت معامله مساوی یا بعد از {formatDateFa(from)}</span>
-        <span className="rounded-full border px-2 py-1">تاریخ ثبت معامله مساوی یا قبل از {formatDateFa(to)}</span>
-        <span className="rounded-full border px-2 py-1">
-          مسئول معامله برابر باشد با {profile?.full_name ?? "من"}
-        </span>
-        <span className="rounded-full border px-2 py-1">
-          کاربر مرتبط معامله برابر باشد با {profile?.full_name ?? "من"}
-        </span>
+        {from ? (
+          <span className="rounded-full border px-2 py-1">تاریخ ثبت معامله مساوی یا بعد از {formatDateFa(from)}</span>
+        ) : null}
+        {to ? (
+          <span className="rounded-full border px-2 py-1">تاریخ ثبت معامله مساوی یا قبل از {formatDateFa(to)}</span>
+        ) : null}
+        {ownerId ? (
+          <span className="rounded-full border px-2 py-1">
+            مسئول معامله برابر باشد با {staffQ.data?.find((p) => p.id === ownerId)?.full_name ?? profile?.full_name ?? "من"}
+          </span>
+        ) : null}
         <Button
           type="button"
           size="sm"
@@ -370,14 +383,14 @@ export function DealListView() {
         <Button type="button" size="sm" variant="ghost" onClick={resetDefault}>
           بازگشت به فیلتر پیش‌فرض
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={() => { setOwnerId(""); setStageId("all"); }}>
+        <Button type="button" size="sm" variant="ghost" onClick={() => { setOwnerId(""); setStageId("all"); setFrom(""); setTo(""); setClauses([]); setListPages(1); }}>
           حذف فیلتر
         </Button>
         <Button type="button" size="sm" variant="ghost" onClick={() => setClauses((prev) => (prev.length ? prev : [newClause()]))}>
           فیلتر پیشرفته
         </Button>
         <label className="flex items-center gap-1 text-xs">
-          <Checkbox checked={includeDeleted} onCheckedChange={(v) => setIncludeDeleted(!!v)} />
+          <Checkbox checked={includeDeleted} onCheckedChange={(v) => { setIncludeDeleted(!!v); setListPages(1); }} />
           معاملات حذف شده
         </label>
       </div>
@@ -463,12 +476,12 @@ export function DealListView() {
 
       {selected.length > 0 ? (
         <div className="deal-elev min-w-0 space-y-2 rounded-xl border bg-card p-3 text-sm" aria-label="ویرایش گروهی معاملات">
-          <span>ویرایش گروهی معاملات · تغییرات {selected.length} معامله انتخابی</span>
+          <span>ویرایش گروهی معاملات · تغییرات {formatDealNumber(selected.length)} معامله انتخابی</span>
           <div className="grid min-w-0 gap-2 md:grid-cols-2">
             <div className="flex min-w-0 flex-col gap-1">
               <Label>مسئول</Label>
-              <Select value={bulkOwner} onValueChange={setBulkOwner}>
-                <SelectTrigger aria-label="مسئول"><SelectValue /></SelectTrigger>
+              <Select value={bulkOwner} onValueChange={setBulkOwner} disabled={!privileged && mutableSelected.length === 0}>
+                <SelectTrigger aria-label="مسئول" disabled={!privileged && selectedRows.some((r) => !canMutateDeal(r))}><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unchanged">بدون تغییر</SelectItem>
                   {(staffQ.data ?? []).map((p) => (
@@ -547,7 +560,9 @@ export function DealListView() {
                 return;
               }
               void (async () => {
-                if (bulkOwner !== "unchanged") await applyBulk(selected, "owner", bulkOwner);
+                const ownerIds = bulkOwner !== "unchanged" ? mutableSelected.map((r) => r.id) : [];
+                const otherIds = selected.filter((id) => !mutableSelected.some((r) => r.id === id));
+                if (bulkOwner !== "unchanged") await applyBulk(ownerIds, "owner", bulkOwner);
                 if (bulkVisibility !== "unchanged") await applyBulk(selected, "visibility", bulkVisibility);
                 if (bulkTag !== "unchanged") await applyBulk(selected, "tag", bulkTag);
                 if (bulkPipeline !== "unchanged") {
@@ -555,9 +570,11 @@ export function DealListView() {
                   await applyBulk(selected, "pipeline", bulkPipeline, bulkPipeline, first);
                 }
                 if (bulkStatus !== "unchanged") await applyBulk(selected, "status", bulkStatus);
+                return bulkOwner !== "unchanged" ? otherIds.length : 0;
               })()
-                .then(() => {
+                .then((denied) => {
                   toast.success("بروزرسانی");
+                  if (denied > 0) toast.message(`${formatDealNumber(denied)} معامله به دلیل نداشتن دسترسی تغییر نکرد`);
                   void qc.invalidateQueries({ queryKey: ["sales-desk"] });
                 })
                 .catch((e: Error) => toast.error(salesDeskErrorMessage(e.message)));
@@ -569,12 +586,7 @@ export function DealListView() {
             type="button"
             size="sm"
             variant="outline"
-            onClick={() =>
-              Promise.all(selected.map((id) => deleteSalesDealSafe(id))).then(() => {
-                toast.success("حذف");
-                void qc.invalidateQueries({ queryKey: ["sales-desk"] });
-              })
-            }
+            onClick={() => setDeleteOpen(true)}
           >
             حذف
           </Button>
@@ -592,10 +604,10 @@ export function DealListView() {
             variant="ghost"
             onClick={() => exportSelected(rows, selected, names, exportNotes, exportProducts)}
           >
-            اکسپورت {selected.length} معامله انتخابی
+            اکسپورت {formatDealNumber(selected.length)} معامله انتخابی
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={soonToast}>
-            ارسال پیامک به اشخاص {selected.length} معامله انتخابی
+            ارسال پیامک به اشخاص {formatDealNumber(selected.length)} معامله انتخابی
           </Button>
           <Button type="button" size="sm" variant="ghost" onClick={() => setSelected([])}>
             بستن
@@ -603,15 +615,15 @@ export function DealListView() {
         </div>
       ) : null}
 
-      <div className="deal-elev max-w-full overflow-x-auto rounded-xl border bg-card">
+      <div className="deal-elev max-h-[70vh] max-w-full overflow-auto rounded-xl border bg-card">
         <table className="w-full text-sm md:min-w-[60rem]">
-          <thead>
+          <thead className="sticky top-0 z-10 bg-muted/95 backdrop-blur">
             <tr className="border-b bg-muted/40">
               <th className="p-2">
                 <Checkbox
                   checked={rows.length > 0 && selected.length === rows.length}
                   onCheckedChange={(v) => setSelected(v ? rows.map((r) => r.id) : [])}
-                  aria-label={`انتخاب این صفحه (${rows.length} معامله)`}
+                  aria-label={`انتخاب این صفحه (${formatDealNumber(rows.length)} معامله)`}
                 />
               </th>
               {visibleCols.map((c) => (
@@ -664,9 +676,32 @@ export function DealListView() {
             )}
           </tbody>
         </table>
+        {listQ.data?.hasMore ? (
+          <div className="p-2 text-center">
+            <Button type="button" variant="outline" onClick={() => setListPages((n) => n + 1)}>
+              بارگذاری بیشتر
+            </Button>
+          </div>
+        ) : null}
       </div>
 
       <DealCreateDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <DealDeleteConfirm
+        open={deleteOpen}
+        count={selected.length}
+        onOpenChange={setDeleteOpen}
+        onConfirm={() => {
+          const ids = mutableSelected.map((r) => r.id);
+          const denied = selected.length - ids.length;
+          void Promise.all(ids.map((id) => deleteSalesDealSafe(id))).then(() => {
+            if (ids.length) toast.success("حذف");
+            if (denied > 0) toast.message(`${formatDealNumber(denied)} معامله به دلیل نداشتن دسترسی تغییر نکرد`);
+            setSelected([]);
+            setDeleteOpen(false);
+            void qc.invalidateQueries({ queryKey: ["sales-desk"] });
+          });
+        }}
+      />
       <LostReasonDialog
         open={lostOpen}
         onOpenChange={setLostOpen}
@@ -732,7 +767,7 @@ function cell(
         </Link>
       );
     case "tags":
-      return "—";
+      return r.tag_titles || "—";
     case "created":
       return formatDateFa(r.register_time ?? r.created_at);
     case "person":
@@ -746,9 +781,9 @@ function cell(
     case "stage":
       return r.stage_id ? names[r.stage_id] ?? "—" : "—";
     case "amount":
-      return formatNumber(0);
+      return formatDealIrr(Number(r.estimated_amount ?? 0));
     case "probability":
-      return r.probability != null ? `${r.probability}٪` : "—";
+      return r.probability != null ? formatDealPercent(r.probability) : "—";
     case "won_at":
       return formatDateFa(r.won_at);
     case "lost_at":
@@ -767,24 +802,28 @@ async function loadList(
   from: string,
   to: string,
   includeDeleted = false,
+  maxRows = 200,
 ) {
-  let q = supabase
-    .from("sales_interactions" as never)
-    .select(
-      "id, status, title, created_at, person_id, company_person_id, salesperson_id, pipeline_id, stage_id, probability, won_at, lost_at, last_activity_at, register_time, deleted_at, acquaintance_id, estimated_amount, introducer_person_id, author_id" as never,
-    )
-    .eq("kind" as never, "request" as never)
-    .eq("pipeline_id" as never, pipelineId as never)
-    .gte("created_at" as never, from as never)
-    .lte("created_at" as never, to as never)
-    .limit(400);
-  if (!includeDeleted) q = q.is("deleted_at" as never, null as never);
-  else q = q.not("deleted_at" as never, "is" as never, null as never);
-  if (stageId !== "all") q = q.eq("stage_id" as never, stageId as never);
-  if (ownerId) q = q.eq("salesperson_id" as never, ownerId as never);
-  const { data, error } = await q;
-  if (error) throw new Error(error.message);
-  const rows = (data ?? []) as unknown as Row[];
+  const fetched = await fetchAllPages<Row>((fromI, toI) => {
+    let q = supabase
+      .from("sales_interactions" as never)
+      .select(
+        "id, status, title, created_at, person_id, company_person_id, salesperson_id, pipeline_id, stage_id, probability, won_at, lost_at, last_activity_at, register_time, deleted_at, acquaintance_id, estimated_amount, introducer_person_id, author_id" as never,
+      )
+      .eq("kind" as never, "request" as never)
+      .eq("pipeline_id" as never, pipelineId as never)
+      .order("created_at" as never, { ascending: false } as never)
+      .range(fromI, toI);
+    if (from) q = q.gte("created_at" as never, from as never);
+    if (to) q = q.lte("created_at" as never, to as never);
+    if (!includeDeleted) q = q.is("deleted_at" as never, null as never);
+    else q = q.not("deleted_at" as never, "is" as never, null as never);
+    if (stageId !== "all") q = q.eq("stage_id" as never, stageId as never);
+    if (ownerId) q = q.eq("salesperson_id" as never, ownerId as never);
+    return q;
+  }, maxRows);
+  const rows = fetched.rows;
+  const hasMore = fetched.hasMore;
 
   const countQ = await supabase
     .from("sales_interactions" as never)
@@ -806,25 +845,34 @@ async function loadList(
     openAmt: sum((r) => r.status === "open"),
   };
 
+  const ids = rows.map((r) => r.id);
   const personIds = [...new Set(rows.flatMap((r) => [r.person_id, r.company_person_id].filter(Boolean) as string[]))];
   const profileIds = [...new Set(rows.map((r) => r.salesperson_id).filter(Boolean) as string[])];
-  const [persons, profiles, pipes, stages] = await Promise.all([
-    personIds.length
-      ? supabase.from("persons").select("id, display_name").in("id", personIds)
-      : Promise.resolve({ data: [] }),
-    profileIds.length
-      ? supabase.from("profiles").select("id, full_name").in("id", profileIds)
-      : Promise.resolve({ data: [] }),
+  const [lookups, pipes, stages, tagRows, tagDefs] = await Promise.all([
+    loadDealLookupNames([...personIds, ...profileIds]),
     listSalesPipelines(),
     listSalesPipelineStages(),
+    ids.length
+      ? supabase
+          .from("sales_interaction_tags" as never)
+          .select("interaction_id, tag_id" as never)
+          .in("interaction_id" as never, ids as never)
+      : Promise.resolve({ data: [] }),
+    supabase.from("deal_tags" as never).select("id, title" as never),
   ]);
-  const names: Record<string, string> = {};
-  for (const p of (persons.data ?? []) as { id: string; display_name: string }[]) names[p.id] = p.display_name;
-  for (const p of (profiles.data ?? []) as { id: string; full_name: string | null }[])
-    names[p.id] = p.full_name ?? "—";
+  const names: Record<string, string> = { ...lookups };
   for (const p of pipes) names[p.id] = p.title;
   for (const s of stages) names[s.id] = s.title;
-  const ids = rows.map((r) => r.id);
+  const tagTitle = new Map(
+    ((tagDefs.data ?? []) as Array<{ id: string; title: string }>).map((t) => [t.id, t.title]),
+  );
+  const tagsByDeal = new Map<string, string[]>();
+  for (const t of (tagRows.data ?? []) as Array<{ interaction_id: string; tag_id: string }>) {
+    tagsByDeal.set(t.interaction_id, [...(tagsByDeal.get(t.interaction_id) ?? []), tagTitle.get(t.tag_id) ?? ""]);
+  }
+  for (const r of rows) {
+    r.tag_titles = (tagsByDeal.get(r.id) ?? []).filter(Boolean).join("، ");
+  }
   const related: Record<string, string[]> = {};
   if (ids.length) {
     const { data: rel } = await supabase
@@ -835,7 +883,7 @@ async function loadList(
       related[r.interaction_id] = [...(related[r.interaction_id] ?? []), r.profile_id];
     }
   }
-  return { rows, totals, names, related };
+  return { rows, totals, names, related, hasMore };
 }
 
 async function applyBulk(
@@ -850,11 +898,13 @@ async function applyBulk(
     return;
   }
   if (field === "owner" && value) {
-    await Promise.all(
+    const results = await Promise.all(
       ids.map((id) =>
         supabase.from("sales_interactions" as never).update({ salesperson_id: value } as never).eq("id" as never, id as never),
       ),
     );
+    const err = results.find((r) => r.error)?.error;
+    if (err) throw new Error(err.message);
     return;
   }
   if (field === "pipeline" && pipelineId && firstStageId) {
@@ -869,11 +919,15 @@ async function applyBulk(
       .maybeSingle();
     const tagId = (tag as { id?: string } | null)?.id;
     if (!tagId) throw new Error("برچسب پیدا نشد.");
-    await Promise.all(
+    const results = await Promise.all(
       ids.map((id) =>
-        supabase.from("sales_interaction_tags" as never).insert({ interaction_id: id, tag_id: tagId } as never),
+        supabase
+          .from("sales_interaction_tags" as never)
+          .upsert({ interaction_id: id, tag_id: tagId } as never, { onConflict: "interaction_id,tag_id" } as never),
       ),
     );
+    const err = results.find((r) => r.error)?.error;
+    if (err) throw new Error(err.message);
     return;
   }
   if (field === "visibility" && value) {

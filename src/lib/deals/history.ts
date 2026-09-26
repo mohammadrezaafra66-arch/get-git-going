@@ -1,4 +1,4 @@
-import { formatDateTimeFa } from "@/lib/i18n/formatters";
+import { formatJalaliDateTimeTehran, isIsoDateValue } from "@/lib/deals/format";
 
 export type DealHistoryRow = {
   id: string;
@@ -20,6 +20,7 @@ const FIELD_FA: Record<string, string> = {
   expected_close: "تاریخ احتمالی بستن معامله",
   register_time: "تاریخ معامله",
   won_at: "تاریخ موفق شدن",
+  tag: "برچسب",
   acquaintance: "شیوه آشنایی",
   status: "وضعیت",
   stage: "مرحله کاریز",
@@ -43,7 +44,7 @@ export function formatDealHistorySentence(
 ): string {
   const actor = (row.actor_id && names[row.actor_id]) || "کاربر";
   const title = dealTitle.trim() || "بدون عنوان";
-  const when = formatDateTimeFa(row.created_at);
+  const when = formatJalaliDateTimeTehran(row.created_at);
   if (row.event === "create") {
     return `${actor} معامله با عنوان ${title} را ایجاد کرد`;
   }
@@ -70,5 +71,6 @@ function resolveVal(v: string | null, names: Record<string, string>): string {
   if (v === "open") return "جاری";
   if (v === "won") return "موفق";
   if (v === "lost") return "ناموفق";
+  if (isIsoDateValue(v)) return formatJalaliDateTimeTehran(v);
   return v;
 }

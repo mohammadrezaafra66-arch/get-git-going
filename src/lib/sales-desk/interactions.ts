@@ -13,6 +13,7 @@ import {
   type SalesInteractionItemInput,
 } from "./items";
 import { parseCreateDealInteraction } from "./schema";
+import { loadDealLookupNames } from "@/lib/deals/names";
 
 export type SalesInteractionKind = "request" | "call" | "note";
 export type SalesInteractionStatus = "open" | "won" | "lost" | "cancelled" | "done";
@@ -310,16 +311,12 @@ export async function loadDealById(id: string): Promise<{
     estimated_amount?: number | null;
   };
   const profileIds = [row.author_id, row.salesperson_id].filter(Boolean) as string[];
-  let author: { id: string; full_name: string | null } | null = null;
-  let salesperson: { id: string; full_name: string | null } | null = null;
-  if (profileIds.length > 0) {
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", profileIds);
-    const map = new Map((profiles ?? []).map((p) => [p.id, p]));
-    author = map.get(row.author_id) ?? null;
-    salesperson = row.salesperson_id ? map.get(row.salesperson_id) ?? null : null;
-  }
+  const names = profileIds.length ? await loadDealLookupNames(profileIds) : {};
+  const author = row.author_id
+    ? { id: row.author_id, full_name: names[row.author_id] ?? null }
+    : null;
+  const salesperson = row.salesperson_id
+    ? { id: row.salesperson_id, full_name: names[row.salesperson_id] ?? null }
+    : null;
   return { ...row, author, salesperson };
 }

@@ -10,7 +10,7 @@ import { storageStateForRole, userIdFor } from "../helpers/role-session";
 const BASE_URL = process.env.E2E_BASE_URL ?? "http://192.168.170.8:3100";
 const SUPABASE_URL = `http://192.168.170.8:${lanEnv().SUPABASE_API_PORT}`;
 const STAMP = `[PASS3B] ${Date.now()}`;
-const AMOUNT_FA = "۱,۲۵۰,۰۰۰";
+const AMOUNT_FA = "۱٬۲۵۰٬۰۰۰";
 
 test.setTimeout(180_000);
 
