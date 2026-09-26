@@ -192,7 +192,7 @@ function suite(role: "sales" | "admin") {
       await expect(page.locator("div").filter({ hasText: /^تعداد کل / }).first()).not.toHaveText(before, {
         timeout: 15_000,
       });
-      await expect(page.locator("div").filter({ hasText: /^تعداد کل / }).first()).toContainText("تعداد کل 1");
+      await expect(page.locator("div").filter({ hasText: /^تعداد کل / }).first()).toContainText("تعداد کل ۱");
       await page.locator("span", { hasText: "مرتب سازی" }).locator("..").getByRole("combobox").click();
       await expect(page.getByRole("option", { name: "تاریخ ثبت" })).toBeVisible();
       await expect(page.getByRole("option", { name: /^0 / })).toHaveCount(0);

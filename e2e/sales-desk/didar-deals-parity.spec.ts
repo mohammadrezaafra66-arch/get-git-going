@@ -400,7 +400,7 @@ test.describe("didar deals parity pass2", () => {
     await expect(page.getByText(/mm\/dd\/yyyy/i)).toHaveCount(0);
     const amount = page.getByPlaceholder("IRR");
     await amount.fill("abc۱۲۳۴xyz");
-    await expect(amount).toHaveValue("1,234");
+    await expect(amount).toHaveValue("۱٬۲۳۴");
     const personName = dbScalar(
       "select display_name from public.persons where kind = 'individual' and display_name is not null and length(btrim(display_name)) >= 3 order by created_at limit 1",
     ).trim();
