@@ -1,17 +1,18 @@
 # STATE — رونویسی تماس، فاز A
 
-تاریخ به‌روزرسانی: 2026-09-26 (G6 docs؛ PR بعدی)
-شاخه: `feature/call-transcription`
+تاریخ به‌روزرسانی: 2026-09-26 (G6 complete)
+شاخه: `feature/call-transcription` @ `b895fe24`
 worktree: `D:\AfraKalaTest\wt-call-transcription`
 
 ## HANDOFF STATE
 
-- **gate فعلی:** G3–G5 تمام؛ G6 در حال commit/PR
-- **آخرین گام تمام‌شده:** Playwright زنده+نهایی 2 passed؛ بنچمارک در g3-bench.json
-- **گام بعدی:** commit + push + `gh pr create` به staging (ادغام نشود)
+- **gate فعلی:** G0–G6 تمام؛ PR باز، ادغام نشده
+- **آخرین گام تمام‌شده:** commit `b895fe24` + PR #480 به staging
+- **گام بعدی:** بازبینی مالک؛ فایروال C4؛ دیدن UI روی 3100
 - **مسدودکننده‌های باز:** WER بدون کلیپ eval؛ فایروال C4 اقدام مالک
-- **کانتینر / سرویس تازه‌استارت‌شده:** `afrakala-lan-web` (چند recreate)؛ `afrakala-stt`
-- **SHA وب 3100:** ایمیج شامل UI است؛ برچسب GIT_SHA تا commit بعدی `c8396231`
+- **کانتینر / سرویس تازه‌استارت‌شده:** `afrakala-lan-web`؛ `afrakala-stt`
+- **SHA وب 3100:** ایمیج شامل UI است؛ برچسب داخل کانتینر ممکن است هنوز `c8396231` باشد
+- **PR:** https://github.com/mohammadrezaafra66-arch/get-git-going/pull/480
 - **مهاجرت اعمال‌شده:** 592، 593
 - **شمارهٔ بعدی پیشنهادی مهاجرت:** 594
 
